@@ -46,7 +46,7 @@
                         'float': '0 20px 40px -5px rgba(0, 69, 165, 0.25)', 
                         'deep-blue': '0 4px 25px rgba(0, 69, 165, 0.15)',
                         'deep-blue-hover': '0 15px 35px rgba(0, 69, 165, 0.3)',
-                        'glass': '0 8px 32px 0 rgba(0, 69, 165, 0.1)',
+                        'glass': '0 8px 32px 0 rgba(0, 69, 165, 0.08)',
                     },
                     backdropBlur: {
                         'xs': '2px',
@@ -123,6 +123,7 @@
         .markdown-body p { margin-bottom: 0.5em; }
         .markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 0.5em; }
         .markdown-body strong { font-weight: 700; color: #0045a5; }
+        .markdown-body h3 { font-weight: 700; font-size: 1.1em; margin-top: 1em; margin-bottom: 0.5em; color: #0045a5; }
     </style>
 </head>
 <body>
@@ -131,14 +132,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // ==========================================
-        // 🚀 구글 시트 연동 설정 (여기에 링크를 붙여넣으세요)
-        // 파일 > 공유 > 웹에 게시 > CSV 선택 > 링크 복사
-        // ==========================================
         const GOOGLE_SHEET_URL = ""; 
-        // 예시: "https://docs.google.com/spreadsheets/d/e/YOUR-SHEET-ID/pub?output=csv"
-
-        // Gemini API Key
         const apiKey = ""; 
 
         // Icons
@@ -160,42 +154,61 @@
             Sparkles: (props) => <Icon {...props} path={<><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 5h4"/><path d="M3 9h4"/></>} />,
             Send: (props) => <Icon {...props} path={<><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></>} />,
             X: (props) => <Icon {...props} path={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>} />,
+            Lightbulb: (props) => <Icon {...props} path={<><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-1 1.5-2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></>} />,
+            Activity: (props) => <Icon {...props} path={<><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></>} />,
+            Zap: (props) => <Icon {...props} path={<><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></>} />,
         };
 
-        // 기본 콘텐츠 데이터 (구글 시트 없을 때 사용)
         const defaultContent = {
             hero_title: "함께 성장하는\n청년 사업가 커뮤니티",
             hero_desc: "부산 지역 청년 사업가들이 모여 아이디어를 공유하고, 네트워킹하며 함께 성장해나가는 공간입니다.",
-            
-            // 통계
             stat_1_val: "200+", stat_1_desc: "활동중인 사업가",
             stat_2_val: "80+", stat_2_desc: "진행된 세미나",
             stat_3_val: "35+", stat_3_desc: "투자 성공 사례",
             stat_4_val: "100%", stat_4_desc: "성장 열정",
-
-            // CTA
             cta_title: "사업의 꿈을 현실로!",
-            cta_desc: "혼자 고민하지 마세요. 부산 최고의 청년 사업가들과 함께 당신의 비즈니스를 다음 단계로 끌어올리세요."
+            cta_desc: "혼자 고민하지 마세요. 부산 최고의 청년 사업가들과 함께 당신의 비즈니스를 다음 단계로 끌어올리세요.",
+            // 🚀 기본 카테고리 옵션 추가 (시트가 없을 때 대비)
+            category_area_options: ["부산 전체", "해운대구 / IT", "부산진구 / 유통", "남구 / 금융"],
+            category_activity_options: ["비즈니스 세미나", "투자 설명회", "네트워킹 파티", "멘토링"],
+            category_target_options: ["예비/초기 창업가", "시리즈A 단계", "대학생", "일반인"],
         };
 
-        const AIMentorModal = ({ isOpen, onClose }) => {
+        const AIMentorModal = ({ isOpen, onClose, initialTab = 'chat' }) => {
+            const [activeTab, setActiveTab] = useState(initialTab); // 'chat', 'slogan', 'swot'
             const [input, setInput] = useState('');
-            const [messages, setMessages] = useState([
-                { role: 'ai', text: '안녕하세요! 부산 청년 사업가들을 위한 AI 멘토입니다. ✨\n사업 아이디어 검증, 마케팅 전략, 지원사업 정보 등 무엇이든 물어보세요!' }
-            ]);
+            const [messages, setMessages] = useState([]);
+            const [result, setResult] = useState('');
             const [isLoading, setIsLoading] = useState(false);
             const messagesEndRef = useRef(null);
 
             useEffect(() => {
-                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                if (isOpen) {
+                    setActiveTab(initialTab);
+                    if (initialTab === 'chat' && messages.length === 0) {
+                        setMessages([{ role: 'ai', text: '안녕하세요! 부산 청년 사업가들을 위한 AI 멘토입니다. ✨\n무엇을 도와드릴까요?' }]);
+                    } else if (initialTab === 'slogan') {
+                        setResult('');
+                        setInput('');
+                    } else if (initialTab === 'swot') {
+                        setResult('');
+                        setInput('');
+                    }
+                }
+            }, [isOpen, initialTab]);
+
+            useEffect(() => {
+                scrollToBottom();
             }, [messages]);
+
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            };
 
             if (!isOpen) return null;
 
-            const callGemini = async (prompt) => {
+            const callGemini = async (prompt, systemInstruction) => {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-                const systemInstruction = "당신은 부산 청년 사업가들을 위한 친절하고 전문적인 비즈니스 멘토입니다. 답변은 명확하고 실질적인 조언 위주로 해주세요.";
-                
                 try {
                     const response = await fetch(url, {
                         method: 'POST',
@@ -207,52 +220,160 @@
                     });
                     if (!response.ok) throw new Error("API Error");
                     const data = await response.json();
-                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "답변을 생성할 수 없습니다.";
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "답변 생성 실패";
                 } catch (error) {
-                    return "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+                    return "오류가 발생했습니다. 다시 시도해주세요.";
                 }
             };
 
-            const handleSubmit = async (e) => {
+            const handleChatSubmit = async (e) => {
                 e.preventDefault();
                 if (!input.trim() || isLoading) return;
                 const userMsg = input;
                 setInput('');
                 setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
                 setIsLoading(true);
-                const aiResponse = await callGemini(userMsg);
+                
+                const systemPrompt = "당신은 부산 청년 사업가들을 위한 친절하고 전문적인 비즈니스 멘토입니다. 답변은 명확하고 실질적인 조언 위주로 해주세요.";
+                const aiResponse = await callGemini(userMsg, systemPrompt);
+                
                 setMessages(prev => [...prev, { role: 'ai', text: aiResponse }]);
                 setIsLoading(false);
             };
 
+            const handleToolSubmit = async (e) => {
+                e.preventDefault();
+                if (!input.trim() || isLoading) return;
+                setIsLoading(true);
+                
+                let prompt = "";
+                let systemPrompt = "";
+
+                if (activeTab === 'slogan') {
+                    prompt = `다음 키워드 또는 사업 설명을 바탕으로 창의적이고 기억에 남는 비즈니스 슬로건 5개를 한국어로 만들어주세요: "${input}"`;
+                    systemPrompt = "당신은 전문 카피라이터입니다. 짧고, 강렬하고, 감성적인 슬로건을 이모지와 함께 리스트 형식으로 제안해주세요.";
+                } else if (activeTab === 'swot') {
+                    prompt = `다음 사업 아이디어에 대한 간단한 SWOT 분석을 해주세요: "${input}"`;
+                    systemPrompt = "당신은 비즈니스 컨설턴트입니다. 입력된 사업의 강점(Strengths), 약점(Weaknesses), 기회(Opportunities), 위협(Threats)을 각각 2~3가지 핵심 포인트로 분석하여 마크다운 형식으로 출력해주세요.";
+                }
+
+                const aiResponse = await callGemini(prompt, systemPrompt);
+                setResult(aiResponse);
+                setIsLoading(false);
+            };
+
             return (
-                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 sm:p-6 pointer-events-none">
-                    <div className="absolute inset-0 bg-black/20 backdrop-blur-sm pointer-events-auto transition-opacity" onClick={onClose}></div>
-                    <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl pointer-events-auto flex flex-col h-[80vh] sm:h-[600px] modal-animate overflow-hidden border border-brand/10">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 pointer-events-none">
+                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto transition-opacity" onClick={onClose}></div>
+                    <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl pointer-events-auto flex flex-col h-[80vh] sm:h-[700px] modal-animate overflow-hidden border border-brand/10">
+                        {/* Header */}
                         <div className="p-5 bg-gradient-to-r from-brand to-accent flex justify-between items-center text-white shadow-md shrink-0">
                             <div className="flex items-center gap-2">
                                 <div className="p-2 bg-white/20 rounded-full backdrop-blur-md"><Icons.Sparkles className="w-5 h-5" /></div>
-                                <div><h3 className="font-bold text-lg">AI 비즈니스 멘토</h3><p className="text-xs text-blue-100">Powered by Gemini ✨</p></div>
+                                <div><h3 className="font-bold text-lg">AI 비즈니스 툴킷</h3><p className="text-xs text-blue-100">Powered by Gemini ✨</p></div>
                             </div>
                             <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full"><Icons.X className="w-6 h-6" /></button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-5 bg-soft space-y-4">
-                            {messages.map((msg, idx) => (
-                                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] rounded-2xl p-4 shadow-sm ${msg.role === 'user' ? 'bg-brand text-white rounded-br-none' : 'bg-white text-dark border border-gray-100 rounded-tl-none markdown-body text-sm'}`}>
-                                        {msg.role === 'ai' ? <div dangerouslySetInnerHTML={{ __html: marked.parse(msg.text) }} /> : msg.text}
-                                    </div>
-                                </div>
-                            ))}
-                            {isLoading && <div className="flex justify-start"><div className="bg-white p-4 rounded-2xl border border-gray-100 flex gap-2"><div className="w-2 h-2 bg-brand rounded-full animate-bounce"></div><div className="w-2 h-2 bg-brand rounded-full animate-bounce delay-100"></div><div className="w-2 h-2 bg-brand rounded-full animate-bounce delay-200"></div></div></div>}
-                            <div ref={messagesEndRef} />
+
+                        {/* Tabs */}
+                        <div className="flex border-b border-gray-100 bg-white">
+                            <button 
+                                onClick={() => setActiveTab('chat')} 
+                                className={`flex-1 py-4 text-sm font-bold transition-colors border-b-2 ${activeTab === 'chat' ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                            >
+                                💬 멘토링 챗봇
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('slogan')} 
+                                className={`flex-1 py-4 text-sm font-bold transition-colors border-b-2 ${activeTab === 'slogan' ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                            >
+                                💡 슬로건 생성
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('swot')} 
+                                className={`flex-1 py-4 text-sm font-bold transition-colors border-b-2 ${activeTab === 'swot' ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                            >
+                                📊 SWOT 분석
+                            </button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-4 bg-white border-t border-gray-100 shrink-0">
-                            <div className="relative flex items-center">
-                                <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="사업 고민을 입력하세요..." className="w-full bg-soft border border-gray-200 rounded-full py-3.5 pl-5 pr-12 text-sm focus:outline-none focus:border-brand" />
-                                <button type="submit" disabled={isLoading || !input.trim()} className="absolute right-2 p-2 bg-brand text-white rounded-full hover:bg-blue-700 disabled:bg-gray-300"><Icons.Send className="w-4 h-4" /></button>
-                            </div>
-                        </form>
+
+                        {/* Body Content */}
+                        <div className="flex-1 overflow-y-auto bg-soft relative">
+                            {/* Chat Mode */}
+                            {activeTab === 'chat' && (
+                                <div className="flex flex-col h-full">
+                                    <div className="flex-1 p-5 space-y-4 overflow-y-auto">
+                                        {messages.map((msg, idx) => (
+                                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                <div className={`max-w-[85%] rounded-2xl p-4 shadow-sm ${msg.role === 'user' ? 'bg-brand text-white rounded-br-none' : 'bg-white text-dark border border-gray-100 rounded-tl-none markdown-body text-sm'}`}>
+                                                    {msg.role === 'ai' ? <div dangerouslySetInnerHTML={{ __html: marked.parse(msg.text) }} /> : msg.text}
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {isLoading && <div className="flex justify-start"><div className="bg-white p-4 rounded-2xl border border-gray-100 flex gap-2"><div className="w-2 h-2 bg-brand rounded-full animate-bounce"></div><div className="w-2 h-2 bg-brand rounded-full animate-bounce delay-100"></div><div className="w-2 h-2 bg-brand rounded-full animate-bounce delay-200"></div></div></div>}
+                                        <div ref={messagesEndRef} />
+                                    </div>
+                                    <form onSubmit={handleChatSubmit} className="p-4 bg-white border-t border-gray-100">
+                                        <div className="relative flex items-center">
+                                            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="사업 고민을 입력하세요..." className="w-full bg-soft border border-gray-200 rounded-full py-3.5 pl-5 pr-12 text-sm focus:outline-none focus:border-brand" />
+                                            <button type="submit" disabled={isLoading || !input.trim()} className="absolute right-2 p-2 bg-brand text-white rounded-full hover:bg-blue-700 disabled:bg-gray-300"><Icons.Send className="w-4 h-4" /></button>
+                                        </div>
+                                    </form>
+                                </div>
+                            )}
+
+                            {/* Slogan & SWOT Mode */}
+                            {(activeTab === 'slogan' || activeTab === 'swot') && (
+                                <div className="p-6 h-full flex flex-col items-center justify-center">
+                                    {!result && !isLoading && (
+                                        <div className="text-center w-full max-w-md animate-[fadeIn_0.5s_ease-out]">
+                                            <div className="w-20 h-20 bg-white rounded-3xl mx-auto mb-6 flex items-center justify-center text-brand shadow-deep-blue">
+                                                {activeTab === 'slogan' ? <Icons.Lightbulb className="w-10 h-10" /> : <Icons.Activity className="w-10 h-10" />}
+                                            </div>
+                                            <h3 className="text-2xl font-bold text-dark mb-2">
+                                                {activeTab === 'slogan' ? 'AI 슬로건 메이커' : 'AI SWOT 분석기'}
+                                            </h3>
+                                            <p className="text-gray-500 mb-8 text-sm">
+                                                {activeTab === 'slogan' 
+                                                    ? '브랜드의 핵심 키워드를 입력하면, 매력적인 슬로건을 제안해드립니다.' 
+                                                    : '사업 아이디어를 간단히 입력하면, 강점/약점/기회/위협을 분석해드립니다.'}
+                                            </p>
+                                            <form onSubmit={handleToolSubmit} className="w-full relative">
+                                                <input 
+                                                    type="text" 
+                                                    value={input} 
+                                                    onChange={(e) => setInput(e.target.value)} 
+                                                    placeholder={activeTab === 'slogan' ? "예: 여행, 힐링, 커피..." : "예: 1인 가구를 위한 반찬 구독 서비스..."}
+                                                    className="w-full bg-white border border-gray-200 rounded-2xl py-4 pl-6 pr-14 shadow-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
+                                                />
+                                                <button type="submit" disabled={isLoading || !input.trim()} className="absolute right-2 top-2 p-2 bg-brand text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-300 transition-colors shadow-lg">
+                                                    <Icons.Sparkles className="w-5 h-5" />
+                                                </button>
+                                            </form>
+                                        </div>
+                                    )}
+
+                                    {isLoading && (
+                                        <div className="text-center">
+                                            <div className="w-16 h-16 border-4 border-brand/20 border-t-brand rounded-full animate-spin mx-auto mb-4"></div>
+                                            <p className="text-brand font-bold animate-pulse">AI가 열심히 생각하고 있어요...</p>
+                                        </div>
+                                    )}
+
+                                    {result && !isLoading && (
+                                        <div className="w-full h-full flex flex-col animate-[slideUpFade_0.5s_ease-out]">
+                                            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex-1 overflow-y-auto markdown-body text-sm leading-relaxed">
+                                                <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
+                                                    <span className="font-bold text-gray-500 text-xs uppercase tracking-wider">AI Generated Result</span>
+                                                    <button onClick={() => { setResult(''); setInput(''); }} className="text-brand text-xs font-bold hover:underline">다시 하기</button>
+                                                </div>
+                                                <div dangerouslySetInnerHTML={{ __html: marked.parse(result) }} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             );
@@ -261,8 +382,13 @@
         const App = () => {
             const [isMenuOpen, setIsMenuOpen] = useState(false);
             const [scrolled, setScrolled] = useState(false);
-            const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+            const [aiModalState, setAiModalState] = useState({ isOpen: false, tab: 'chat' });
             const [content, setContent] = useState(defaultContent);
+
+            // 검색 상태 관리
+            const [searchArea, setSearchArea] = useState('');
+            const [searchActivity, setSearchActivity] = useState('');
+            const [searchTarget, setSearchTarget] = useState('');
 
             useEffect(() => {
                 const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -270,49 +396,53 @@
                 return () => window.removeEventListener('scroll', handleScroll);
             }, []);
 
-            // 🚀 구글 시트 데이터 가져오기
             useEffect(() => {
                 if (!GOOGLE_SHEET_URL) return;
-
                 const fetchSheet = async () => {
                     try {
                         const response = await fetch(GOOGLE_SHEET_URL);
                         const csvText = await response.text();
-                        
-                        // CSV 파싱 (간단한 형태: Key,Value)
                         const rows = csvText.split('\n').map(row => row.split(','));
                         const newContent = { ...defaultContent };
-                        
                         rows.forEach(row => {
                             if (row.length >= 2) {
                                 const key = row[0].trim();
-                                // 값이 쉼표를 포함할 경우를 대비해 나머지 합치기
                                 const value = row.slice(1).join(',').trim().replace(/^"|"$/g, '').replace(/\\n/g, '\n'); 
+                                
                                 if (key && value) {
-                                    newContent[key] = value;
+                                    // _options로 끝나는 키는 쉼표로 분리하여 배열로 저장
+                                    if (key.endsWith('_options')) {
+                                        newContent[key] = value.split(',').map(item => item.trim());
+                                    } else {
+                                        newContent[key] = value;
+                                    }
                                 }
                             }
                         });
                         setContent(newContent);
-                        console.log("Google Sheet Data Loaded", newContent);
                     } catch (error) {
                         console.error("Google Sheet Load Error:", error);
                     }
                 };
-
                 fetchSheet();
             }, []);
+
+            const openAI = (tab = 'chat') => setAiModalState({ isOpen: true, tab });
+            const closeAI = () => setAiModalState({ ...aiModalState, isOpen: false });
+
+            const handleSearch = () => {
+                alert(`검색 조건:\n지역: ${searchArea}\n활동: ${searchActivity}\n대상: ${searchTarget}`);
+            };
 
             return (
                 <div className="min-h-screen bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">
                     
-                    {/* AI Button */}
-                    <button onClick={() => setIsAIModalOpen(true)} className="fixed bottom-6 right-6 z-[90] bg-gradient-to-r from-brand to-accent text-white p-4 rounded-full shadow-deep-blue-hover hover:scale-110 transition-all duration-300 flex items-center gap-2 group animate-bounce-slow hover:animate-none">
+                    <button onClick={() => openAI('chat')} className="fixed bottom-6 right-6 z-[90] bg-gradient-to-r from-brand to-accent text-white p-4 rounded-full shadow-deep-blue-hover hover:scale-110 transition-all duration-300 flex items-center gap-2 group animate-bounce-slow hover:animate-none">
                         <Icons.Sparkles className="w-6 h-6 animate-pulse-fast" />
                         <span className="font-bold text-sm hidden group-hover:block whitespace-nowrap pr-2">AI 멘토링</span>
                     </button>
 
-                    <AIMentorModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} />
+                    <AIMentorModal isOpen={aiModalState.isOpen} onClose={closeAI} initialTab={aiModalState.tab} />
 
                     {/* Header */}
                     <header className={`fixed top-0 w-full z-50 transition-all duration-300 ease-in-out px-4 md:px-6 py-5 ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : 'bg-transparent'}`}>
@@ -320,7 +450,7 @@
                             <div className="flex items-center cursor-pointer group h-10 md:h-12 overflow-hidden">
                                 <img src="./가로형-로고.png" alt="Busan Young CEO" className="h-full w-auto object-contain hover:opacity-90 transition-opacity" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; e.target.parentNode.innerHTML = '<span class="text-xl font-bold font-pop text-brand">Busan YCC</span>'; }} />
                             </div>
-                            <nav className={`hidden md:flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-1 ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md border border-white/50 shadow-glass'}`}>
+                            <nav className={`hidden md:flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-1 ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md shadow-glass'}`}>
                                 {['홈', '세미나 일정', '멤버 찾기', '커뮤니티'].map((item, idx) => (
                                     <a key={idx} href="#" className={`nav-item px-6 py-2 rounded-full text-[18px] font-medium text-gray-600 hover:text-brand ${idx === 0 ? 'active' : ''}`}>{item}</a>
                                 ))}
@@ -351,17 +481,84 @@
                                 <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] md:w-auto md:min-w-[700px] bg-white rounded-3xl p-3 shadow-float flex flex-col md:flex-row gap-2 md:gap-0 items-center animate-[fadeInUp_0.8s_ease-out_0.5s_both]">
                                     <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-brand/10 py-2 md:py-0">
                                         <div className="flex items-center gap-3 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider"><Icons.MapPin size={14} className="text-accent" /> 지역 / 분야</div>
-                                        <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer"><option>부산 전체</option><option>해운대구 / IT</option><option>부산진구 / 유통</option></select>
+                                        <select 
+                                            className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer"
+                                            value={searchArea}
+                                            onChange={(e) => setSearchArea(e.target.value)}
+                                        >
+                                            <option value="">선택하세요</option>
+                                            {content.category_area_options.map((opt, idx) => (
+                                                <option key={idx} value={opt}>{opt}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-brand/10 py-2 md:py-0">
                                         <div className="flex items-center gap-3 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider"><Icons.Calendar size={14} className="text-accent" /> 관심 활동</div>
-                                        <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer"><option>비즈니스 세미나</option><option>투자 설명회</option><option>네트워킹 파티</option></select>
+                                        <select 
+                                            className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer"
+                                            value={searchActivity}
+                                            onChange={(e) => setSearchActivity(e.target.value)}
+                                        >
+                                            <option value="">선택하세요</option>
+                                            {content.category_activity_options.map((opt, idx) => (
+                                                <option key={idx} value={opt}>{opt}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div className="flex-1 w-full px-4 py-2 md:py-0">
                                         <div className="flex items-center gap-3 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider"><Icons.Users size={14} className="text-accent" /> 참여 대상</div>
-                                        <div className="font-bold text-dark">예비/초기 창업가</div>
+                                        <div className="font-bold text-dark">
+                                            <select 
+                                                className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer"
+                                                value={searchTarget}
+                                                onChange={(e) => setSearchTarget(e.target.value)}
+                                            >
+                                                <option value="">선택하세요</option>
+                                                {content.category_target_options.map((opt, idx) => (
+                                                    <option key={idx} value={opt}>{opt}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
-                                    <button className="w-full md:w-14 h-12 md:h-14 bg-brand rounded-2xl flex items-center justify-center text-white shadow-lg shadow-brand/30 hover:bg-blue-800 transition-colors"><Icons.Search /></button>
+                                    <button 
+                                        onClick={handleSearch}
+                                        className="w-full md:w-14 h-12 md:h-14 bg-brand rounded-2xl flex items-center justify-center text-white shadow-lg shadow-brand/30 hover:bg-blue-800 transition-colors"
+                                    >
+                                        <Icons.Search />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* AI Smart Tools Section */}
+                    <section className="py-20 px-6 bg-soft/50">
+                        <div className="container mx-auto max-w-7xl">
+                            <div className="text-center mb-12">
+                                <span className="text-brand font-bold text-sm uppercase tracking-widest bg-brand/10 px-3 py-1 rounded-full">AI Powered</span>
+                                <h2 className="text-3xl font-bold text-dark mt-3">스마트 비즈니스 툴킷 ✨</h2>
+                                <p className="text-gray-500 mt-2">Gemini AI가 당신의 사업 아이디어를 구체화해 드립니다.</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                                <div onClick={() => openAI('slogan')} className="bg-white p-8 rounded-4xl shadow-card hover:shadow-deep-blue-hover hover:-translate-y-2 transition-all cursor-pointer group border border-gray-100 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-100 rounded-full -mr-16 -mt-16 opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
+                                    <div className="relative z-10">
+                                        <div className="w-14 h-14 bg-yellow-50 rounded-2xl flex items-center justify-center text-yellow-500 mb-6 group-hover:bg-yellow-500 group-hover:text-white transition-colors">
+                                            <Icons.Lightbulb className="w-7 h-7" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-dark mb-2">슬로건 생성기</h3>
+                                        <p className="text-gray-500 text-sm">키워드만 입력하면<br/>매력적인 브랜드 슬로건이 뚝딱!</p>
+                                    </div>
+                                </div>
+                                <div onClick={() => openAI('swot')} className="bg-white p-8 rounded-4xl shadow-card hover:shadow-deep-blue-hover hover:-translate-y-2 transition-all cursor-pointer group border border-gray-100 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 rounded-full -mr-16 -mt-16 opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
+                                    <div className="relative z-10">
+                                        <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-500 mb-6 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                                            <Icons.Activity className="w-7 h-7" />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-dark mb-2">SWOT 분석기</h3>
+                                        <p className="text-gray-500 text-sm">내 사업의 강점과 약점,<br/>AI와 함께 객관적으로 분석하세요.</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -378,7 +575,6 @@
                                 <button className="text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors">전체 프로그램 보기 <Icons.ArrowRight size={16} /></button>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                {/* Cards Content (Static for now, can be dynamic similarly) */}
                                 <div className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none">
                                     <div className="relative h-64 rounded-2xl overflow-hidden mb-4 card-zoom"><img src="https://images.unsplash.com/photo-1544531586-fde5298cdd40?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" className="w-full h-full object-cover" alt="Seminar"/><div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-brand shadow-sm">SEMINAR</div></div>
                                     <div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">비즈니스 세미나</h3><div className="flex items-center gap-1 text-xs font-bold text-orange-400 bg-orange-50 px-2 py-1 rounded-full"><Icons.Star size={12} fill="currentColor" /> 4.9</div></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10">매월 진행되는 창업 트렌드 및 마케팅 실무 세미나에 참여하세요.</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">매월 2째주 목요일</span><button className="px-4 py-2 bg-dark text-white text-xs font-bold rounded-xl hover:bg-brand transition-colors">신청하기</button></div></div>
@@ -455,7 +651,15 @@
                         <div className="container mx-auto max-w-6xl">
                             <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-12">
                                 <div>
-                                    <div className="flex items-center gap-2 mb-4"><span className="text-lg font-bold font-pop text-brand">Busan YCC</span></div>
+                                    {/* Footer Logo using Image */}
+                                    <div className="flex items-center gap-2 mb-4 h-10 overflow-hidden">
+                                        <img 
+                                            src="./가로형-로고.png" 
+                                            alt="Busan Young CEO" 
+                                            className="h-full w-auto object-contain"
+                                            onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; e.target.parentNode.innerHTML = '<span class="text-lg font-bold font-pop text-brand">Busan YCC</span>'; }}
+                                        />
+                                    </div>
                                     <p className="text-gray-500 text-sm leading-relaxed max-w-xs">부산 지역 청년 사업가들이 모여 함께 성장하는<br/>비즈니스 커뮤니티입니다.</p>
                                 </div>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-12">
