@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>부산청년사업가들 - Busan Young CEO Community</title>
     
-    <!-- 폰트: 친근하고 깔끔한 느낌 (Pretendard 대체용 Noto Sans KR + Poppins) -->
+    <!-- 폰트 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
@@ -29,8 +29,8 @@
                         pop: ['Poppins', 'sans-serif'],
                     },
                     colors: {
-                        brand: '#0045a5', // Logo Deep Blue
-                        accent: '#3b82f6', // Logo Light Blue
+                        brand: '#0045a5', 
+                        accent: '#3b82f6',
                         dark: '#0f172a',
                         gray: '#64748b',
                         soft: '#f8fafc',
@@ -45,12 +45,7 @@
                         'deep-blue-hover': '0 15px 35px rgba(0, 69, 165, 0.3)',
                         'glass': '0 8px 32px 0 rgba(0, 69, 165, 0.08)',
                     },
-                    backdropBlur: {
-                        'xs': '2px',
-                    },
                     animation: {
-                        'bounce-slow': 'bounce 3s infinite',
-                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                         'fade-in-down': 'fadeInDown 0.3s ease-out forwards',
                         'fade-in': 'fadeIn 0.5s ease-out forwards',
                     },
@@ -70,57 +65,19 @@
     </script>
 
     <style>
-        body {
-            background-color: #ffffff;
-            color: #1e293b;
-            font-family: 'Noto Sans KR', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-
+        body { background-color: #ffffff; color: #1e293b; font-family: 'Noto Sans KR', sans-serif; -webkit-tap-highlight-color: transparent; }
         html { scroll-behavior: smooth; }
-        /* 단어 단위 줄바꿈 강제 적용 (모바일 최적화) */
         .break-keep { word-break: keep-all; word-wrap: break-word; }
-
-        .btn-hover {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .btn-hover:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(0, 69, 165, 0.5);
-        }
-
+        .btn-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 69, 165, 0.5); }
         .card-zoom { overflow: hidden; }
         .card-zoom img { transition: transform 0.5s ease; }
         .card-zoom:hover img { transform: scale(1.05); }
-
-        .nav-item {
-            position: relative;
-            transition: color 0.3s ease;
-        }
-        .nav-item::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 9999px;
-            background: rgba(59, 130, 246, 0.1);
-            transform: scale(0.8);
-            opacity: 0;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: -1;
-        }
-        .nav-item:hover::before {
-            transform: scale(1);
-            opacity: 1;
-        }
-        .nav-item.active {
-            color: #0045a5;
-            font-weight: 700;
-        }
-        .nav-item.active::before {
-            background: rgba(0, 69, 165, 0.08);
-            transform: scale(1);
-            opacity: 1;
-        }
+        .nav-item { position: relative; transition: color 0.3s ease; }
+        .nav-item::before { content: ''; position: absolute; inset: 0; border-radius: 9999px; background: rgba(59, 130, 246, 0.1); transform: scale(0.8); opacity: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: -1; }
+        .nav-item:hover::before { transform: scale(1); opacity: 1; }
+        .nav-item.active { color: #0045a5; font-weight: 700; }
+        .nav-item.active::before { background: rgba(0, 69, 165, 0.08); transform: scale(1); opacity: 1; }
     </style>
 </head>
 <body>
@@ -129,28 +86,30 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        const GOOGLE_SHEET_URL = ""; 
+        // ==========================================
+        // 🚀 [관리자 설정] 구글 시트 링크
+        // ==========================================
+        
+        // 1. 홈페이지 기본 설정 (기존 유지)
+        const CONFIG_SHEET_URL = ""; 
 
-        // Icons
-        const Icon = ({ path, className, ...props }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-                {path}
-            </svg>
-        );
+        // 2. 회원 명단 데이터 시트 (요청하신 링크 적용 완료)
+        const MEMBER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTEmEPSeDn1EUcf0DQWJ1EJ3t4nonCL42odDnJn7j8kxAkxl2qJDsXs6mDnxX2tfBJusuNC8ULgWXt4/pub?output=csv"; 
+
+        // ==========================================
 
         const Icons = {
-            Menu: (props) => <Icon {...props} path={<><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></>} />,
-            Search: (props) => <Icon {...props} path={<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>} />,
-            MapPin: (props) => <Icon {...props} path={<><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></>} />,
-            Calendar: (props) => <Icon {...props} path={<><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></>} />,
-            Users: (props) => <Icon {...props} path={<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>} />,
-            ArrowRight: (props) => <Icon {...props} path={<><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>} />,
-            Star: (props) => <Icon {...props} path={<><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></>} />,
-            CheckCircle: (props) => <Icon {...props} path={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} />,
-            Send: (props) => <Icon {...props} path={<><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></>} />,
-            X: (props) => <Icon {...props} path={<><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>} />,
-            Info: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></>} />,
-            ArrowLeft: (props) => <Icon {...props} path={<><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></>} />,
+            Menu: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>,
+            Search: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+            MapPin: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>,
+            Calendar: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
+            Users: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            ArrowRight: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>,
+            Star: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+            CheckCircle: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+            X: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
+            Info: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>,
+            ArrowLeft: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>,
         };
 
         const defaultContent = {
@@ -167,28 +126,15 @@
             category_target_options: ["예비/초기 창업가", "시리즈A 단계", "대학생", "일반인"],
         };
 
-        // 검색용 더미 데이터
-        const defaultSearchData = [
-            { area: "해운대구 / IT", activity: "비즈니스 세미나", target: "예비/초기 창업가", title: "2025 부산 스타트업 포럼", desc: "최신 트렌드와 네트워킹 기회를 제공하는 대규모 포럼" },
-            { area: "부산진구 / 유통", activity: "멘토링", target: "대학생", title: "유통 혁신 멘토링 데이", desc: "현직 유통 CEO와 함께하는 실전 멘토링" },
-            { area: "부산 전체", activity: "네트워킹 파티", target: "예비/초기 창업가", title: "Young CEO Night", desc: "부산 청년 사업가들의 밤, 자유로운 네트워킹" },
-            { area: "남구 / 금융", activity: "투자 설명회", target: "시리즈A 단계", title: "Fintech IR Demo Day", desc: "금융권 VC 초청 데모데이 및 투자 유치 기회" },
-        ];
-
-        // 전체 회원 데이터 (더미)
-        const allMembersData = [
+        const defaultMembersData = [
             { name: "김민수", industry: "IT/소프트웨어", role: "CEO", company: "넥스트웨이브", img: "https://randomuser.me/api/portraits/men/32.jpg" },
             { name: "이영희", industry: "유통/무역", role: "대표", company: "글로벌트레이드", img: "https://randomuser.me/api/portraits/women/44.jpg" },
             { name: "박지성", industry: "제조업", role: "이사", company: "부산정밀", img: "https://randomuser.me/api/portraits/men/85.jpg" },
             { name: "최수진", industry: "디자인", role: "프리랜서", company: "크리에이티브랩", img: "https://randomuser.me/api/portraits/women/65.jpg" },
-            { name: "정우성", industry: "요식업", role: "점장", company: "부산맛집", img: "https://randomuser.me/api/portraits/men/22.jpg" },
-            { name: "강동원", industry: "핀테크", role: "CTO", company: "머니플로우", img: "https://randomuser.me/api/portraits/men/11.jpg" },
-            { name: "한지민", industry: "교육", role: "원장", company: "에듀퓨처", img: "https://randomuser.me/api/portraits/women/28.jpg" },
-            { name: "송중기", industry: "엔터테인먼트", role: "PD", company: "미디어제작소", img: "https://randomuser.me/api/portraits/men/33.jpg" },
         ];
 
         // 전체 회원 리스트 화면 컴포넌트
-        const AllMembersView = ({ onBack }) => {
+        const AllMembersView = ({ onBack, members }) => {
             return (
                 <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
                     <div className="container mx-auto max-w-7xl">
@@ -199,19 +145,31 @@
                             </button>
                         </div>
                         
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {allMembersData.map((member, idx) => (
-                                <div key={idx} className="bg-white rounded-3xl p-6 shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 flex flex-col items-center text-center group cursor-pointer">
-                                    <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-soft group-hover:border-brand/20 transition-colors">
-                                        <img src={member.img} alt={member.name} className="w-full h-full object-cover" />
+                        {members.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                {members.map((member, idx) => (
+                                    <div key={idx} className="bg-white rounded-3xl p-6 shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 flex flex-col items-center text-center group cursor-pointer">
+                                        <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-soft group-hover:border-brand/20 transition-colors">
+                                            <img 
+                                                src={member.img && member.img.startsWith('http') ? member.img : `https://ui-avatars.com/api/?name=${member.name}&background=random`} 
+                                                alt={member.name} 
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }}
+                                            />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-dark mb-1">{member.name}</h3>
+                                        <p className="text-sm text-brand font-medium mb-2">{member.company} {member.role}</p>
+                                        <span className="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-xs font-bold mb-4">{member.industry}</span>
+                                        <button className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-brand hover:text-white hover:border-brand transition-all">프로필 보기</button>
                                     </div>
-                                    <h3 className="text-xl font-bold text-dark mb-1">{member.name}</h3>
-                                    <p className="text-sm text-brand font-medium mb-2">{member.company} {member.role}</p>
-                                    <span className="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-xs font-bold mb-4">{member.industry}</span>
-                                    <button className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-brand hover:text-white hover:border-brand transition-all">프로필 보기</button>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-20 text-gray-500">
+                                <p>등록된 회원이 없습니다.</p>
+                                <p className="text-sm mt-2">구글 시트에 회원 정보를 입력해주세요.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
@@ -221,15 +179,12 @@
             const [isMenuOpen, setIsMenuOpen] = useState(false);
             const [scrolled, setScrolled] = useState(false);
             const [content, setContent] = useState(defaultContent);
-            const [searchData, setSearchData] = useState(defaultSearchData);
-            const [currentView, setCurrentView] = useState('home'); // 'home' | 'allMembers'
+            const [membersData, setMembersData] = useState(defaultMembersData);
+            const [currentView, setCurrentView] = useState('home');
 
-            // 검색 상태 관리
             const [searchArea, setSearchArea] = useState('');
             const [searchActivity, setSearchActivity] = useState('');
             const [searchTarget, setSearchTarget] = useState('');
-            
-            // 검색 결과 및 UI 상태
             const [searchResults, setSearchResults] = useState([]);
             const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
@@ -239,35 +194,22 @@
                 return () => window.removeEventListener('scroll', handleScroll);
             }, []);
 
+            // 1. 기본 설정(Config) 시트 로드
             useEffect(() => {
-                if (!GOOGLE_SHEET_URL) return;
-                const fetchSheet = async () => {
+                if (!CONFIG_SHEET_URL) return;
+                const fetchConfig = async () => {
                     try {
-                        const response = await fetch(GOOGLE_SHEET_URL);
+                        const response = await fetch(CONFIG_SHEET_URL);
                         const csvText = await response.text();
                         const rows = csvText.split('\n').map(row => row.split(','));
                         const newContent = { ...defaultContent };
-                        const newSearchData = [];
-
                         rows.forEach(row => {
                             if (row.length >= 2) {
                                 const key = row[0].trim();
                                 const value = row.slice(1).join(',').trim().replace(/^"|"$/g, '').replace(/\\n/g, '\n'); 
-                                
                                 if (key && value) {
                                     if (key.endsWith('_options')) {
                                         newContent[key] = value.split(',').map(item => item.trim());
-                                    } else if (key.startsWith('data_')) {
-                                        const parts = value.split('|');
-                                        if (parts.length >= 5) {
-                                            newSearchData.push({
-                                                area: parts[0].trim(),
-                                                activity: parts[1].trim(),
-                                                target: parts[2].trim(),
-                                                title: parts[3].trim(),
-                                                desc: parts[4].trim(),
-                                            });
-                                        }
                                     } else {
                                         newContent[key] = value;
                                     }
@@ -275,31 +217,56 @@
                             }
                         });
                         setContent(newContent);
-                        if (newSearchData.length > 0) {
-                            setSearchData(newSearchData);
-                        }
                     } catch (error) {
-                        console.error("Google Sheet Load Error:", error);
+                        console.error("Config Sheet Error:", error);
                     }
                 };
-                fetchSheet();
+                fetchConfig();
+            }, []);
+
+            // 2. 회원 명단(Member) 시트 로드
+            useEffect(() => {
+                if (!MEMBER_SHEET_URL) return;
+                const fetchMembers = async () => {
+                    try {
+                        const response = await fetch(MEMBER_SHEET_URL);
+                        const csvText = await response.text();
+                        // CSV 파싱 (헤더 제외, 2번째 줄부터 데이터로 인식)
+                        const rows = csvText.split('\n').slice(1).map(row => row.split(','));
+                        const newMembers = [];
+
+                        rows.forEach(row => {
+                            // A:이름, B:업종, C:직책, D:회사명, E:이미지URL
+                            if (row.length >= 4) {
+                                newMembers.push({
+                                    name: row[0]?.trim() || "이름없음",
+                                    industry: row[1]?.trim() || "기타",
+                                    role: row[2]?.trim() || "멤버",
+                                    company: row[3]?.trim() || "소속없음",
+                                    img: row[4]?.trim() || "",
+                                });
+                            }
+                        });
+                        
+                        if(newMembers.length > 0) setMembersData(newMembers);
+                        
+                    } catch (error) {
+                        console.error("Member Sheet Error:", error);
+                    }
+                };
+                fetchMembers();
             }, []);
 
             const handleSearch = () => {
-                const results = searchData.filter(item => {
-                    const matchArea = searchArea === '' || item.area.includes(searchArea) || searchArea === '부산 전체';
-                    const matchActivity = searchActivity === '' || item.activity === searchActivity;
-                    const matchTarget = searchTarget === '' || item.target === searchTarget;
-                    return matchArea && matchActivity && matchTarget;
-                });
-
-                setSearchResults(results);
-                setIsSearchExpanded(true); // 결과창 아래로 확장
+                // 검색 로직 (여기서는 데모용으로 멤버 데이터를 기반으로 필터링 예시)
+                const dummyResults = [
+                    { area: searchArea || "부산 전체", activity: searchActivity || "네트워킹", target: searchTarget || "전체", title: "검색된 비즈니스 모임", desc: "선택하신 조건에 맞는 모임이 검색되었습니다." }
+                ];
+                setSearchResults(dummyResults);
+                setIsSearchExpanded(true);
             };
 
-            const closeSearch = () => {
-                setIsSearchExpanded(false);
-            };
+            const closeSearch = () => setIsSearchExpanded(false);
 
             return (
                 <div className="min-h-screen bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">
@@ -345,124 +312,69 @@
                                                 <span key={i} className={i === 1 ? "text-brand" : ""}>{line}<br/></span>
                                             ))}
                                         </h1>
-                                        <p className="text-gray-500 text-base sm:text-lg text-center md:text-right max-w-md mt-4 md:mt-0 break-keep">{content.hero_desc}</p>
+                                        <p className="text-gray-500 text-base sm:text-lg md:text-right max-w-md mt-4 md:mt-0 break-keep">{content.hero_desc}</p>
                                     </div>
 
-                                    {/* Main Hero Container */}
                                     <div className="relative w-full">
                                         <div className="relative w-full h-[500px] md:h-[600px] rounded-4xl md:rounded-5xl overflow-hidden shadow-deep-blue group z-0">
                                             <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80" alt="Community Networking" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
                                         </div>
 
-                                        {/* Floating Search Bar & Results Container */}
+                                        {/* Floating Search Bar */}
                                         <div className="absolute top-full left-1/2 -translate-x-1/2 w-[95%] md:w-auto md:min-w-[700px] bg-white rounded-3xl shadow-float flex flex-col transition-all duration-300 ease-in-out z-20 overflow-hidden -mt-10 md:-mt-12">
-                                            
-                                            {/* Search Inputs */}
                                             <div className="flex flex-col md:flex-row gap-2 md:gap-0 items-center p-3 relative bg-white z-30">
                                                 <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-brand/10 py-2 md:py-0">
                                                     <div className="flex items-center gap-3 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.MapPin size={14} className="text-accent" /> 지역 / 분야</div>
-                                                    <select 
-                                                        className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-sm"
-                                                        value={searchArea}
-                                                        onChange={(e) => setSearchArea(e.target.value)}
-                                                    >
+                                                    <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-sm" value={searchArea} onChange={(e) => setSearchArea(e.target.value)}>
                                                         <option value="">선택하세요</option>
-                                                        {content.category_area_options.map((opt, idx) => (
-                                                            <option key={idx} value={opt}>{opt}</option>
-                                                        ))}
+                                                        {content.category_area_options.map((opt, idx) => (<option key={idx} value={opt}>{opt}</option>))}
                                                     </select>
                                                 </div>
                                                 <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-brand/10 py-2 md:py-0">
                                                     <div className="flex items-center gap-3 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.Calendar size={14} className="text-accent" /> 관심 활동</div>
-                                                    <select 
-                                                        className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-sm"
-                                                        value={searchActivity}
-                                                        onChange={(e) => setSearchActivity(e.target.value)}
-                                                    >
+                                                    <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-sm" value={searchActivity} onChange={(e) => setSearchActivity(e.target.value)}>
                                                         <option value="">선택하세요</option>
-                                                        {content.category_activity_options.map((opt, idx) => (
-                                                            <option key={idx} value={opt}>{opt}</option>
-                                                        ))}
+                                                        {content.category_activity_options.map((opt, idx) => (<option key={idx} value={opt}>{opt}</option>))}
                                                     </select>
                                                 </div>
                                                 <div className="flex-1 w-full px-4 py-2 md:py-0">
                                                     <div className="flex items-center gap-3 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.Users size={14} className="text-accent" /> 참여 대상</div>
                                                     <div className="font-bold text-dark">
-                                                        <select 
-                                                            className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-sm"
-                                                            value={searchTarget}
-                                                            onChange={(e) => setSearchTarget(e.target.value)}
-                                                        >
+                                                        <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-sm" value={searchTarget} onChange={(e) => setSearchTarget(e.target.value)}>
                                                             <option value="">선택하세요</option>
-                                                            {content.category_target_options.map((opt, idx) => (
-                                                                <option key={idx} value={opt}>{opt}</option>
-                                                            ))}
+                                                            {content.category_target_options.map((opt, idx) => (<option key={idx} value={opt}>{opt}</option>))}
                                                         </select>
                                                     </div>
                                                 </div>
-                                                <button 
-                                                    onClick={handleSearch}
-                                                    className="w-full md:w-14 h-12 md:h-14 bg-brand rounded-2xl flex items-center justify-center text-white shadow-lg shadow-brand/30 hover:bg-blue-800 transition-colors shrink-0"
-                                                >
-                                                    <Icons.Search />
-                                                </button>
+                                                <button onClick={handleSearch} className="w-full md:w-14 h-12 md:h-14 bg-brand rounded-2xl flex items-center justify-center text-white shadow-lg shadow-brand/30 hover:bg-blue-800 transition-colors shrink-0"><Icons.Search /></button>
                                             </div>
 
-                                            {/* Inline Search Results Area */}
+                                            {/* Search Results */}
                                             <div className={`transition-all duration-300 ease-in-out bg-soft ${isSearchExpanded ? 'max-h-[400px] opacity-100 border-t border-brand/10' : 'max-h-0 opacity-0'}`}>
                                                 <div className="p-4 md:p-6 overflow-y-auto max-h-[400px]">
                                                     <div className="flex justify-between items-center mb-4">
                                                         <div className="flex items-center gap-3">
-                                                            {/* 전체 회원 알아보기 버튼 추가 */}
-                                                            <button 
-                                                                onClick={() => {
-                                                                    setCurrentView('allMembers');
-                                                                    window.scrollTo(0, 0);
-                                                                }}
-                                                                className="px-3 py-1.5 bg-brand/10 text-brand text-xs font-bold rounded-lg hover:bg-brand hover:text-white transition-colors flex items-center gap-1"
-                                                            >
-                                                                <Icons.Users size={14} />
-                                                                전체 회원 알아보기
-                                                            </button>
-                                                            <h3 className="text-sm font-bold text-gray-500">
-                                                                검색 결과 <span className="text-brand">{searchResults.length}</span>건
-                                                            </h3>
+                                                            <button onClick={() => { setCurrentView('allMembers'); window.scrollTo(0, 0); }} className="px-3 py-1.5 bg-brand/10 text-brand text-xs font-bold rounded-lg hover:bg-brand hover:text-white transition-colors flex items-center gap-1"><Icons.Users size={14} />전체 회원 알아보기</button>
+                                                            <h3 className="text-sm font-bold text-gray-500">검색 결과 <span className="text-brand">{searchResults.length}</span>건</h3>
                                                         </div>
-                                                        <button onClick={closeSearch} className="text-xs text-gray-400 hover:text-dark flex items-center gap-1">
-                                                            닫기 <Icons.X size={14}/>
-                                                        </button>
+                                                        <button onClick={closeSearch} className="text-xs text-gray-400 hover:text-dark flex items-center gap-1">닫기 <Icons.X size={14}/></button>
                                                     </div>
-
+                                                    {/* Demo Results */}
                                                     {searchResults.length > 0 ? (
                                                         <div className="grid grid-cols-1 gap-3">
                                                             {searchResults.map((result, idx) => (
-                                                                <div key={idx} className="bg-white p-4 rounded-2xl border border-gray-100 hover:border-brand/30 hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row md:items-center gap-4 animate-fade-in-down" style={{animationDelay: `${idx * 0.1}s`}}>
+                                                                <div key={idx} className="bg-white p-4 rounded-2xl border border-gray-100 hover:border-brand/30 hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row md:items-center gap-4">
                                                                     <div className="flex-1">
-                                                                        <div className="flex gap-2 mb-2">
-                                                                            <span className="text-[10px] font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">{result.area}</span>
-                                                                            <span className="text-[10px] font-bold px-2 py-1 bg-gray-100 text-gray-600 rounded-full">{result.activity}</span>
-                                                                        </div>
+                                                                        <div className="flex gap-2 mb-2"><span className="text-[10px] font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">{result.area}</span><span className="text-[10px] font-bold px-2 py-1 bg-gray-100 text-gray-600 rounded-full">{result.activity}</span></div>
                                                                         <h4 className="font-bold text-dark text-lg mb-1 break-keep">{result.title}</h4>
                                                                         <p className="text-xs text-gray-500 line-clamp-1 break-keep">{result.desc}</p>
                                                                     </div>
-                                                                    <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-0 border-gray-50">
-                                                                        <span className="text-xs text-gray-400 font-medium">{result.target}</span>
-                                                                        <button className="text-brand text-xs font-bold hover:underline flex items-center gap-1">
-                                                                            상세보기 <Icons.ArrowRight size={12} />
-                                                                        </button>
-                                                                    </div>
+                                                                    <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-0 border-gray-50"><span className="text-xs text-gray-400 font-medium">{result.target}</span><button className="text-brand text-xs font-bold hover:underline flex items-center gap-1">상세보기 <Icons.ArrowRight size={12} /></button></div>
                                                                 </div>
                                                             ))}
                                                         </div>
-                                                    ) : (
-                                                        <div className="py-10 text-center text-gray-400 flex flex-col items-center gap-3">
-                                                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                                                                <Icons.Info className="w-6 h-6 text-gray-300" />
-                                                            </div>
-                                                            <p className="text-sm">조건에 맞는 결과가 없습니다.<br/>다른 검색어로 시도해보세요.</p>
-                                                        </div>
-                                                    )}
+                                                    ) : (<div className="py-10 text-center text-gray-400 flex flex-col items-center gap-3"><div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center"><Icons.Info className="w-6 h-6 text-gray-300" /></div><p className="text-sm">조건에 맞는 결과가 없습니다.</p></div>)}
                                                 </div>
                                             </div>
                                         </div>
@@ -474,30 +386,14 @@
                             <section className="py-20 px-6">
                                 <div className="container mx-auto max-w-7xl">
                                     <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
-                                        <div>
-                                            <h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">커뮤니티 <span className="text-brand">주요 활동</span></h2>
-                                            <p className="text-gray-500 text-sm md:text-base break-keep">사업 역량 강화와 네트워크 확장을 위한 다양한 프로그램</p>
-                                        </div>
+                                        <div><h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">커뮤니티 <span className="text-brand">주요 활동</span></h2><p className="text-gray-500 text-sm md:text-base break-keep">사업 역량 강화와 네트워크 확장을 위한 다양한 프로그램</p></div>
                                         <button className="text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors">전체 프로그램 보기 <Icons.ArrowRight size={16} /></button>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                        <div className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none">
-                                            <div className="relative h-64 rounded-2xl overflow-hidden mb-4 card-zoom"><img src="https://images.unsplash.com/photo-1544531586-fde5298cdd40?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" className="w-full h-full object-cover" alt="Seminar"/><div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-brand shadow-sm">SEMINAR</div></div>
-                                            <div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">비즈니스 세미나</h3><div className="flex items-center gap-1 text-xs font-bold text-orange-400 bg-orange-50 px-2 py-1 rounded-full"><Icons.Star size={12} fill="currentColor" /> 4.9</div></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">매월 진행되는 창업 트렌드 및 마케팅 실무 세미나에 참여하세요.</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">매월 2째주 목요일</span><button className="px-4 py-2 bg-dark text-white text-xs font-bold rounded-xl hover:bg-brand transition-colors">신청하기</button></div></div>
-                                        </div>
-                                        <div className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none">
-                                            <div className="relative h-64 rounded-2xl overflow-hidden mb-4 card-zoom"><img src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" className="w-full h-full object-cover" alt="Investment"/><div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-green-600 shadow-sm">INVESTMENT</div></div>
-                                            <div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">투자 & 지원사업</h3><div className="flex items-center gap-1 text-xs font-bold text-orange-400 bg-orange-50 px-2 py-1 rounded-full"><Icons.Star size={12} fill="currentColor" /> 4.8</div></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">최신 정부 지원사업 큐레이션 및 IR 피칭 기회를 제공합니다.</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">수시 모집</span><button className="px-4 py-2 bg-dark text-white text-xs font-bold rounded-xl hover:bg-brand transition-colors">자세히 보기</button></div></div>
-                                        </div>
-                                        <div className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none">
-                                            <div className="relative h-64 rounded-2xl overflow-hidden mb-4 card-zoom"><img src="https://images.unsplash.com/photo-1511632765486-a01980e01a18?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" className="w-full h-full object-cover" alt="Networking"/><div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-accent shadow-sm">NETWORK</div></div>
-                                            <div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">사업가 네트워킹</h3><div className="flex items-center gap-1 text-xs font-bold text-orange-400 bg-orange-50 px-2 py-1 rounded-full"><Icons.Star size={12} fill="currentColor" /> 5.0</div></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">다양한 업종의 대표님들과 교류하며 비즈니스 기회를 만드세요.</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">매주 금요일</span><button className="px-4 py-2 bg-dark text-white text-xs font-bold rounded-xl hover:bg-brand transition-colors">참여하기</button></div></div>
-                                        </div>
-                                        <div className="bg-soft rounded-3xl p-6 flex flex-col justify-center items-center text-center hover:bg-brand hover:text-white transition-colors duration-300 cursor-pointer group shadow-deep-blue border-none">
-                                            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-brand mb-4 shadow-sm group-hover:scale-110 transition-transform"><Icons.ArrowRight size={24} /></div>
-                                            <h3 className="text-lg font-bold mb-2">More Programs</h3>
-                                            <p className="text-sm opacity-70 group-hover:opacity-90 break-keep">멘토링, 워크샵 등 <br/>더 많은 활동 보기</p>
-                                        </div>
+                                        <div className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none"><div className="relative h-64 rounded-2xl overflow-hidden mb-4 card-zoom"><img src="https://images.unsplash.com/photo-1544531586-fde5298cdd40?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" className="w-full h-full object-cover" alt="Seminar"/><div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-brand shadow-sm">SEMINAR</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">비즈니스 세미나</h3><div className="flex items-center gap-1 text-xs font-bold text-orange-400 bg-orange-50 px-2 py-1 rounded-full"><Icons.Star size={12} fill="currentColor" /> 4.9</div></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">매월 진행되는 창업 트렌드 및 마케팅 실무 세미나에 참여하세요.</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">매월 2째주 목요일</span><button className="px-4 py-2 bg-dark text-white text-xs font-bold rounded-xl hover:bg-brand transition-colors">신청하기</button></div></div></div>
+                                        <div className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none"><div className="relative h-64 rounded-2xl overflow-hidden mb-4 card-zoom"><img src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" className="w-full h-full object-cover" alt="Investment"/><div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-green-600 shadow-sm">INVESTMENT</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">투자 & 지원사업</h3><div className="flex items-center gap-1 text-xs font-bold text-orange-400 bg-orange-50 px-2 py-1 rounded-full"><Icons.Star size={12} fill="currentColor" /> 4.8</div></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">최신 정부 지원사업 큐레이션 및 IR 피칭 기회를 제공합니다.</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">수시 모집</span><button className="px-4 py-2 bg-dark text-white text-xs font-bold rounded-xl hover:bg-brand transition-colors">자세히 보기</button></div></div></div>
+                                        <div className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none"><div className="relative h-64 rounded-2xl overflow-hidden mb-4 card-zoom"><img src="https://images.unsplash.com/photo-1511632765486-a01980e01a18?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" className="w-full h-full object-cover" alt="Networking"/><div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-accent shadow-sm">NETWORK</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">사업가 네트워킹</h3><div className="flex items-center gap-1 text-xs font-bold text-orange-400 bg-orange-50 px-2 py-1 rounded-full"><Icons.Star size={12} fill="currentColor" /> 5.0</div></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">다양한 업종의 대표님들과 교류하며 비즈니스 기회를 만드세요.</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">매주 금요일</span><button className="px-4 py-2 bg-dark text-white text-xs font-bold rounded-xl hover:bg-brand transition-colors">참여하기</button></div></div></div>
+                                        <div className="bg-soft rounded-3xl p-6 flex flex-col justify-center items-center text-center hover:bg-brand hover:text-white transition-colors duration-300 cursor-pointer group shadow-deep-blue border-none"><div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-brand mb-4 shadow-sm group-hover:scale-110 transition-transform"><Icons.ArrowRight size={24} /></div><h3 className="text-lg font-bold mb-2">More Programs</h3><p className="text-sm opacity-70 group-hover:opacity-90 break-keep">멘토링, 워크샵 등 <br/>더 많은 활동 보기</p></div>
                                     </div>
                                 </div>
                             </section>
@@ -523,7 +419,7 @@
                                 </div>
                             </section>
 
-                            {/* Stats Section (Managed by Sheet) */}
+                            {/* Stats & CTA & Footer Sections remain the same as previous */}
                             <section className="py-20 bg-soft/50">
                                 <div className="container mx-auto max-w-6xl px-6">
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
@@ -535,7 +431,6 @@
                                 </div>
                             </section>
 
-                            {/* CTA Section (Managed by Sheet) */}
                             <section className="py-24 px-6">
                                 <div className="container mx-auto max-w-6xl">
                                     <div className="relative rounded-4xl overflow-hidden bg-brand h-[400px] flex items-center justify-center text-center px-6 shadow-2xl shadow-brand/40">
@@ -553,22 +448,15 @@
                             </section>
                         </>
                     ) : (
-                        <AllMembersView onBack={() => setCurrentView('home')} />
+                        <AllMembersView onBack={() => setCurrentView('home')} members={membersData} />
                     )}
 
-                    {/* Footer */}
                     <footer className="py-12 bg-white px-6 shadow-[0_-4px_25px_rgba(0,69,165,0.05)] border-none">
                         <div className="container mx-auto max-w-6xl">
                             <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-12">
                                 <div>
-                                    {/* Footer Logo using Image */}
                                     <div className="flex items-center gap-2 mb-4 h-10 overflow-hidden">
-                                        <img 
-                                            src="./가로형-로고.png" 
-                                            alt="Busan Young CEO" 
-                                            className="h-full w-auto object-contain"
-                                            onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; e.target.parentNode.innerHTML = '<span class="text-lg font-bold font-pop text-brand">Busan YCC</span>'; }}
-                                        />
+                                        <img src="./가로형-로고.png" alt="Busan Young CEO" className="h-full w-auto object-contain" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; e.target.parentNode.innerHTML = '<span class="text-lg font-bold font-pop text-brand">Busan YCC</span>'; }} />
                                     </div>
                                     <p className="text-gray-500 text-sm leading-relaxed max-w-xs break-keep">부산 지역 청년 사업가들이 모여 함께 성장하는<br/>비즈니스 커뮤니티입니다.</p>
                                 </div>
