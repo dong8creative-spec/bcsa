@@ -25,7 +25,8 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Noto Sans KR', 'sans-serif'],
+                        // StunningSans를 기본 폰트 목록에 추가하여 bold/extrabold에 사용
+                        sans: ['StunningSans', 'Noto Sans KR', 'sans-serif'],
                         pop: ['Poppins', 'sans-serif'],
                     },
                     colors: {
@@ -65,6 +66,14 @@
     </script>
 
     <style>
+        /* StunningSans 폰트 선언 */
+        @font-face {
+            font-family: 'StunningSans';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2410-2@1.0/STUNNING-Bd.woff2') format('woff2');
+            font-weight: 700; /* Bold weight에 매핑 */
+            font-display: swap;
+        }
+
         body { background-color: #ffffff; color: #1e293b; font-family: 'Noto Sans KR', sans-serif; -webkit-tap-highlight-color: transparent; }
         html { scroll-behavior: smooth; }
         .break-keep { word-break: keep-all; word-wrap: break-word; }
@@ -136,6 +145,13 @@
             { area: "남구 / 금융", activity: "투자 설명회", target: "시리즈A 단계", title: "Fintech IR Demo Day", desc: "금융권 VC 초청 데모데이 및 투자 유치 기회" },
         ];
 
+        const defaultMembersData = [
+            { name: "김민수", industry: "IT/소프트웨어", role: "CEO", company: "넥스트웨이브", img: "https://randomuser.me/api/portraits/men/32.jpg" },
+            { name: "이영희", industry: "유통/무역", role: "대표", company: "글로벌트레이드", img: "https://randomuser.me/api/portraits/women/44.jpg" },
+            { name: "박지성", industry: "제조업", role: "이사", company: "부산정밀", img: "https://randomuser.me/api/portraits/men/85.jpg" },
+            { name: "최수진", industry: "디자인", role: "프리랜서", company: "크리에이티브랩", img: "https://randomuser.me/api/portraits/women/65.jpg" },
+        ];
+
         // 전체 회원 리스트 화면 컴포넌트
         const AllMembersView = ({ onBack, members }) => {
             return (
@@ -178,9 +194,8 @@
             );
         };
         
-        // 세미나 목록 화면 컴포넌트 (New Component)
+        // 세미나 목록 화면 컴포넌트
         const SeminarView = ({ onBack }) => {
-            // 더미 세미나 데이터
             const seminars = [
                 { title: "2025 AI 트렌드와 스타트업 전략", date: "2025.03.10", location: "센텀기술창업센터", category: "기술/IT" },
                 { title: "초기 창업가를 위한 투자 유치 전략", date: "2025.03.25", location: "부산국제금융센터", category: "투자/재무" },
@@ -217,7 +232,7 @@
             );
         }
 
-        // 홈 화면 컴포넌트 (Main Layout without Header/Footer)
+        // 홈 화면 컴포넌트
         const HomeView = ({ content, searchData, setCurrentView }) => {
             const [searchArea, setSearchArea] = useState('');
             const [searchActivity, setSearchActivity] = useState('');
@@ -359,9 +374,9 @@
                                 </div>
                             </section>
 
-                            {/* Stats & CTA & Footer Sections remain the same as previous */}
+                            {/* Stats Section (Managed by Sheet) */}
                             <section className="py-20 bg-soft/50">
-                                <div className="container mx-auto max-w-6xl px-6">
+                                <div className="container mx-auto max-w-6xl">
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
                                         <div><div className="text-3xl md:text-4xl font-bold text-brand mb-2">{content.stat_1_val}</div><div className="text-sm text-gray-500 font-medium break-keep">{content.stat_1_desc}</div></div>
                                         <div><div className="text-3xl md:text-4xl font-bold text-brand mb-2">{content.stat_2_val}</div><div className="text-sm text-gray-500 font-medium break-keep">{content.stat_2_desc}</div></div>
@@ -371,6 +386,7 @@
                                 </div>
                             </section>
 
+                            {/* CTA Section (Managed by Sheet) */}
                             <section className="py-24 px-6">
                                 <div className="container mx-auto max-w-6xl">
                                     <div className="relative rounded-4xl overflow-hidden bg-brand h-[400px] flex items-center justify-center text-center px-6 shadow-2xl shadow-brand/40">
