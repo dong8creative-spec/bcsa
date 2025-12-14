@@ -139,7 +139,26 @@
         const MEMBER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTEmEPSeDn1EUcf0DQWJ1EJ3t4nonCL42odDnJn7j8kxAkxl2qJDsXs6mDnxX2tfBJusuNC8ULgWXt4/pub?output=csv"; 
         const SEMINAR_SHEET_URL = ""; 
         const FOOD_SHEET_URL = ""; 
-        const ADMIN_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets"; 
+        const ADMIN_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets";
+
+        // ==========================================
+        // 🔐 [관리자 설정] 보안 설정
+        // ⚠️ 프로덕션 환경에서는 서버 인증으로 교체하세요!
+        // ==========================================
+        const ADMIN_ID = "admin";
+        const ADMIN_PASSWORD = "1234";
+        const MASTER_CODE = "master9999";
+        
+        // ==========================================
+        // 💾 [관리자 설정] 로컬 스토리지 키
+        // ==========================================
+        const STORAGE_KEYS = {
+            USERS: 'busan_ycc_users',
+            MEMBERS: 'busan_ycc_members',
+            SEMINARS: 'busan_ycc_seminars',
+            POSTS: 'busan_ycc_posts',
+            FOODS: 'busan_ycc_foods',
+        }; 
 
         // ==========================================
 
@@ -423,6 +442,32 @@
         const CalendarSection = ({ seminars, onSelectSeminar }) => {
             const [currentDate, setCurrentDate] = useState(new Date());
             const [selectedDate, setSelectedDate] = useState(null);
+            const [calendarModalData, setCalendarModalData] = useState(null);
+
+            const handleGoogleCalendar = (ev) => {
+                const parts = ev.date.match(/(\d{4})[\.-](\d{2})[\.-](\d{2})/);
+                if (!parts) return alert("날짜 형식을 확인할 수 없습니다.");
+                const startStr = `${parts[1]}${parts[2]}${parts[3]}T090000`;
+                const endStr = `${parts[1]}${parts[2]}${parts[3]}T110000`;
+                const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${startStr}/${endStr}&details=${encodeURIComponent(ev.desc)}&location=${encodeURIComponent(ev.location)}`;
+                window.open(url, '_blank');
+            };
+
+            const handleAppleCalendar = (ev) => {
+                const parts = ev.date.match(/(\d{4})[\.-](\d{2})[\.-](\d{2})/);
+                if (!parts) return alert("날짜 형식을 확인할 수 없습니다.");
+                const startStr = `${parts[1]}${parts[2]}${parts[3]}T090000`;
+                let endHour = 9 + 2;
+                let endStr = `${parts[1]}${parts[2]}${parts[3]}T${endHour.toString().padStart(2,'0')}0000`;
+                const icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:${startStr}\nDTEND:${endStr}\nSUMMARY:${ev.title}\nDESCRIPTION:${ev.desc}\nLOCATION:${ev.location}\nEND:VEVENT\nEND:VCALENDAR`;
+                const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+                const link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.setAttribute('download', `${ev.title}.ics`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
             const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
             const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
             const year = currentDate.getFullYear();
@@ -481,7 +526,7 @@
             const [isMaster, setIsMaster] = useState(false);
             const [masterPwInput, setMasterPwInput] = useState("");
 
-            const handleMasterLogin = () => { if(masterPwInput === "master9999") { setIsMaster(true); setShowMasterLogin(false); setActiveTab('logs'); } else { alert("비밀코드가 올바르지 않습니다."); } };
+            const handleMasterLogin = () => { if(masterPwInput === MASTER_CODE) { setIsMaster(true); setShowMasterLogin(false); setActiveTab('logs'); } else { alert("비밀코드가 올바르지 않습니다."); } };
 
             const openModal = (type, item = null) => {
                 setEditingItem(item);
@@ -588,19 +633,254 @@
             );
         };
 
+        const CommunityView = ({ onBack, posts, onCreate, onDelete, isAdmin }) => {
+            const [selectedPost, setSelectedPost] = useState(null);
+            const [isWriteModalOpen, setIsWriteModalOpen] = useState(false);
+            const [newPost, setNewPost] = useState({ category: '공지사항', title: '', content: '', isSecret: false, password: '' });
+            const [passwordInput, setPasswordInput] = useState('');
+            const [activeCategory, setActiveCategory] = useState('전체');
+
+            const categories = ['전체', '공지사항', '인력구인', '세미나 후기', '건의사항'];
+
+            const filteredPosts = activeCategory === '전체' ? posts : posts.filter(p => p.category === activeCategory);
+
+            const handlePostClick = (post) => {
+                if (post.isSecret && !isAdmin) {
+                    const pw = prompt("비밀글입니다. 비밀번호를 입력해주세요.");
+                    if (pw !== post.password) {
+                        alert("비밀번호가 일치하지 않습니다.");
+                        return;
+                    }
+                }
+                setSelectedPost(post);
+            };
+
+            const handleCreate = () => {
+                if (!newPost.title || !newPost.content) return alert("제목과 내용을 입력해주세요.");
+                if (newPost.isSecret && !newPost.password) return alert("비밀글은 비밀번호가 필요합니다.");
+                onCreate(newPost);
+                setNewPost({ category: '공지사항', title: '', content: '', isSecret: false, password: '' });
+                setIsWriteModalOpen(false);
+                alert("게시글이 등록되었습니다.");
+            };
+
+            const handleDelete = (id) => {
+                if (confirm("정말 삭제하시겠습니까?")) {
+                    onDelete(id);
+                    setSelectedPost(null);
+                }
+            };
+
+            return (
+                <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+                    <div className="container mx-auto max-w-4xl">
+                        <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+                            <div>
+                                <h2 className="text-3xl font-bold text-dark mb-2">커뮤니티</h2>
+                                <p className="text-gray-500 text-sm">부청사 회원들과 자유롭게 소통하세요.</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => setIsWriteModalOpen(true)} className="flex items-center gap-2 bg-brand text-white font-bold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-interactive">
+                                    <Icons.Plus size={20} /> 글쓰기
+                                </button>
+                                <button onClick={onBack} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors btn-interactive">
+                                    <Icons.ArrowLeft size={20} /> 메인으로
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 카테고리 탭 */}
+                        <div className="flex gap-2 mb-6 overflow-x-auto hide-scrollbar pb-2">
+                            {categories.map(cat => (
+                                <button 
+                                    key={cat} 
+                                    onClick={() => setActiveCategory(cat)} 
+                                    className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors btn-interactive ${activeCategory === cat ? 'bg-brand text-white' : 'bg-white text-gray-500 hover:bg-gray-100'}`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* 게시글 목록 */}
+                        <div className="bg-white rounded-3xl shadow-card overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead className="bg-gray-50 text-xs text-gray-500 border-b border-gray-100">
+                                    <tr>
+                                        <th className="p-4 w-24">분류</th>
+                                        <th className="p-4">제목</th>
+                                        <th className="p-4 w-24 hidden md:table-cell">작성자</th>
+                                        <th className="p-4 w-24 hidden md:table-cell">날짜</th>
+                                        <th className="p-4 w-16 text-center hidden md:table-cell">조회</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredPosts.length > 0 ? filteredPosts.map(post => (
+                                        <tr key={post.id} className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => handlePostClick(post)}>
+                                            <td className="p-4">
+                                                <span className={`text-[10px] px-2 py-1 rounded font-bold ${post.category === '공지사항' ? 'bg-red-100 text-red-600' : post.category === '인력구인' ? 'bg-green-100 text-green-600' : post.category === '세미나 후기' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
+                                                    {post.category}
+                                                </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-2">
+                                                    {post.isSecret && <Icons.Lock size={14} className="text-gray-400" />}
+                                                    <span className="font-bold text-dark">{post.title}</span>
+                                                    {post.reply && <span className="text-[10px] bg-brand/10 text-brand px-1.5 py-0.5 rounded font-bold">답변완료</span>}
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-sm text-gray-600 hidden md:table-cell">{post.author}</td>
+                                            <td className="p-4 text-sm text-gray-400 hidden md:table-cell">{post.date}</td>
+                                            <td className="p-4 text-sm text-gray-400 text-center hidden md:table-cell">{post.views}</td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan="5" className="p-10 text-center text-gray-400">등록된 게시글이 없습니다.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* 게시글 상세 모달 */}
+                    {selectedPost && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedPost(null)}></div>
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg z-10 animate-zoom-in max-h-[85vh] overflow-hidden flex flex-col">
+                                <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-xs px-2 py-1 rounded font-bold ${selectedPost.category === '공지사항' ? 'bg-red-100 text-red-600' : selectedPost.category === '인력구인' ? 'bg-green-100 text-green-600' : selectedPost.category === '세미나 후기' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
+                                            {selectedPost.category}
+                                        </span>
+                                        <h4 className="font-bold text-lg text-dark">{selectedPost.title}</h4>
+                                    </div>
+                                    <button onClick={() => setSelectedPost(null)} className="p-2 bg-white rounded-full hover:bg-gray-200 transition-colors shadow-sm">
+                                        <Icons.X size={20} />
+                                    </button>
+                                </div>
+                                <div className="p-5 overflow-y-auto modal-scroll flex-1">
+                                    <div className="flex items-center gap-4 text-sm text-gray-500 mb-4 pb-4 border-b border-gray-100">
+                                        <span>작성자: <span className="font-bold text-dark">{selectedPost.author}</span></span>
+                                        <span>{selectedPost.date}</span>
+                                        <span>조회 {selectedPost.views}</span>
+                                    </div>
+                                    <div className="text-gray-700 leading-relaxed whitespace-pre-wrap mb-6">
+                                        {selectedPost.content}
+                                    </div>
+                                    {selectedPost.reply && (
+                                        <div className="bg-brand/5 rounded-xl p-4 border border-brand/10">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-xs bg-brand text-white px-2 py-0.5 rounded font-bold">관리자 답변</span>
+                                            </div>
+                                            <p className="text-gray-700 text-sm">{selectedPost.reply}</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="p-4 border-t border-gray-100 flex justify-end gap-2">
+                                    {isAdmin && (
+                                        <button onClick={() => handleDelete(selectedPost.id)} className="px-4 py-2 bg-red-50 text-red-500 font-bold rounded-lg hover:bg-red-100 transition-colors text-sm btn-interactive">
+                                            삭제
+                                        </button>
+                                    )}
+                                    <button onClick={() => setSelectedPost(null)} className="px-4 py-2 bg-gray-100 text-gray-600 font-bold rounded-lg hover:bg-gray-200 transition-colors text-sm btn-interactive">
+                                        닫기
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 글쓰기 모달 */}
+                    {isWriteModalOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsWriteModalOpen(false)}></div>
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg z-10 p-6 animate-zoom-in">
+                                <h3 className="text-xl font-bold text-dark mb-4">게시글 작성</h3>
+                                <div className="space-y-4">
+                                    <select 
+                                        className="w-full p-3 border rounded-xl" 
+                                        value={newPost.category} 
+                                        onChange={e => setNewPost({...newPost, category: e.target.value})}
+                                    >
+                                        <option value="공지사항">공지사항</option>
+                                        <option value="인력구인">인력구인</option>
+                                        <option value="세미나 후기">세미나 후기</option>
+                                        <option value="건의사항">건의사항</option>
+                                    </select>
+                                    <input 
+                                        type="text" 
+                                        className="w-full p-3 border rounded-xl" 
+                                        placeholder="제목을 입력하세요" 
+                                        value={newPost.title} 
+                                        onChange={e => setNewPost({...newPost, title: e.target.value})} 
+                                    />
+                                    <textarea 
+                                        className="w-full p-3 border rounded-xl h-40 resize-none" 
+                                        placeholder="내용을 입력하세요" 
+                                        value={newPost.content} 
+                                        onChange={e => setNewPost({...newPost, content: e.target.value})}
+                                    ></textarea>
+                                    <div className="flex items-center gap-4">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={newPost.isSecret} 
+                                                onChange={e => setNewPost({...newPost, isSecret: e.target.checked})} 
+                                                className="w-4 h-4"
+                                            />
+                                            <span className="text-sm text-gray-600">비밀글</span>
+                                        </label>
+                                        {newPost.isSecret && (
+                                            <input 
+                                                type="password" 
+                                                className="flex-1 p-2 border rounded-lg text-sm" 
+                                                placeholder="비밀번호" 
+                                                value={newPost.password} 
+                                                onChange={e => setNewPost({...newPost, password: e.target.value})} 
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 mt-6">
+                                    <button onClick={() => setIsWriteModalOpen(false)} className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 btn-interactive">
+                                        취소
+                                    </button>
+                                    <button onClick={handleCreate} className="flex-1 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 btn-interactive">
+                                        등록하기
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
         const App = () => {
             const [isMenuOpen, setIsMenuOpen] = useState(false);
             const [scrolled, setScrolled] = useState(false);
             const [content, setContent] = useState(defaultContent);
-            const [membersData, setMembersData] = useState(defaultMembersData);
-            const [seminarsData, setSeminarsData] = useState(defaultSeminarsData);
-            const [communityPosts, setCommunityPosts] = useState(defaultCommunityPosts);
-            const [foodData, setFoodData] = useState(defaultFoodData);
+            // 로컬 스토리지에서 데이터 로드 (없으면 기본값 사용)
+            const loadFromStorage = (key, defaultValue) => {
+                try {
+                    const saved = localStorage.getItem(key);
+                    return saved ? JSON.parse(saved) : defaultValue;
+                } catch (e) {
+                    console.warn('로컬 스토리지 로드 실패:', e);
+                    return defaultValue;
+                }
+            };
+            
+            const [membersData, setMembersData] = useState(() => loadFromStorage(STORAGE_KEYS.MEMBERS, defaultMembersData));
+            const [seminarsData, setSeminarsData] = useState(() => loadFromStorage(STORAGE_KEYS.SEMINARS, defaultSeminarsData));
+            const [communityPosts, setCommunityPosts] = useState(() => loadFromStorage(STORAGE_KEYS.POSTS, defaultCommunityPosts));
+            const [foodData, setFoodData] = useState(() => loadFromStorage(STORAGE_KEYS.FOODS, defaultFoodData));
             const [currentView, setCurrentView] = useState('home');
             const [isAdminMode, setIsAdminMode] = useState(false);
             const [showAdminLogin, setShowAdminLogin] = useState(false);
             const [currentUser, setCurrentUser] = useState(null);
-            const [users, setUsers] = useState([]);
+            const [users, setUsers] = useState(() => loadFromStorage(STORAGE_KEYS.USERS, []));
             const [showSignUpModal, setShowSignUpModal] = useState(false);
             const [showLoginModal, setShowLoginModal] = useState(false);
             const [mySeminars, setMySeminars] = useState([]);
@@ -618,6 +898,27 @@
                 window.addEventListener('scroll', handleScroll);
                 return () => window.removeEventListener('scroll', handleScroll);
             }, []);
+
+            // 로컬 스토리지에 데이터 저장 (데이터 변경 시 자동 저장)
+            useEffect(() => {
+                try { localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(membersData)); } catch (e) { console.warn('회원 데이터 저장 실패:', e); }
+            }, [membersData]);
+            
+            useEffect(() => {
+                try { localStorage.setItem(STORAGE_KEYS.SEMINARS, JSON.stringify(seminarsData)); } catch (e) { console.warn('세미나 데이터 저장 실패:', e); }
+            }, [seminarsData]);
+            
+            useEffect(() => {
+                try { localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(communityPosts)); } catch (e) { console.warn('게시글 데이터 저장 실패:', e); }
+            }, [communityPosts]);
+            
+            useEffect(() => {
+                try { localStorage.setItem(STORAGE_KEYS.FOODS, JSON.stringify(foodData)); } catch (e) { console.warn('맛집 데이터 저장 실패:', e); }
+            }, [foodData]);
+            
+            useEffect(() => {
+                try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users)); } catch (e) { console.warn('사용자 데이터 저장 실패:', e); }
+            }, [users]);
 
             const addLog = (action, targetType, details) => {
                 const timestamp = new Date().toLocaleString();
@@ -716,7 +1017,7 @@
             const handleCommunityDelete = (id) => setCommunityPosts(communityPosts.filter(p => p.id !== id));
 
             const handleAdminLogin = (id, pw) => {
-                if (id === 'admin' && pw === '1234') { setIsAdminMode(true); setShowAdminLogin(false); } else { alert("아이디 또는 비밀번호가 일치하지 않습니다."); }
+                if (id === ADMIN_ID && pw === ADMIN_PASSWORD) { setIsAdminMode(true); setShowAdminLogin(false); } else { alert("아이디 또는 비밀번호가 일치하지 않습니다."); }
             };
 
             const handleAdminMemberUpdate = (newMembers, actionType, detail) => { setMembersData(newMembers); addLog(actionType, '회원', detail); };
