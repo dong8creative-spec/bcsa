@@ -117,10 +117,26 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        /* ====================================================================
+        📘 [관리자 매뉴얼] 데이터 연결 가이드
+        ====================================================================
+        1. 🖼️ 이미지 리스트 및 권장 사이즈 (최적화용)
+           - 메인 히어로 배경: 1920x1080px (고화질, 어두운 톤 권장)
+           - 특장점(Features) 이미지: 600x400px (직사각형)
+           - 세미나/활동 썸네일: 800x600px (4:3 비율)
+           - 회원 프로필: 200x200px (정사각형, 얼굴 중심)
+
+        2. 📊 구글 시트(CSV) 준비 사항
+           - 파일 -> 공유 -> 웹에 게시 -> 'CSV' 형식 선택 후 링크 복사
+           - [회원 시트 컬럼 순서]: 이름 | 업종 | 직책 | 회사명 | 이미지URL
+           - [세미나 시트 컬럼 순서]: 제목 | 날짜(YYYY.MM.DD) | 장소 | 설명 | 이미지URL | 상태 | 카테고리 | 현재인원 | 최대인원
+        ====================================================================
+        */
+
         const { useState, useEffect, useRef } = React;
 
         // ==========================================
-        // 🚀 [관리자 설정] 구글 시트 및 데이터 링크
+        // 🚀 [관리자 설정] 데이터 링크
         // ==========================================
         const CONFIG_SHEET_URL = ""; 
         const MEMBER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTEmEPSeDn1EUcf0DQWJ1EJ3t4nonCL42odDnJn7j8kxAkxl2qJDsXs6mDnxX2tfBJusuNC8ULgWXt4/pub?output=csv"; 
@@ -150,6 +166,7 @@
             Lock: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
             Unlock: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>,
             Eye: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>,
+            EyeOff: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>,
             Key: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>,
             Tag: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l5 5a2 2 0 0 0 2.828 0l7.172-7.172a2 2 0 0 0 0-2.828l-5-5z"/><circle cx="7.5" cy="7.5" r="2"/></svg>,
             Google: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>,
@@ -280,6 +297,7 @@
 
         const SignUpModal = ({ onClose, onSignUp }) => {
             const [formData, setFormData] = useState({ id: '', password: '', name: '', company: '', role: '', industry: 'IT/소프트웨어', img: '' });
+            const [showPassword, setShowPassword] = useState(false);
             
             const handleFileChange = (e) => {
                 const file = e.target.files[0];
@@ -311,16 +329,35 @@
                          </div>
                          <span className="text-xs text-gray-400">프로필 사진 등록</span>
                     </div>
-                    <input type="text" placeholder="아이디" className="w-full p-3 border rounded-xl" value={formData.id} onChange={e => setFormData({...formData, id: e.target.value})} /><input type="password" placeholder="비밀번호" className="w-full p-3 border rounded-xl" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} /><input type="text" placeholder="이름" className="w-full p-3 border rounded-xl" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /><input type="text" placeholder="회사명" className="w-full p-3 border rounded-xl" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} /><input type="text" placeholder="직책" className="w-full p-3 border rounded-xl" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} /><select className="w-full p-3 border rounded-xl" value={formData.industry} onChange={e => setFormData({...formData, industry: e.target.value})}><option>IT/소프트웨어</option><option>유통/무역</option><option>제조업</option><option>디자인/예술</option><option>금융/투자</option><option>기타</option></select><button type="submit" className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors mt-2">가입하기</button></form><button onClick={onClose} className="w-full mt-4 text-sm text-gray-500 hover:text-dark">닫기</button></div></div>
+                    <input type="text" placeholder="아이디" className="w-full p-3 border rounded-xl" value={formData.id} onChange={e => setFormData({...formData, id: e.target.value})} />
+                    
+                    <div className="relative">
+                        <input type={showPassword ? "text" : "password"} placeholder="비밀번호" className="w-full p-3 border rounded-xl" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            {showPassword ? <Icons.EyeOff size={20} /> : <Icons.Eye size={20} />}
+                        </button>
+                    </div>
+
+                    <input type="text" placeholder="이름" className="w-full p-3 border rounded-xl" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /><input type="text" placeholder="회사명" className="w-full p-3 border rounded-xl" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} /><input type="text" placeholder="직책" className="w-full p-3 border rounded-xl" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} /><select className="w-full p-3 border rounded-xl" value={formData.industry} onChange={e => setFormData({...formData, industry: e.target.value})}><option>IT/소프트웨어</option><option>유통/무역</option><option>제조업</option><option>디자인/예술</option><option>금융/투자</option><option>기타</option></select><button type="submit" className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors mt-2">가입하기</button></form><button onClick={onClose} className="w-full mt-4 text-sm text-gray-500 hover:text-dark">닫기</button></div></div>
             );
         };
 
         const LoginModal = ({ onClose, onLogin }) => {
             const [id, setId] = useState('');
             const [password, setPassword] = useState('');
+            const [showPassword, setShowPassword] = useState(false);
+
             const handleSubmit = (e) => { e.preventDefault(); onLogin(id, password); };
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div><div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm z-10 p-8 animate-zoom-in text-center"><h3 className="text-2xl font-bold text-dark mb-6">로그인</h3><form onSubmit={handleSubmit} className="space-y-4"><input type="text" placeholder="아이디" className="w-full p-3 border rounded-xl" value={id} onChange={e => setId(e.target.value)} /><input type="password" placeholder="비밀번호" className="w-full p-3 border rounded-xl" value={password} onChange={e => setPassword(e.target.value)} /><button type="submit" className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">로그인</button></form><button onClick={onClose} className="w-full mt-4 text-sm text-gray-500 hover:text-dark">닫기</button></div></div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div><div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm z-10 p-8 animate-zoom-in text-center"><h3 className="text-2xl font-bold text-dark mb-6">로그인</h3><form onSubmit={handleSubmit} className="space-y-4">
+                    <input type="text" placeholder="아이디" className="w-full p-3 border rounded-xl" value={id} onChange={e => setId(e.target.value)} />
+                    <div className="relative">
+                        <input type={showPassword ? "text" : "password"} placeholder="비밀번호" className="w-full p-3 border rounded-xl" value={password} onChange={e => setPassword(e.target.value)} />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            {showPassword ? <Icons.EyeOff size={20} /> : <Icons.Eye size={20} />}
+                        </button>
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">로그인</button></form><button onClick={onClose} className="w-full mt-4 text-sm text-gray-500 hover:text-dark">닫기</button></div></div>
             );
         };
 
@@ -429,7 +466,10 @@
                     <div className="grid grid-cols-7 mb-0 text-center border-b border-[#0045a5] border-l border-[#0045a5] border-r border-[#0045a5] bg-brand/5 rounded-t-lg calendar-top-border">{['일', '월', '화', '수', '목', '금', '토'].map((day, idx) => (<div key={day} className={`text-sm font-bold py-3 ${idx === 0 ? 'text-red-600' : idx === 6 ? 'text-blue-600' : 'text-gray-700'}`}>{day}</div>))}</div>
                     <div className="grid grid-cols-7 border-l border-t border-[#0045a5] calendar-left-border calendar-top-border bg-white">{renderCalendarDays()}</div>
                     {selectedDate && getEventsForDate(selectedDate).length > 0 && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setSelectedDate(null)}></div><div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden z-10 animate-zoom-in flex flex-col"><div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50"><h4 className="font-bold text-xl text-dark">{month + 1}월 {selectedDate}일 일정</h4><button onClick={() => setSelectedDate(null)} className="p-2 bg-white rounded-full hover:bg-gray-200 transition-colors shadow-sm"><Icons.X size={20} /></button></div><div className="p-5 overflow-y-auto modal-scroll space-y-6">{getEventsForDate(selectedDate).map((ev, idx) => (<div key={idx} className="flex flex-col gap-4"><div className="w-full h-48 rounded-xl overflow-hidden shadow-sm relative"><img src={ev.img || "https://placehold.co/600x400"} alt={ev.title} className="w-full h-full object-cover" /><div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold shadow-sm ${ev.status === '모집중' ? 'bg-brand text-white' : ev.status === '마감임박' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>{ev.status}</div></div><div><h5 className="font-bold text-xl text-dark mb-2 leading-tight">{ev.title}</h5><div className="flex flex-col gap-2 mb-4"><span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.Clock size={16} className="text-brand"/> {ev.date}</span><span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.MapPin size={16} className="text-brand"/> {ev.location}</span><span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.Users size={16} className="text-brand"/> 신청현황: <span className="text-brand font-bold">{ev.currentParticipants || 0}</span> / {ev.maxParticipants || 100} 명</span></div><p className="text-gray-600 text-sm leading-relaxed bg-soft p-4 rounded-xl border border-brand/5">{ev.desc}</p></div><button onClick={() => onSelectSeminar(ev)} className={`w-full py-3 font-bold rounded-xl transition-colors shadow-lg mt-2 ${ev.status === '종료' || ev.status === '마감' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-brand text-white hover:bg-blue-700 shadow-brand/20'}`} disabled={ev.status === '종료' || ev.status === '마감'}>{ev.status === '종료' ? '종료된 일정' : ev.status === '마감' ? '신청 마감' : '신청하기'}</button></div>))}</div></div></div>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setSelectedDate(null)}></div><div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden z-10 animate-zoom-in flex flex-col"><div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50"><h4 className="font-bold text-xl text-dark">{month + 1}월 {selectedDate}일 일정</h4><button onClick={() => setSelectedDate(null)} className="p-2 bg-white rounded-full hover:bg-gray-200 transition-colors shadow-sm"><Icons.X size={20} /></button></div><div className="p-5 overflow-y-auto modal-scroll space-y-6">{getEventsForDate(selectedDate).map((ev, idx) => (<div key={idx} className="flex flex-col gap-4"><div className="w-full h-48 rounded-xl overflow-hidden shadow-sm relative"><img src={ev.img || "https://placehold.co/600x400"} alt={ev.title} className="w-full h-full object-cover" /><div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold shadow-sm ${ev.status === '모집중' ? 'bg-brand text-white' : ev.status === '마감임박' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>{ev.status}</div></div><div><h5 className="font-bold text-xl text-dark mb-2 leading-tight">{ev.title}</h5><div className="flex flex-col gap-2 mb-4"><span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.Clock size={16} className="text-brand"/> {ev.date}</span><span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.MapPin size={16} className="text-brand"/> {ev.location}</span><span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.Users size={16} className="text-brand"/> 신청현황: <span className="text-brand font-bold">{ev.currentParticipants || 0}</span> / {ev.maxParticipants || 100} 명</span></div><p className="text-gray-600 text-sm leading-relaxed bg-soft p-4 rounded-xl border border-brand/5">{ev.desc}</p></div><div className="grid grid-cols-2 gap-2"><button onClick={() => handleGoogleCalendar(ev)} className="flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm text-sm"><Icons.Google className="w-4 h-4" /> 구글 캘린더</button><button onClick={() => handleAppleCalendar(ev)} className="flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm text-sm"><Icons.Apple className="w-4 h-4" /> Apple 캘린더</button></div><button onClick={() => onSelectSeminar(ev)} className={`w-full py-3 font-bold rounded-xl transition-colors shadow-lg mt-2 ${ev.status === '종료' || ev.status === '마감' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-brand text-white hover:bg-blue-700 shadow-brand/20'}`} disabled={ev.status === '종료' || ev.status === '마감'}>{ev.status === '종료' ? '종료된 일정' : ev.status === '마감' ? '신청 마감' : '신청하기'}</button></div>))}</div></div></div>
+                    )}
+                    {calendarModalData && (
+                        <CalendarSelectModal seminar={calendarModalData} onClose={() => setCalendarModalData(null)} onConfirm={() => setCalendarModalData(null)} />
                     )}
                 </div>
             );
@@ -444,7 +484,7 @@
             const [isMaster, setIsMaster] = useState(false);
             const [masterPwInput, setMasterPwInput] = useState("");
 
-            const handleMasterLogin = () => { if(masterPwInput === "0219") { setIsMaster(true); setShowMasterLogin(false); setActiveTab('logs'); } else { alert("비밀코드가 올바르지 않습니다."); } };
+            const handleMasterLogin = () => { if(masterPwInput === "master9999") { setIsMaster(true); setShowMasterLogin(false); setActiveTab('logs'); } else { alert("비밀코드가 올바르지 않습니다."); } };
 
             const openModal = (type, item = null) => {
                 setEditingItem(item);
@@ -587,7 +627,7 @@
                 setAdminLogs(prev => [...prev, { timestamp, action, targetType, details }]);
             };
 
-            // Sheet Data Loading Effects (using placeholders for now, in real app uncomment fetch logic)
+            // Sheet Data Loading Effects
             useEffect(() => { if (CONFIG_SHEET_URL) { /* fetch config */ } }, []);
             useEffect(() => { if (MEMBER_SHEET_URL) { /* fetch members */ } }, []);
             useEffect(() => { if (SEMINAR_SHEET_URL) { /* fetch seminars */ } }, []);
@@ -631,15 +671,10 @@
             };
             
             const handleWithdraw = () => {
-                 // Remove user from users list
                  const updatedUsers = users.filter(u => u.id !== currentUser.id);
                  setUsers(updatedUsers);
-
-                 // Remove from members list (matching by name and company for simplicity in this demo, or add a linkage ID)
-                 // Ideally we link by user ID. Let's try to match by name for now as the simplest proxy in this demo without DB.
                  const updatedMembers = membersData.filter(m => m.name !== currentUser.name);
                  setMembersData(updatedMembers);
-
                  handleLogout();
                  alert("회원 탈퇴가 완료되었습니다.");
             };
@@ -692,6 +727,51 @@
             const handleAdminSeminarUpdate = (newSeminars, actionType, detail) => { setSeminarsData(newSeminars); addLog(actionType, '세미나', detail); };
             const handleAdminPostUpdate = (newPosts, actionType, detail) => { setCommunityPosts(newPosts); addLog(actionType, '커뮤니티', detail); };
             const handleAdminFoodUpdate = (newFoodList, actionType, detail) => { setFoodData(newFoodList); addLog(actionType, '맛집', detail); };
+            
+            // 🌟 모바일 메뉴 열기/닫기 컴포넌트
+            const MobileMenu = ({ isOpen, onClose, onNavigate }) => {
+                if (!isOpen) return null;
+                return (
+                    <div className="fixed inset-0 z-50 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in">
+                        <button onClick={onClose} className="absolute top-6 right-6 p-2 text-dark hover:bg-gray-100 rounded-full"><Icons.X size={32}/></button>
+                        <nav className="flex flex-col gap-6 text-center">
+                            {['홈', '행사/모임 참여', '멤버 찾기', '부산맛집등록', '커뮤니티'].map((item, idx) => (
+                                <button key={idx} onClick={() => { onNavigate(item); onClose(); }} className="text-2xl font-bold text-dark hover:text-brand transition-colors">{item}</button>
+                            ))}
+                            {!currentUser ? (
+                                <div className="flex flex-col gap-4 mt-8 w-64">
+                                    <button onClick={() => { setShowLoginModal(true); onClose(); }} className="w-full py-3 border-2 border-dark text-dark font-bold rounded-xl hover:bg-gray-50">로그인</button>
+                                    <button onClick={() => { setShowSignUpModal(true); onClose(); }} className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">가입하기</button>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-4 mt-8 w-64">
+                                    <button onClick={() => { setCurrentView('myPage'); onClose(); }} className="w-full py-3 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5">마이페이지</button>
+                                    <button onClick={() => { handleLogout(); onClose(); }} className="w-full py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300">로그아웃</button>
+                                </div>
+                            )}
+                        </nav>
+                    </div>
+                );
+            };
+
+            const handleNavigation = (item) => {
+                if (item === '홈') setCurrentView('home'); 
+                else if (item === '행사/모임 참여') setCurrentView('allSeminars'); 
+                else if (item === '멤버 찾기') setCurrentView('allMembers'); 
+                else if (item === '부산맛집등록') setCurrentView('busanFood'); 
+                else if (item === '커뮤니티') setCurrentView('community');
+            };
+
+            const getNavClass = (item) => {
+                const baseClass = "nav-item px-6 py-2 rounded-full text-[18px] font-medium text-gray-600 hover:text-brand";
+                let isActive = false;
+                if (item === '홈' && currentView === 'home') isActive = true;
+                else if (item === '행사/모임 참여' && currentView === 'allSeminars') isActive = true;
+                else if (item === '멤버 찾기' && currentView === 'allMembers') isActive = true;
+                else if (item === '부산맛집등록' && currentView === 'busanFood') isActive = true;
+                else if (item === '커뮤니티' && currentView === 'community') isActive = true;
+                return `${baseClass} ${isActive ? 'active' : ''}`;
+            }
 
             const renderView = () => {
                 if (isAdminMode) return <AdminDashboard members={membersData} setMembers={(newData) => handleAdminMemberUpdate(newData, 'UPDATE', '회원 목록 변경됨')} seminars={seminarsData} setSeminars={(newData) => handleAdminSeminarUpdate(newData, 'UPDATE', '세미나 목록 변경됨')} posts={communityPosts} setPosts={(newData) => handleAdminPostUpdate(newData, 'UPDATE', '게시글 목록 변경됨')} foodList={foodData} setFoodList={(newData) => handleAdminFoodUpdate(newData, 'UPDATE', '맛집 목록 변경됨')} logs={adminLogs} onBack={() => setIsAdminMode(false)} />;
@@ -816,11 +896,12 @@
                     <header className={`fixed top-0 w-full z-50 transition-all duration-300 ease-in-out px-4 md:px-6 py-5 ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : 'bg-transparent'}`}>
                         <div className="container mx-auto flex justify-between items-center">
                             <div className="flex items-center cursor-pointer group h-10 md:h-12 overflow-hidden" onClick={() => setCurrentView('home')}>
+                                {/* 🌟 Logo Image: 가로형-로고.png */}
                                 <img src="./가로형-로고.png" alt="Busan Young CEO" className="h-full w-auto object-contain hover:opacity-90 transition-opacity" onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; e.target.parentNode.innerHTML = '<span class="text-xl font-bold font-pop text-brand">Busan YCC</span>'; }} />
                             </div>
                             <nav className={`hidden md:flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-1 ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md shadow-glass'}`}>
                                 {['홈', '행사/모임 참여', '멤버 찾기', '부산맛집등록', '커뮤니티'].map((item, idx) => (
-                                    <a key={idx} href="#" onClick={(e) => { e.preventDefault(); if (item === '홈') setCurrentView('home'); else if (item === '행사/모임 참여') setCurrentView('allSeminars'); else if (item === '멤버 찾기') setCurrentView('allMembers'); else if (item === '부산맛집등록') setCurrentView('busanFood'); else if (item === '커뮤니티') setCurrentView('community'); }} className={`nav-item px-6 py-2 rounded-full text-[18px] font-medium text-gray-600 hover:text-brand ${ (item === '홈' && currentView === 'home') || (item === '행사/모임 참여' && currentView === 'allSeminars') || (item === '멤버 찾기' && currentView === 'allMembers') || (item === '부산맛집등록' && currentView === 'busanFood') || (item === '커뮤니티' && currentView === 'community') ? 'active' : '' }`}>{item}</a>
+                                    <a key={idx} href="#" onClick={(e) => { e.preventDefault(); handleNavigation(item); }} className={getNavClass(item)}>{item}</a>
                                 ))}
                             </nav>
                             <div className="flex items-center gap-3">
@@ -835,7 +916,7 @@
                                         <button onClick={() => setShowSignUpModal(true)} className="px-6 py-2.5 bg-brand text-white rounded-full text-sm font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover">가입하기</button>
                                     </>
                                 )}
-                                <button className="md:hidden p-2 text-dark" onClick={() => setIsMenuOpen(!isMenuOpen)}><Icons.Menu /></button>
+                                <button className="md:hidden p-2 text-dark" onClick={() => setIsMenuOpen(true)}><Icons.Menu /></button>
                             </div>
                         </div>
                     </header>
@@ -885,6 +966,8 @@
                     {/* 🌟 모달들 */}
                     {showSignUpModal && <SignUpModal onClose={() => setShowSignUpModal(false)} onSignUp={handleSignUp} />}
                     {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} onLogin={handleLogin} />}
+                    {/* 🌟 모바일 메뉴 오버레이 */}
+                    <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onNavigate={handleNavigation} />
                 </div>
             );
         };
