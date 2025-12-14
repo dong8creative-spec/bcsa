@@ -720,7 +720,8 @@
             const handleCommunityDelete = (id) => setCommunityPosts(communityPosts.filter(p => p.id !== id));
 
             const handleAdminLogin = (id, pw) => {
-                if (id === '햇반' && pw === '0219') { setIsAdminMode(true); setShowAdminLogin(false); } else { alert("아이디 또는 비밀번호가 일치하지 않습니다."); }
+                if (id === '햇반' && pw === '0219
+                    ') { setIsAdminMode(true); setShowAdminLogin(false); } else { alert("아이디 또는 비밀번호가 일치하지 않습니다."); }
             };
 
             const handleAdminMemberUpdate = (newMembers, actionType, detail) => { setMembersData(newMembers); addLog(actionType, '회원', detail); };
