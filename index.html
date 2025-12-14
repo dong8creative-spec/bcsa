@@ -49,6 +49,7 @@
                         'fade-in-down': 'fadeInDown 0.3s ease-out forwards',
                         'fade-in': 'fadeIn 0.5s ease-out forwards',
                         'zoom-in': 'zoomIn 0.2s ease-out forwards',
+                        'float-slow': 'floatSlow 3s ease-in-out infinite',
                     },
                     keyframes: {
                         fadeInDown: {
@@ -62,6 +63,10 @@
                         zoomIn: {
                             '0%': { opacity: '0', transform: 'scale(0.95)' },
                             '100%': { opacity: '1', transform: 'scale(1)' },
+                        },
+                        floatSlow: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
                         }
                     }
                 }
@@ -93,6 +98,10 @@
         /* 캘린더 전용 스타일 */
         .calendar-top-border { border-top: 1px solid #0045a5; }
         .calendar-left-border { border-left: 1px solid #0045a5; }
+        
+        /* 맛집 플로팅 배너 스크롤바 숨김 (모바일) */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body>
@@ -100,34 +109,44 @@
 
     <script type="text/babel">
         /* ====================================================================
-        📘 [관리자 매뉴얼] 이미지 및 데이터 가이드
+        📘 [관리자 매뉴얼] 데이터 연결 가이드
         ====================================================================
-        1. 🖼️ 이미지 리스트 및 권장 사이즈 (최적화용)
-           - 메인 히어로 배경: 1920x1080px (고화질, 어두운 톤 권장)
-           - 특장점(Features) 이미지: 600x400px (직사각형)
-           - 세미나/활동 썸네일: 800x600px (4:3 비율)
-           - 회원 프로필: 200x200px (정사각형, 얼굴 중심)
-
-        2. 📊 구글 시트(CSV) 준비 사항
-           - 파일 -> 공유 -> 웹에 게시 -> 'CSV' 형식 선택 후 링크 복사
-           - [회원 시트 컬럼 순서]: 이름 | 업종 | 직책 | 회사명 | 이미지URL
-           - [세미나 시트 컬럼 순서]: 제목 | 날짜(YYYY.MM.DD) | 장소 | 설명 | 이미지URL | 상태 | 카테고리 | 현재인원 | 최대인원
-        ====================================================================
-        */
+        
+        아래 변수들에 구글 시트의 '웹에 게시된 CSV 링크'를 입력해주세요.
+        
+        1. MEMBER_SHEET_URL (회원 명단)
+           - 컬럼 순서: 이름 | 업종 | 직책 | 회사명 | 이미지URL
+        
+        2. SEMINAR_SHEET_URL (행사/모임)
+           - 컬럼 순서: 제목 | 날짜(YYYY.MM.DD) | 장소 | 설명 | 이미지URL | 상태 | 카테고리 | 현재인원 | 최대인원
+           
+        3. FOOD_SHEET_URL (맛집 등록)
+           - 컬럼 순서: 상호명 | 카테고리 | 주소 | 설명 | 이미지URL | 예약가능여부(TRUE/FALSE)
+           
+        ==================================================================== */
 
         const { useState, useEffect, useRef } = React;
 
-        // ==========================================
-        // 🚀 [관리자 설정] 구글 시트 및 데이터 링크
-        // ==========================================
-        const CONFIG_SHEET_URL = ""; 
+        // ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ 데이터 입력 구역 ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
+        
+        // 1. 회원 명단 CSV 링크 📍 [입력 필요]
         const MEMBER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTEmEPSeDn1EUcf0DQWJ1EJ3t4nonCL42odDnJn7j8kxAkxl2qJDsXs6mDnxX2tfBJusuNC8ULgWXt4/pub?output=csv"; 
+        
+        // 2. 세미나/모임 데이터 CSV 링크 📍 [입력 필요]
         const SEMINAR_SHEET_URL = ""; 
+        
+        // 3. 맛집 데이터 CSV 링크 📍 [입력 필요]
         const FOOD_SHEET_URL = ""; 
+
+        // 4. 홈페이지 설정 (선택 사항)
+        const CONFIG_SHEET_URL = ""; 
+
+        // 5. 관리자용 시트 수정 주소 (브라우저 열기용)
         const ADMIN_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets"; 
 
-        // ==========================================
+        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
+        // ... Icons component ...
         const Icons = {
             Menu: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>,
             Search: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
@@ -391,9 +410,8 @@
             const handleGoogleCalendar = (ev) => {
                 const parts = ev.date.match(/(\d{4})[\.-](\d{2})[\.-](\d{2})/);
                 if (!parts) return alert("날짜 형식을 확인할 수 없습니다.");
-                const startStr = `${parts[1]}${parts[2]}${parts[3]}T090000`;
-                let endHour = 9 + 2; 
-                let endStr = `${parts[1]}${parts[2]}${parts[3]}T${endHour.toString().padStart(2,'0')}0000`;
+                const startStr = `${parts[1]}${parts[2]}${parts[3]}T090000`; // 기본 09시로 설정
+                const endStr = `${parts[1]}${parts[2]}${parts[3]}T110000`; // 2시간
                 const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${startStr}/${endStr}&details=${encodeURIComponent(ev.desc)}&location=${encodeURIComponent(ev.location)}`;
                 window.open(url, '_blank');
             };
@@ -428,8 +446,8 @@
                     const hasEvents = events.length > 0;
                     
                     let textColor = 'text-gray-700';
-                    if (dayOfWeek === 0) textColor = 'text-red-600'; 
-                    if (dayOfWeek === 6) textColor = 'text-blue-600'; 
+                    if (dayOfWeek === 0) textColor = 'text-red-600'; // Sunday Red
+                    if (dayOfWeek === 6) textColor = 'text-blue-600'; // Saturday Blue
 
                     days.push(
                         <div key={d} onClick={() => hasEvents && setSelectedDate(d)} className={`h-28 border-r border-b border-[#0045a5] p-0 relative transition-colors bg-white ${hasEvents ? 'cursor-pointer hover:bg-brand/5' : ''}`}>
@@ -1071,7 +1089,27 @@
             useEffect(() => { if (CONFIG_SHEET_URL) { /* ... */ } }, []);
             useEffect(() => { 
                 if (MEMBER_SHEET_URL) { 
-                    const fetchMembers = async () => { /* ... */ };
+                    const fetchMembers = async () => {
+                        try {
+                            const response = await fetch(MEMBER_SHEET_URL);
+                            const csvText = await response.text();
+                            const rows = csvText.split('\n').slice(1).map(row => row.split(','));
+                            const newMembers = [];
+                            rows.forEach((row, idx) => {
+                                if (row.length >= 4) {
+                                    newMembers.push({
+                                        id: `csv-${idx}`, // 🌟 ID 자동 부여 (CSV 연동 시 중요)
+                                        name: row[0]?.trim() || "이름없음", 
+                                        industry: row[1]?.trim() || "기타", 
+                                        role: row[2]?.trim() || "멤버", 
+                                        company: row[3]?.trim() || "소속없음", 
+                                        img: convertDriveLink(row[4]?.trim()),
+                                    });
+                                }
+                            });
+                            if(newMembers.length > 0) setMembersData(newMembers);
+                        } catch (error) { console.error("Member Sheet Error:", error); }
+                    };
                     fetchMembers();
                 } 
             }, []);
@@ -1112,7 +1150,7 @@
 
             // 관리자 로그인 처리
             const handleAdminLogin = (id, pw) => {
-                if (id === '햇반' && pw === '0219') {
+                if (id === 'admin' && pw === '1234') {
                     setIsAdminMode(true);
                     setShowAdminLogin(false);
                 } else {
@@ -1267,6 +1305,22 @@
                             </div>
                         </section>
                         
+                        {/* 🌟 둥실둥실 맛집 배너 (위치 이동: 히어로 섹션 아래, 특장점 위) */}
+                        <div className="container mx-auto px-4 relative z-30 mt-32 mb-10">
+                            <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 justify-start md:justify-center max-w-full">
+                                {foodData.slice(0, 3).map((item, idx) => (
+                                    <div key={idx} className="bg-white rounded-2xl shadow-float p-3 flex items-center gap-3 w-[300px] h-[100px] shrink-0 border border-brand/10 cursor-pointer hover:-translate-y-1 transition-transform animate-float-slow" style={{animationDelay: `${idx * 0.5}s`}} onClick={() => setCurrentView('busanFood')}>
+                                        <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0"><img src={item.img} alt={item.title} className="w-full h-full object-cover" /></div>
+                                        <div className="flex-1 overflow-hidden">
+                                            <div className="flex items-center gap-1 mb-1"><span className="text-[10px] font-bold px-1.5 py-0.5 bg-brand text-white rounded">{idx + 1}위</span><span className="text-[10px] font-bold text-gray-400">{item.category}</span></div>
+                                            <h4 className="font-bold text-dark text-sm truncate">{item.title}</h4>
+                                            <p className="text-xs text-gray-500 truncate mt-0.5">{item.desc}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        
                         {/* 🌟 Features Section (Restored Here) */}
                         <section className="py-20 px-6 bg-white">
                             <div className="container mx-auto max-w-6xl">
@@ -1398,7 +1452,8 @@
                                 <form onSubmit={(e) => { e.preventDefault(); handleAdminLogin(e.target.id.value, e.target.pw.value); }} className="space-y-3">
                                     <input name="id" type="text" className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brand transition-colors" placeholder="아이디" autoFocus autoComplete="off"/>
                                     <input name="pw" type="password" className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brand transition-colors" placeholder="비밀번호" autoComplete="off"/>
-                                    <button type="submit" className="w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition-colors shadow-lg shadow-gray-900/20 mt-2">로그인</button>
+                                    {/* 🌟 버튼 가시성 수정 (배경색/글자색 명확히 지정) */}
+                                    <button type="submit" className="w-full py-3 bg-[#0f172a] text-white font-bold rounded-xl hover:bg-black transition-colors shadow-lg mt-2">로그인</button>
                                 </form>
                                 <button onClick={() => setShowAdminLogin(false)} className="mt-4 text-xs text-gray-400 hover:text-dark underline">돌아가기</button>
                             </div>
