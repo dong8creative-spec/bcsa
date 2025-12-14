@@ -221,6 +221,7 @@
             return "모집중";
         };
 
+        // 🌟 세미나 데이터 구조 업데이트 (인원수 추가)
         const defaultSeminarsData = [
             { id: 1, category: "투자/IR", title: "2025 상반기 스타트업 투자 트렌드", date: "2025.03.15", location: "부산 유라시아 플랫폼 104호", desc: "VC 심사역 초청, 2025년 주목해야 할 스타트업 트렌드와 투자 유치 전략 공유.", img: "https://images.unsplash.com/photo-1544531586-fde5298cdd40?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80", currentParticipants: 142, maxParticipants: 150 },
             { id: 2, category: "네트워킹/모임", title: "부산 청년 창업가 네트워킹 나이트", date: "2025.03.22", location: "해운대 더베이 101 루프탑", desc: "부산 지역 청년 창업가들이 모여 자유롭게 네트워킹하고 협업 기회를 찾는 파티.", img: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80", currentParticipants: 85, maxParticipants: 100 },
@@ -782,7 +783,19 @@
                 if (type === 'member') {
                     setFormData(item || { name: '', industry: '', role: '', company: '', img: '' });
                 } else if (type === 'seminar') {
-                    setFormData(item || { title: '', category: '교육/세미나', date: '', location: '', desc: '', img: '', status: '모집중', maxParticipants: 100, currentParticipants: 0 });
+                    // 날짜 선택을 위해 input type="date"에 맞는 YYYY-MM-DD 형식으로 변환
+                    const formattedDate = item && item.date ? item.date.replace(/\./g, '-') : ''; 
+                    setFormData({ 
+                        title: item ? item.title : '', 
+                        category: item ? item.category : '교육/세미나', 
+                        date: formattedDate, 
+                        location: item ? item.location : '', 
+                        desc: item ? item.desc : '', 
+                        img: item ? item.img : '', 
+                        status: item ? item.status : '모집중', 
+                        maxParticipants: item ? item.maxParticipants : 100, 
+                        currentParticipants: item ? item.currentParticipants : 0 
+                    });
                 }
                 setIsModalOpen(true);
             };
@@ -812,11 +825,21 @@
                     }
                 } else if (activeTab === 'seminars') {
                     if (!formData.title) return alert("제목을 입력해주세요.");
-                    const status = calculateStatus(formData.date);
+                    
+                    // 저장할 때는 YYYY.MM.DD 형식으로 변환하여 저장
+                    const displayDate = formData.date.replace(/-/g, '.');
+                    const status = calculateStatus(displayDate);
+                    
+                    const newSeminarData = { 
+                        ...formData, 
+                        date: displayDate, 
+                        status: status 
+                    };
+
                     if (editingItem) {
-                        setSeminars(seminars.map(s => s.id === editingItem.id ? { ...formData, status, id: editingItem.id } : s));
+                        setSeminars(seminars.map(s => s.id === editingItem.id ? { ...newSeminarData, id: editingItem.id } : s));
                     } else {
-                        setSeminars([...seminars, { ...formData, status, id: Date.now(), currentParticipants: 0 }]);
+                        setSeminars([...seminars, { ...newSeminarData, id: Date.now(), currentParticipants: 0 }]);
                     }
                 }
                 setIsModalOpen(false);
@@ -1047,6 +1070,110 @@
             );
         };
 
+        const AllSeminarsView = ({ onBack, seminars }) => {
+            const [selectedSeminar, setSelectedSeminar] = useState(null);
+            const [calendarModalData, setCalendarModalData] = useState(null); // 캘린더 모달용 상태
+
+            // 🌟 캘린더 연동 함수
+            const handleGoogleCalendar = (ev) => {
+                const parts = ev.date.match(/(\d{4})[\.-](\d{2})[\.-](\d{2})/);
+                if (!parts) return alert("날짜 형식을 확인할 수 없습니다.");
+                const startStr = `${parts[1]}${parts[2]}${parts[3]}T090000`; 
+                const endStr = `${parts[1]}${parts[2]}${parts[3]}T110000`;
+                const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${startStr}/${endStr}&details=${encodeURIComponent(ev.desc)}&location=${encodeURIComponent(ev.location)}`;
+                window.open(url, '_blank');
+            };
+
+            const handleAppleCalendar = (ev) => {
+                const parts = ev.date.match(/(\d{4})[\.-](\d{2})[\.-](\d{2})/);
+                if (!parts) return alert("날짜 형식을 확인할 수 없습니다.");
+                const startStr = `${parts[1]}${parts[2]}${parts[3]}T090000`;
+                let endHour = 9 + 2;
+                let endStr = `${parts[1]}${parts[2]}${parts[3]}T${endHour.toString().padStart(2,'0')}0000`;
+                const icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:${startStr}\nDTEND:${endStr}\nSUMMARY:${ev.title}\nDESCRIPTION:${ev.desc}\nLOCATION:${ev.location}\nEND:VEVENT\nEND:VCALENDAR`;
+                const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+                const link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.setAttribute('download', `${ev.title}.ics`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            // 신청하기 버튼 핸들러
+            const handleApply = (seminar) => {
+                if (seminar.status === '종료' || seminar.status === '마감') return;
+                
+                // 상세 팝업이 열려있다면 닫기
+                setSelectedSeminar(null);
+
+                // 캘린더 등록 모달 띄우기
+                setCalendarModalData(seminar); 
+            };
+
+            return (
+                <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+                    <div className="container mx-auto max-w-7xl">
+                        <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+                            <div><h2 className="text-3xl font-bold text-dark mb-2">세미나 & 행사 일정</h2><p className="text-gray-500 text-sm">부청사에서 진행되는 다양한 비즈니스 행사를 확인하세요.</p></div>
+                            <button onClick={onBack} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors"><Icons.ArrowLeft size={20} /> 메인으로 돌아가기</button>
+                        </div>
+                        {seminars.length > 0 ? (
+                            <><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">{seminars.map((seminar, idx) => (<div key={idx} className="bg-white rounded-3xl overflow-hidden shadow-card hover:shadow-xl transition-all border border-transparent hover:border-brand/20 flex flex-col group cursor-pointer h-full"><div className="relative h-56 overflow-hidden card-zoom" onClick={() => setSelectedSeminar(seminar)}><img src={seminar.img || "https://images.unsplash.com/photo-1544531586-fde5298cdd40?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"} alt={seminar.title} className="w-full h-full object-cover"/>{seminar.status && (<div className={`absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-bold shadow-sm ${seminar.status === '모집중' ? 'bg-brand text-white' : seminar.status === '마감임박' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>{seminar.status}</div>)}</div><div className="p-6 flex flex-col flex-1"><div className="flex items-center gap-2 mb-2"><span className="text-[10px] font-bold px-2 py-0.5 bg-brand/10 text-brand rounded-full">{seminar.category || '미지정'}</span></div><h3 className="text-xl font-bold text-dark mb-3 group-hover:text-brand transition-colors line-clamp-2 break-keep">{seminar.title}</h3><div className="space-y-2 mb-4"><div className="flex items-center gap-2 text-sm text-gray-500"><Icons.Calendar className="w-4 h-4 text-brand" /><span>{seminar.date}</span></div><div className="flex items-center gap-2 text-sm text-gray-500"><Icons.MapPin className="w-4 h-4 text-brand" /><span className="line-clamp-1">{seminar.location}</span></div></div><p className="text-gray-500 text-sm line-clamp-3 mb-6 flex-1 break-keep">{seminar.desc}</p><button onClick={() => setSelectedSeminar(seminar)} className="w-full py-3 bg-soft text-brand font-bold rounded-xl hover:bg-brand hover:text-white transition-colors">상세 내용 확인하기</button></div></div>))}</div><CalendarSection seminars={seminars} onSelectSeminar={setSelectedSeminar} /></>
+                        ) : (<div className="text-center py-20 text-gray-500"><p>등록된 일정이 없습니다.</p></div>)}
+                    </div>
+
+                    {/* 🌟 카드 클릭 시 상세 보기 모달 */}
+                    {selectedSeminar && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setSelectedSeminar(null)}></div>
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden z-10 animate-zoom-in flex flex-col">
+                                <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                    <h4 className="font-bold text-xl text-dark">세미나 상세 정보</h4>
+                                    <button onClick={() => setSelectedSeminar(null)} className="p-2 bg-white rounded-full hover:bg-gray-200 transition-colors shadow-sm"><Icons.X size={20} /></button>
+                                </div>
+                                <div className="p-5 overflow-y-auto modal-scroll space-y-6">
+                                    <div className="flex flex-col gap-4">
+                                        <div className="w-full h-48 rounded-xl overflow-hidden shadow-sm relative">
+                                            <img src={selectedSeminar.img || "https://placehold.co/600x400"} alt={selectedSeminar.title} className="w-full h-full object-cover" />
+                                            <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold shadow-sm ${selectedSeminar.status === '모집중' ? 'bg-brand text-white' : selectedSeminar.status === '마감임박' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>{selectedSeminar.status}</div>
+                                        </div>
+                                        <div>
+                                            <h5 className="font-bold text-xl text-dark mb-2 leading-tight">{selectedSeminar.title}</h5>
+                                            <div className="flex flex-col gap-2 mb-4">
+                                                <span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.Clock size={16} className="text-brand"/> {selectedSeminar.date}</span>
+                                                <span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.MapPin size={16} className="text-brand"/> {selectedSeminar.location}</span>
+                                                <span className="text-sm text-gray-500 font-medium flex items-center gap-2">
+                                                    <Icons.Users size={16} className="text-brand"/> 신청현황: <span className="text-brand font-bold">{selectedSeminar.currentParticipants || 0}</span> / {selectedSeminar.maxParticipants || 100} 명
+                                                </span>
+                                            </div>
+                                            <p className="text-gray-600 text-sm leading-relaxed bg-soft p-4 rounded-xl border border-brand/5">{selectedSeminar.desc}</p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button onClick={() => handleGoogleCalendar(selectedSeminar)} className="flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm text-sm"><Icons.Google className="w-4 h-4" /> 구글 캘린더</button>
+                                            <button onClick={() => handleAppleCalendar(selectedSeminar)} className="flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm text-sm"><Icons.Apple className="w-4 h-4" /> Apple 캘린더</button>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleApply(selectedSeminar)} 
+                                            className={`w-full py-3 font-bold rounded-xl transition-colors shadow-lg mt-2 ${selectedSeminar.status === '종료' || selectedSeminar.status === '마감' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-brand text-white hover:bg-blue-700 shadow-brand/20'}`} 
+                                            disabled={selectedSeminar.status === '종료' || selectedSeminar.status === '마감'}
+                                        >
+                                            {selectedSeminar.status === '종료' ? '종료된 일정' : selectedSeminar.status === '마감' ? '신청 마감' : '신청하기'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 🌟 캘린더 등록 모달 (CalendarSelectModal) */}
+                    {calendarModalData && (
+                        <CalendarSelectModal seminar={calendarModalData} onClose={() => setCalendarModalData(null)} />
+                    )}
+                </div>
+            );
+        };
+
         const App = () => {
             const [isMenuOpen, setIsMenuOpen] = useState(false);
             const [scrolled, setScrolled] = useState(false);
@@ -1085,7 +1212,27 @@
             useEffect(() => { if (CONFIG_SHEET_URL) { /* ... */ } }, []);
             useEffect(() => { 
                 if (MEMBER_SHEET_URL) { 
-                    const fetchMembers = async () => { /* ... */ };
+                    const fetchMembers = async () => {
+                        try {
+                            const response = await fetch(MEMBER_SHEET_URL);
+                            const csvText = await response.text();
+                            const rows = csvText.split('\n').slice(1).map(row => row.split(','));
+                            const newMembers = [];
+                            rows.forEach((row, idx) => {
+                                if (row.length >= 4) {
+                                    newMembers.push({
+                                        id: `csv-${idx}`, // 🌟 ID 자동 부여 (CSV 연동 시 중요)
+                                        name: row[0]?.trim() || "이름없음", 
+                                        industry: row[1]?.trim() || "기타", 
+                                        role: row[2]?.trim() || "멤버", 
+                                        company: row[3]?.trim() || "소속없음", 
+                                        img: convertDriveLink(row[4]?.trim()),
+                                    });
+                                }
+                            });
+                            if(newMembers.length > 0) setMembersData(newMembers);
+                        } catch (error) { console.error("Member Sheet Error:", error); }
+                    };
                     fetchMembers();
                 } 
             }, []);
@@ -1096,8 +1243,26 @@
                 } 
             }, []);
 
-            // 세미나 검색 로직 (기존 유지)
-            const handleSearch = () => { /* ... */ setIsSearchExpanded(true); };
+            // 🌟 세미나 검색 로직 (수정됨: 초기 전체 노출)
+            const handleSearch = () => {
+                if (!searchKeyword && !searchStatus && !searchCategory) {
+                    setSearchResults(seminarsData); // 전체 리스트 반환
+                    setIsSearchExpanded(true);
+                    return; 
+                }
+                
+                const results = seminarsData.filter(seminar => {
+                    const text = (seminar.title + seminar.desc).toLowerCase();
+                    const matchKeyword = !searchKeyword || text.includes(searchKeyword.toLowerCase());
+                    const matchStatus = !searchStatus || seminar.status === searchStatus;
+                    const matchCategory = !searchCategory || seminar.category === searchCategory;
+
+                    return matchKeyword && matchStatus && matchCategory;
+                });
+
+                setSearchResults(results);
+                setIsSearchExpanded(true);
+            };
 
             // 커뮤니티 CRUD
             const handleCommunityCreate = (newPost) => {
@@ -1108,7 +1273,7 @@
 
             // 관리자 로그인 처리
             const handleAdminLogin = (id, pw) => {
-                if (id === '햇반' && pw === '0219') {
+                if (id === 'admin' && pw === '1234') {
                     setIsAdminMode(true);
                     setShowAdminLogin(false);
                 } else {
@@ -1131,7 +1296,7 @@
                 setCommunityPosts(newPosts);
                 addLog(actionType, '커뮤니티', detail);
             };
-            
+
             // 🌟 맛집 승인/거절 시 로그 추가
             const handleAdminFoodUpdate = (newFoodList, actionType, detail) => {
                 setFoodData(newFoodList);
