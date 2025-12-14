@@ -102,14 +102,16 @@
         /* ====================================================================
         📘 [관리자 매뉴얼] 이미지 및 데이터 가이드
         ====================================================================
-        1. 🖼️ 이미지 리스트 및 권장 사이즈
-           - 메인 히어로 배경: 1920x1080px 
-           - 맛집 이미지: 800x600px
+        1. 🖼️ 이미지 리스트 및 권장 사이즈 (최적화용)
+           - 메인 히어로 배경: 1920x1080px (고화질, 어두운 톤 권장)
+           - 특장점(Features) 이미지: 600x400px (직사각형)
+           - 세미나/활동 썸네일: 800x600px (4:3 비율)
+           - 회원 프로필: 200x200px (정사각형, 얼굴 중심)
 
         2. 📊 구글 시트(CSV) 준비 사항
-           - [회원 시트]: 이름 | 업종 | 직책 | 회사명 | 이미지URL
-           - [세미나 시트]: 제목 | 날짜 | 장소 | 설명 | 이미지URL | 상태 | 카테고리 | 현재인원 | 최대인원
-           - [맛집 시트]: 상호명 | 종류 | 주소 | 설명 | 이미지URL | 예약가능여부(O/X) | 지도URL
+           - 파일 -> 공유 -> 웹에 게시 -> 'CSV' 형식 선택 후 링크 복사
+           - [회원 시트 컬럼 순서]: 이름 | 업종 | 직책 | 회사명 | 이미지URL
+           - [세미나 시트 컬럼 순서]: 제목 | 날짜(YYYY.MM.DD) | 장소 | 설명 | 이미지URL | 상태 | 카테고리 | 현재인원 | 최대인원
         ====================================================================
         */
 
@@ -121,7 +123,7 @@
         const CONFIG_SHEET_URL = ""; 
         const MEMBER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTEmEPSeDn1EUcf0DQWJ1EJ3t4nonCL42odDnJn7j8kxAkxl2qJDsXs6mDnxX2tfBJusuNC8ULgWXt4/pub?output=csv"; 
         const SEMINAR_SHEET_URL = ""; 
-        const FOOD_SHEET_URL = ""; // 맛집 데이터 시트 URL (필요시 추가)
+        const FOOD_SHEET_URL = ""; 
         const ADMIN_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets"; 
 
         // ==========================================
@@ -274,16 +276,14 @@
             );
         };
 
-        // 🌟 부산 맛집 등록 뷰 (신규 추가)
+        // 🌟 부산 맛집 등록 뷰
         const BusanFoodView = ({ onBack, foodList }) => {
             const openMap = (name) => {
-                // 네이버 지도 검색 링크
                 window.open(`https://map.naver.com/v5/search/${encodeURIComponent(name)}`, '_blank');
             };
 
             const openReservation = (name, available) => {
                 if (!available) return alert("현재 온라인 예약이 지원되지 않는 매장입니다. 전화 문의 부탁드립니다.");
-                // 캐치테이블 검색 링크 (예시)
                 window.open(`https://app.catchtable.co.kr/ct/search/total?query=${encodeURIComponent(name)}`, '_blank');
             };
 
@@ -387,10 +387,11 @@
                 return parseInt(parts[0]) === year && parseInt(parts[1]) - 1 === month && parseInt(parts[2]) === day;
             });
 
+            // 캘린더 연동 함수
             const handleGoogleCalendar = (ev) => {
                 const parts = ev.date.match(/(\d{4})[\.-](\d{2})[\.-](\d{2})/);
                 if (!parts) return alert("날짜 형식을 확인할 수 없습니다.");
-                const startStr = `${parts[1]}${parts[2]}${parts[3]}T090000`; 
+                const startStr = `${parts[1]}${parts[2]}${parts[3]}T090000`;
                 let endHour = 9 + 2; 
                 let endStr = `${parts[1]}${parts[2]}${parts[3]}T${endHour.toString().padStart(2,'0')}0000`;
                 const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${startStr}/${endStr}&details=${encodeURIComponent(ev.desc)}&location=${encodeURIComponent(ev.location)}`;
@@ -476,11 +477,13 @@
                             <button onClick={nextMonth} className="p-2 hover:bg-white hover:shadow rounded-lg transition-all text-gray-600"><Icons.ArrowRight size={18} /></button>
                         </div>
                     </div>
+                    {/* 요일 헤더 */}
                     <div className="grid grid-cols-7 mb-0 text-center border-b border-[#0045a5] border-l border-[#0045a5] border-r border-[#0045a5] bg-brand/5 rounded-t-lg calendar-top-border">
                         {['일', '월', '화', '수', '목', '금', '토'].map((day, idx) => (
                             <div key={day} className={`text-sm font-bold py-3 ${idx === 0 ? 'text-red-600' : idx === 6 ? 'text-blue-600' : 'text-gray-700'}`}>{day}</div>
                         ))}
                     </div>
+                    {/* 달력 그리드 */}
                     <div className="grid grid-cols-7 border-l border-t border-[#0045a5] calendar-left-border calendar-top-border bg-white">
                         {renderCalendarDays()}
                     </div>
@@ -537,12 +540,47 @@
             const [newPost, setNewPost] = useState({ category: '공지사항', title: '', author: '', content: '', password: '', isSecret: false });
             const [passwordInput, setPasswordInput] = useState('');
             const [passwordCheckId, setPasswordCheckId] = useState(null);
-            const filteredPosts = posts.filter(p => activeCategory === '전체' ? true : p.category === activeCategory);
+
+            // 🌟 필터 로직 수정: 건의사항은 관리자만 리스트에서 확인 가능
+            const filteredPosts = posts.filter(p => {
+                // 1. 탭 필터
+                if (activeCategory !== '전체' && p.category !== activeCategory) return false;
+                
+                // 2. 권한 필터 (건의사항)
+                // 관리자가 아니면 건의사항 글은 리스트에 노출되지 않음 (비밀 투고함)
+                if (p.category === '건의사항' && !isAdmin) return false;
+
+                return true;
+            });
+
+            // 🌟 글쓰기 모달 열기 핸들러
+            const handleOpenWriteModal = () => {
+                // 관리자가 아니면 기본 카테고리를 '인력구인' 등으로 변경 (공지사항 선택 불가)
+                if (!isAdmin) {
+                    setNewPost(prev => ({ ...prev, category: '인력구인' }));
+                } else {
+                    setNewPost(prev => ({ ...prev, category: '공지사항' }));
+                }
+                setIsWriteModalOpen(true);
+            }
 
             const handleWriteSubmit = () => {
                 if(!newPost.title || !newPost.author || !newPost.password || !newPost.content) return alert("모든 항목을 입력해주세요.");
-                onCreate(newPost); setIsWriteModalOpen(false); setNewPost({ category: '공지사항', title: '', author: '', content: '', password: '', isSecret: false });
+                
+                // 🌟 비관리자 공지사항 등록 방지 (이중 체크)
+                if (!isAdmin && newPost.category === '공지사항') {
+                    return alert("공지사항은 관리자만 등록할 수 있습니다.");
+                }
+
+                onCreate(newPost);
+                setIsWriteModalOpen(false);
+                setNewPost({ category: '공지사항', title: '', author: '', content: '', password: '', isSecret: false });
+                
+                if (newPost.category === '건의사항') {
+                    alert("소중한 건의사항이 등록되었습니다. 관리자에게 전달됩니다.");
+                }
             };
+
             const handlePostClick = (post) => {
                 if (post.isSecret && !isAdmin) { setPasswordCheckId(post.id); setPasswordInput(''); } else { setViewPost(post); }
             };
@@ -566,14 +604,68 @@
                         <div className="bg-white rounded-3xl shadow-card overflow-hidden min-h-[400px] flex flex-col">
                             <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
                                 <span className="font-bold text-gray-500 text-sm">총 {filteredPosts.length}건</span>
-                                <button onClick={() => setIsWriteModalOpen(true)} className="flex items-center gap-2 bg-brand text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"><Icons.Plus size={16} /> 글쓰기</button>
+                                <button onClick={handleOpenWriteModal} className="flex items-center gap-2 bg-brand text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20"><Icons.Plus size={16} /> 글쓰기</button>
                             </div>
-                            <div className="flex-1 overflow-x-auto"><table className="w-full text-left"><thead className="bg-white text-xs text-gray-400 uppercase tracking-wider border-b border-gray-100"><tr><th className="p-4 font-bold w-20 text-center">번호</th><th className="p-4 font-bold w-32">카테고리</th><th className="p-4 font-bold">제목</th><th className="p-4 font-bold w-32">작성자</th><th className="p-4 font-bold w-32 text-center">날짜</th><th className="p-4 font-bold w-20 text-center">조회</th></tr></thead><tbody className="divide-y divide-gray-50">{filteredPosts.length > 0 ? filteredPosts.map((post) => (<tr key={post.id} onClick={() => handlePostClick(post)} className="hover:bg-brand/5 cursor-pointer transition-colors group"><td className="p-4 text-center text-gray-400 text-sm font-medium">{post.id}</td><td className="p-4"><span className="text-xs font-bold px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">{post.category}</span></td><td className="p-4"><div className="flex items-center gap-2">{post.isSecret && <Icons.Lock size={14} className="text-gray-400" />}<span className="font-medium text-dark group-hover:text-brand transition-colors">{post.title}</span></div></td><td className="p-4 text-sm text-gray-600">{post.author}</td><td className="p-4 text-center text-sm text-gray-400">{post.date}</td><td className="p-4 text-center text-sm text-gray-400">{post.views}</td></tr>)) : (<tr><td colSpan="6" className="p-10 text-center text-gray-400">등록된 게시글이 없습니다.</td></tr>)}</tbody></table></div>
+                            <div className="flex-1 overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead className="bg-white text-xs text-gray-400 uppercase tracking-wider border-b border-gray-100"><tr><th className="p-4 font-bold w-20 text-center">번호</th><th className="p-4 font-bold w-32">카테고리</th><th className="p-4 font-bold">제목</th><th className="p-4 font-bold w-32">작성자</th><th className="p-4 font-bold w-32 text-center">날짜</th><th className="p-4 font-bold w-20 text-center">조회</th></tr></thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {filteredPosts.length > 0 ? filteredPosts.map((post) => (
+                                            <tr key={post.id} onClick={() => handlePostClick(post)} className="hover:bg-brand/5 cursor-pointer transition-colors group">
+                                                <td className="p-4 text-center text-gray-400 text-sm font-medium">{post.id}</td>
+                                                <td className="p-4"><span className="text-xs font-bold px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">{post.category}</span></td>
+                                                <td className="p-4"><div className="flex items-center gap-2">{post.isSecret && <Icons.Lock size={14} className="text-gray-400" />}<span className="font-medium text-dark group-hover:text-brand transition-colors">{post.title}</span></div></td>
+                                                <td className="p-4 text-sm text-gray-600">{post.author}</td>
+                                                <td className="p-4 text-center text-sm text-gray-400">{post.date}</td>
+                                                <td className="p-4 text-center text-sm text-gray-400">{post.views}</td>
+                                            </tr>
+                                        )) : (
+                                            <tr><td colSpan="6" className="p-10 text-center text-gray-400">
+                                                {activeCategory === '건의사항' && !isAdmin ? "등록된 게시글이 없거나 비공개 글입니다." : "등록된 게시글이 없습니다."}
+                                            </td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                     {isWriteModalOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"><div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsWriteModalOpen(false)}></div><div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg z-10 p-6 animate-zoom-in"><h3 className="text-xl font-bold text-dark mb-4">새 게시글 작성</h3><div className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><label className="text-xs font-bold text-gray-500 block mb-1">카테고리</label><select className="w-full p-2 border border-gray-200 rounded-lg text-sm" value={newPost.category} onChange={e => setNewPost({...newPost, category: e.target.value})}>{categories.filter(c => c !== '전체').map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label className="text-xs font-bold text-gray-500 block mb-1">작성자</label><input type="text" className="w-full p-2 border border-gray-200 rounded-lg text-sm" value={newPost.author} onChange={e => setNewPost({...newPost, author: e.target.value})} /></div></div><div><label className="text-xs font-bold text-gray-500 block mb-1">제목</label><input type="text" className="w-full p-2 border border-gray-200 rounded-lg text-sm" value={newPost.title} onChange={e => setNewPost({...newPost, title: e.target.value})} /></div><div><label className="text-xs font-bold text-gray-500 block mb-1">내용</label><textarea className="w-full p-2 border border-gray-200 rounded-lg text-sm h-32 resize-none" value={newPost.content} onChange={e => setNewPost({...newPost, content: e.target.value})}></textarea></div><div className="flex items-center justify-between"><div className="w-1/2 pr-2"><label className="text-xs font-bold text-gray-500 block mb-1">비밀번호 (수정/삭제용)</label><input type="password" className="w-full p-2 border border-gray-200 rounded-lg text-sm" value={newPost.password} onChange={e => setNewPost({...newPost, password: e.target.value})} placeholder="4자리 이상" /></div>{newPost.category === '건의사항' && (<div className="flex items-center gap-2 pt-5"><input type="checkbox" id="secretCheck" className="w-4 h-4" checked={newPost.isSecret} onChange={e => setNewPost({...newPost, isSecret: e.target.checked})} /><label htmlFor="secretCheck" className="text-sm font-bold text-gray-600 flex items-center gap-1"><Icons.Lock size={14} /> 비밀글로 등록</label></div>)}</div></div><div className="flex gap-3 mt-6"><button onClick={() => setIsWriteModalOpen(false)} className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-colors">취소</button><button onClick={handleWriteSubmit} className="flex-1 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">등록하기</button></div></div></div>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsWriteModalOpen(false)}></div>
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg z-10 p-6 animate-zoom-in">
+                                <h3 className="text-xl font-bold text-dark mb-4">새 게시글 작성</h3>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 block mb-1">카테고리</label>
+                                            <select className="w-full p-2 border border-gray-200 rounded-lg text-sm" value={newPost.category} onChange={e => setNewPost({...newPost, category: e.target.value})}>
+                                                {/* 🌟 관리자 여부에 따라 카테고리 옵션 필터링 */}
+                                                {categories.filter(c => c !== '전체').map(c => {
+                                                    if (c === '공지사항' && !isAdmin) return null;
+                                                    return <option key={c} value={c}>{c}</option>
+                                                })}
+                                            </select>
+                                        </div>
+                                        <div><label className="text-xs font-bold text-gray-500 block mb-1">작성자</label><input type="text" className="w-full p-2 border border-gray-200 rounded-lg text-sm" value={newPost.author} onChange={e => setNewPost({...newPost, author: e.target.value})} /></div>
+                                    </div>
+                                    <div><label className="text-xs font-bold text-gray-500 block mb-1">제목</label><input type="text" className="w-full p-2 border border-gray-200 rounded-lg text-sm" value={newPost.title} onChange={e => setNewPost({...newPost, title: e.target.value})} /></div>
+                                    <div><label className="text-xs font-bold text-gray-500 block mb-1">내용</label><textarea className="w-full p-2 border border-gray-200 rounded-lg text-sm h-32 resize-none" value={newPost.content} onChange={e => setNewPost({...newPost, content: e.target.value})}></textarea></div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="w-1/2 pr-2"><label className="text-xs font-bold text-gray-500 block mb-1">비밀번호 (수정/삭제용)</label><input type="password" className="w-full p-2 border border-gray-200 rounded-lg text-sm" value={newPost.password} onChange={e => setNewPost({...newPost, password: e.target.value})} placeholder="4자리 이상" /></div>
+                                        {/* 건의사항은 강제 비밀글 처리 */}
+                                        {newPost.category === '건의사항' && (
+                                            <div className="flex items-center gap-2 pt-5">
+                                                <input type="checkbox" id="secretCheck" className="w-4 h-4" checked={true} disabled />
+                                                <label htmlFor="secretCheck" className="text-sm font-bold text-gray-600 flex items-center gap-1"><Icons.Lock size={14} /> 비밀글 (자동)</label>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 mt-6"><button onClick={() => setIsWriteModalOpen(false)} className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-colors">취소</button><button onClick={handleWriteSubmit} className="flex-1 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">등록하기</button></div>
+                            </div>
+                        </div>
                     )}
+                    {/* ... (비밀번호 확인 모달 및 상세 보기 모달 - 기존 유지) ... */}
                     {passwordCheckId && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"><div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setPasswordCheckId(null)}></div><div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm z-10 p-6 animate-zoom-in text-center"><div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-500"><Icons.Lock size={24} /></div><h3 className="text-lg font-bold text-dark mb-2">비밀글입니다</h3><p className="text-sm text-gray-500 mb-4">작성자와 관리자만 볼 수 있습니다.<br/>비밀번호를 입력해주세요.</p><input type="password" className="w-full p-3 border border-gray-200 rounded-xl text-center font-bold mb-4 focus:border-brand outline-none" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} placeholder="비밀번호 입력" autoFocus /><div className="flex gap-2"><button onClick={() => setPasswordCheckId(null)} className="flex-1 py-2 bg-gray-100 text-gray-600 font-bold rounded-lg hover:bg-gray-200">취소</button><button onClick={handleSecretCheck} className="flex-1 py-2 bg-brand text-white font-bold rounded-lg hover:bg-blue-700">확인</button></div></div></div>
                     )}
@@ -915,6 +1007,10 @@
                                                 </span>
                                             </div>
                                             <p className="text-gray-600 text-sm leading-relaxed bg-soft p-4 rounded-xl border border-brand/5">{selectedSeminar.desc}</p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button onClick={() => handleGoogleCalendar(selectedSeminar)} className="flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm text-sm"><Icons.Google className="w-4 h-4" /> 구글 캘린더</button>
+                                            <button onClick={() => handleAppleCalendar(selectedSeminar)} className="flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm text-sm"><Icons.Apple className="w-4 h-4" /> Apple 캘린더</button>
                                         </div>
                                         <button 
                                             onClick={() => handleApply(selectedSeminar)} 
