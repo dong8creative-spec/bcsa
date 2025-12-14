@@ -122,20 +122,10 @@
         // ==========================================
         // 🚀 [관리자 설정] 구글 시트 및 데이터 링크
         // ==========================================
-        
-        // 1. 회원 명단 CSV 링크 📍 [입력 필요]
-        const MEMBER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTEmEPSeDn1EUcf0DQWJ1EJ3t4nonCL42odDnJn7j8kxAkxl2qJDsXs6mDnxX2tfBJusuNC8ULgWXt4/pub?output=csv"; 
-        
-        // 2. 세미나/모임 데이터 CSV 링크 📍 [입력 필요]
-        const SEMINAR_SHEET_URL = ""; 
-        
-        // 3. 맛집 데이터 CSV 링크 📍 [입력 필요]
-        const FOOD_SHEET_URL = ""; 
-
-        // 4. 홈페이지 설정 (선택 사항)
         const CONFIG_SHEET_URL = ""; 
-
-        // 5. 관리자용 시트 수정 주소 (브라우저 열기용)
+        const MEMBER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTEmEPSeDn1EUcf0DQWJ1EJ3t4nonCL42odDnJn7j8kxAkxl2qJDsXs6mDnxX2tfBJusuNC8ULgWXt4/pub?output=csv"; 
+        const SEMINAR_SHEET_URL = ""; 
+        const FOOD_SHEET_URL = ""; 
         const ADMIN_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets"; 
 
         // ==========================================
@@ -168,6 +158,7 @@
             Restaurant: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>,
             Phone: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
             Map: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>,
+            Camera: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>,
         };
 
         const defaultContent = {
@@ -288,10 +279,39 @@
         };
 
         const SignUpModal = ({ onClose, onSignUp }) => {
-            const [formData, setFormData] = useState({ id: '', password: '', name: '', company: '', role: '', industry: 'IT/소프트웨어' });
-            const handleSubmit = (e) => { e.preventDefault(); if (!formData.id || !formData.password || !formData.name) return alert("필수 항목을 모두 입력해주세요."); onSignUp(formData); onClose(); };
+            const [formData, setFormData] = useState({ id: '', password: '', name: '', company: '', role: '', industry: 'IT/소프트웨어', img: '' });
+            
+            const handleFileChange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        setFormData({ ...formData, img: reader.result }); // 이미지 Base64 저장
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handleSubmit = (e) => { 
+                e.preventDefault(); 
+                if (!formData.id || !formData.password || !formData.name) return alert("필수 항목을 모두 입력해주세요."); 
+                onSignUp(formData); 
+                onClose(); 
+            };
+            
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div><div className="bg-white rounded-2xl shadow-2xl w-full max-w-md z-10 p-8 animate-zoom-in"><h3 className="text-2xl font-bold text-dark mb-6 text-center">회원가입</h3><form onSubmit={handleSubmit} className="space-y-4"><input type="text" placeholder="아이디" className="w-full p-3 border rounded-xl" value={formData.id} onChange={e => setFormData({...formData, id: e.target.value})} /><input type="password" placeholder="비밀번호" className="w-full p-3 border rounded-xl" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} /><input type="text" placeholder="이름" className="w-full p-3 border rounded-xl" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /><input type="text" placeholder="회사명" className="w-full p-3 border rounded-xl" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} /><input type="text" placeholder="직책" className="w-full p-3 border rounded-xl" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} /><select className="w-full p-3 border rounded-xl" value={formData.industry} onChange={e => setFormData({...formData, industry: e.target.value})}><option>IT/소프트웨어</option><option>유통/무역</option><option>제조업</option><option>디자인/예술</option><option>금융/투자</option><option>기타</option></select><button type="submit" className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors mt-2">가입하기</button></form><button onClick={onClose} className="w-full mt-4 text-sm text-gray-500 hover:text-dark">닫기</button></div></div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div><div className="bg-white rounded-2xl shadow-2xl w-full max-w-md z-10 p-8 animate-zoom-in"><h3 className="text-2xl font-bold text-dark mb-6 text-center">회원가입</h3><form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="flex flex-col items-center mb-4">
+                         <div className="w-24 h-24 rounded-full bg-gray-100 overflow-hidden mb-2 relative group">
+                            {formData.img ? <img src={formData.img} className="w-full h-full object-cover" /> : <Icons.Users className="w-12 h-12 text-gray-300 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />}
+                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                <Icons.Camera className="text-white" />
+                            </div>
+                            <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} />
+                         </div>
+                         <span className="text-xs text-gray-400">프로필 사진 등록</span>
+                    </div>
+                    <input type="text" placeholder="아이디" className="w-full p-3 border rounded-xl" value={formData.id} onChange={e => setFormData({...formData, id: e.target.value})} /><input type="password" placeholder="비밀번호" className="w-full p-3 border rounded-xl" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} /><input type="text" placeholder="이름" className="w-full p-3 border rounded-xl" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /><input type="text" placeholder="회사명" className="w-full p-3 border rounded-xl" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} /><input type="text" placeholder="직책" className="w-full p-3 border rounded-xl" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} /><select className="w-full p-3 border rounded-xl" value={formData.industry} onChange={e => setFormData({...formData, industry: e.target.value})}><option>IT/소프트웨어</option><option>유통/무역</option><option>제조업</option><option>디자인/예술</option><option>금융/투자</option><option>기타</option></select><button type="submit" className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors mt-2">가입하기</button></form><button onClick={onClose} className="w-full mt-4 text-sm text-gray-500 hover:text-dark">닫기</button></div></div>
             );
         };
 
@@ -304,10 +324,19 @@
             );
         };
 
-        const MyPageView = ({ onBack, user, mySeminars, myFoods, myPosts }) => {
+        const MyPageView = ({ onBack, user, mySeminars, myFoods, myPosts, onWithdraw }) => { // onWithdraw 추가
             const [activeTab, setActiveTab] = useState('seminars');
+            
+            const handleWithdrawClick = () => {
+                if(confirm("정말로 탈퇴하시겠습니까? 모든 정보가 삭제됩니다.")) {
+                    onWithdraw();
+                }
+            }
+
             return (
-                <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in"><div className="container mx-auto max-w-4xl"><div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4"><h2 className="text-3xl font-bold text-dark">마이페이지</h2><button onClick={onBack} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors"><Icons.ArrowLeft size={20} /> 메인으로</button></div><div className="bg-white rounded-3xl p-8 shadow-card mb-8 flex flex-col md:flex-row items-center gap-6"><div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center text-4xl overflow-hidden">{user.img ? <img src={user.img} className="w-full h-full object-cover"/> : "👤"}</div><div className="text-center md:text-left"><h3 className="text-2xl font-bold text-dark">{user.name} <span className="text-base font-normal text-gray-500">({user.id})</span></h3><p className="text-gray-600 mt-1">{user.company} | {user.role}</p><span className="inline-block px-3 py-1 bg-brand/10 text-brand text-xs font-bold rounded-full mt-2">{user.industry}</span></div></div><div className="flex gap-2 mb-6 border-b border-gray-200 pb-1"><button onClick={() => setActiveTab('seminars')} className={`px-4 py-2 font-bold transition-colors border-b-2 ${activeTab === 'seminars' ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>신청한 모임</button><button onClick={() => setActiveTab('foods')} className={`px-4 py-2 font-bold transition-colors border-b-2 ${activeTab === 'foods' ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>맛집 등록 내역</button><button onClick={() => setActiveTab('posts')} className={`px-4 py-2 font-bold transition-colors border-b-2 ${activeTab === 'posts' ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>내 게시글</button></div><div className="bg-white rounded-3xl shadow-sm p-6 min-h-[300px]">{activeTab === 'seminars' && (<ul className="space-y-4">{mySeminars.length > 0 ? mySeminars.map((s, idx) => (<li key={idx} className="flex justify-between items-center p-4 border rounded-xl hover:bg-gray-50"><div><div className="font-bold text-dark">{s.title}</div><div className="text-xs text-gray-500 mt-1">{s.date} | {s.location}</div></div><span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">신청완료</span></li>)) : <li className="text-center text-gray-400 py-10">신청한 모임이 없습니다.</li>}</ul>)}{activeTab === 'foods' && (<ul className="space-y-4">{myFoods.length > 0 ? myFoods.map((f, idx) => (<li key={idx} className="flex justify-between items-center p-4 border rounded-xl hover:bg-gray-50"><div><div className="font-bold text-dark">{f.title}</div><div className="text-xs text-gray-500 mt-1">{f.category} | {f.address}</div></div><span className={`text-xs px-2 py-1 rounded font-bold ${f.status === 'approved' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{f.status === 'approved' ? '등록완료' : '승인대기'}</span></li>)) : <li className="text-center text-gray-400 py-10">등록 신청한 맛집이 없습니다.</li>}</ul>)}{activeTab === 'posts' && (<ul className="space-y-4">{myPosts.length > 0 ? myPosts.map((p, idx) => (<li key={idx} className="flex justify-between items-center p-4 border rounded-xl hover:bg-gray-50"><div><div className="flex items-center gap-2 mb-1"><span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded text-gray-600">{p.category}</span><div className="font-bold text-dark">{p.title}</div></div><div className="text-xs text-gray-400">{p.date}</div></div><span className={`text-xs px-2 py-1 rounded font-bold ${p.reply ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{p.reply ? '답변완료' : '답변대기'}</span></li>)) : <li className="text-center text-gray-400 py-10">작성한 게시글이 없습니다.</li>}</ul>)}</div></div></div>
+                <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in"><div className="container mx-auto max-w-4xl"><div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4"><h2 className="text-3xl font-bold text-dark">마이페이지</h2><button onClick={onBack} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors"><Icons.ArrowLeft size={20} /> 메인으로</button></div><div className="bg-white rounded-3xl p-8 shadow-card mb-8 flex flex-col md:flex-row items-center gap-6"><div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center text-4xl overflow-hidden">{user.img ? <img src={user.img} className="w-full h-full object-cover"/> : "👤"}</div><div className="text-center md:text-left"><h3 className="text-2xl font-bold text-dark">{user.name} <span className="text-base font-normal text-gray-500">({user.id})</span></h3><p className="text-gray-600 mt-1">{user.company} | {user.role}</p><span className="inline-block px-3 py-1 bg-brand/10 text-brand text-xs font-bold rounded-full mt-2">{user.industry}</span></div></div><div className="flex gap-2 mb-6 border-b border-gray-200 pb-1"><button onClick={() => setActiveTab('seminars')} className={`px-4 py-2 font-bold transition-colors border-b-2 ${activeTab === 'seminars' ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>신청한 모임</button><button onClick={() => setActiveTab('foods')} className={`px-4 py-2 font-bold transition-colors border-b-2 ${activeTab === 'foods' ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>맛집 등록 내역</button><button onClick={() => setActiveTab('posts')} className={`px-4 py-2 font-bold transition-colors border-b-2 ${activeTab === 'posts' ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>내 게시글</button></div><div className="bg-white rounded-3xl shadow-sm p-6 min-h-[300px] mb-8">{activeTab === 'seminars' && (<ul className="space-y-4">{mySeminars.length > 0 ? mySeminars.map((s, idx) => (<li key={idx} className="flex justify-between items-center p-4 border rounded-xl hover:bg-gray-50"><div><div className="font-bold text-dark">{s.title}</div><div className="text-xs text-gray-500 mt-1">{s.date} | {s.location}</div></div><span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">신청완료</span></li>)) : <li className="text-center text-gray-400 py-10">신청한 모임이 없습니다.</li>}</ul>)}{activeTab === 'foods' && (<ul className="space-y-4">{myFoods.length > 0 ? myFoods.map((f, idx) => (<li key={idx} className="flex justify-between items-center p-4 border rounded-xl hover:bg-gray-50"><div><div className="font-bold text-dark">{f.title}</div><div className="text-xs text-gray-500 mt-1">{f.category} | {f.address}</div></div><span className={`text-xs px-2 py-1 rounded font-bold ${f.status === 'approved' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{f.status === 'approved' ? '등록완료' : '승인대기'}</span></li>)) : <li className="text-center text-gray-400 py-10">등록 신청한 맛집이 없습니다.</li>}</ul>)}{activeTab === 'posts' && (<ul className="space-y-4">{myPosts.length > 0 ? myPosts.map((p, idx) => (<li key={idx} className="flex justify-between items-center p-4 border rounded-xl hover:bg-gray-50"><div><div className="flex items-center gap-2 mb-1"><span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded text-gray-600">{p.category}</span><div className="font-bold text-dark">{p.title}</div></div><div className="text-xs text-gray-400">{p.date}</div></div><span className={`text-xs px-2 py-1 rounded font-bold ${p.reply ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{p.reply ? '답변완료' : '답변대기'}</span></li>)) : <li className="text-center text-gray-400 py-10">작성한 게시글이 없습니다.</li>}</ul>)}</div>
+                <div className="text-right"><button onClick={handleWithdrawClick} className="text-xs text-red-400 hover:text-red-600 underline">회원 탈퇴하기</button></div>
+                </div></div>
             );
         };
 
@@ -513,7 +542,7 @@
                         ) : (<div className="text-center py-20 text-gray-500"><p>등록된 일정이 없습니다.</p></div>)}
                     </div>
                     {selectedSeminar && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setSelectedSeminar(null)}></div><div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden z-10 animate-zoom-in flex flex-col"><div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50"><h4 className="font-bold text-xl text-dark">세미나 상세 정보</h4><button onClick={() => setSelectedSeminar(null)} className="p-2 bg-white rounded-full hover:bg-gray-200 transition-colors shadow-sm"><Icons.X size={20} /></button></div><div className="p-5 overflow-y-auto modal-scroll space-y-6"><div className="flex flex-col gap-4"><div className="w-full h-48 rounded-xl overflow-hidden shadow-sm relative"><img src={selectedSeminar.img || "https://placehold.co/600x400"} alt={selectedSeminar.title} className="w-full h-full object-cover" /><div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold shadow-sm ${selectedSeminar.status === '모집중' ? 'bg-brand text-white' : selectedSeminar.status === '마감임박' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>{selectedSeminar.status}</div></div><div><h5 className="font-bold text-xl text-dark mb-2 leading-tight">{selectedSeminar.title}</h5><div className="flex flex-col gap-2 mb-4"><span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.Clock size={16} className="text-brand"/> {selectedSeminar.date}</span><span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.MapPin size={16} className="text-brand"/> {selectedSeminar.location}</span><span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.Users size={16} className="text-brand"/> 신청현황: <span className="text-brand font-bold">{selectedSeminar.currentParticipants || 0}</span> / {selectedSeminar.maxParticipants || 100} 명</span></div><p className="text-gray-600 text-sm leading-relaxed bg-soft p-4 rounded-xl border border-brand/5">{selectedSeminar.desc}</p></div><button onClick={() => handleApplyClick(selectedSeminar)} className={`w-full py-3 font-bold rounded-xl transition-colors shadow-lg mt-2 ${selectedSeminar.status === '종료' || selectedSeminar.status === '마감' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-brand text-white hover:bg-blue-700 shadow-brand/20'}`} disabled={selectedSeminar.status === '종료' || selectedSeminar.status === '마감'}>{selectedSeminar.status === '종료' ? '종료된 일정' : selectedSeminar.status === '마감' ? '신청 마감' : '신청하기'}</button></div></div></div></div>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setSelectedSeminar(null)}></div><div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden z-10 animate-zoom-in flex flex-col"><div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50"><h4 className="font-bold text-xl text-dark">세미나 상세 정보</h4><button onClick={() => setSelectedSeminar(null)} className="p-2 bg-white rounded-full hover:bg-gray-200 transition-colors shadow-sm"><Icons.X size={20} /></button></div><div className="p-5 overflow-y-auto modal-scroll space-y-6"><div className="flex flex-col gap-4"><div className="w-full h-48 rounded-xl overflow-hidden shadow-sm relative"><img src={selectedSeminar.img || "https://placehold.co/600x400"} alt={selectedSeminar.title} className="w-full h-full object-cover" /><div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold shadow-sm ${selectedSeminar.status === '모집중' ? 'bg-brand text-white' : selectedSeminar.status === '마감임박' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>{selectedSeminar.status}</div></div><div><h5 className="font-bold text-xl text-dark mb-2 leading-tight">{selectedSeminar.title}</h5><div className="flex flex-col gap-2 mb-4"><span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.Clock size={16} className="text-brand"/> {selectedSeminar.date}</span><span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.MapPin size={16} className="text-brand"/> {selectedSeminar.location}</span><span className="text-sm text-gray-500 font-medium flex items-center gap-2"><Icons.Users size={16} className="text-brand"/> 신청현황: <span className="text-brand font-bold">{selectedSeminar.currentParticipants || 0}</span> / {selectedSeminar.maxParticipants || 100} 명</span></div><p className="text-gray-600 text-sm leading-relaxed bg-soft p-4 rounded-xl border border-brand/5">{selectedSeminar.desc}</p></div><div className="grid grid-cols-2 gap-2"><button onClick={() => handleGoogleCalendar(selectedSeminar)} className="flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm text-sm"><Icons.Google className="w-4 h-4" /> 구글 캘린더</button><button onClick={() => handleAppleCalendar(selectedSeminar)} className="flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm text-sm"><Icons.Apple className="w-4 h-4" /> Apple 캘린더</button></div><button onClick={() => handleApplyClick(selectedSeminar)} className={`w-full py-3 font-bold rounded-xl transition-colors shadow-lg mt-2 ${selectedSeminar.status === '종료' || selectedSeminar.status === '마감' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-brand text-white hover:bg-blue-700 shadow-brand/20'}`} disabled={selectedSeminar.status === '종료' || selectedSeminar.status === '마감'}>{selectedSeminar.status === '종료' ? '종료된 일정' : selectedSeminar.status === '마감' ? '신청 마감' : '신청하기'}</button></div></div></div></div>
                     )}
                     {calendarModalData && (
                         <CalendarSelectModal seminar={calendarModalData} onClose={() => setCalendarModalData(null)} onConfirm={() => setCalendarModalData(null)} />
@@ -566,6 +595,18 @@
             const handleSignUp = (userInfo) => {
                 if (users.find(u => u.id === userInfo.id)) return alert("이미 존재하는 아이디입니다.");
                 setUsers([...users, userInfo]);
+                
+                // 회원가입 시 멤버 리스트에도 추가
+                const newMember = {
+                    id: Date.now(), // Unique ID
+                    name: userInfo.name,
+                    industry: userInfo.industry,
+                    role: userInfo.role,
+                    company: userInfo.company,
+                    img: userInfo.img || `https://ui-avatars.com/api/?name=${userInfo.name}&background=random` // Use uploaded img or fallback
+                };
+                setMembersData([...membersData, newMember]);
+                
                 alert("회원가입이 완료되었습니다! 로그인해주세요.");
             };
 
@@ -587,6 +628,20 @@
                 setMyFoods([]);
                 setMyPosts([]);
                 alert("로그아웃 되었습니다.");
+            };
+            
+            const handleWithdraw = () => {
+                 // Remove user from users list
+                 const updatedUsers = users.filter(u => u.id !== currentUser.id);
+                 setUsers(updatedUsers);
+
+                 // Remove from members list (matching by name and company for simplicity in this demo, or add a linkage ID)
+                 // Ideally we link by user ID. Let's try to match by name for now as the simplest proxy in this demo without DB.
+                 const updatedMembers = membersData.filter(m => m.name !== currentUser.name);
+                 setMembersData(updatedMembers);
+
+                 handleLogout();
+                 alert("회원 탈퇴가 완료되었습니다.");
             };
 
             const handleSeminarApply = (seminar) => {
@@ -640,7 +695,7 @@
 
             const renderView = () => {
                 if (isAdminMode) return <AdminDashboard members={membersData} setMembers={(newData) => handleAdminMemberUpdate(newData, 'UPDATE', '회원 목록 변경됨')} seminars={seminarsData} setSeminars={(newData) => handleAdminSeminarUpdate(newData, 'UPDATE', '세미나 목록 변경됨')} posts={communityPosts} setPosts={(newData) => handleAdminPostUpdate(newData, 'UPDATE', '게시글 목록 변경됨')} foodList={foodData} setFoodList={(newData) => handleAdminFoodUpdate(newData, 'UPDATE', '맛집 목록 변경됨')} logs={adminLogs} onBack={() => setIsAdminMode(false)} />;
-                if (currentView === 'myPage') return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myFoods={myFoods} myPosts={myPosts} />;
+                if (currentView === 'myPage') return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myFoods={myFoods} myPosts={myPosts} onWithdraw={handleWithdraw} />;
                 if (currentView === 'allMembers') return <AllMembersView onBack={() => setCurrentView('home')} members={membersData} />;
                 if (currentView === 'allSeminars') return <AllSeminarsView onBack={() => setCurrentView('home')} seminars={seminarsData} onApply={handleSeminarApply} />; 
                 if (currentView === 'busanFood') return <BusanFoodView onBack={() => setCurrentView('home')} foodList={foodData} onRegister={handleFoodRegister} />;
@@ -784,7 +839,7 @@
                             </div>
                         </div>
                     </header>
-
+                    
                     {renderView()}
 
                     <footer className="py-12 bg-white px-6 shadow-[0_-4px_25px_rgba(0,69,165,0.05)] border-none">
