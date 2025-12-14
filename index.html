@@ -139,9 +139,9 @@
         // 🚀 [관리자 설정] 데이터 링크
         // ==========================================
         const CONFIG_SHEET_URL = ""; 
-        const MEMBER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQcn8lMqMXVUJw_GHbxCW5KMG4YJPhI3xglza7sr98YShvYvkWUKTWA-Ez2p3o9ARkNaWnzUluTwOb8/pub?output=csv"; 
-        const SEMINAR_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQUgeDh3zYtSZ57dm1bVKKZIgYUaCjbCDE5ZxMI_EkzctTfKdT6_1KMI0nDT47MT_Flmp47zd8258Q7/pub?output=csv"; 
-        const FOOD_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT4XbOCG-q4zXslRt9RhKYeDNqh2oPgwZP_Y1odlRpybG72n0K4Pb0YvXq9-O40_jYJSa8xadm9ZAUF/pub?output=csv"; 
+        const MEMBER_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTEmEPSeDn1EUcf0DQWJ1EJ3t4nonCL42odDnJn7j8kxAkxl2qJDsXs6mDnxX2tfBJusuNC8ULgWXt4/pub?output=csv"; 
+        const SEMINAR_SHEET_URL = ""; 
+        const FOOD_SHEET_URL = ""; 
         const ADMIN_SHEET_EDIT_URL = "https://docs.google.com/spreadsheets"; 
 
         // ==========================================
@@ -484,7 +484,7 @@
             const [isMaster, setIsMaster] = useState(false);
             const [masterPwInput, setMasterPwInput] = useState("");
 
-            const handleMasterLogin = () => { if(masterPwInput === "0219") { setIsMaster(true); setShowMasterLogin(false); setActiveTab('logs'); } else { alert("비밀코드가 올바르지 않습니다."); } };
+            const handleMasterLogin = () => { if(masterPwInput === "master9999") { setIsMaster(true); setShowMasterLogin(false); setActiveTab('logs'); } else { alert("비밀코드가 올바르지 않습니다."); } };
 
             const openModal = (type, item = null) => {
                 setEditingItem(item);
@@ -720,8 +720,7 @@
             const handleCommunityDelete = (id) => setCommunityPosts(communityPosts.filter(p => p.id !== id));
 
             const handleAdminLogin = (id, pw) => {
-                if (id === '햇반' && pw === '0219
-                    ') { setIsAdminMode(true); setShowAdminLogin(false); } else { alert("아이디 또는 비밀번호가 일치하지 않습니다."); }
+                if (id === 'admin' && pw === '1234') { setIsAdminMode(true); setShowAdminLogin(false); } else { alert("아이디 또는 비밀번호가 일치하지 않습니다."); }
             };
 
             const handleAdminMemberUpdate = (newMembers, actionType, detail) => { setMembersData(newMembers); addLog(actionType, '회원', detail); };
