@@ -7,12 +7,12 @@
     <title>부산청년사업가들 - Busan Young CEO Community</title>
     
     <!-- SVG 파비콘 (라이트/다크 모드 자동 지원) -->
-    <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg" id="favicon-svg">
+    <link rel="icon" type="image/svg+xml" href="./assets/images/favicon.svg" id="favicon-svg">
     <!-- 폴백용 기존 파비콘 (SVG를 지원하지 않는 브라우저용) -->
-    <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico" id="favicon-ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" id="favicon-32">
-    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" id="favicon-16">
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png">
+    <link rel="icon" type="image/x-icon" href="./assets/images/favicon.ico" id="favicon-ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/images/favicon-32x32.png" id="favicon-32">
+    <link rel="icon" type="image/png" sizes="16x16" href="./assets/images/favicon-16x16.png" id="favicon-16">
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/images/apple-touch-icon.png">
     
     <!-- 폰트 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -188,36 +188,44 @@
             const faviconSvg = document.getElementById('favicon-svg');
             if (!faviconSvg) return;
             
-            const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const lightColor = '#0045a5'; // 브랜드 블루 (라이트 모드)
-            const darkColor = '#60a5fa';  // 밝은 블루 (다크 모드)
+            // 파비콘은 브랜드 블루 색상으로 설정
+            const faviconColor = '#0045a5'; // 브랜드 블루
             
             // SVG 파일을 동적으로 로드하여 색상 업데이트
-            fetch('/assets/images/favicon.svg')
-                .then(response => response.text())
-                .then(svgText => {
-                    // SVG 내용에서 색상 업데이트
-                    let updatedSvg = svgText;
-                    
-                    // CSS 미디어 쿼리가 작동하지 않는 경우를 대비하여 직접 색상 변경
-                    if (isDarkMode) {
-                        updatedSvg = updatedSvg.replace(/#0045a5/g, darkColor);
-                        updatedSvg = updatedSvg.replace(/opacity:\s*0\.1/g, 'opacity: 0.2');
-                    } else {
-                        updatedSvg = updatedSvg.replace(/#60a5fa/g, lightColor);
-                        updatedSvg = updatedSvg.replace(/opacity:\s*0\.2/g, 'opacity: 0.1');
-                    }
-                    
-                    // Data URI로 변환하여 적용
-                    const svgBlob = new Blob([updatedSvg], { type: 'image/svg+xml' });
-                    const url = URL.createObjectURL(svgBlob);
-                    faviconSvg.href = url;
-                    
-                    // 메모리 정리
-                    setTimeout(() => URL.revokeObjectURL(url), 100);
-                })
+            // 여러 경로 시도 (상대 경로, 절대 경로)
+            const tryLoadSVG = (path) => {
+                return fetch(path)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Not found');
+                        return response.text();
+                    })
+                    .then(svgText => {
+                        // SVG 내용에서 색상을 브랜드 블루로 유지
+                        let updatedSvg = svgText;
+                        
+                        // 흰색이 있으면 브랜드 블루로 변경 (필요한 경우만)
+                        updatedSvg = updatedSvg.replace(/fill:\s*#ffffff/g, `fill: ${faviconColor}`);
+                        updatedSvg = updatedSvg.replace(/fill:\s*#fff/g, `fill: ${faviconColor}`);
+                        // 배경 투명도 조정
+                        updatedSvg = updatedSvg.replace(/opacity:\s*1/g, 'opacity: 0.1');
+                        
+                        // Data URI로 변환하여 적용
+                        const svgBlob = new Blob([updatedSvg], { type: 'image/svg+xml' });
+                        const url = URL.createObjectURL(svgBlob);
+                        faviconSvg.href = url;
+                        
+                        // 메모리 정리
+                        setTimeout(() => URL.revokeObjectURL(url), 100);
+                        return true;
+                    });
+            };
+            
+            // 여러 경로 시도
+            tryLoadSVG('./assets/images/favicon.svg')
+                .catch(() => tryLoadSVG('/assets/images/favicon.svg'))
+                .catch(() => tryLoadSVG('assets/images/favicon.svg'))
                 .catch(() => {
-                    // SVG 파일이 없으면 기본 파비콘 사용
+                    // 모든 경로 실패 시 기본 파비콘 사용
                     console.log('SVG 파비콘 파일을 찾을 수 없습니다. 기본 파비콘을 사용합니다.');
                 });
         };
@@ -230,16 +238,24 @@
                 // SVG 파일이 있으면 사용, 없으면 동적 생성
                 const faviconSvg = document.getElementById('favicon-svg');
                 if (faviconSvg) {
-                    // SVG 파일 존재 여부 확인
-                    fetch('/assets/images/favicon.svg', { method: 'HEAD' })
-                        .then(() => {
-                            // SVG 파일이 있으면 사용 (CSS가 자동으로 색상 제어)
-                            faviconSvg.href = '/assets/images/favicon.svg';
-                            // 추가로 JavaScript로도 업데이트 (호환성)
-                            setTimeout(updateSVGFaviconForTheme, 100);
-                        })
+                    // SVG 파일 존재 여부 확인 (여러 경로 시도)
+                    const checkSVG = (path) => {
+                        return fetch(path, { method: 'HEAD' })
+                            .then(response => {
+                                if (response.ok) {
+                                    faviconSvg.href = path;
+                                    setTimeout(updateSVGFaviconForTheme, 100);
+                                    return true;
+                                }
+                                throw new Error('Not found');
+                            });
+                    };
+                    
+                    checkSVG('./assets/images/favicon.svg')
+                        .catch(() => checkSVG('/assets/images/favicon.svg'))
+                        .catch(() => checkSVG('assets/images/favicon.svg'))
                         .catch(() => {
-                            // SVG 파일이 없으면 동적 생성
+                            // 모든 경로 실패 시 동적 생성
                             updateSVGFaviconForTheme();
                         });
                 }
@@ -247,11 +263,21 @@
         } else {
             const faviconSvg = document.getElementById('favicon-svg');
             if (faviconSvg) {
-                fetch('/assets/images/favicon.svg', { method: 'HEAD' })
-                    .then(() => {
-                        faviconSvg.href = '/assets/images/favicon.svg';
-                        setTimeout(updateSVGFaviconForTheme, 100);
-                    })
+                const checkSVG = (path) => {
+                    return fetch(path, { method: 'HEAD' })
+                        .then(response => {
+                            if (response.ok) {
+                                faviconSvg.href = path;
+                                setTimeout(updateSVGFaviconForTheme, 100);
+                                return true;
+                            }
+                            throw new Error('Not found');
+                        });
+                };
+                
+                checkSVG('./assets/images/favicon.svg')
+                    .catch(() => checkSVG('/assets/images/favicon.svg'))
+                    .catch(() => checkSVG('assets/images/favicon.svg'))
                     .catch(() => {
                         updateSVGFaviconForTheme();
                     });
@@ -327,8 +353,9 @@
                 a.href = url;
                 
                 if (type === 'logo') {
-                    a.download = 'horizontal-logo.png';
-                    alert('로고 파일을 다운로드했습니다.\n이제 깃허브의 assets/images/logo/ 폴더에 업로드해주세요.');
+                    const extension = file.name.split('.').pop() || 'png';
+                    a.download = `logo.${extension}`;
+                    alert('로고 파일을 다운로드했습니다.\n이제 깃허브의 assets/images/ 폴더에 업로드해주세요.');
                 } else if (type === 'favicon') {
                     const fileName = file.name || 'favicon.ico';
                     a.download = fileName;
@@ -343,7 +370,7 @@
                     url: base64Image, // 임시로 Base64 사용
                     message: '파일을 다운로드했습니다. 깃허브에 수동으로 업로드해주세요.',
                     githubPath: type === 'logo' 
-                        ? 'assets/images/logo/horizontal-logo.png'
+                        ? 'assets/images/logo.png'
                         : `assets/images/${file.name || 'favicon.ico'}`
                 };
             } catch (error) {
@@ -520,6 +547,51 @@
             // CTA 버튼
             cta_join_button: "지금 가입하기",
             cta_contact_button: "문의하기",
+            // About 페이지 (소개 페이지)
+            about_hero_title: "함께 성장하는 사업가 네트워크",
+            about_hero_desc: "부산 지역 청년 사업가들의 성장과 연결을 돕는 비즈니스 커뮤니티, 부청사입니다.",
+            about_mission_title: "Platform for Businessmen",
+            about_mission_desc_1: "부산청년사업가들은 정기적인 네트워킹과 실무 중심의 세미나를 통해 실질적인 도움을 제공합니다.",
+            about_mission_desc_2: "업종을 넘어선 협업과 정보 공유를 지원하며, 온·오프라인을 연계해 지속적인 비즈니스 확장을 돕습니다.",
+            about_mission_desc_3: "부청사는 단순한 모임을 넘어, 함께 성장하는 플랫폼입니다.",
+            about_why_title: "'부청사'가 필요한 이유",
+            about_why_subtitle: "혼자 고민하지 마세요. 함께하면 답이 보입니다.",
+            about_why_1_title: "고립감/압박감 해소",
+            about_why_1_desc: "같은 길을 걷는 동료들과 고민을 나누는 심리적 안전망",
+            about_why_2_title: "번아웃 방지",
+            about_why_2_desc: "일과 삶의 균형을 찾고 리프레시할 수 있는 기회 제공",
+            about_why_3_title: "성장의 한계 극복",
+            about_why_3_desc: "다양한 경험 공유를 통해 새로운 인사이트와 협업 기회 획득",
+            about_why_4_title: "네트워크 확장",
+            about_why_4_desc: "투자자, 고객, 파트너를 만나 실질적인 비즈니스 기회 창출",
+            about_history_title: "HISTORY",
+            about_history_subtitle: "부산청년사업가들이 걸어온 길",
+            about_history_2014_title: "지주회사 설립 기획",
+            about_history_2014_desc: "부산청년사업가들 필요성 검토 및 기획",
+            about_history_2017_title: "커뮤니티 구축",
+            about_history_2017_desc: "회원간 소통 내부망 구축 및 카카오 오픈채팅방 개설",
+            about_history_2018_title: "첫 오프라인 활동",
+            about_history_2018_desc: "창업자들을 위한 첫 세미나 개최 및 네트워킹 모임 운영",
+            about_history_2024_title: "정기 세미나 구축",
+            about_history_2024_desc: "창업/세무/마케팅 교육 프로그램 및 정기 모임 활성화",
+            about_history_2025_title: "비영리 법인 설립",
+            about_history_2025_desc: "공식 단체 법인화 및 온라인 플랫폼(어플) 개발 추진",
+            about_future_title: "향후 계획 및 목표",
+            about_future_subtitle: "부청사는 멈추지 않고 계속 성장합니다.",
+            about_future_1_title: "맞춤형 역량 교육",
+            about_future_1_desc: "창업 단계별 실무 교육(세무, 마케팅 등)과 멘토링 강화",
+            about_future_2_title: "공공사업 연계",
+            about_future_2_desc: "정부·지자체 사업과 협력하여 실질적 혜택 제공",
+            about_future_3_title: "온라인 플랫폼",
+            about_future_3_desc: "회원들이 연결되고 협업할 수 있는 전용 앱/웹 구축",
+            about_future_4_title: "사회공헌 활동",
+            about_future_4_desc: "멘토링, 재능기부 등 지역사회와 상생하는 프로그램",
+            about_future_5_title: "정책 제안",
+            about_future_5_desc: "부산 청년 창업가 실태조사 기반 맞춤형 정책 제안",
+            about_future_6_title: "자체 수익모델",
+            about_future_6_desc: "교육 콘텐츠, 굿즈 등 지속가능한 운영 기반 마련",
+            about_contact_phone: "010-5323-9310",
+            about_contact_email: "pujar@naver.com",
         };
 
         const defaultMembersData = [
@@ -3222,7 +3294,7 @@
                                                 {/* 로고 업로드 */}
                                                 <div className="bg-white rounded-xl p-4 border-2 border-purple-200">
                                                     <h5 className="text-sm font-bold text-gray-700 mb-3">로고 이미지</h5>
-                                                    <p className="text-xs text-gray-500 mb-3">깃허브 경로: <code className="bg-gray-100 px-2 py-1 rounded">assets/images/logo/horizontal-logo.png</code></p>
+                                                    <p className="text-xs text-gray-500 mb-3">깃허브 경로: <code className="bg-gray-100 px-2 py-1 rounded">assets/images/logo.png</code></p>
                                                     <div className="space-y-3">
                                                         <input
                                                             type="file"
@@ -3257,8 +3329,8 @@
                                                             <p className="text-xs text-blue-700">
                                                                 <strong>업로드 방법:</strong><br/>
                                                                 1. 파일 다운로드 후<br/>
-                                                                2. 깃허브 저장소의 <code>assets/images/logo/</code> 폴더로 이동<br/>
-                                                                3. 파일명을 <code>horizontal-logo.png</code>로 저장<br/>
+                                                                2. 깃허브 저장소의 <code>assets/images/</code> 폴더로 이동<br/>
+                                                                3. 파일명을 <code>logo.png</code> (또는 <code>logo.svg</code>)로 저장<br/>
                                                                 4. 커밋 및 푸시
                                                             </p>
                                                         </div>
@@ -3710,6 +3782,171 @@
                                                         />
                                                     </div>
                                                     <p className="text-[10px] text-gray-400 mt-2">💡 최적 해상도: 1920x800px (16:7 비율 권장)</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 소개 페이지 텍스트 관리 섹션 */}
+                                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-green-200">
+                                            <h4 className="text-lg font-bold text-green-700 mb-4 flex items-center gap-2">
+                                                <Icons.Edit className="text-green-600"/> 소개 페이지 텍스트 관리
+                                            </h4>
+                                            
+                                            <div className="space-y-6">
+                                                {/* 히어로 섹션 */}
+                                                <div className="bg-white rounded-xl p-4 border-2 border-green-200">
+                                                    <h5 className="text-sm font-bold text-gray-700 mb-3">히어로 섹션</h5>
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">메인 타이틀</label>
+                                                            <input type="text" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={content.about_hero_title || ''} onChange={(e) => setContent({...content, about_hero_title: e.target.value})} placeholder="함께 성장하는 사업가 네트워크" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">설명 텍스트</label>
+                                                            <textarea className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors h-20 resize-none text-sm" value={content.about_hero_desc || ''} onChange={(e) => setContent({...content, about_hero_desc: e.target.value})} placeholder="부산 지역 청년 사업가들의 성장과 연결을 돕는 비즈니스 커뮤니티, 부청사입니다." />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Mission 섹션 */}
+                                                <div className="bg-white rounded-xl p-4 border-2 border-green-200">
+                                                    <h5 className="text-sm font-bold text-gray-700 mb-3">Mission 섹션</h5>
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">제목</label>
+                                                            <input type="text" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={content.about_mission_title || ''} onChange={(e) => setContent({...content, about_mission_title: e.target.value})} placeholder="Platform for Businessmen" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">설명 1</label>
+                                                            <textarea className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors h-16 resize-none text-sm" value={content.about_mission_desc_1 || ''} onChange={(e) => setContent({...content, about_mission_desc_1: e.target.value})} placeholder="부산청년사업가들은 정기적인 네트워킹과 실무 중심의 세미나를 통해 실질적인 도움을 제공합니다." />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">설명 2</label>
+                                                            <textarea className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors h-16 resize-none text-sm" value={content.about_mission_desc_2 || ''} onChange={(e) => setContent({...content, about_mission_desc_2: e.target.value})} placeholder="업종을 넘어선 협업과 정보 공유를 지원하며, 온·오프라인을 연계해 지속적인 비즈니스 확장을 돕습니다." />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">설명 3</label>
+                                                            <textarea className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors h-16 resize-none text-sm" value={content.about_mission_desc_3 || ''} onChange={(e) => setContent({...content, about_mission_desc_3: e.target.value})} placeholder="부청사는 단순한 모임을 넘어, 함께 성장하는 플랫폼입니다." />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Why We Need It 섹션 */}
+                                                <div className="bg-white rounded-xl p-4 border-2 border-green-200">
+                                                    <h5 className="text-sm font-bold text-gray-700 mb-3">필요한 이유 섹션</h5>
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">제목</label>
+                                                            <input type="text" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={content.about_why_title || ''} onChange={(e) => setContent({...content, about_why_title: e.target.value})} placeholder="'부청사'가 필요한 이유" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">서브타이틀</label>
+                                                            <input type="text" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={content.about_why_subtitle || ''} onChange={(e) => setContent({...content, about_why_subtitle: e.target.value})} placeholder="혼자 고민하지 마세요. 함께하면 답이 보입니다." />
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-gray-600 mb-1">항목 1 제목</label>
+                                                                <input type="text" className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors text-xs" value={content.about_why_1_title || ''} onChange={(e) => setContent({...content, about_why_1_title: e.target.value})} placeholder="고립감/압박감 해소" />
+                                                                <textarea className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors h-16 resize-none text-xs mt-1" value={content.about_why_1_desc || ''} onChange={(e) => setContent({...content, about_why_1_desc: e.target.value})} placeholder="같은 길을 걷는 동료들과 고민을 나누는 심리적 안전망" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-gray-600 mb-1">항목 2 제목</label>
+                                                                <input type="text" className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors text-xs" value={content.about_why_2_title || ''} onChange={(e) => setContent({...content, about_why_2_title: e.target.value})} placeholder="번아웃 방지" />
+                                                                <textarea className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors h-16 resize-none text-xs mt-1" value={content.about_why_2_desc || ''} onChange={(e) => setContent({...content, about_why_2_desc: e.target.value})} placeholder="일과 삶의 균형을 찾고 리프레시할 수 있는 기회 제공" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-gray-600 mb-1">항목 3 제목</label>
+                                                                <input type="text" className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors text-xs" value={content.about_why_3_title || ''} onChange={(e) => setContent({...content, about_why_3_title: e.target.value})} placeholder="성장의 한계 극복" />
+                                                                <textarea className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors h-16 resize-none text-xs mt-1" value={content.about_why_3_desc || ''} onChange={(e) => setContent({...content, about_why_3_desc: e.target.value})} placeholder="다양한 경험 공유를 통해 새로운 인사이트와 협업 기회 획득" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-gray-600 mb-1">항목 4 제목</label>
+                                                                <input type="text" className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors text-xs" value={content.about_why_4_title || ''} onChange={(e) => setContent({...content, about_why_4_title: e.target.value})} placeholder="네트워크 확장" />
+                                                                <textarea className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors h-16 resize-none text-xs mt-1" value={content.about_why_4_desc || ''} onChange={(e) => setContent({...content, about_why_4_desc: e.target.value})} placeholder="투자자, 고객, 파트너를 만나 실질적인 비즈니스 기회 창출" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* History 섹션 */}
+                                                <div className="bg-white rounded-xl p-4 border-2 border-green-200">
+                                                    <h5 className="text-sm font-bold text-gray-700 mb-3">History 섹션</h5>
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">제목</label>
+                                                            <input type="text" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={content.about_history_title || ''} onChange={(e) => setContent({...content, about_history_title: e.target.value})} placeholder="HISTORY" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">서브타이틀</label>
+                                                            <input type="text" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={content.about_history_subtitle || ''} onChange={(e) => setContent({...content, about_history_subtitle: e.target.value})} placeholder="부산청년사업가들이 걸어온 길" />
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-gray-600 mb-1">2014년 제목</label>
+                                                                <input type="text" className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors text-xs" value={content.about_history_2014_title || ''} onChange={(e) => setContent({...content, about_history_2014_title: e.target.value})} placeholder="지주회사 설립 기획" />
+                                                                <textarea className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors h-12 resize-none text-xs mt-1" value={content.about_history_2014_desc || ''} onChange={(e) => setContent({...content, about_history_2014_desc: e.target.value})} placeholder="부산청년사업가들 필요성 검토 및 기획" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-gray-600 mb-1">2017년 제목</label>
+                                                                <input type="text" className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors text-xs" value={content.about_history_2017_title || ''} onChange={(e) => setContent({...content, about_history_2017_title: e.target.value})} placeholder="커뮤니티 구축" />
+                                                                <textarea className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors h-12 resize-none text-xs mt-1" value={content.about_history_2017_desc || ''} onChange={(e) => setContent({...content, about_history_2017_desc: e.target.value})} placeholder="회원간 소통 내부망 구축 및 카카오 오픈채팅방 개설" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-gray-600 mb-1">2018년 제목</label>
+                                                                <input type="text" className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors text-xs" value={content.about_history_2018_title || ''} onChange={(e) => setContent({...content, about_history_2018_title: e.target.value})} placeholder="첫 오프라인 활동" />
+                                                                <textarea className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors h-12 resize-none text-xs mt-1" value={content.about_history_2018_desc || ''} onChange={(e) => setContent({...content, about_history_2018_desc: e.target.value})} placeholder="창업자들을 위한 첫 세미나 개최 및 네트워킹 모임 운영" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-gray-600 mb-1">2024년 제목</label>
+                                                                <input type="text" className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors text-xs" value={content.about_history_2024_title || ''} onChange={(e) => setContent({...content, about_history_2024_title: e.target.value})} placeholder="정기 세미나 구축" />
+                                                                <textarea className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors h-12 resize-none text-xs mt-1" value={content.about_history_2024_desc || ''} onChange={(e) => setContent({...content, about_history_2024_desc: e.target.value})} placeholder="창업/세무/마케팅 교육 프로그램 및 정기 모임 활성화" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-gray-600 mb-1">2025년 제목</label>
+                                                                <input type="text" className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors text-xs" value={content.about_history_2025_title || ''} onChange={(e) => setContent({...content, about_history_2025_title: e.target.value})} placeholder="비영리 법인 설립" />
+                                                                <textarea className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors h-12 resize-none text-xs mt-1" value={content.about_history_2025_desc || ''} onChange={(e) => setContent({...content, about_history_2025_desc: e.target.value})} placeholder="공식 단체 법인화 및 온라인 플랫폼(어플) 개발 추진" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Future Plans 섹션 */}
+                                                <div className="bg-white rounded-xl p-4 border-2 border-green-200">
+                                                    <h5 className="text-sm font-bold text-gray-700 mb-3">향후 계획 섹션</h5>
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">제목</label>
+                                                            <input type="text" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={content.about_future_title || ''} onChange={(e) => setContent({...content, about_future_title: e.target.value})} placeholder="향후 계획 및 목표" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">서브타이틀</label>
+                                                            <input type="text" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={content.about_future_subtitle || ''} onChange={(e) => setContent({...content, about_future_subtitle: e.target.value})} placeholder="부청사는 멈추지 않고 계속 성장합니다." />
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                            {[1, 2, 3, 4, 5, 6].map(num => (
+                                                                <div key={num}>
+                                                                    <label className="block text-xs font-bold text-gray-600 mb-1">계획 {num} 제목</label>
+                                                                    <input type="text" className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors text-xs" value={content[`about_future_${num}_title`] || ''} onChange={(e) => setContent({...content, [`about_future_${num}_title`]: e.target.value})} placeholder={`계획 ${num} 제목`} />
+                                                                    <textarea className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors h-16 resize-none text-xs mt-1" value={content[`about_future_${num}_desc`] || ''} onChange={(e) => setContent({...content, [`about_future_${num}_desc`]: e.target.value})} placeholder={`계획 ${num} 설명`} />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Contact 섹션 */}
+                                                <div className="bg-white rounded-xl p-4 border-2 border-green-200">
+                                                    <h5 className="text-sm font-bold text-gray-700 mb-3">연락처 섹션</h5>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">전화번호</label>
+                                                            <input type="text" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={content.about_contact_phone || ''} onChange={(e) => setContent({...content, about_contact_phone: e.target.value})} placeholder="010-5323-9310" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-600 mb-1">이메일</label>
+                                                            <input type="text" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={content.about_contact_email || ''} onChange={(e) => setContent({...content, about_contact_email: e.target.value})} placeholder="pujar@naver.com" />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -5560,29 +5797,29 @@
         };
 
         // 소개 페이지 컴포넌트
-        const AboutView = ({ onBack }) => {
+        const AboutView = ({ onBack, content }) => {
             const historyData = [
-                { year: "2014", title: "지주회사 설립 기획", desc: "부산청년사업가들 필요성 검토 및 기획" },
-                { year: "2017", title: "커뮤니티 구축", desc: "회원간 소통 내부망 구축 및 카카오 오픈채팅방 개설" },
-                { year: "2018", title: "첫 오프라인 활동", desc: "창업자들을 위한 첫 세미나 개최 및 네트워킹 모임 운영" },
-                { year: "2024", title: "정기 세미나 구축", desc: "창업/세무/마케팅 교육 프로그램 및 정기 모임 활성화" },
-                { year: "2025", title: "비영리 법인 설립", desc: "공식 단체 법인화 및 온라인 플랫폼(어플) 개발 추진" },
+                { year: "2014", title: content.about_history_2014_title || "지주회사 설립 기획", desc: content.about_history_2014_desc || "부산청년사업가들 필요성 검토 및 기획" },
+                { year: "2017", title: content.about_history_2017_title || "커뮤니티 구축", desc: content.about_history_2017_desc || "회원간 소통 내부망 구축 및 카카오 오픈채팅방 개설" },
+                { year: "2018", title: content.about_history_2018_title || "첫 오프라인 활동", desc: content.about_history_2018_desc || "창업자들을 위한 첫 세미나 개최 및 네트워킹 모임 운영" },
+                { year: "2024", title: content.about_history_2024_title || "정기 세미나 구축", desc: content.about_history_2024_desc || "창업/세무/마케팅 교육 프로그램 및 정기 모임 활성화" },
+                { year: "2025", title: content.about_history_2025_title || "비영리 법인 설립", desc: content.about_history_2025_desc || "공식 단체 법인화 및 온라인 플랫폼(어플) 개발 추진" },
             ];
 
             const futurePlans = [
-                { id: 1, title: "맞춤형 역량 교육", desc: "창업 단계별 실무 교육(세무, 마케팅 등)과 멘토링 강화" },
-                { id: 2, title: "공공사업 연계", desc: "정부·지자체 사업과 협력하여 실질적 혜택 제공" },
-                { id: 3, title: "온라인 플랫폼", desc: "회원들이 연결되고 협업할 수 있는 전용 앱/웹 구축" },
-                { id: 4, title: "사회공헌 활동", desc: "멘토링, 재능기부 등 지역사회와 상생하는 프로그램" },
-                { id: 5, title: "정책 제안", desc: "부산 청년 창업가 실태조사 기반 맞춤형 정책 제안" },
-                { id: 6, title: "자체 수익모델", desc: "교육 콘텐츠, 굿즈 등 지속가능한 운영 기반 마련" },
+                { id: 1, title: content.about_future_1_title || "맞춤형 역량 교육", desc: content.about_future_1_desc || "창업 단계별 실무 교육(세무, 마케팅 등)과 멘토링 강화" },
+                { id: 2, title: content.about_future_2_title || "공공사업 연계", desc: content.about_future_2_desc || "정부·지자체 사업과 협력하여 실질적 혜택 제공" },
+                { id: 3, title: content.about_future_3_title || "온라인 플랫폼", desc: content.about_future_3_desc || "회원들이 연결되고 협업할 수 있는 전용 앱/웹 구축" },
+                { id: 4, title: content.about_future_4_title || "사회공헌 활동", desc: content.about_future_4_desc || "멘토링, 재능기부 등 지역사회와 상생하는 프로그램" },
+                { id: 5, title: content.about_future_5_title || "정책 제안", desc: content.about_future_5_desc || "부산 청년 창업가 실태조사 기반 맞춤형 정책 제안" },
+                { id: 6, title: content.about_future_6_title || "자체 수익모델", desc: content.about_future_6_desc || "교육 콘텐츠, 굿즈 등 지속가능한 운영 기반 마련" },
             ];
 
             const whyUs = [
-                { icon: Icons.Smile, title: "고립감/압박감 해소", desc: "같은 길을 걷는 동료들과 고민을 나누는 심리적 안전망" },
-                { icon: Icons.Shield, title: "번아웃 방지", desc: "일과 삶의 균형을 찾고 리프레시할 수 있는 기회 제공" },
-                { icon: Icons.TrendingUp, title: "성장의 한계 극복", desc: "다양한 경험 공유를 통해 새로운 인사이트와 협업 기회 획득" },
-                { icon: Icons.Users, title: "네트워크 확장", desc: "투자자, 고객, 파트너를 만나 실질적인 비즈니스 기회 창출" }
+                { icon: Icons.Smile, title: content.about_why_1_title || "고립감/압박감 해소", desc: content.about_why_1_desc || "같은 길을 걷는 동료들과 고민을 나누는 심리적 안전망" },
+                { icon: Icons.Shield, title: content.about_why_2_title || "번아웃 방지", desc: content.about_why_2_desc || "일과 삶의 균형을 찾고 리프레시할 수 있는 기회 제공" },
+                { icon: Icons.TrendingUp, title: content.about_why_3_title || "성장의 한계 극복", desc: content.about_why_3_desc || "다양한 경험 공유를 통해 새로운 인사이트와 협업 기회 획득" },
+                { icon: Icons.Users, title: content.about_why_4_title || "네트워크 확장", desc: content.about_why_4_desc || "투자자, 고객, 파트너를 만나 실질적인 비즈니스 기회 창출" }
             ];
 
             return (
@@ -5592,10 +5829,10 @@
                         <div className="container mx-auto max-w-3xl text-center">
                             <div className="flex justify-center mb-4 animate-fade-in-up">
                                 <img 
-                                    src="./assets/images/since-2017-banner.png" 
-                                    alt="함께 성장하는 사업가 네트워크 Since 2017" 
+                                    src="./assets/images/2017.png" 
+                                    alt="Since 2017" 
                                     className="h-auto max-w-full object-contain"
-                                    style={{maxHeight: '120px'}}
+                                    style={{maxHeight: '30px'}}
                                     onError={(e) => {
                                         e.target.onerror = null;
                                         e.target.style.display = 'none';
@@ -5607,10 +5844,22 @@
                                 />
                             </div>
                             <h1 className="text-4xl md:text-5xl font-black text-dark mb-6 leading-tight break-keep animate-fade-in-up" style={{animationDelay: '0.1s'}}>
-                                함께 성장하는 <br className="md:hidden"/> <span className="text-brand">사업가 네트워크</span>
+                                {content.about_hero_title ? (
+                                    <>
+                                        {content.about_hero_title.split(' ').map((word, idx, arr) => (
+                                            <span key={idx}>
+                                                {word.includes('사업가') || word.includes('네트워크') ? <span className="text-brand">{word}</span> : word}
+                                                {idx < arr.length - 1 && ' '}
+                                                {word === '함께' && <br className="md:hidden"/>}
+                                            </span>
+                                        ))}
+                                    </>
+                                ) : (
+                                    <>함께 성장하는 <br className="md:hidden"/> <span className="text-brand">사업가 네트워크</span></>
+                                )}
                             </h1>
                             <p className="text-lg text-gray-600 max-w-xl mx-auto break-keep mb-10 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
-                                부산 지역 청년 사업가들의 성장과 연결을 돕는 <br className="hidden md:block"/> 비즈니스 커뮤니티, <strong>부청사</strong>입니다.
+                                {content.about_hero_desc || "부산 지역 청년 사업가들의 성장과 연결을 돕는 비즈니스 커뮤니티, 부청사입니다."}
                             </p>
                             <div className="w-full h-56 md:h-80 rounded-3xl overflow-hidden shadow-float relative animate-fade-in-up bg-gray-100 mx-auto" style={{animationDelay: '0.3s'}}>
                                 <img 
@@ -5629,16 +5878,30 @@
                         <div className="container mx-auto max-w-4xl">
                             <div className="flex flex-col md:flex-row gap-10 items-center">
                                 <div className="flex-1">
-                                    <h2 className="text-3xl font-bold text-dark mb-6">Platform for <br/><span className="text-brand">Businessmen</span></h2>
+                                    <h2 className="text-3xl font-bold text-dark mb-6">
+                                        {content.about_mission_title ? (
+                                            <>
+                                                {content.about_mission_title.split(' ').map((word, idx) => (
+                                                    <span key={idx}>
+                                                        {word === 'Businessmen' ? <span className="text-brand">{word}</span> : word}
+                                                        {idx < content.about_mission_title.split(' ').length - 1 && ' '}
+                                                        {word === 'for' && <br/>}
+                                                    </span>
+                                                ))}
+                                            </>
+                                        ) : (
+                                            <>Platform for <br/><span className="text-brand">Businessmen</span></>
+                                        )}
+                                    </h2>
                                     <div className="space-y-4 text-gray-600 leading-relaxed text-justify break-keep text-sm md:text-base">
                                         <p>
-                                            <strong>부산청년사업가들</strong>은 정기적인 네트워킹과 실무 중심의 세미나를 통해 실질적인 도움을 제공합니다.
+                                            {content.about_mission_desc_1 || "부산청년사업가들은 정기적인 네트워킹과 실무 중심의 세미나를 통해 실질적인 도움을 제공합니다."}
                                         </p>
                                         <p>
-                                            업종을 넘어선 협업과 정보 공유를 지원하며, 온·오프라인을 연계해 지속적인 비즈니스 확장을 돕습니다.
+                                            {content.about_mission_desc_2 || "업종을 넘어선 협업과 정보 공유를 지원하며, 온·오프라인을 연계해 지속적인 비즈니스 확장을 돕습니다."}
                                         </p>
                                         <p>
-                                            부청사는 단순한 모임을 넘어, 함께 성장하는 플랫폼입니다.
+                                            {content.about_mission_desc_3 || "부청사는 단순한 모임을 넘어, 함께 성장하는 플랫폼입니다."}
                                         </p>
                                     </div>
                                 </div>
@@ -5666,8 +5929,21 @@
                     <section className="py-20 px-6 bg-soft">
                         <div className="container mx-auto max-w-5xl">
                             <div className="text-center mb-12">
-                                <h2 className="text-3xl font-bold text-dark mb-2">'부청사'가 <span className="text-brand">필요한 이유</span></h2>
-                                <p className="text-gray-500 text-sm">혼자 고민하지 마세요. 함께하면 답이 보입니다.</p>
+                                <h2 className="text-3xl font-bold text-dark mb-2">
+                                    {content.about_why_title ? (
+                                        <>
+                                            {content.about_why_title.split(' ').map((word, idx) => (
+                                                <span key={idx}>
+                                                    {word === '필요한' ? <span className="text-brand">{word}</span> : word}
+                                                    {idx < content.about_why_title.split(' ').length - 1 && ' '}
+                                                </span>
+                                            ))}
+                                        </>
+                                    ) : (
+                                        <>'부청사'가 <span className="text-brand">필요한 이유</span></>
+                                    )}
+                                </h2>
+                                <p className="text-gray-500 text-sm">{content.about_why_subtitle || "혼자 고민하지 마세요. 함께하면 답이 보입니다."}</p>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {whyUs.map((item, idx) => (
@@ -5687,8 +5963,8 @@
                     <section className="py-20 px-6 bg-white overflow-hidden">
                         <div className="container mx-auto max-w-3xl">
                             <div className="text-center mb-12">
-                                <h2 className="text-3xl font-bold text-dark">HISTORY</h2>
-                                <p className="text-gray-500 mt-2 text-sm">부산청년사업가들이 걸어온 길</p>
+                                <h2 className="text-3xl font-bold text-dark">{content.about_history_title || "HISTORY"}</h2>
+                                <p className="text-gray-500 mt-2 text-sm">{content.about_history_subtitle || "부산청년사업가들이 걸어온 길"}</p>
                                                     </div>
                             <div className="relative timeline-line pl-0 md:pl-0">
                                 {historyData.map((item, idx) => (
@@ -5710,8 +5986,8 @@
                     <section className="py-20 px-6 bg-soft">
                         <div className="container mx-auto max-w-5xl">
                             <div className="text-center mb-12">
-                                <h2 className="text-3xl font-bold text-dark mb-3">향후 계획 및 목표</h2>
-                                <p className="text-gray-500 text-sm">부청사는 멈추지 않고 계속 성장합니다.</p>
+                                <h2 className="text-3xl font-bold text-dark mb-3">{content.about_future_title || "향후 계획 및 목표"}</h2>
+                                <p className="text-gray-500 text-sm">{content.about_future_subtitle || "부청사는 멈추지 않고 계속 성장합니다."}</p>
                                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                 {futurePlans.map((plan) => (
@@ -5735,14 +6011,14 @@
                                         <Icons.Phone size={24} />
                                 </div>
                                     <h3 className="font-bold text-gray-500 mb-1 text-sm">문의 전화</h3>
-                                    <p className="text-xl font-bold text-dark">010-5323-9310</p>
+                                    <p className="text-xl font-bold text-dark">{content.about_contact_phone || "010-5323-9310"}</p>
                             </div>
                                 <div className="bg-white p-6 rounded-2xl shadow-sm flex-1 flex flex-col items-center border border-gray-100">
                                     <div className="w-12 h-12 bg-brand/10 text-brand rounded-full flex items-center justify-center mb-3">
                                         <Icons.Mail size={24} />
                                     </div>
                                     <h3 className="font-bold text-gray-500 mb-1 text-sm">이메일</h3>
-                                    <p className="text-xl font-bold text-dark">pujar@naver.com</p>
+                                    <p className="text-xl font-bold text-dark">{content.about_contact_email || "pujar@naver.com"}</p>
                                 </div>
                             </div>
                             <div className="mt-10 text-gray-400 text-xs">
@@ -6762,7 +7038,7 @@
                     setCurrentView('home');
                     return null;
                 }
-                if (currentView === 'about') return <AboutView onBack={() => setCurrentView('home')} />;
+                if (currentView === 'about') return <AboutView onBack={() => setCurrentView('home')} content={content} />;
                 
                 return (
                     <>
@@ -7049,16 +7325,23 @@
                             <div className="flex items-center cursor-pointer group h-10 md:h-12 overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
                                 {/* 🌟 Logo Image: 부산청년사업가들 로고 */}
                                 <img 
-                                    src="/assets/images/logo/horizontal-logo.png" 
+                                    src="./assets/images/logo.png" 
                                     alt="부산청년사업가들" 
                                     className="h-full w-auto object-contain hover:opacity-90 transition-opacity" 
                                     onError={(e) => {
                                         e.target.onerror = null;
-                                        e.target.style.display = 'none';
-                                        const fallback = document.createElement('div');
-                                        fallback.className = 'text-xl md:text-2xl font-black text-brand';
-                                        fallback.textContent = '부청사';
-                                        e.target.parentNode.appendChild(fallback);
+                                        // 상대 경로와 절대 경로 모두 시도
+                                        if (e.target.src.includes('/assets/')) {
+                                            e.target.src = './assets/images/logo.png';
+                                        } else if (e.target.src.includes('./assets/')) {
+                                            e.target.src = 'assets/images/logo.png';
+                                        } else {
+                                            e.target.style.display = 'none';
+                                            const fallback = document.createElement('div');
+                                            fallback.className = 'text-xl md:text-2xl font-black text-brand';
+                                            fallback.textContent = '부청사';
+                                            e.target.parentNode.appendChild(fallback);
+                                        }
                                     }}
                                 />
                             </div>
@@ -7111,16 +7394,23 @@
                                 <div>
                                     <div className="flex items-center gap-2 mb-4 h-10 overflow-hidden">
                                         <img 
-                                            src="/assets/images/logo/horizontal-logo.png" 
+                                            src="./assets/images/logo.png" 
                                             alt="부산청년사업가들" 
                                             className="h-full w-auto object-contain" 
                                             onError={(e) => {
                                                 e.target.onerror = null;
-                                                e.target.style.display = 'none';
-                                                const fallback = document.createElement('div');
-                                                fallback.className = 'text-xl font-black text-brand';
-                                                fallback.textContent = '부청사';
-                                                e.target.parentNode.appendChild(fallback);
+                                                // 상대 경로와 절대 경로 모두 시도
+                                                if (e.target.src.includes('/assets/')) {
+                                                    e.target.src = './assets/images/logo.png';
+                                                } else if (e.target.src.includes('./assets/')) {
+                                                    e.target.src = 'assets/images/logo.png';
+                                                } else {
+                                                    e.target.style.display = 'none';
+                                                    const fallback = document.createElement('div');
+                                                    fallback.className = 'text-xl font-black text-brand';
+                                                    fallback.textContent = '부청사';
+                                                    e.target.parentNode.appendChild(fallback);
+                                                }
                                             }}
                                         />
                                     </div>
