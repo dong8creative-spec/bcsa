@@ -6,6 +6,14 @@
     <meta name="description" content="부산 지역 청년 사업가들이 모여 아이디어를 공유하고, 네트워킹하며 함께 성장해나가는 커뮤니티">
     <title>부산청년사업가들 - Busan Young CEO Community</title>
     
+    <!-- SVG 파비콘 (라이트/다크 모드 자동 지원) -->
+    <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg" id="favicon-svg">
+    <!-- 폴백용 기존 파비콘 (SVG를 지원하지 않는 브라우저용) -->
+    <link rel="icon" type="image/x-icon" href="/assets/images/favicon.ico" id="favicon-ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png" id="favicon-32">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png" id="favicon-16">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png">
+    
     <!-- 폰트 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -56,6 +64,7 @@
                         'zoom-in': 'zoomIn 0.2s ease-out forwards',
                         'scroll-right': 'scrollRight 40s linear infinite',
                         'scroll-right-fast': 'scrollRight 20s linear infinite', // 세미나 후기용 (2배 속도)
+                        'scroll-left-slow': 'scrollLeft 60s linear infinite', // 후기용 (반대 방향, 3배 느림)
                     },
                     keyframes: {
                         fadeInDown: {
@@ -77,6 +86,10 @@
                         scrollRight: {
                             '0%': { transform: 'translateX(-50%)' },
                             '100%': { transform: 'translateX(0)' },
+                        },
+                        scrollLeft: {
+                            '0%': { transform: 'translateX(0)' },
+                            '100%': { transform: 'translateX(-50%)' },
                         }
                     }
                 }
@@ -136,6 +149,9 @@
         /* Hide Scrollbar */
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* SVG 파비콘 색상 제어 (추가 보완) */
+        /* SVG 파일 내부의 CSS가 작동하지 않는 경우를 대비한 추가 스타일 */
     </style>
 </head>
 <body>
@@ -159,6 +175,98 @@
         */
 
         const { useState, useEffect, useRef } = React;
+
+        // ==========================================
+        // 🌓 SVG 파비콘 다크 모드 관리
+        // ==========================================
+        // SVG 파비콘은 CSS의 prefers-color-scheme를 사용하여 자동으로 색상이 변경됩니다.
+        // SVG 파일 내부에 CSS가 포함되어 있어 별도의 JavaScript 처리가 필요 없습니다.
+        // 다만, 일부 브라우저에서는 SVG 내부 CSS가 작동하지 않을 수 있으므로
+        // 동적 업데이트를 위한 함수를 제공합니다.
+        
+        const updateSVGFaviconForTheme = () => {
+            const faviconSvg = document.getElementById('favicon-svg');
+            if (!faviconSvg) return;
+            
+            const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const lightColor = '#0045a5'; // 브랜드 블루 (라이트 모드)
+            const darkColor = '#60a5fa';  // 밝은 블루 (다크 모드)
+            
+            // SVG 파일을 동적으로 로드하여 색상 업데이트
+            fetch('/assets/images/favicon.svg')
+                .then(response => response.text())
+                .then(svgText => {
+                    // SVG 내용에서 색상 업데이트
+                    let updatedSvg = svgText;
+                    
+                    // CSS 미디어 쿼리가 작동하지 않는 경우를 대비하여 직접 색상 변경
+                    if (isDarkMode) {
+                        updatedSvg = updatedSvg.replace(/#0045a5/g, darkColor);
+                        updatedSvg = updatedSvg.replace(/opacity:\s*0\.1/g, 'opacity: 0.2');
+                    } else {
+                        updatedSvg = updatedSvg.replace(/#60a5fa/g, lightColor);
+                        updatedSvg = updatedSvg.replace(/opacity:\s*0\.2/g, 'opacity: 0.1');
+                    }
+                    
+                    // Data URI로 변환하여 적용
+                    const svgBlob = new Blob([updatedSvg], { type: 'image/svg+xml' });
+                    const url = URL.createObjectURL(svgBlob);
+                    faviconSvg.href = url;
+                    
+                    // 메모리 정리
+                    setTimeout(() => URL.revokeObjectURL(url), 100);
+                })
+                .catch(() => {
+                    // SVG 파일이 없으면 기본 파비콘 사용
+                    console.log('SVG 파비콘 파일을 찾을 수 없습니다. 기본 파비콘을 사용합니다.');
+                });
+        };
+
+        // 초기 로드 시 SVG 파비콘 설정
+        // SVG 파일이 있으면 자동으로 CSS 미디어 쿼리가 작동하지만,
+        // 일부 브라우저 호환성을 위해 JavaScript로도 업데이트
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                // SVG 파일이 있으면 사용, 없으면 동적 생성
+                const faviconSvg = document.getElementById('favicon-svg');
+                if (faviconSvg) {
+                    // SVG 파일 존재 여부 확인
+                    fetch('/assets/images/favicon.svg', { method: 'HEAD' })
+                        .then(() => {
+                            // SVG 파일이 있으면 사용 (CSS가 자동으로 색상 제어)
+                            faviconSvg.href = '/assets/images/favicon.svg';
+                            // 추가로 JavaScript로도 업데이트 (호환성)
+                            setTimeout(updateSVGFaviconForTheme, 100);
+                        })
+                        .catch(() => {
+                            // SVG 파일이 없으면 동적 생성
+                            updateSVGFaviconForTheme();
+                        });
+                }
+            });
+        } else {
+            const faviconSvg = document.getElementById('favicon-svg');
+            if (faviconSvg) {
+                fetch('/assets/images/favicon.svg', { method: 'HEAD' })
+                    .then(() => {
+                        faviconSvg.href = '/assets/images/favicon.svg';
+                        setTimeout(updateSVGFaviconForTheme, 100);
+                    })
+                    .catch(() => {
+                        updateSVGFaviconForTheme();
+                    });
+            }
+        }
+        
+        // 다크 모드 변경 감지
+        if (window.matchMedia) {
+            const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            if (darkModeQuery.addEventListener) {
+                darkModeQuery.addEventListener('change', updateSVGFaviconForTheme);
+            } else if (darkModeQuery.addListener) {
+                darkModeQuery.addListener(updateSVGFaviconForTheme);
+            }
+        }
 
         // ==========================================
         // 🔐 PortOne 초기화
@@ -200,6 +308,46 @@
                 }
             } catch (error) {
                 console.error('ImgBB 업로드 오류:', error);
+                throw error;
+            }
+        };
+
+        // 로고/파비콘용 깃허브 업로드 가이드 함수
+        // 실제 깃허브 업로드는 GitHub API를 사용하거나 수동 업로드 필요
+        const uploadLogoOrFaviconToGitHub = async (file, type) => {
+            // 깃허브에 직접 업로드하는 것은 GitHub API 토큰이 필요하므로
+            // 여기서는 파일을 다운로드할 수 있도록 Base64 데이터 URI를 제공
+            try {
+                const base64Image = await fileToBase64(file);
+                
+                // 파일 다운로드 링크 생성
+                const blob = await fetch(base64Image).then(r => r.blob());
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                
+                if (type === 'logo') {
+                    a.download = 'horizontal-logo.png';
+                    alert('로고 파일을 다운로드했습니다.\n이제 깃허브의 assets/images/logo/ 폴더에 업로드해주세요.');
+                } else if (type === 'favicon') {
+                    const fileName = file.name || 'favicon.ico';
+                    a.download = fileName;
+                    alert('파비콘 파일을 다운로드했습니다.\n이제 깃허브의 assets/images/ 폴더에 업로드해주세요.');
+                }
+                
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                return {
+                    success: true,
+                    url: base64Image, // 임시로 Base64 사용
+                    message: '파일을 다운로드했습니다. 깃허브에 수동으로 업로드해주세요.',
+                    githubPath: type === 'logo' 
+                        ? 'assets/images/logo/horizontal-logo.png'
+                        : `assets/images/${file.name || 'favicon.ico'}`
+                };
+            } catch (error) {
+                console.error('파일 처리 오류:', error);
                 throw error;
             }
         };
@@ -3063,6 +3211,108 @@
                                         <h3 className="font-bold text-dark flex items-center gap-2"><Icons.Edit className="text-brand"/> 페이지 설정</h3>
                                     </div>
                                     <div className="p-6 space-y-6">
+                                        {/* 로고 및 파비콘 관리 섹션 */}
+                                        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border-2 border-purple-200">
+                                            <h4 className="text-lg font-bold text-purple-700 mb-4 flex items-center gap-2">
+                                                <Icons.Camera className="text-purple-600"/> 로고 및 파비콘 관리 (깃허브 업로드)
+                                            </h4>
+                                            <p className="text-xs text-gray-600 mb-4">로고와 파비콘은 깃허브 저장소에 직접 업로드해야 합니다. 파일을 다운로드한 후 깃허브에 수동으로 업로드해주세요.</p>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {/* 로고 업로드 */}
+                                                <div className="bg-white rounded-xl p-4 border-2 border-purple-200">
+                                                    <h5 className="text-sm font-bold text-gray-700 mb-3">로고 이미지</h5>
+                                                    <p className="text-xs text-gray-500 mb-3">깃허브 경로: <code className="bg-gray-100 px-2 py-1 rounded">assets/images/logo/horizontal-logo.png</code></p>
+                                                    <div className="space-y-3">
+                                                        <input
+                                                            type="file"
+                                                            accept="image/png,image/jpeg,image/svg+xml"
+                                                            className="hidden"
+                                                            id="logo-upload-github"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files[0];
+                                                                if (!file) return;
+                                                                if (file.size > 5 * 1024 * 1024) {
+                                                                    alert('파일 크기는 5MB 이하로 제한됩니다.');
+                                                                    return;
+                                                                }
+                                                                try {
+                                                                    const result = await uploadLogoOrFaviconToGitHub(file, 'logo');
+                                                                    if (result && result.success) {
+                                                                        console.log('로고 파일 준비 완료:', result.githubPath);
+                                                                    }
+                                                                } catch (error) {
+                                                                    alert(`로고 파일 처리에 실패했습니다: ${error.message}`);
+                                                                }
+                                                                e.target.value = '';
+                                                            }}
+                                                        />
+                                                        <label
+                                                            htmlFor="logo-upload-github"
+                                                            className="block w-full px-4 py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-colors cursor-pointer text-center text-sm font-bold"
+                                                        >
+                                                            로고 파일 다운로드 (깃허브 업로드용)
+                                                        </label>
+                                                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                                            <p className="text-xs text-blue-700">
+                                                                <strong>업로드 방법:</strong><br/>
+                                                                1. 파일 다운로드 후<br/>
+                                                                2. 깃허브 저장소의 <code>assets/images/logo/</code> 폴더로 이동<br/>
+                                                                3. 파일명을 <code>horizontal-logo.png</code>로 저장<br/>
+                                                                4. 커밋 및 푸시
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* 파비콘 업로드 */}
+                                                <div className="bg-white rounded-xl p-4 border-2 border-purple-200">
+                                                    <h5 className="text-sm font-bold text-gray-700 mb-3">파비콘 이미지</h5>
+                                                    <p className="text-xs text-gray-500 mb-3">깃허브 경로: <code className="bg-gray-100 px-2 py-1 rounded">assets/images/favicon.ico</code></p>
+                                                    <div className="space-y-3">
+                                                        <input
+                                                            type="file"
+                                                            accept=".ico,image/png,image/x-icon"
+                                                            className="hidden"
+                                                            id="favicon-upload-github"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files[0];
+                                                                if (!file) return;
+                                                                if (file.size > 5 * 1024 * 1024) {
+                                                                    alert('파일 크기는 5MB 이하로 제한됩니다.');
+                                                                    return;
+                                                                }
+                                                                try {
+                                                                    const result = await uploadLogoOrFaviconToGitHub(file, 'favicon');
+                                                                    if (result && result.success) {
+                                                                        console.log('파비콘 파일 준비 완료:', result.githubPath);
+                                                                    }
+                                                                } catch (error) {
+                                                                    alert(`파비콘 파일 처리에 실패했습니다: ${error.message}`);
+                                                                }
+                                                                e.target.value = '';
+                                                            }}
+                                                        />
+                                                        <label
+                                                            htmlFor="favicon-upload-github"
+                                                            className="block w-full px-4 py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-colors cursor-pointer text-center text-sm font-bold"
+                                                        >
+                                                            파비콘 파일 다운로드 (깃허브 업로드용)
+                                                        </label>
+                                                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                                            <p className="text-xs text-blue-700">
+                                                                <strong>업로드 방법:</strong><br/>
+                                                                1. 파일 다운로드 후<br/>
+                                                                2. 깃허브 저장소의 <code>assets/images/</code> 폴더로 이동<br/>
+                                                                3. 파일명을 <code>favicon.ico</code>로 저장<br/>
+                                                                4. 커밋 및 푸시
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         {/* 상단 메뉴 관리 섹션 */}
                                         <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-6 border-2 border-orange-200">
                                             <h4 className="text-lg font-bold text-orange-700 mb-4 flex items-center gap-2">
@@ -3969,6 +4219,22 @@
             const [likedPosts, setLikedPosts] = useState(new Set());
             const [showIdentityVerification, setShowIdentityVerification] = useState(false);
             const [pendingPostData, setPendingPostData] = useState(null);
+            const [expandedImage, setExpandedImage] = useState(null);
+
+            // ESC 키로 이미지 확대 모달 닫기
+            useEffect(() => {
+                const handleEscape = (e) => {
+                    if (e.key === 'Escape' && expandedImage) {
+                        setExpandedImage(null);
+                    }
+                };
+                if (expandedImage) {
+                    document.addEventListener('keydown', handleEscape);
+                    return () => {
+                        document.removeEventListener('keydown', handleEscape);
+                    };
+                }
+            }, [expandedImage]);
 
             const handleCreatePost = () => {
                 // 모든 글 작성은 회원만 가능
@@ -4175,7 +4441,7 @@
 
                         {/* 카테고리 필터 (전체 탭일 때 표시) */}
                         {activeTab === 'all' && (() => {
-                            const categories = ['전체', '공지사항', '인력구인', '중고거래', '프로그램 후기', '건의사항'];
+                            const categories = ['전체', '공지사항', '인력구인', '중고거래', '건의사항'];
                             const availableCategories = categories.filter(cat => {
                                 if (cat === '전체') return true;
                                 if (cat === '공지사항' && !isAdmin) return false;
@@ -4238,9 +4504,9 @@
                             );
                         })()}
 
-                        {posts.length > 0 ? (
-                            <div className="space-y-4">
-                                {posts.filter(post => {
+                        {posts.length > 0 ? (() => {
+                            // 전체 탭일 때: 공지사항과 일반 게시글 분리
+                            const filteredPosts = posts.filter(post => {
                                     // 건의사항은 공개 표시 안됨 (관리자만 볼 수 있음)
                                     if (post.category === '건의사항' && !isAdmin) return false;
                                     
@@ -4249,17 +4515,54 @@
                                     if (activeTab === 'all' && post.category === '프로그램 후기') return false;
                                     
                                     // 카테고리 필터링 (전체 탭일 때)
-                                    if (activeTab === 'all' && selectedCategory !== '전체') {
-                                        if (selectedCategory === '인력구인' && post.category !== '인력구인' && post.category !== '구인구직') return false;
-                                        if (selectedCategory === '중고거래' && post.category !== '중고거래') return false;
-                                        if (selectedCategory !== '인력구인' && selectedCategory !== '중고거래' && post.category !== selectedCategory) return false;
-                                    }
+                                if (activeTab === 'all' && selectedCategory !== '전체') {
+                                    if (selectedCategory === '인력구인' && post.category !== '인력구인' && post.category !== '구인구직') return false;
+                                    if (selectedCategory === '중고거래' && post.category !== '중고거래') return false;
+                                    if (selectedCategory === '공지사항' && post.category !== '공지사항') return false;
+                                    if (selectedCategory === '건의사항' && post.category !== '건의사항') return false;
+                                }
                                     
                                     // 세미나별 필터링 (후기 탭일 때)
                                     if (activeTab === 'reviews' && selectedSeminarFilter !== '전체' && post.seminarTitle !== selectedSeminarFilter) return false;
                                     
                                     return true;
-                                }).map((post, idx) => {
+                            });
+                            
+                            // 전체 탭일 때 공지사항과 일반 게시글 분리
+                            if (activeTab === 'all') {
+                                const noticePosts = filteredPosts.filter(p => p.category === '공지사항');
+                                const otherPosts = filteredPosts.filter(p => p.category !== '공지사항');
+                                
+                                return (
+                                    <div className="space-y-4">
+                                        {/* 공지사항 섹션 (상단 고정) */}
+                                        {noticePosts.length > 0 && (
+                                            <div className="mb-6">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <Icons.Info className="w-5 h-5 text-brand" />
+                                                    <h3 className="text-lg font-bold text-dark">공지사항</h3>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {noticePosts.map((post, idx) => (
+                                                        <div key={`notice-${idx}`} className="bg-gradient-to-r from-brand/5 to-blue-50 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-all border border-brand/20 cursor-pointer" onClick={() => setSelectedPost(post)}>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-xs font-bold px-2 py-0.5 bg-brand text-white rounded-full whitespace-nowrap">공지사항</span>
+                                                                {post.isSecret && <Icons.Lock size={14} className="text-red-400 flex-shrink-0" />}
+                                                                <h3 className="text-xl font-bold text-dark flex-1 truncate">{post.title}</h3>
+                                                                <span className="text-sm text-gray-500 whitespace-nowrap">{post.author}</span>
+                                                                <span className="text-sm text-gray-500 whitespace-nowrap">조회 {post.views || 0}</span>
+                                                                <span className="text-xs text-gray-400 whitespace-nowrap">{post.date}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {/* 일반 게시글 섹션 */}
+                                        {otherPosts.length > 0 && (
+                                            <div className="space-y-4">
+                                                {otherPosts.map((post, idx) => {
                                     // 구인구직 카드 형태
                                     if (post.category === '인력구인' || post.category === '구인구직') {
                                         return (
@@ -4401,10 +4704,99 @@
                                             )}
                                         </div>
                                     </div>
-                                    );
-                                })}
+                                                    );
+                                                })}
                             </div>
-                        ) : (
+                                        )}
+                                    </div>
+                                );
+                            } else {
+                                // 후기 탭일 때는 기존처럼 표시
+                                return (
+                                    <div className="space-y-4">
+                                        {filteredPosts.map((post, idx) => (
+                                            <div key={idx} className="bg-white rounded-3xl p-6 shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 cursor-pointer" onClick={() => setSelectedPost(post)}>
+                                                <div className="flex items-start justify-between mb-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xs font-bold px-3 py-1 bg-brand/10 text-brand rounded-full">{post.category}</span>
+                                                        {post.isSecret && <Icons.Lock size={16} className="text-red-400" />}
+                                                    </div>
+                                                    <span className="text-xs text-gray-400">{post.date}</span>
+                                                </div>
+                                                <h3 className="text-xl font-bold text-dark mb-2">{post.title}</h3>
+                                                {post.category === '프로그램 후기' && post.seminarTitle && (
+                                                    <p className="text-xs text-gray-500 mb-2">프로그램: {post.seminarTitle}</p>
+                                                )}
+                                                {post.category === '프로그램 후기' && post.rating && (
+                                                    <div className="mb-2 flex items-center gap-2">
+                                                        <div className="flex gap-1">
+                                                            {[1, 2, 3, 4, 5].map(star => (
+                                                                post.rating >= star ? (
+                                                                    <Icons.Star key={star} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                                                                ) : (
+                                                                    <Icons.Star key={star} className="w-4 h-4 text-gray-300" />
+                                                                )
+                                                            ))}
+                                                        </div>
+                                                        <span className="text-xs text-gray-500">({post.rating}/5)</span>
+                                                    </div>
+                                                )}
+                                                {post.category === '프로그램 후기' && post.images && post.images.length > 0 && (
+                                                    <div className="mb-4 grid grid-cols-2 gap-3">
+                                                        {post.images.map((img, imgIdx) => (
+                                                            <img key={imgIdx} src={img} alt={`후기 사진 ${imgIdx + 1}`} className="w-full h-48 object-cover rounded-xl cursor-pointer hover:opacity-90 transition-opacity" onClick={(e) => { e.stopPropagation(); setExpandedImage(img); }} />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                                                        <span>{post.author}</span>
+                                                        <span>조회 {post.views || 0}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const newLikedPosts = new Set(likedPosts);
+                                                                if (newLikedPosts.has(post.id)) {
+                                                                    newLikedPosts.delete(post.id);
+                                                                    post.likes = (post.likes || 0) - 1;
+                                                                } else {
+                                                                    newLikedPosts.add(post.id);
+                                                                    post.likes = (post.likes || 0) + 1;
+                                                                }
+                                                                setLikedPosts(newLikedPosts);
+                                                            }}
+                                                            className={`flex items-center gap-1 transition-colors ${
+                                                                likedPosts.has(post.id) ? 'text-red-500' : 'text-gray-400 hover:text-red-500'
+                                                            }`}
+                                                        >
+                                                            <Icons.Star className={`w-4 h-4 ${likedPosts.has(post.id) ? 'fill-red-500' : ''}`} />
+                                                            <span>{post.likes || 0}</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedPost(post);
+                                                            }}
+                                                            className="flex items-center gap-1 text-gray-400 hover:text-brand transition-colors"
+                                                        >
+                                                            <Icons.MessageCircle className="w-4 h-4" />
+                                                            <span>{(post.comments || []).length}</span>
+                                                        </button>
+                                                    </div>
+                                                    {(isAdmin || (currentUser && post.author === currentUser.name)) && (
+                                                        <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteClick(post); }} className="text-red-400 hover:text-red-600 text-sm font-bold">
+                                                            삭제
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            }
+                        })() : (
                             <div className="text-center py-20 text-gray-500">
                                 <p>등록된 게시글이 없습니다.</p>
                             </div>
@@ -4546,7 +4938,7 @@
                                     {selectedPost.category === '프로그램 후기' && selectedPost.images && selectedPost.images.length > 0 && (
                                         <div className="mt-4 grid grid-cols-2 gap-3">
                                             {selectedPost.images.map((img, idx) => (
-                                                <img key={idx} src={img} alt={`후기 사진 ${idx + 1}`} className="w-full h-48 object-cover rounded-xl" />
+                                                <img key={idx} src={img} alt={`후기 사진 ${idx + 1}`} className="w-full h-48 object-cover rounded-xl cursor-pointer hover:opacity-90 transition-opacity" onClick={() => setExpandedImage(img)} />
                                             ))}
                                         </div>
                                     )}
@@ -4673,6 +5065,25 @@
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                        </div>
+                    )}
+                    {expandedImage && (
+                        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm" onClick={() => setExpandedImage(null)}>
+                            <div className="relative max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+                                <button 
+                                    type="button"
+                                    onClick={() => setExpandedImage(null)}
+                                    className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-all z-10"
+                                >
+                                    <Icons.X size={24} />
+                                </button>
+                                <img 
+                                    src={expandedImage} 
+                                    alt="확대된 이미지" 
+                                    className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
                             </div>
                         </div>
                     )}
@@ -6445,9 +6856,9 @@
                             
                             return (
                                 <div className="relative w-full bg-gradient-to-r from-blue-50 to-indigo-50 py-6 overflow-hidden border-t border-b border-blue-200/30 mb-20">
-                                    <div className="scrolling-wrapper animate-scroll-right-fast flex items-stretch gap-4 px-4">
+                                    <div className="scrolling-wrapper animate-scroll-left-slow flex items-stretch gap-4 px-4">
                                         {reviewPosts.map((review, idx) => (
-                                            <div key={`review-orig-${idx}`} className="bg-white rounded-xl shadow-md overflow-hidden shrink-0 border border-blue-100 cursor-pointer hover:shadow-lg transition-shadow flex flex-col" style={{ width: '400px', minWidth: '400px' }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('community'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
+                                            <div key={`review-orig-${idx}`} className="bg-white rounded-xl shadow-md overflow-hidden shrink-0 border border-blue-100 cursor-pointer hover:shadow-lg transition-shadow flex flex-col" style={{ minWidth: '300px', maxWidth: '600px', width: 'auto' }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('community'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
                                                 <div className="p-4 flex-1 flex flex-col">
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-500 text-white rounded">프로그램 후기</span>
@@ -6466,39 +6877,21 @@
                                                     <h4 className="font-bold text-dark text-base mb-2 line-clamp-2 break-keep">{review.title}</h4>
                                                     <p className="text-sm text-gray-600 line-clamp-3 break-keep flex-1">{review.content}</p>
                                                 </div>
-                                                {review.images && review.images.length > 0 ? (
-                                                    <div className="flex gap-2 p-4 pt-0">
+                                                {review.images && review.images.length > 0 && (
+                                                    <div className="flex p-4" style={{ gap: '10px', display: 'flex', paddingTop: '10px', justifyContent: 'flex-start' }}>
                                                         {review.images.slice(0, 2).map((img, imgIdx) => (
-                                                            <div key={imgIdx} className="flex-1" style={{ aspectRatio: imgIdx % 2 === 0 ? '3/4' : '4/3', height: '400px' }}>
-                                                                <img src={img} alt={`${review.title} 이미지 ${imgIdx + 1}`} className="w-full h-full object-cover rounded-lg" />
+                                                            <div key={imgIdx} className="flex-shrink-0" style={{ height: '204px', margin: '0' }}>
+                                                                <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                                                                    <img src={img} alt={`${review.title} 이미지 ${imgIdx + 1}`} className="w-auto h-full object-contain rounded-xl bg-gray-50" style={{ transform: 'scale(1.7)' }} onLoad={(e) => { const imgEl = e.target; if (imgEl.naturalWidth > 0 && imgEl.naturalHeight > 0 && review.images.length === 1) { const aspectRatio = imgEl.naturalWidth / imgEl.naturalHeight; const imageWidth = aspectRatio * 204 * 1.7; let cardEl = imgEl.closest('.bg-white.rounded-xl'); if (cardEl) { const cardWidth = Math.max(300, Math.min(600, 32 + imageWidth + 16)); cardEl.style.width = `${cardWidth}px`; } } }} />
+                                                </div>
                                             </div>
                                         ))}
-                                                        {review.images.length === 1 && (
-                                                            <div className="flex-1" style={{ aspectRatio: '4/3', height: '400px' }}>
-                                                                <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">
-                                                                    <Icons.Camera className="w-12 h-12 text-gray-300" />
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex gap-2 p-4 pt-0">
-                                                        <div className="flex-1" style={{ aspectRatio: '3/4', height: '400px' }}>
-                                                            <div className="w-full h-full bg-gradient-to-br from-brand/20 to-blue-500/20 rounded-lg flex items-center justify-center">
-                                                                <Icons.Star className="w-12 h-12 text-brand/40" />
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex-1" style={{ aspectRatio: '4/3', height: '400px' }}>
-                                                            <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-indigo-500/20 rounded-lg flex items-center justify-center">
-                                                                <Icons.Star className="w-12 h-12 text-blue-500/40" />
-                                                            </div>
-                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
                                         ))}
                                         {reviewPosts.map((review, idx) => (
-                                            <div key={`review-clone-${idx}`} className="bg-white rounded-xl shadow-md overflow-hidden shrink-0 border border-blue-100 cursor-pointer hover:shadow-lg transition-shadow flex flex-col" style={{ width: '400px', minWidth: '400px' }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('community'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
+                                            <div key={`review-clone-${idx}`} className="bg-white rounded-xl shadow-md overflow-hidden shrink-0 border border-blue-100 cursor-pointer hover:shadow-lg transition-shadow flex flex-col" style={{ minWidth: '300px', maxWidth: '600px', width: 'auto' }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('community'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
                                                 <div className="p-4 flex-1 flex flex-col">
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-500 text-white rounded">프로그램 후기</span>
@@ -6517,33 +6910,15 @@
                                                     <h4 className="font-bold text-dark text-base mb-2 line-clamp-2 break-keep">{review.title}</h4>
                                                     <p className="text-sm text-gray-600 line-clamp-3 break-keep flex-1">{review.content}</p>
                                                 </div>
-                                                {review.images && review.images.length > 0 ? (
-                                                    <div className="flex gap-2 p-4 pt-0">
+                                                {review.images && review.images.length > 0 && (
+                                                    <div className="flex p-4" style={{ gap: '10px', display: 'flex', paddingTop: '10px', justifyContent: 'flex-start' }}>
                                                         {review.images.slice(0, 2).map((img, imgIdx) => (
-                                                            <div key={imgIdx} className="flex-1" style={{ aspectRatio: imgIdx % 2 === 0 ? '3/4' : '4/3', height: '400px' }}>
-                                                                <img src={img} alt={`${review.title} 이미지 ${imgIdx + 1}`} className="w-full h-full object-cover rounded-lg" />
-                                                            </div>
-                                                        ))}
-                                                        {review.images.length === 1 && (
-                                                            <div className="flex-1" style={{ aspectRatio: '4/3', height: '400px' }}>
-                                                                <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">
-                                                                    <Icons.Camera className="w-12 h-12 text-gray-300" />
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex gap-2 p-4 pt-0">
-                                                        <div className="flex-1" style={{ aspectRatio: '3/4', height: '400px' }}>
-                                                            <div className="w-full h-full bg-gradient-to-br from-brand/20 to-blue-500/20 rounded-lg flex items-center justify-center">
-                                                                <Icons.Star className="w-12 h-12 text-brand/40" />
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex-1" style={{ aspectRatio: '4/3', height: '400px' }}>
-                                                            <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-indigo-500/20 rounded-lg flex items-center justify-center">
-                                                                <Icons.Star className="w-12 h-12 text-blue-500/40" />
-                                                            </div>
-                                                        </div>
+                                                            <div key={imgIdx} className="flex-shrink-0" style={{ height: '204px', margin: '0' }}>
+                                                                <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                                                                    <img src={img} alt={`${review.title} 이미지 ${imgIdx + 1}`} className="w-auto h-full object-contain rounded-xl bg-gray-50" style={{ transform: 'scale(1.7)' }} onLoad={(e) => { const imgEl = e.target; if (imgEl.naturalWidth > 0 && imgEl.naturalHeight > 0 && review.images.length === 1) { const aspectRatio = imgEl.naturalWidth / imgEl.naturalHeight; const imageWidth = aspectRatio * 204 * 1.7; let cardEl = imgEl.closest('.bg-white.rounded-xl'); if (cardEl) { const cardWidth = Math.max(300, Math.min(600, 32 + imageWidth + 16)); cardEl.style.width = `${cardWidth}px`; } } }} />
+                                                </div>
+                                            </div>
+                                        ))}
                                                     </div>
                                                 )}
                                             </div>
@@ -6674,7 +7049,7 @@
                             <div className="flex items-center cursor-pointer group h-10 md:h-12 overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
                                 {/* 🌟 Logo Image: 부산청년사업가들 로고 */}
                                 <img 
-                                    src="./가로형-로고.png" 
+                                    src="/assets/images/logo/horizontal-logo.png" 
                                     alt="부산청년사업가들" 
                                     className="h-full w-auto object-contain hover:opacity-90 transition-opacity" 
                                     onError={(e) => {
@@ -6736,7 +7111,7 @@
                                 <div>
                                     <div className="flex items-center gap-2 mb-4 h-10 overflow-hidden">
                                         <img 
-                                            src="./가로형-로고.png" 
+                                            src="/assets/images/logo/horizontal-logo.png" 
                                             alt="부산청년사업가들" 
                                             className="h-full w-auto object-contain" 
                                             onError={(e) => {
@@ -6813,7 +7188,7 @@
                     {/* 플로팅 소셜 아이콘 (오른쪽 고정, 스크롤 따라다님) */}
                     <div className="fixed right-6 bottom-6 z-50 flex flex-col gap-3">
                         <a
-                            href="https://open.kakao.com/o/your-chat-link"
+                            href="https://open.kakao.com/o/gMWryRA"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="relative w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
@@ -6825,7 +7200,7 @@
                             </span>
                         </a>
                         <a
-                            href="https://www.instagram.com/your-instagram"
+                            href="https://www.instagram.com/businessmen_in_busan"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="relative w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
@@ -6837,7 +7212,7 @@
                             </span>
                         </a>
                         <a
-                            href="https://www.youtube.com/your-channel"
+                            href="https://www.youtube.com/@businessmen_in_busan"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="relative w-10 h-10 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
