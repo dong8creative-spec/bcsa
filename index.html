@@ -2451,7 +2451,11 @@
                 setIsLoading(true);
                 setError(null);
                 
-                try {
+                let retries = 2; // 최대 2회 재시도
+                let lastError = null;
+                
+                while (retries >= 0) {
+                    try {
                     const dateRange = getDateRange(period);
                     
                     // 입찰 유형에 따른 API 엔드포인트 선택
@@ -2488,22 +2492,34 @@
                     
                     // 여러 프록시 서비스를 순차적으로 시도 (웹에서 바로 작동)
                     const tryFetchWithProxies = async (targetUrl) => {
-                        // 타임아웃 설정 (10초)
-                        const timeoutPromise = new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('요청 시간 초과')), 10000)
-                        );
-                        
                         // 직접 호출 시도 (타임아웃 적용)
                         try {
-                            const fetchPromise = fetch(targetUrl, {
-                                method: 'GET',
-                                mode: 'cors',
-                                headers: { 'Accept': 'application/json' }
-                            });
+                            const controller = new AbortController();
+                            const timeoutId = setTimeout(() => controller.abort(), 10000);
                             
-                            const response = await Promise.race([fetchPromise, timeoutPromise]);
-                            if (response.ok) {
-                                return response;
+                            try {
+                                const response = await fetch(targetUrl, {
+                                    method: 'GET',
+                                    mode: 'cors',
+                                    headers: { 'Accept': 'application/json' },
+                                    signal: controller.signal
+                                });
+                                clearTimeout(timeoutId);
+                                
+                                if (response.ok) {
+                                    // 응답이 JSON인지 사전 확인
+                                    const contentType = response.headers.get('content-type');
+                                    if (contentType && contentType.includes('application/json')) {
+                                        return response;
+                                    }
+                                }
+                            } catch (fetchError) {
+                                clearTimeout(timeoutId);
+                                if (fetchError.name === 'AbortError') {
+                                    console.log('직접 호출 타임아웃, 프록시 시도');
+                                } else {
+                                    throw fetchError;
+                                }
                             }
                         } catch (e) {
                             console.log('직접 호출 실패, 프록시 시도');
@@ -2513,24 +2529,62 @@
                         const proxies = [
                             (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
                             (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-                            (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+                            (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+                            (url) => `https://thingproxy.freeboard.io/fetch/${url}`,
+                            (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}&origin=*`
                         ];
                         
                         for (let i = 0; i < proxies.length; i++) {
                             try {
                                 const proxyUrl = proxies[i](targetUrl);
-                                const fetchPromise = fetch(proxyUrl, {
-                                    method: 'GET',
-                                    mode: 'cors'
-                                });
+                                const controller = new AbortController();
+                                const timeoutId = setTimeout(() => controller.abort(), 10000);
                                 
-                                const response = await Promise.race([fetchPromise, timeoutPromise]);
-                                
-                                if (response.ok) {
-                                    return response;
+                                try {
+                                    const response = await fetch(proxyUrl, {
+                                        method: 'GET',
+                                        mode: 'cors',
+                                        signal: controller.signal
+                                    });
+                                    clearTimeout(timeoutId);
+                                    
+                                    if (response.ok) {
+                                        // 응답 텍스트 미리 확인
+                                        const text = await response.text();
+                                        const trimmedText = text.trim();
+                                        
+                                        // HTML 에러 페이지인지 확인
+                                        if (trimmedText.toLowerCase().startsWith('<!doctype') || 
+                                            trimmedText.toLowerCase().startsWith('<html') ||
+                                            (trimmedText.includes('Error') && !trimmedText.startsWith('{') && !trimmedText.startsWith('['))) {
+                                            console.log(`프록시 ${i + 1}가 HTML 응답 반환, 다음 프록시 시도`);
+                                            continue;
+                                        }
+                                        
+                                        // JSON 형식인지 확인
+                                        if (trimmedText.startsWith('{') || trimmedText.startsWith('[')) {
+                                            // 새로운 Response 객체 생성하여 반환
+                                            return new Response(text, {
+                                                status: response.status,
+                                                statusText: response.statusText,
+                                                headers: response.headers
+                                            });
+                                        } else {
+                                            console.log(`프록시 ${i + 1}가 유효하지 않은 응답 반환, 다음 프록시 시도`);
+                                            continue;
+                                        }
+                                    }
+                                } catch (fetchError) {
+                                    clearTimeout(timeoutId);
+                                    if (fetchError.name === 'AbortError') {
+                                        console.log(`프록시 ${i + 1} 타임아웃`);
+                                    } else {
+                                        console.log(`프록시 ${i + 1} 시도 실패:`, fetchError.message);
+                                    }
+                                    continue;
                                 }
                             } catch (error) {
-                                console.log(`프록시 ${i + 1} 시도 실패:`, error.message);
+                                console.log(`프록시 ${i + 1} 설정 오류:`, error.message);
                                 continue;
                             }
                         }
@@ -2553,6 +2607,16 @@
                     
                     // 응답이 JSON인지 확인 (HTML 에러 페이지 방지)
                     const trimmedText = responseText.trim();
+                    
+                    // HTML 에러 페이지 체크
+                    if (trimmedText.toLowerCase().startsWith('<!doctype') || 
+                        trimmedText.toLowerCase().startsWith('<html') ||
+                        trimmedText.toLowerCase().includes('<body')) {
+                        console.error('HTML 에러 페이지 수신:', trimmedText.substring(0, 300));
+                        throw new Error('프록시 서버가 HTML 에러 페이지를 반환했습니다.');
+                    }
+                    
+                    // JSON 형식 확인
                     if (!trimmedText.startsWith('{') && !trimmedText.startsWith('[')) {
                         console.error('Invalid JSON response:', trimmedText.substring(0, 200));
                         throw new Error('API가 유효하지 않은 응답을 반환했습니다.');
@@ -2587,16 +2651,39 @@
                         setBidList([]);
                         setTotalCount(0);
                     }
-                } catch (err) {
-                    console.error('나라장터 API 오류:', err);
-                    const errorMessage = err.message.includes('프록시') 
-                        ? '입찰공고 데이터를 불러오는데 실패했습니다. 네트워크 연결을 확인해주세요.'
-                        : '입찰공고 데이터를 불러오는데 실패했습니다. 잠시 후 다시 시도해주세요.';
-                    setError(errorMessage);
-                    setBidList([]);
-                } finally {
-                    setIsLoading(false);
+                        
+                        // 성공 시 루프 종료
+                        break;
+                    } catch (err) {
+                        lastError = err;
+                        console.error(`나라장터 API 오류 (재시도 ${2 - retries + 1}/3):`, err);
+                        
+                        if (retries > 0) {
+                            // 재시도 전 대기 (지수 백오프)
+                            const delay = Math.pow(2, 2 - retries) * 1000; // 1초, 2초
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            retries--;
+                        } else {
+                            // 모든 재시도 실패
+                            let errorMessage = '입찰공고 데이터를 불러오는데 실패했습니다.';
+                            
+                            if (lastError.message.includes('프록시')) {
+                                errorMessage += ' 네트워크 연결을 확인해주세요.';
+                            } else if (lastError.message.includes('타임아웃') || lastError.message.includes('시간 초과') || lastError.message.includes('AbortError')) {
+                                errorMessage += ' 요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.';
+                            } else if (lastError.message.includes('HTML') || lastError.message.includes('유효하지 않은 응답')) {
+                                errorMessage += ' 서버 응답 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+                            } else {
+                                errorMessage += ' 잠시 후 다시 시도해주세요.';
+                            }
+                            
+                            setError(errorMessage);
+                            setBidList([]);
+                        }
+                    }
                 }
+                
+                setIsLoading(false);
             };
             
             // 검색 버튼 클릭
