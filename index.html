@@ -28,6 +28,9 @@
     <!-- PortOne (구 아임포트) 본인인증 SDK -->
     <script type="text/javascript" src="https://cdn.iamport.kr/js/iamport.payment-1.2.0.js"></script>
     
+    <!-- EmailJS 라이브러리 (아이디/비밀번호 찾기 기능용) -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    
     <!-- 다음 우편번호 서비스 (API 키 불필요) -->
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     
@@ -514,6 +517,47 @@
         const verifyPassword = async (password, hashedPassword) => {
             const hash = await hashPassword(password);
             return hash === hashedPassword;
+        };
+        
+        // 임시 비밀번호 생성 (8자리 랜덤 문자열: 영문 대소문자 + 숫자)
+        const generateTemporaryPassword = () => {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let password = '';
+            for (let i = 0; i < 8; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return password;
+        };
+        
+        // EmailJS를 통한 이메일 발송
+        const sendEmailViaEmailJS = async (templateId, templateParams) => {
+            try {
+                const emailjsConfig = (typeof CONFIG !== 'undefined' && CONFIG.EMAILJS) 
+                    ? CONFIG.EMAILJS 
+                    : null;
+                
+                if (!emailjsConfig || !emailjsConfig.SERVICE_ID || !emailjsConfig.PUBLIC_KEY) {
+                    throw new Error('EmailJS 설정이 완료되지 않았습니다.');
+                }
+                
+                // EmailJS 초기화
+                if (typeof emailjs !== 'undefined') {
+                    emailjs.init(emailjsConfig.PUBLIC_KEY);
+                    
+                    const response = await emailjs.send(
+                        emailjsConfig.SERVICE_ID,
+                        templateId,
+                        templateParams
+                    );
+                    
+                    return { success: true, response };
+                } else {
+                    throw new Error('EmailJS 라이브러리가 로드되지 않았습니다.');
+                }
+            } catch (error) {
+                console.error('이메일 발송 오류:', error);
+                return { success: false, error: error.message || '이메일 발송에 실패했습니다.' };
+            }
         };
         
         // 사용자 데이터 저장
@@ -1965,7 +2009,7 @@
             return (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
                     <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60 backdrop-blur-md"></div>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md z-10 p-8 relative" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md md:max-w-2xl z-10 p-8 relative" onClick={(e) => e.stopPropagation()}>
                         <button type="button" onClick={onClose} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-all">
                             <Icons.X size={18}/>
                         </button>
@@ -1977,27 +2021,29 @@
                             <p className="text-sm text-gray-500 text-center">문의사항을 남겨주시면 관리자가 확인 후 답변드리겠습니다.</p>
                         </div>
                         <form onSubmit={handleSubmit} className="space-y-4 text-left">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-2">이름 *</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="이름을 입력하세요" 
-                                    className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" 
-                                    value={formData.name}
-                                    onChange={e => setFormData({...formData, name: e.target.value})}
-                                    disabled={!!currentUser}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-2">이메일 *</label>
-                                <input 
-                                    type="email" 
-                                    placeholder="이메일을 입력하세요" 
-                                    className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" 
-                                    value={formData.email}
-                                    onChange={e => setFormData({...formData, email: e.target.value})}
-                                    disabled={!!currentUser}
-                                />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-2">이름 *</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="이름을 입력하세요" 
+                                        className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" 
+                                        value={formData.name}
+                                        onChange={e => setFormData({...formData, name: e.target.value})}
+                                        disabled={!!currentUser}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-2">이메일 *</label>
+                                    <input 
+                                        type="email" 
+                                        placeholder="이메일을 입력하세요" 
+                                        className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" 
+                                        value={formData.email}
+                                        onChange={e => setFormData({...formData, email: e.target.value})}
+                                        disabled={!!currentUser}
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-600 mb-2">전화번호 (선택)</label>
@@ -2044,6 +2090,7 @@
             const [id, setId] = useState('');
             const [password, setPassword] = useState('');
             const [showPassword, setShowPassword] = useState(false);
+            const [showFindAccountModal, setShowFindAccountModal] = useState(false);
             
             useEffect(() => {
                 console.log('LoginModal 렌더링됨');
@@ -2054,38 +2101,348 @@
 
             const handleSubmit = (e) => { e.preventDefault(); onLogin(id, password); };
             return (
+                <>
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+                        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60 backdrop-blur-md"></div>
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md z-10 p-8 text-center relative border-[0.5px] border-brand" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-all">
+                                <Icons.X size={18}/>
+                            </button>
+                            <div className="mb-8">
+                                <div className="w-16 h-16 bg-gradient-to-br from-brand to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand/30">
+                                    <Icons.Users className="w-8 h-8 text-white" />
+                                </div>
+                                <h3 className="text-3xl font-bold text-dark mb-2">로그인</h3>
+                                <p className="text-sm text-gray-500">부청사 커뮤니티에 오신 것을 환영합니다</p>
+                            </div>
+                            <form onSubmit={handleSubmit} className="space-y-5 text-left">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-2">아이디 또는 이메일</label>
+                                    <input type="text" placeholder="아이디 또는 이메일을 입력하세요" className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" value={id} onChange={e => setId(e.target.value)} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-2">비밀번호</label>
+                                    <div className="relative">
+                                        <input type={showPassword ? "text" : "password"} placeholder="비밀번호를 입력하세요" className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors pr-12" value={password} onChange={e => setPassword(e.target.value)} />
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                                            {showPassword ? <Icons.EyeOff size={20} /> : <Icons.Eye size={20} />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <button type="submit" className="w-full py-4 bg-gradient-to-r from-brand to-blue-600 text-white font-bold rounded-2xl hover:shadow-lg hover:shadow-brand/30 transition-all mt-6 text-lg">
+                                    로그인
+                                </button>
+                            </form>
+                            <button 
+                                type="button" 
+                                onClick={(e) => { 
+                                    e.preventDefault(); 
+                                    e.stopPropagation(); 
+                                    setShowFindAccountModal(true); 
+                                }} 
+                                className="w-full mt-3 text-sm text-brand hover:text-blue-700 font-medium transition-colors underline"
+                            >
+                                아이디/비밀번호 찾기
+                            </button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="w-full mt-2 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors">
+                                취소
+                            </button>
+                        </div>
+                    </div>
+                    {showFindAccountModal && (
+                        <FindAccountModal onClose={() => setShowFindAccountModal(false)} />
+                    )}
+                </>
+            );
+        };
+
+        // 아이디/비밀번호 찾기 모달 컴포넌트
+        const FindAccountModal = ({ onClose }) => {
+            const [activeTab, setActiveTab] = useState('findId'); // 'findId' or 'resetPassword'
+            const [findIdEmailOrPhone, setFindIdEmailOrPhone] = useState('');
+            const [resetPasswordId, setResetPasswordId] = useState('');
+            const [resetPasswordEmailOrPhone, setResetPasswordEmailOrPhone] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const [result, setResult] = useState(null); // { type: 'success' | 'error', message: string, data?: any }
+            
+            // 아이디 찾기
+            const handleFindId = async () => {
+                if (!findIdEmailOrPhone.trim()) {
+                    setResult({ type: 'error', message: '이메일 또는 전화번호를 입력해주세요.' });
+                    return;
+                }
+                
+                setIsLoading(true);
+                setResult(null);
+                
+                try {
+                    const storedUsers = loadUsersFromStorage();
+                    const foundUser = storedUsers.find(u => {
+                        const emailMatch = u.email && u.email.toLowerCase() === findIdEmailOrPhone.trim().toLowerCase();
+                        const phoneMatch = u.phone && u.phone.replace(/[^0-9]/g, '') === findIdEmailOrPhone.replace(/[^0-9]/g, '');
+                        return emailMatch || phoneMatch;
+                    });
+                    
+                    if (!foundUser) {
+                        setResult({ type: 'error', message: '일치하는 계정을 찾을 수 없습니다.' });
+                        setIsLoading(false);
+                        return;
+                    }
+                    
+                    // 이메일 발송 시도
+                    const emailjsConfig = (typeof CONFIG !== 'undefined' && CONFIG.EMAILJS) ? CONFIG.EMAILJS : null;
+                    if (emailjsConfig && emailjsConfig.SERVICE_ID && emailjsConfig.TEMPLATE_ID_FIND_ID && foundUser.email) {
+                        const emailResult = await sendEmailViaEmailJS(emailjsConfig.TEMPLATE_ID_FIND_ID, {
+                            user_id: foundUser.id,
+                            user_email: foundUser.email,
+                            user_name: foundUser.name || '회원'
+                        });
+                        
+                        if (emailResult.success) {
+                            setResult({ 
+                                type: 'success', 
+                                message: `아이디를 찾았습니다.\n아이디: ${foundUser.id}\n\n이메일(${foundUser.email})로도 아이디를 발송했습니다.`,
+                                data: { userId: foundUser.id }
+                            });
+                        } else {
+                            setResult({ 
+                                type: 'success', 
+                                message: `아이디를 찾았습니다.\n아이디: ${foundUser.id}\n\n(이메일 발송에 실패했습니다: ${emailResult.error})`,
+                                data: { userId: foundUser.id }
+                            });
+                        }
+                    } else {
+                        setResult({ 
+                            type: 'success', 
+                            message: `아이디를 찾았습니다.\n아이디: ${foundUser.id}`,
+                            data: { userId: foundUser.id }
+                        });
+                    }
+                } catch (error) {
+                    console.error('아이디 찾기 오류:', error);
+                    setResult({ type: 'error', message: '아이디 찾기 중 오류가 발생했습니다.' });
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            
+            // 비밀번호 재설정
+            const handleResetPassword = async () => {
+                if (!resetPasswordId.trim()) {
+                    setResult({ type: 'error', message: '아이디를 입력해주세요.' });
+                    return;
+                }
+                
+                if (!resetPasswordEmailOrPhone.trim()) {
+                    setResult({ type: 'error', message: '이메일 또는 전화번호를 입력해주세요.' });
+                    return;
+                }
+                
+                setIsLoading(true);
+                setResult(null);
+                
+                try {
+                    const storedUsers = loadUsersFromStorage();
+                    const foundUser = storedUsers.find(u => {
+                        const idMatch = u.id === resetPasswordId.trim();
+                        const emailMatch = u.email && u.email.toLowerCase() === resetPasswordEmailOrPhone.trim().toLowerCase();
+                        const phoneMatch = u.phone && u.phone.replace(/[^0-9]/g, '') === resetPasswordEmailOrPhone.replace(/[^0-9]/g, '');
+                        return idMatch && (emailMatch || phoneMatch);
+                    });
+                    
+                    if (!foundUser) {
+                        setResult({ type: 'error', message: '일치하는 계정을 찾을 수 없습니다. 아이디와 이메일/전화번호를 확인해주세요.' });
+                        setIsLoading(false);
+                        return;
+                    }
+                    
+                    // 임시 비밀번호 생성
+                    const temporaryPassword = generateTemporaryPassword();
+                    const hashedPassword = await hashPassword(temporaryPassword);
+                    
+                    // 사용자 데이터 업데이트
+                    const updatedUsers = storedUsers.map(u => 
+                        u.id === foundUser.id 
+                            ? { ...u, password: hashedPassword }
+                            : u
+                    );
+                    saveUsersToStorage(updatedUsers);
+                    
+                    // 이메일 발송 시도
+                    const emailjsConfig = (typeof CONFIG !== 'undefined' && CONFIG.EMAILJS) ? CONFIG.EMAILJS : null;
+                    if (emailjsConfig && emailjsConfig.SERVICE_ID && emailjsConfig.TEMPLATE_ID_RESET_PASSWORD && foundUser.email) {
+                        const emailResult = await sendEmailViaEmailJS(emailjsConfig.TEMPLATE_ID_RESET_PASSWORD, {
+                            user_id: foundUser.id,
+                            user_email: foundUser.email,
+                            user_name: foundUser.name || '회원',
+                            temporary_password: temporaryPassword
+                        });
+                        
+                        if (emailResult.success) {
+                            setResult({ 
+                                type: 'success', 
+                                message: `임시 비밀번호가 생성되었습니다.\n임시 비밀번호: ${temporaryPassword}\n\n이메일(${foundUser.email})로도 임시 비밀번호를 발송했습니다.\n로그인 후 비밀번호를 변경해주세요.`,
+                                data: { temporaryPassword }
+                            });
+                        } else {
+                            setResult({ 
+                                type: 'success', 
+                                message: `임시 비밀번호가 생성되었습니다.\n임시 비밀번호: ${temporaryPassword}\n\n(이메일 발송에 실패했습니다: ${emailResult.error})\n로그인 후 비밀번호를 변경해주세요.`,
+                                data: { temporaryPassword }
+                            });
+                        }
+                    } else {
+                        setResult({ 
+                            type: 'success', 
+                            message: `임시 비밀번호가 생성되었습니다.\n임시 비밀번호: ${temporaryPassword}\n\n로그인 후 비밀번호를 변경해주세요.`,
+                            data: { temporaryPassword }
+                        });
+                    }
+                } catch (error) {
+                    console.error('비밀번호 재설정 오류:', error);
+                    setResult({ type: 'error', message: '비밀번호 재설정 중 오류가 발생했습니다.' });
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            
+            return (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
                     <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60 backdrop-blur-md"></div>
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md z-10 p-8 text-center relative border-[0.5px] border-brand" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-all">
                             <Icons.X size={18}/>
                         </button>
-                        <div className="mb-8">
+                        <div className="mb-6">
                             <div className="w-16 h-16 bg-gradient-to-br from-brand to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand/30">
-                                <Icons.Users className="w-8 h-8 text-white" />
+                                <Icons.Key className="w-8 h-8 text-white" />
                             </div>
-                            <h3 className="text-3xl font-bold text-dark mb-2">로그인</h3>
-                            <p className="text-sm text-gray-500">부청사 커뮤니티에 오신 것을 환영합니다</p>
+                            <h3 className="text-3xl font-bold text-dark mb-2">아이디/비밀번호 찾기</h3>
                         </div>
-                        <form onSubmit={handleSubmit} className="space-y-5 text-left">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-2">아이디 또는 이메일</label>
-                                <input type="text" placeholder="아이디 또는 이메일을 입력하세요" className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" value={id} onChange={e => setId(e.target.value)} />
-                                <p className="text-xs text-gray-400 mt-1">테스트 계정: 아이디 'test', 비밀번호 'test1234'</p>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-2">비밀번호</label>
-                                <div className="relative">
-                                    <input type={showPassword ? "text" : "password"} placeholder="비밀번호를 입력하세요" className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors pr-12" value={password} onChange={e => setPassword(e.target.value)} />
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                                        {showPassword ? <Icons.EyeOff size={20} /> : <Icons.Eye size={20} />}
-                                    </button>
-                                </div>
-                            </div>
-                            <button type="submit" className="w-full py-4 bg-gradient-to-r from-brand to-blue-600 text-white font-bold rounded-2xl hover:shadow-lg hover:shadow-brand/30 transition-all mt-6 text-lg">
-                                로그인
+                        
+                        {/* 탭 */}
+                        <div className="flex gap-2 mb-6 border-b border-gray-200">
+                            <button
+                                type="button"
+                                onClick={() => { setActiveTab('findId'); setResult(null); }}
+                                className={`flex-1 py-3 font-bold transition-colors border-b-2 ${
+                                    activeTab === 'findId' 
+                                        ? 'border-brand text-brand' 
+                                        : 'border-transparent text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                아이디 찾기
                             </button>
-                        </form>
+                            <button
+                                type="button"
+                                onClick={() => { setActiveTab('resetPassword'); setResult(null); }}
+                                className={`flex-1 py-3 font-bold transition-colors border-b-2 ${
+                                    activeTab === 'resetPassword' 
+                                        ? 'border-brand text-brand' 
+                                        : 'border-transparent text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                비밀번호 찾기
+                            </button>
+                        </div>
+                        
+                        {/* 아이디 찾기 탭 */}
+                        {activeTab === 'findId' && (
+                            <div className="space-y-5 text-left">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-2">이메일 또는 전화번호</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="이메일 또는 전화번호를 입력하세요" 
+                                        className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" 
+                                        value={findIdEmailOrPhone} 
+                                        onChange={e => setFindIdEmailOrPhone(e.target.value)}
+                                        disabled={isLoading}
+                                    />
+                                </div>
+                                
+                                {result && (
+                                    <div className={`p-4 rounded-2xl ${
+                                        result.type === 'success' 
+                                            ? 'bg-green-50 border border-green-200 text-green-800' 
+                                            : 'bg-red-50 border border-red-200 text-red-800'
+                                    }`}>
+                                        <p className="text-sm whitespace-pre-line">{result.message}</p>
+                                    </div>
+                                )}
+                                
+                                <button 
+                                    type="button" 
+                                    onClick={handleFindId}
+                                    disabled={isLoading}
+                                    className="w-full py-4 bg-gradient-to-r from-brand to-blue-600 text-white font-bold rounded-2xl hover:shadow-lg hover:shadow-brand/30 transition-all mt-6 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isLoading ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                            찾는 중...
+                                        </span>
+                                    ) : (
+                                        '아이디 찾기'
+                                    )}
+                                </button>
+                            </div>
+                        )}
+                        
+                        {/* 비밀번호 찾기 탭 */}
+                        {activeTab === 'resetPassword' && (
+                            <div className="space-y-5 text-left">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-2">아이디</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="아이디를 입력하세요" 
+                                        className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" 
+                                        value={resetPasswordId} 
+                                        onChange={e => setResetPasswordId(e.target.value)}
+                                        disabled={isLoading}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-600 mb-2">이메일 또는 전화번호</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="이메일 또는 전화번호를 입력하세요" 
+                                        className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" 
+                                        value={resetPasswordEmailOrPhone} 
+                                        onChange={e => setResetPasswordEmailOrPhone(e.target.value)}
+                                        disabled={isLoading}
+                                    />
+                                </div>
+                                
+                                {result && (
+                                    <div className={`p-4 rounded-2xl ${
+                                        result.type === 'success' 
+                                            ? 'bg-green-50 border border-green-200 text-green-800' 
+                                            : 'bg-red-50 border border-red-200 text-red-800'
+                                    }`}>
+                                        <p className="text-sm whitespace-pre-line">{result.message}</p>
+                                    </div>
+                                )}
+                                
+                                <button 
+                                    type="button" 
+                                    onClick={handleResetPassword}
+                                    disabled={isLoading}
+                                    className="w-full py-4 bg-gradient-to-r from-brand to-blue-600 text-white font-bold rounded-2xl hover:shadow-lg hover:shadow-brand/30 transition-all mt-6 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isLoading ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                            처리 중...
+                                        </span>
+                                    ) : (
+                                        '비밀번호 재설정'
+                                    )}
+                                </button>
+                            </div>
+                        )}
+                        
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="w-full mt-4 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors">
                             취소
                         </button>
@@ -5939,13 +6296,13 @@
             useEffect(() => {
                 const createTestAccount = async () => {
                     // 테스트 계정 비밀번호 해시화
-                    const testPassword = 'test1234';
+                    const testPassword = '1122';
                     const hashedPassword = await hashPassword(testPassword);
                     
                     const testUser = {
-                        id: 'test', // 로그인 아이디
+                        id: '1122', // 로그인 아이디
                         name: '테스트회원',
-                        email: 'test@test.com',
+                        email: 'test1122@test.com',
                         phone: '010-1234-5678',
                         verifiedPhone: '010-1234-5678',
                         company: '테스트회사',
@@ -5955,6 +6312,7 @@
                         role: '대표',
                         status: 'approved', // 승인 상태
                         approvalStatus: 'approved', // 승인 상태
+                        memberGrade: '사업자', // 부청사 회원 권한 (모든 메뉴 접근 가능)
                         password: hashedPassword, // 해시화된 비밀번호
                         createdAt: new Date().toISOString(),
                         img: `https://ui-avatars.com/api/?name=테스트회원&background=random`
@@ -5962,30 +6320,44 @@
                     
                     try {
                         const existingUsers = loadUsersFromStorage();
-                        const testUserExists = existingUsers.some(u => u.id === 'test' || u.email === 'test@test.com');
+                        // 기존 테스트 계정('test' 또는 '1122') 확인
+                        const testUserExists = existingUsers.some(u => u.id === '1122' || u.id === 'test' || u.email === 'test1122@test.com' || u.email === 'test@test.com');
                         
                         if (!testUserExists) {
-                            const updatedUsers = [...existingUsers, testUser];
+                            // 기존 'test' 계정이 있으면 제거하고 새 계정 추가
+                            const filteredUsers = existingUsers.filter(u => u.id !== 'test' && u.email !== 'test@test.com');
+                            const updatedUsers = [...filteredUsers, testUser];
                             saveUsersToStorage(updatedUsers);
                             setUsers(updatedUsers);
                             console.log('✅ 테스트 계정이 생성되었습니다.');
                             console.log('📋 테스트 계정 정보:');
-                            console.log('   아이디: test');
-                            console.log('   비밀번호: test1234');
-                            console.log('   이메일: test@test.com');
+                            console.log('   아이디: 1122');
+                            console.log('   비밀번호: 1122');
+                            console.log('   이메일: test1122@test.com');
                         } else {
-                            // 기존 테스트 계정이 있으면 비밀번호 업데이트
-                            const existingTestUser = existingUsers.find(u => u.id === 'test' || u.email === 'test@test.com');
-                            if (existingTestUser && !existingTestUser.password) {
-                                existingTestUser.password = hashedPassword;
-                                existingTestUser.approvalStatus = 'approved';
-                                existingTestUser.status = 'approved';
-                                const updatedUsers = existingUsers.map(u => 
-                                    (u.id === 'test' || u.email === 'test@test.com') ? existingTestUser : u
-                                );
+                            // 기존 테스트 계정이 있으면 업데이트
+                            const existingTestUser = existingUsers.find(u => u.id === '1122' || u.id === 'test' || u.email === 'test1122@test.com' || u.email === 'test@test.com');
+                            if (existingTestUser) {
+                                // 기존 계정을 새 테스트 계정 정보로 업데이트
+                                const updatedTestUser = {
+                                    ...existingTestUser,
+                                    id: '1122',
+                                    password: hashedPassword,
+                                    email: 'test1122@test.com',
+                                    approvalStatus: 'approved',
+                                    status: 'approved',
+                                    memberGrade: '사업자' // 부청사 회원 권한 부여
+                                };
+                                // 기존 'test' 계정 제거하고 새 계정으로 교체
+                                const filteredUsers = existingUsers.filter(u => u.id !== 'test' && u.id !== '1122' && u.email !== 'test@test.com' && u.email !== 'test1122@test.com');
+                                const updatedUsers = [...filteredUsers, updatedTestUser];
                                 saveUsersToStorage(updatedUsers);
                                 setUsers(updatedUsers);
-                                console.log('✅ 테스트 계정 비밀번호가 업데이트되었습니다.');
+                                console.log('✅ 테스트 계정이 업데이트되었습니다.');
+                                console.log('📋 테스트 계정 정보:');
+                                console.log('   아이디: 1122');
+                                console.log('   비밀번호: 1122');
+                                console.log('   이메일: test1122@test.com');
                             }
                         }
                     } catch (error) {

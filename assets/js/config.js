@@ -157,6 +157,23 @@ const CONFIG = {
         // API 기본 URL
         // 공공데이터포털에서 제공하는 엔드포인트
         BASE_URL: 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService'
+    },
+    
+    // EmailJS 설정 (아이디/비밀번호 찾기 기능용)
+    EMAILJS: {
+        // EmailJS 서비스 ID
+        // 발급 방법:
+        // 1. https://www.emailjs.com/ 접속 및 회원가입
+        // 2. Email Service 추가 (Gmail, Outlook 등)
+        // 3. Email Templates 생성:
+        //    - 아이디 찾기 템플릿: {{user_id}} 변수 사용
+        //    - 비밀번호 재설정 템플릿: {{temporary_password}} 변수 사용
+        // 4. Integration > Browser에서 Public Key 확인
+        // 5. 아래 값들에 실제 설정 값 입력
+        SERVICE_ID: '', // TODO: EmailJS 서비스 ID로 교체 필요
+        TEMPLATE_ID_FIND_ID: '', // TODO: 아이디 찾기 템플릿 ID로 교체 필요
+        TEMPLATE_ID_RESET_PASSWORD: '', // TODO: 비밀번호 재설정 템플릿 ID로 교체 필요
+        PUBLIC_KEY: '' // TODO: EmailJS Public Key로 교체 필요
     }
 };
 
