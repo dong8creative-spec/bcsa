@@ -2559,6 +2559,11 @@
                             <div>
                                 <h2 className="text-3xl font-bold text-dark mb-2">나라장터 입찰공고</h2>
                                 <p className="text-gray-500 text-sm">공공조달 입찰공고를 검색하고 확인하세요.</p>
+                                {window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && (
+                                    <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                        <p className="text-yellow-700 text-xs font-medium">⚠️ 입찰공고 검색 기능은 로컬 환경에서만 사용 가능합니다. 로컬에서 프록시 서버(node proxy-server.js)를 실행해주세요.</p>
+                                    </div>
+                                )}
                             </div>
                             <button type="button" onClick={onBack} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
                                 <Icons.ArrowLeft size={20} /> 메인으로
@@ -5407,7 +5412,15 @@
         const App = () => {
             const [isMenuOpen, setIsMenuOpen] = useState(false);
             const [scrolled, setScrolled] = useState(false);
-            const [content, setContent] = useState(defaultContent);
+            const [content, setContent] = useState(() => {
+                try {
+                    const stored = localStorage.getItem('busan_ycc_content');
+                    return stored ? JSON.parse(stored) : defaultContent;
+                } catch (error) {
+                    console.error('콘텐츠 데이터 로드 오류:', error);
+                    return defaultContent;
+                }
+            });
             const [membersData, setMembersData] = useState(() => {
                 try {
                     const stored = localStorage.getItem('busan_ycc_members');
