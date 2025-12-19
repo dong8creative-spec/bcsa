@@ -5242,7 +5242,7 @@
                                                         <label className="block text-sm font-bold text-gray-700 mb-2">후기 사진</label>
                                                         <div className="grid grid-cols-3 gap-4">
                                                             {(selectedPost.images || selectedPost.reviewImages).map((img, idx) => (
-                                                                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden">
+                                                                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setSelectedImage(img)}>
                                                                     <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-full h-full object-cover" />
                                                                 </div>
                                                             ))}
@@ -5268,7 +5268,7 @@
 
                         {/* 이미지 확대 모달 */}
                         {selectedImage && (
-                            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90" onClick={() => setSelectedImage(null)}>
+                            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90" onClick={(e) => { if (e.target === e.currentTarget) setSelectedImage(null); }}>
                                 <button type="button" onClick={() => setSelectedImage(null)} className="absolute top-5 right-5 w-10 h-10 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-all z-10">
                                     <Icons.X size={24} />
                                         </button>
@@ -5308,6 +5308,17 @@
                     case '종료': return 'bg-gray-100 text-gray-600';
                     default: return 'bg-gray-100 text-gray-600';
                 }
+            };
+
+            const getCategoryColor = (category) => {
+                const colorMap = {
+                    '교육/세미나': 'bg-blue-100 text-blue-700',
+                    '네트워킹/모임': 'bg-green-100 text-green-700',
+                    '투자/IR': 'bg-orange-100 text-orange-700',
+                    '멘토링/상담': 'bg-purple-100 text-purple-700',
+                    '기타': 'bg-gray-100 text-gray-700'
+                };
+                return colorMap[category] || 'bg-gray-100 text-gray-700';
             };
 
             const handleOpenApplyModal = (seminar) => {
@@ -5392,7 +5403,14 @@
                                         <div className="p-6">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <span className={`text-xs font-bold px-2 py-1 rounded-full ${getStatusColor(seminar.status)}`}>{seminar.status}</span>
-                                                {seminar.category && <span className="text-xs font-bold px-2 py-1 bg-gray-100 text-gray-600 rounded-full">{seminar.category}</span>}
+                                                {seminar.category && (
+                                                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${getCategoryColor(seminar.category)}`}>
+                                                        {seminar.category}
+                                                    </span>
+                                                )}
+                                                <span className="text-xs font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">
+                                                    {seminar.requiresPayment ? (seminar.price ? `${seminar.price.toLocaleString()}원` : '유료') : '무료'}
+                                                </span>
                                             </div>
                                             <h3 className="text-lg font-bold text-dark mb-2 line-clamp-2">{seminar.title}</h3>
                                             <p className="text-sm text-gray-600 mb-4 line-clamp-2">{seminar.desc}</p>
@@ -5446,9 +5464,9 @@
                                     {selectedSeminar.img && (
                                         <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
                                             <img src={selectedSeminar.img} alt={selectedSeminar.title} className="w-full h-full object-cover" />
-                                            <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
+                                            <div className="absolute top-3 left-3 flex items-center gap-2">
                                                 {selectedSeminar.category && (
-                                                    <span className="text-xs font-bold px-2 py-1 bg-white/90 text-gray-700 rounded-full shadow-sm">
+                                                    <span className={`text-xs font-bold px-2 py-1 rounded-full shadow-sm ${getCategoryColor(selectedSeminar.category)}`} style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
                                                         {selectedSeminar.category}
                                                     </span>
                                                 )}
@@ -6115,6 +6133,18 @@
                 questions: ['', ''] // 사전 질문 2개
             });
             const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
+            
+            // 카테고리별 컬러 반환 함수
+            const getCategoryColor = (category) => {
+                const colorMap = {
+                    '교육/세미나': 'bg-blue-100 text-blue-700',
+                    '네트워킹/모임': 'bg-green-100 text-green-700',
+                    '투자/IR': 'bg-orange-100 text-orange-700',
+                    '멘토링/상담': 'bg-purple-100 text-purple-700',
+                    '기타': 'bg-gray-100 text-gray-700'
+                };
+                return colorMap[category] || 'bg-gray-100 text-gray-700';
+            };
             
             // 모달 상태 변경 디버깅
             useEffect(() => {
@@ -6869,9 +6899,9 @@ END:VCALENDAR`;
             const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames }) => {
                 if (!isOpen) return null;
                 return (
-                    <div className="fixed inset-0 z-50 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in">
+                    <div className="fixed inset-0 z-50 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2 text-dark hover:bg-gray-100 rounded-full"><Icons.X size={32}/></button>
-                        <nav className="flex flex-col gap-6 text-center">
+                        <nav className="flex flex-col gap-6 text-center" onClick={(e) => e.stopPropagation()}>
                             {['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '입찰공고', '후원'].filter(item => menuEnabled[item]).map((item, idx) => (
                                 <div key={idx} className="flex flex-col items-center gap-2">
                                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onNavigate(item); onClose(); }} className="text-2xl font-bold text-dark hover:text-brand transition-colors">
@@ -7553,9 +7583,9 @@ END:VCALENDAR`;
                                                     <h3 className="text-xl font-bold text-dark mb-3">{program.title}</h3>
                                                     
                                                     {/* 카테고리 및 유료/무료 배지 */}
-                                                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                                                    <div className="flex items-center gap-2 mb-3">
                                                         {program.category && (
-                                                            <span className="text-xs font-bold px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
+                                                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${getCategoryColor(program.category)}`}>
                                                                 {program.category}
                                                             </span>
                                                         )}
@@ -7836,9 +7866,9 @@ END:VCALENDAR`;
 
                     {/* 🌟 관리자 로그인 모달 */}
                     {showAdminLogin && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowAdminLogin(false)}></div>
-                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm z-10 p-8 animate-zoom-in text-center">
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowAdminLogin(false); }}>
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm z-10 p-8 animate-zoom-in text-center" onClick={(e) => e.stopPropagation()}>
                                 <div className="w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-4 text-white"><Icons.Key size={28} /></div>
                                 <h3 className="text-xl font-bold text-dark mb-1">관리자 접속</h3>
                                 <p className="text-sm text-gray-500 mb-6">관계자 외 접근을 금합니다.</p>
