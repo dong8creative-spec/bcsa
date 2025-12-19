@@ -2505,8 +2505,14 @@
 
         // 나라장터 입찰공고 검색 컴포넌트
         const G2B_API_KEY = '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
-        // 서버리스 함수 프록시 URL (Vercel 배포 후 실제 URL로 교체 필요)
-        const BID_PROXY_URL = 'https://your-vercel-app.vercel.app/api/proxy-bid';
+        const BID_API_BASE = 'https://apis.data.go.kr/1230000/BidPublicInfoService04';
+        
+        // CORS 우회 프록시 서비스 목록 (순차적으로 시도)
+        const PROXY_SERVICES = [
+            'https://api.allorigins.win/raw?url=',
+            'https://corsproxy.io/?',
+            'https://api.codetabs.com/v1/proxy?quest='
+        ];
         
         const BidSearchView = ({ onBack }) => {
             const [keyword, setKeyword] = useState('');
@@ -2576,6 +2582,10 @@
                 setIsLoading(true);
                 setError(null);
                 
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/f633aa18-4b39-46d4-95fc-da486407c201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2575',message:'fetchBidList 시작',data:{page,bidType,period,keyword:keyword.substring(0,20),BID_PROXY_URL},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
+                
                 try {
                     const dateRange = getDateRange(period);
                     
@@ -2595,40 +2605,101 @@
                             apiPath = 'getBidPblancListInfoThngPPSSrch'; // 기본: 물품
                     }
                     
-                    // 서버리스 함수 프록시 URL 구성
-                    const proxyUrl = new URL(BID_PROXY_URL);
-                    proxyUrl.searchParams.append('apiPath', apiPath);
-                    proxyUrl.searchParams.append('serviceKey', G2B_API_KEY);
-                    proxyUrl.searchParams.append('pageNo', page.toString());
-                    proxyUrl.searchParams.append('numOfRows', itemsPerPage.toString());
-                    proxyUrl.searchParams.append('inqryDiv', '1');
-                    proxyUrl.searchParams.append('inqryBgnDt', dateRange.start);
-                    proxyUrl.searchParams.append('inqryEndDt', dateRange.end);
-                    proxyUrl.searchParams.append('type', 'json');
+                    // API URL 구성
+                    const apiUrl = new URL(`${BID_API_BASE}/${apiPath}`);
+                    apiUrl.searchParams.append('ServiceKey', G2B_API_KEY);
+                    apiUrl.searchParams.append('pageNo', page.toString());
+                    apiUrl.searchParams.append('numOfRows', itemsPerPage.toString());
+                    apiUrl.searchParams.append('inqryDiv', '1');
+                    apiUrl.searchParams.append('inqryBgnDt', dateRange.start + '0000');
+                    apiUrl.searchParams.append('inqryEndDt', dateRange.end + '2359');
+                    apiUrl.searchParams.append('type', 'json');
                     
                     if (keyword.trim()) {
-                        proxyUrl.searchParams.append('bidNtceNm', keyword.trim());
+                        apiUrl.searchParams.append('bidNtceNm', keyword.trim());
                     }
                     
-                    // 타임아웃 설정 (15초)
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 15000);
+                    const targetUrl = apiUrl.toString();
                     
-                    const response = await fetch(proxyUrl.toString(), {
-                        method: 'GET',
-                        signal: controller.signal,
-                        headers: {
-                            'Accept': 'application/json'
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/f633aa18-4b39-46d4-95fc-da486407c201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2612',message:'API URL 구성 완료',data:{targetUrl:targetUrl.substring(0,200),apiPath},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                    // #endregion
+                    
+                    // 여러 프록시 서비스를 순차적으로 시도
+                    let lastError = null;
+                    let response = null;
+                    let data = null;
+                    
+                    for (let i = 0; i < PROXY_SERVICES.length; i++) {
+                        const proxyService = PROXY_SERVICES[i];
+                        let proxyRequestUrl;
+                        
+                        // 프록시 서비스별 URL 구성 방식이 다름
+                        if (proxyService.includes('allorigins')) {
+                            proxyRequestUrl = `${proxyService}${encodeURIComponent(targetUrl)}`;
+                        } else if (proxyService.includes('corsproxy')) {
+                            proxyRequestUrl = `${proxyService}${encodeURIComponent(targetUrl)}`;
+                        } else if (proxyService.includes('codetabs')) {
+                            proxyRequestUrl = `${proxyService}${targetUrl}`;
+                        } else {
+                            proxyRequestUrl = `${proxyService}${encodeURIComponent(targetUrl)}`;
                         }
-                    });
-                    
-                    clearTimeout(timeoutId);
-                    
-                    if (!response.ok) {
-                        throw new Error(`서버 응답 오류: ${response.status}`);
+                        
+                        // #region agent log
+                        fetch('http://127.0.0.1:7242/ingest/f633aa18-4b39-46d4-95fc-da486407c201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2625',message:'프록시 시도 시작',data:{proxyIndex:i,proxyService:proxyService.substring(0,50),proxyRequestUrl:proxyRequestUrl.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+                        // #endregion
+                        
+                        try {
+                            // 타임아웃 설정 (10초)
+                            const controller = new AbortController();
+                            const timeoutId = setTimeout(() => controller.abort(), 10000);
+                            
+                            response = await fetch(proxyRequestUrl, {
+                                method: 'GET',
+                                signal: controller.signal,
+                                headers: {
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            
+                            clearTimeout(timeoutId);
+                            
+                            // #region agent log
+                            fetch('http://127.0.0.1:7242/ingest/f633aa18-4b39-46d4-95fc-da486407c201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2640',message:'프록시 응답 받음',data:{proxyIndex:i,status:response.status,statusText:response.statusText,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+                            // #endregion
+                            
+                            if (!response.ok) {
+                                throw new Error(`프록시 서버 응답 오류: ${response.status}`);
+                            }
+                            
+                            data = await response.json();
+                            
+                            // #region agent log
+                            fetch('http://127.0.0.1:7242/ingest/f633aa18-4b39-46d4-95fc-da486407c201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2648',message:'프록시 성공',data:{proxyIndex:i,hasResponse:!!data.response,hasError:!!data.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+                            // #endregion
+                            
+                            // 성공하면 루프 종료
+                            break;
+                            
+                        } catch (err) {
+                            // #region agent log
+                            fetch('http://127.0.0.1:7242/ingest/f633aa18-4b39-46d4-95fc-da486407c201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2655',message:'프록시 실패',data:{proxyIndex:i,error:err.message?.substring(0,100),name:err.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+                            // #endregion
+                            
+                            lastError = err;
+                            // 다음 프록시 시도
+                            continue;
+                        }
                     }
                     
-                    const data = await response.json();
+                    // 모든 프록시 실패 시 에러 처리
+                    if (!response || !data) {
+                        throw new Error(`프록시를 통한 API 호출 실패: 모든 프록시 서비스 시도 실패. 마지막 오류: ${lastError?.message || '알 수 없는 오류'}`);
+                    }
+                    
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/f633aa18-4b39-46d4-95fc-da486407c201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2665',message:'JSON 파싱 완료',data:{hasResponse:!!data.response,hasError:!!data.error,error:data.error?.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                    // #endregion
                     
                     // 에러 응답 체크
                     if (data.error) {
@@ -2648,11 +2719,20 @@
                             bidItems = Array.isArray(items.item) ? items.item : [items.item];
                         }
                         
+                        // #region agent log
+                        fetch('http://127.0.0.1:7242/ingest/f633aa18-4b39-46d4-95fc-da486407c201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2685',message:'데이터 파싱 성공',data:{bidItemsCount:bidItems.length,totalCnt},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                        // #endregion
+                        
                         setBidList(bidItems);
                         setTotalCount(totalCnt);
                         setCurrentPage(page);
                         setError(null);
+                    } else if (data.response && data.response.header && data.response.header.resultCode !== '00') {
+                        throw new Error(`API 에러: ${data.response.header.resultMsg}`);
                     } else {
+                        // #region agent log
+                        fetch('http://127.0.0.1:7242/ingest/f633aa18-4b39-46d4-95fc-da486407c201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2695',message:'데이터 없음',data:{hasResponse:!!data.response},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                        // #endregion
                         setBidList([]);
                         setTotalCount(0);
                     }
@@ -2660,11 +2740,17 @@
                 } catch (err) {
                     console.error('입찰공고 API 오류:', err);
                     
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/f633aa18-4b39-46d4-95fc-da486407c201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2700',message:'에러 발생',data:{name:err.name,message:err.message?.substring(0,200),stack:err.stack?.substring(0,300),isAbortError:err.name==='AbortError'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                    // #endregion
+                    
                     let errorMessage = '입찰공고 데이터를 불러오는데 실패했습니다.';
                     
                     if (err.name === 'AbortError') {
                         errorMessage += ' 요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.';
-                    } else if (err.message.includes('서버 응답')) {
+                    } else if (err.message.includes('프록시를 통한 API 호출 실패')) {
+                        errorMessage += ' 네트워크 연결을 확인해주세요.';
+                    } else if (err.message.includes('서버 응답') || err.message.includes('프록시 서버 응답')) {
                         errorMessage += ' 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
                     } else {
                         errorMessage += ' ' + (err.message || '잠시 후 다시 시도해주세요.');
@@ -2674,6 +2760,10 @@
                     setBidList([]);
                 } finally {
                     setIsLoading(false);
+                    
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/f633aa18-4b39-46d4-95fc-da486407c201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2676',message:'fetchBidList 종료',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                    // #endregion
                 }
             };
             
