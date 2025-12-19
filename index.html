@@ -2488,13 +2488,20 @@
                     
                     // 여러 프록시 서비스를 순차적으로 시도 (웹에서 바로 작동)
                     const tryFetchWithProxies = async (targetUrl) => {
-                        // 먼저 직접 호출 시도
+                        // 타임아웃 설정 (10초)
+                        const timeoutPromise = new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('요청 시간 초과')), 10000)
+                        );
+                        
+                        // 직접 호출 시도 (타임아웃 적용)
                         try {
-                            const response = await fetch(targetUrl, {
+                            const fetchPromise = fetch(targetUrl, {
                                 method: 'GET',
                                 mode: 'cors',
                                 headers: { 'Accept': 'application/json' }
                             });
+                            
+                            const response = await Promise.race([fetchPromise, timeoutPromise]);
                             if (response.ok) {
                                 return response;
                             }
@@ -2512,10 +2519,12 @@
                         for (let i = 0; i < proxies.length; i++) {
                             try {
                                 const proxyUrl = proxies[i](targetUrl);
-                                const response = await fetch(proxyUrl, {
+                                const fetchPromise = fetch(proxyUrl, {
                                     method: 'GET',
                                     mode: 'cors'
                                 });
+                                
+                                const response = await Promise.race([fetchPromise, timeoutPromise]);
                                 
                                 if (response.ok) {
                                     return response;
@@ -4737,7 +4746,7 @@
             const [selectedSeminar, setSelectedSeminar] = useState(null);
             const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
             const [applySeminar, setApplySeminar] = useState(null);
-            const [applicationData, setApplicationData] = useState({ reason: '', questions: ['', '', ''] });
+            const [applicationData, setApplicationData] = useState({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
             
             const categories = ['전체', ...new Set(seminars.map(s => s.category).filter(Boolean))];
             const statuses = ['전체', '모집중', '마감임박', '종료'];
@@ -4761,7 +4770,7 @@
             const handleOpenApplyModal = (seminar) => {
                 if (seminar.status === '종료') return;
                 setApplySeminar(seminar);
-                setApplicationData({ reason: '', questions: ['', '', ''] });
+                setApplicationData({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
                 setIsApplyModalOpen(true);
             };
 
@@ -4770,14 +4779,20 @@
                     alert('신청사유를 입력해주세요.');
                     return;
                 }
-                if (!applicationData.questions[0].trim() || !applicationData.questions[1].trim() || !applicationData.questions[2].trim()) {
-                    alert('사전질문 3개를 모두 입력해주세요.');
-                        return;
-                    }
-                onApply(applySeminar, applicationData);
+                if (!applicationData.questions[0].trim() || !applicationData.questions[1].trim()) {
+                    alert('사전질문 2개를 모두 입력해주세요.');
+                    return;
+                }
+                const success = onApply(applySeminar, applicationData);
+                if (success) {
+                    // 캘린더 파일 생성 및 다운로드 (generateAndDownloadCalendar는 상위 컴포넌트에서 정의됨)
+                    // AllSeminarsView는 함수형 컴포넌트이므로, onApply 콜백에서 처리하거나
+                    // 상위 컴포넌트에서 generateAndDownloadCalendar를 prop으로 전달받아야 함
+                    // 일단 onApply가 성공하면 상위에서 처리하도록 함
+                }
                 setIsApplyModalOpen(false);
                 setApplySeminar(null);
-                setApplicationData({ reason: '', questions: ['', '', ''] });
+                setApplicationData({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
             };
 
             return (
@@ -4985,17 +5000,6 @@
                                                         setApplicationData({...applicationData, questions: newQuestions});
                                                     }}
                                                     placeholder="사전질문 2"
-                                                />
-                                                                        <input 
-                                                    type="text"
-                                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
-                                                    value={applicationData.questions[2]}
-                                                    onChange={(e) => {
-                                                        const newQuestions = [...applicationData.questions];
-                                                        newQuestions[2] = e.target.value;
-                                                        setApplicationData({...applicationData, questions: newQuestions});
-                                                    }}
-                                                    placeholder="사전질문 3"
                                                 />
                                                     </div>
                                                             </div>
@@ -5561,6 +5565,12 @@
             const [searchResults, setSearchResults] = useState([]);
             const [isSearchExpanded, setIsSearchExpanded] = useState(false);
             const [popupPrograms, setPopupPrograms] = useState([]); // 최대 3개 프로그램 팝업
+            const [applySeminarFromPopup, setApplySeminarFromPopup] = useState(null);
+            const [isPopupApplyModalOpen, setIsPopupApplyModalOpen] = useState(false);
+            const [popupApplicationData, setPopupApplicationData] = useState({ 
+                reason: '', 
+                questions: ['', ''] // 사전 질문 2개
+            });
             
             // 모달 상태 변경 디버깅
             useEffect(() => {
@@ -5939,7 +5949,7 @@
                     userName: currentUser.name,
                     userEmail: currentUser.email,
                     applicationReason: applicationData?.reason || '',
-                    questions: applicationData?.questions || ['', '', ''],
+                    questions: applicationData?.questions || ['', ''], // 사전 질문 2개로 변경
                     appliedAt: new Date().toISOString(),
                     status: 'pending'
                 };
@@ -5957,6 +5967,133 @@
                 setMySeminars([...mySeminars, seminar]);
                 alert("신청이 완료되었습니다.");
                 return true;
+            };
+
+            // 팝업에서 신청하기 버튼 클릭 핸들러
+            const handlePopupApply = (program) => {
+                if (!currentUser) {
+                    setShowLoginModal(true);
+                    setPopupPrograms([]);
+                    return;
+                }
+                
+                // 이미 신청했는지 확인
+                try {
+                    const applications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
+                    const hasApplied = applications.some(app => 
+                        app.seminarId === program.id && app.userId === currentUser.id
+                    );
+                    
+                    if (hasApplied) {
+                        alert('이미 신청한 프로그램입니다.');
+                        return;
+                    }
+                } catch (error) {
+                    console.error('신청 정보 확인 오류:', error);
+                }
+                
+                // 신청 모달 표시
+                setApplySeminarFromPopup(program);
+                setIsPopupApplyModalOpen(true);
+            };
+
+            // 팝업 신청 제출
+            const handlePopupApplySubmit = () => {
+                if (!popupApplicationData.reason.trim()) {
+                    alert('신청사유를 입력해주세요.');
+                    return;
+                }
+                if (!popupApplicationData.questions[0].trim() || !popupApplicationData.questions[1].trim()) {
+                    alert('사전질문 2개를 모두 입력해주세요.');
+                    return;
+                }
+                
+                // 신청 처리
+                const success = handleSeminarApply(applySeminarFromPopup, popupApplicationData);
+                
+                if (success) {
+                    // 캘린더 파일 생성 및 다운로드
+                    generateAndDownloadCalendar(applySeminarFromPopup);
+                    
+                    // 팝업 닫기
+                    setIsPopupApplyModalOpen(false);
+                    setPopupPrograms([]);
+                    setApplySeminarFromPopup(null);
+                    setPopupApplicationData({ reason: '', questions: ['', ''] });
+                }
+            };
+
+            // .ics 파일 생성 및 다운로드
+            const generateAndDownloadCalendar = (program) => {
+                if (!program.date) {
+                    console.warn('프로그램 날짜 정보가 없습니다.');
+                    return;
+                }
+                
+                // 날짜 파싱 (YYYY.MM.DD 또는 YYYY-MM-DD 형식)
+                const dateMatch = program.date.match(/(\d{4})[\.-](\d{2})[\.-](\d{2})/);
+                if (!dateMatch) {
+                    console.warn('날짜 형식을 파싱할 수 없습니다.');
+                    return;
+                }
+                
+                const year = parseInt(dateMatch[1]);
+                const month = parseInt(dateMatch[2]) - 1; // 0-based
+                const day = parseInt(dateMatch[3]);
+                
+                // 프로그램 시작 시간 (기본값: 오전 10시)
+                const startDate = new Date(year, month, day, 10, 0, 0);
+                // 프로그램 종료 시간 (기본값: 시작 시간 + 2시간)
+                const endDate = new Date(startDate);
+                endDate.setHours(startDate.getHours() + 2);
+                
+                // .ics 형식으로 변환
+                const formatICSDate = (date) => {
+                    return date.toISOString().replace(/[-:]|\.\d{3}/g, '');
+                };
+                
+                // 제목과 설명에서 특수문자 이스케이프
+                const escapeICS = (text) => {
+                    if (!text) return '';
+                    return text.replace(/\\/g, '\\\\')
+                               .replace(/,/g, '\\,')
+                               .replace(/;/g, '\\;')
+                               .replace(/\n/g, '\\n');
+                };
+                
+                const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//부산청년사업가들//프로그램 일정//KO
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:${program.id}@bcsa.co.kr
+DTSTAMP:${formatICSDate(new Date())}Z
+DTSTART:${formatICSDate(startDate)}Z
+DTEND:${formatICSDate(endDate)}Z
+SUMMARY:${escapeICS(program.title)}
+DESCRIPTION:${escapeICS(program.desc || '')}
+LOCATION:${escapeICS(program.location || '')}
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:프로그램 시작 하루 전 알림
+TRIGGER:-P1DT0H0M0S
+END:VALARM
+END:VEVENT
+END:VCALENDAR`;
+                
+                // Blob 생성 및 다운로드
+                const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${program.title.replace(/[^\w\s가-힣]/g, '_')}.ics`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                alert('캘린더 파일이 다운로드되었습니다. 파일을 열어 캘린더에 추가해주세요.');
             };
 
             const handleSeminarCancel = (seminarId) => {
@@ -6160,7 +6297,13 @@
                     setCurrentView('home');
                     return null;
                 }
-                if (currentView === 'allSeminars') return <AllSeminarsView onBack={() => setCurrentView('home')} seminars={seminarsData} onApply={handleSeminarApply} currentUser={currentUser} />; 
+                if (currentView === 'allSeminars') return <AllSeminarsView onBack={() => setCurrentView('home')} seminars={seminarsData} onApply={(seminar, applicationData) => {
+                    const success = handleSeminarApply(seminar, applicationData);
+                    if (success) {
+                        generateAndDownloadCalendar(seminar);
+                    }
+                    return success;
+                }} currentUser={currentUser} />; 
                 if (currentView === 'community' && !menuEnabled['커뮤니티']) {
                     alert('준비중인 서비스입니다.');
                     setCurrentView('home');
@@ -6639,48 +6782,95 @@
                                 {popupPrograms.map((program, idx) => (
                                     <div 
                                         key={program.id || idx} 
-                                        className="bg-white rounded-3xl shadow-2xl w-full md:w-80 flex-shrink-0 overflow-hidden relative mx-auto" 
-                                        style={{ aspectRatio: '3/4' }}
+                                        className="bg-white rounded-3xl shadow-2xl w-full md:w-80 flex-shrink-0 overflow-hidden relative mx-auto flex flex-col"
                                     >
-                                        {/* 마감임박 마크 */}
-                                        {program.isDeadlineSoon && (
-                                            <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
-                                                마감임박
-                                            </div>
-                                        )}
-                                        {/* 닫기 버튼 */}
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setPopupPrograms(prev => prev.filter((_, i) => i !== idx))} 
-                                            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 z-10 shadow-md"
-                                        >
-                                            <Icons.X size={18} />
-                                        </button>
-                                        {/* 프로그램 정보 오버레이 */}
-                                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/50 to-transparent z-10">
-                                            <h3 className="text-white font-bold text-lg mb-1 line-clamp-2">{program.title}</h3>
-                                            <p className="text-white/80 text-sm mb-2">{program.date} · {program.location}</p>
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${program.status === '모집중' ? 'bg-blue-500 text-white' : 'bg-gray-500 text-white'}`}>
-                                                    {program.status}
-                                                </span>
-                                                <span className="text-white/70 text-xs">
-                                                    {program.currentParticipants || 0}/{program.maxParticipants || '∞'}명
-                                                </span>
-                                            </div>
+                                        {/* 이미지 영역 (3:4 비율 유지) */}
+                                        <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
+                                            {/* 마감임박 마크 */}
+                                            {program.isDeadlineSoon && (
+                                                <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+                                                    마감임박
+                                                </div>
+                                            )}
+                                            {/* 닫기 버튼 */}
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setPopupPrograms(prev => prev.filter((_, i) => i !== idx))} 
+                                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 z-10 shadow-md"
+                                            >
+                                                <Icons.X size={18} />
+                                            </button>
+                                            {/* 이미지 */}
+                                            {program.img && (
+                                                <img 
+                                                    src={program.img} 
+                                                    alt={program.title} 
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            )}
                                         </div>
-                                        {/* 이미지 */}
-                                        {program.img && (
-                                            <img 
-                                                src={program.img} 
-                                                alt={program.title} 
-                                                className="w-full h-full object-cover cursor-pointer"
-                                                onClick={() => {
-                                                    setPopupPrograms([]);
-                                                    setCurrentView('allSeminars');
-                                                }}
-                                            />
-                                        )}
+                                        
+                                        {/* 정보 영역 (스크롤 가능) */}
+                                        <div className="p-6 max-h-[60vh] overflow-y-auto flex-1">
+                                            <h3 className="text-xl font-bold text-dark mb-3">{program.title}</h3>
+                                            
+                                            {/* 카테고리 및 유료/무료 배지 */}
+                                            <div className="flex items-center gap-2 mb-3 flex-wrap">
+                                                {program.category && (
+                                                    <span className="text-xs font-bold px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
+                                                        {program.category}
+                                                    </span>
+                                                )}
+                                                <span className="text-xs font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">
+                                                    {program.requiresPayment ? (program.price ? `${program.price.toLocaleString()}원` : '유료') : '무료'}
+                                                </span>
+                                            </div>
+                                            
+                                            {/* 날짜, 장소, 신청현황 */}
+                                            <div className="space-y-2 text-sm text-gray-600 mb-4">
+                                                <div className="flex items-center gap-2">
+                                                    <Icons.Calendar size={16} className="text-brand" /> {program.date}
+                                                </div>
+                                                {program.location && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Icons.MapPin size={16} className="text-brand" /> {program.location}
+                                                    </div>
+                                                )}
+                                                <div className="flex items-center gap-2">
+                                                    <Icons.Users size={16} className="text-brand" /> {program.currentParticipants || 0} / {program.maxParticipants || 0}명
+                                                </div>
+                                            </div>
+                                            
+                                            {/* 프로그램 설명 */}
+                                            {program.desc && (
+                                                <div className="mb-4">
+                                                    <p className="text-sm text-gray-700 leading-relaxed">{program.desc}</p>
+                                                </div>
+                                            )}
+                                            
+                                            {/* 신청하기 버튼 */}
+                                            {currentUser ? (
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => handlePopupApply(program)}
+                                                    className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                                                >
+                                                    신청하기
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setPopupPrograms([]);
+                                                        setShowLoginModal(true);
+                                                    }}
+                                                    className="w-full py-3 bg-gray-300 text-gray-500 font-bold rounded-xl cursor-not-allowed"
+                                                    disabled
+                                                >
+                                                    로그인 후 신청 가능
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -6696,6 +6886,74 @@
                             )}
                         </div>
                     )}
+                    
+                    {/* 팝업 신청 모달 */}
+                    {isPopupApplyModalOpen && applySeminarFromPopup && (
+                        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setIsPopupApplyModalOpen(false); }}>
+                            <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-2xl font-bold text-dark">프로그램 신청</h3>
+                                    <button type="button" onClick={() => setIsPopupApplyModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                                        <Icons.X size={24} />
+                                    </button>
+                                </div>
+                                <div className="mb-6">
+                                    <h4 className="text-lg font-bold text-dark mb-2">{applySeminarFromPopup.title}</h4>
+                                    <div className="text-sm text-gray-600 space-y-1">
+                                        <div><span className="font-bold">일시:</span> {applySeminarFromPopup.date}</div>
+                                        {applySeminarFromPopup.location && <div><span className="font-bold">장소:</span> {applySeminarFromPopup.location}</div>}
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">신청사유 *</label>
+                                        <textarea 
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-32 resize-none" 
+                                            value={popupApplicationData.reason}
+                                            onChange={(e) => setPopupApplicationData({...popupApplicationData, reason: e.target.value})}
+                                            placeholder="이 프로그램에 신청하는 이유를 작성해주세요"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">사전질문 *</label>
+                                        <div className="space-y-3">
+                                            <input 
+                                                type="text" 
+                                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                value={popupApplicationData.questions[0]}
+                                                onChange={(e) => {
+                                                    const newQuestions = [...popupApplicationData.questions];
+                                                    newQuestions[0] = e.target.value;
+                                                    setPopupApplicationData({...popupApplicationData, questions: newQuestions});
+                                                }}
+                                                placeholder="사전질문 1"
+                                            />
+                                            <input 
+                                                type="text" 
+                                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                value={popupApplicationData.questions[1]}
+                                                onChange={(e) => {
+                                                    const newQuestions = [...popupApplicationData.questions];
+                                                    newQuestions[1] = e.target.value;
+                                                    setPopupApplicationData({...popupApplicationData, questions: newQuestions});
+                                                }}
+                                                placeholder="사전질문 2"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4 mt-8">
+                                        <button type="button" onClick={() => setIsPopupApplyModalOpen(false)} className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200">
+                                            취소
+                                        </button>
+                                        <button type="button" onClick={handlePopupApplySubmit} className="flex-1 py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">
+                                            신청하기
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
                     <header className={`fixed top-0 w-full z-50 transition-all duration-300 ease-in-out px-4 md:px-6 py-5 ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : 'bg-transparent'}`}>
                         <div className="container mx-auto flex justify-between items-center relative">
                             <div className="flex items-center cursor-pointer group h-[75px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
