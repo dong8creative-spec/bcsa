@@ -132,6 +132,7 @@
             const mapRef = React.useRef(null);
             const markerRef = React.useRef(null);
             const geocoderRef = React.useRef(null);
+            const placesServiceRef = React.useRef(null);
             const [selectedPlace, setSelectedPlace] = useState(null);
             const [searchKeyword, setSearchKeyword] = useState('');
             const [searchResults, setSearchResults] = useState([]);
@@ -156,6 +157,13 @@
                 
                 mapRef.current = new kakao.maps.Map(mapContainerRef.current, mapOption);
                 geocoderRef.current = new kakao.maps.services.Geocoder();
+                
+                // Places 서비스 초기화
+                if (kakao.maps.services && kakao.maps.services.Places) {
+                    placesServiceRef.current = new kakao.maps.services.Places();
+                } else {
+                    console.error('Places 서비스가 사용할 수 없습니다.');
+                }
                 
                 // 지도 컨트롤 추가
                 const zoomControl = new kakao.maps.ZoomControl();
@@ -218,31 +226,61 @@
             
             // 장소 검색
             const handleSearch = () => {
-                if (!searchKeyword.trim() || !mapLoaded) return;
+                if (!searchKeyword.trim()) {
+                    alert('검색어를 입력해주세요.');
+                    return;
+                }
                 
-                const ps = new kakao.maps.services.Places();
-                ps.keywordSearch(searchKeyword, (data, status) => {
+                if (!mapLoaded) {
+                    alert('지도가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
+                    return;
+                }
+                
+                if (!placesServiceRef.current) {
+                    console.error('Places 서비스가 초기화되지 않았습니다.');
+                    alert('검색 서비스를 사용할 수 없습니다. 페이지를 새로고침해주세요.');
+                    return;
+                }
+                
+                setSearchResults([]); // 검색 결과 초기화
+                
+                // 키워드 검색
+                placesServiceRef.current.keywordSearch(searchKeyword, (data, status) => {
                     if (status === kakao.maps.services.Status.OK) {
-                        setSearchResults(data.map(place => ({
+                        const results = data.map(place => ({
                             name: place.place_name,
                             address: place.road_address_name || place.address_name,
                             lat: parseFloat(place.y),
                             lng: parseFloat(place.x)
-                        })));
+                        }));
+                        setSearchResults(results);
+                        
+                        if (results.length === 0) {
+                            alert('검색 결과가 없습니다.');
+                        }
                     } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
                         // 키워드 검색 실패 시 주소 검색 시도
-                        geocoderRef.current.addressSearch(searchKeyword, (result, status) => {
-                            if (status === kakao.maps.services.Status.OK) {
-                                setSearchResults(result.map(item => ({
-                                    name: '',
-                                    address: item.road_address ? item.road_address.address_name : item.address_name,
-                                    lat: parseFloat(item.y),
-                                    lng: parseFloat(item.x)
-                                })));
-                            } else {
-                                alert('검색 결과가 없습니다.');
-                            }
-                        });
+                        if (geocoderRef.current) {
+                            geocoderRef.current.addressSearch(searchKeyword, (result, geocodeStatus) => {
+                                if (geocodeStatus === kakao.maps.services.Status.OK) {
+                                    const results = result.map(item => ({
+                                        name: '',
+                                        address: item.road_address ? item.road_address.address_name : item.address_name,
+                                        lat: parseFloat(item.y),
+                                        lng: parseFloat(item.x)
+                                    }));
+                                    setSearchResults(results);
+                                } else {
+                                    alert('검색 결과가 없습니다.');
+                                    setSearchResults([]);
+                                }
+                            });
+                        } else {
+                            alert('검색 결과가 없습니다.');
+                        }
+                    } else {
+                        console.error('카카오맵 검색 오류:', status);
+                        alert('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
                     }
                 });
             };
