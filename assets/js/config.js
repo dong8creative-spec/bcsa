@@ -136,6 +136,27 @@ const CONFIG = {
         // 사업자등록번호 진위확인 서비스 API 키 필요
         // 발급 방법: https://www.data.go.kr/ → "사업자등록번호 진위확인" 검색 → API 신청
         API_KEY: '' // TODO: 실제 API 키로 교체 필요
+    },
+    
+    // 나라장터 공공조달 입찰공고 API 설정
+    G2B_API: {
+        // 나라장터 공공조달 입찰공고 API 키
+        // 발급 방법:
+        // 1. https://www.data.go.kr/ 접속 및 로그인
+        // 2. 상단 메뉴에서 "데이터셋" 선택
+        // 3. 검색창에 "나라장터 공공조달 입찰공고" 또는 "BidPublicInfoService" 입력
+        // 4. 검색 결과에서 "나라장터 공공조달 입찰공고정보 서비스" 선택
+        // 5. "활용신청" 버튼 클릭하여 신청 (활용 목적 입력 필요)
+        // 6. 승인 완료 후 마이페이지 > "내 데이터"에서 발급된 Service Key 확인
+        // 7. 아래 API_KEY에 발급받은 Service Key 입력
+        // 
+        // 인증키 사용 관련 유의사항:
+        // API 환경 또는 API 호출 조건에 따라 인증키가 적용되는 방식이 다를 수 있습니다.
+        // 포털에서 제공되는 Encoding/Decoding 된 인증키를 적용하면서 구동되는 키를 사용하시기 바랍니다.
+        API_KEY: '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b',
+        // API 기본 URL
+        // 공공데이터포털에서 제공하는 엔드포인트
+        BASE_URL: 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService'
     }
 };
 
