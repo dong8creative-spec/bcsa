@@ -7,7 +7,10 @@
  * Google Apps Script 웹앱 URL 가져오기
  */
 function getScriptUrl() {
-    return CONFIG?.GOOGLE_APPS_SCRIPT?.WEB_APP_URL || '';
+    if (typeof CONFIG === 'undefined' || !CONFIG?.GOOGLE_APPS_SCRIPT) {
+        return '';
+    }
+    return CONFIG.GOOGLE_APPS_SCRIPT.WEB_APP_URL || '';
 }
 
 /**

@@ -499,23 +499,25 @@
         const STORAGE_KEY_CURRENT_USER = 'busan_ycc_current_user';
         
         // 사용자 데이터 로드
-        const loadUsersFromStorage = async () => {
-            // Google Sheets에서 로드 시도
-            if (typeof getUsersFromSheet === 'function') {
-                try {
-                    const users = await getUsersFromSheet();
-                    if (users && users.length > 0) {
-                        return users;
-                    }
-                } catch (error) {
-                    console.error('사용자 데이터 API 로드 오류:', error);
-                }
-            }
-            
-            // API 실패 시 localStorage에서 로드 (폴백)
+        const loadUsersFromStorage = () => {
+            // 먼저 localStorage에서 즉시 반환 (동기)
             try {
                 const stored = localStorage.getItem(STORAGE_KEY_USERS);
-                return stored ? JSON.parse(stored) : [];
+                const localUsers = stored ? JSON.parse(stored) : [];
+                
+                // 백그라운드에서 API 호출하여 업데이트 (비동기)
+                if (typeof getUsersFromSheet === 'function') {
+                    getUsersFromSheet().then(users => {
+                        if (users && users.length > 0) {
+                            // API에서 받은 데이터로 localStorage 업데이트
+                            localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+                        }
+                    }).catch(error => {
+                        console.error('사용자 데이터 API 로드 오류:', error);
+                    });
+                }
+                
+                return localUsers;
             } catch (error) {
                 console.error('사용자 데이터 로드 오류:', error);
                 return [];
@@ -6159,13 +6161,22 @@
             
             // 사용자 데이터 로드 (페이지 로드 시)
             useEffect(() => {
-                loadUsersFromStorage().then(loadedUsers => {
-                    if (loadedUsers && loadedUsers.length > 0) {
-                        setUsers(loadedUsers);
-                    }
-                }).catch(error => {
-                    console.error('사용자 데이터 로드 오류:', error);
-                });
+                const loadedUsers = loadUsersFromStorage();
+                if (loadedUsers && loadedUsers.length > 0) {
+                    setUsers(loadedUsers);
+                }
+                
+                // 백그라운드에서 최신 데이터로 업데이트
+                if (typeof getUsersFromSheet === 'function') {
+                    getUsersFromSheet().then(users => {
+                        if (users && users.length > 0) {
+                            setUsers(users);
+                            localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+                        }
+                    }).catch(error => {
+                        console.error('사용자 데이터 API 로드 오류:', error);
+                    });
+                }
             }, []);
             const [showSignUpModal, setShowSignUpModal] = useState(false);
             const [showLoginModal, setShowLoginModal] = useState(false);
