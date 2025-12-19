@@ -1947,8 +1947,9 @@
                         </div>
                         <form onSubmit={handleSubmit} className="space-y-5 text-left">
                             <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-2">아이디</label>
-                                <input type="text" placeholder="아이디를 입력하세요" className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" value={id} onChange={e => setId(e.target.value)} />
+                                <label className="block text-xs font-bold text-gray-600 mb-2">아이디 또는 이메일</label>
+                                <input type="text" placeholder="아이디 또는 이메일을 입력하세요" className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" value={id} onChange={e => setId(e.target.value)} />
+                                <p className="text-xs text-gray-400 mt-1">테스트 계정: 아이디 'test', 비밀번호 'test1234'</p>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-600 mb-2">비밀번호</label>
@@ -4387,11 +4388,21 @@
                                                                             <span className="text-xs text-gray-500">사진 추가</span>
                                                 </div>
                             )}
-                                                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                                                                        const files = Array.from(e.target.files);
-                                                                        handleImageUpload(files, 'store');
-                                                                        e.target.value = '';
-                                                                    }} />
+                                                                    <input 
+                                                                        type="file" 
+                                                                        accept="image/*" 
+                                                                        multiple 
+                                                                        className="hidden" 
+                                                                        onChange={(e) => {
+                                                                            const files = Array.from(e.target.files);
+                                                                            if (files.length > 3) {
+                                                                                alert('최대 3장까지만 선택할 수 있습니다.');
+                                                                                return;
+                                                                            }
+                                                                            handleImageUpload(files, 'store');
+                                                                            e.target.value = '';
+                                                                        }} 
+                                                                    />
                                                                 </label>
                                                             )}
                                     </div>
@@ -4472,11 +4483,21 @@
                                                                             <span className="text-xs text-gray-500">사진 추가</span>
                                             </div>
                                                                     )}
-                                                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                                                                        const files = Array.from(e.target.files);
-                                                                        handleImageUpload(files, 'item');
-                                                                e.target.value = '';
-                                                                    }} />
+                                                                    <input 
+                                                                        type="file" 
+                                                                        accept="image/*" 
+                                                                        multiple 
+                                                                        className="hidden" 
+                                                                        onChange={(e) => {
+                                                                            const files = Array.from(e.target.files);
+                                                                            if (files.length > 3) {
+                                                                                alert('최대 3장까지만 선택할 수 있습니다.');
+                                                                                return;
+                                                                            }
+                                                                            handleImageUpload(files, 'item');
+                                                                            e.target.value = '';
+                                                                        }} 
+                                                                    />
                                                                 </label>
                                     )}
                                 </div>
@@ -5834,6 +5855,67 @@
             useEffect(() => { if (CONFIG_SHEET_URL) { /* fetch config */ } }, []);
             useEffect(() => { if (MEMBER_SHEET_URL) { /* fetch members */ } }, []);
             useEffect(() => { if (SEMINAR_SHEET_URL) { /* fetch seminars */ } }, []);
+            
+            // 테스트 계정 자동 생성
+            useEffect(() => {
+                const createTestAccount = async () => {
+                    // 테스트 계정 비밀번호 해시화
+                    const testPassword = 'test1234';
+                    const hashedPassword = await hashPassword(testPassword);
+                    
+                    const testUser = {
+                        id: 'test', // 로그인 아이디
+                        name: '테스트회원',
+                        email: 'test@test.com',
+                        phone: '010-1234-5678',
+                        verifiedPhone: '010-1234-5678',
+                        company: '테스트회사',
+                        businessRegistrationNumber: '123-45-67890',
+                        businessType: '사업자',
+                        businessCategory: 'IT/소프트웨어',
+                        role: '대표',
+                        status: 'approved', // 승인 상태
+                        approvalStatus: 'approved', // 승인 상태
+                        password: hashedPassword, // 해시화된 비밀번호
+                        createdAt: new Date().toISOString(),
+                        img: `https://ui-avatars.com/api/?name=테스트회원&background=random`
+                    };
+                    
+                    try {
+                        const existingUsers = loadUsersFromStorage();
+                        const testUserExists = existingUsers.some(u => u.id === 'test' || u.email === 'test@test.com');
+                        
+                        if (!testUserExists) {
+                            const updatedUsers = [...existingUsers, testUser];
+                            saveUsersToStorage(updatedUsers);
+                            setUsers(updatedUsers);
+                            console.log('✅ 테스트 계정이 생성되었습니다.');
+                            console.log('📋 테스트 계정 정보:');
+                            console.log('   아이디: test');
+                            console.log('   비밀번호: test1234');
+                            console.log('   이메일: test@test.com');
+                        } else {
+                            // 기존 테스트 계정이 있으면 비밀번호 업데이트
+                            const existingTestUser = existingUsers.find(u => u.id === 'test' || u.email === 'test@test.com');
+                            if (existingTestUser && !existingTestUser.password) {
+                                existingTestUser.password = hashedPassword;
+                                existingTestUser.approvalStatus = 'approved';
+                                existingTestUser.status = 'approved';
+                                const updatedUsers = existingUsers.map(u => 
+                                    (u.id === 'test' || u.email === 'test@test.com') ? existingTestUser : u
+                                );
+                                saveUsersToStorage(updatedUsers);
+                                setUsers(updatedUsers);
+                                console.log('✅ 테스트 계정 비밀번호가 업데이트되었습니다.');
+                            }
+                        }
+                    } catch (error) {
+                        console.error('테스트 계정 생성 오류:', error);
+                    }
+                };
+                
+                createTestAccount();
+            }, []);
 
             const handleSignUp = async (userInfo) => {
                 // 사업자번호 확인 (사업자인 경우만 필수)
@@ -5929,16 +6011,16 @@
                     // 비밀번호 해시화
                     const hashedPassword = await hashPassword(pw);
                     
-                    // 로컬 스토리지에서 사용자 찾기 (아이디로만 로그인)
+                    // 로컬 스토리지에서 사용자 찾기 (아이디 또는 이메일로 로그인)
                     const storedUsers = loadUsersFromStorage();
                     const foundUser = storedUsers.find(u => 
-                        u.id === id && (u.password === hashedPassword || u.password === pw) // 기존 평문 비밀번호 호환성 유지
+                        (u.id === id || u.email === id) && (u.password === hashedPassword || u.password === pw) // 기존 평문 비밀번호 호환성 유지
                     );
 
                     if (!foundUser) {
-                        // 기존 메모리 상태에서도 확인 (아이디로만 로그인)
+                        // 기존 메모리 상태에서도 확인 (아이디 또는 이메일로 로그인)
                         const memoryUser = users.find(u => 
-                            u.id === id && (u.password === hashedPassword || u.password === pw) // 기존 평문 비밀번호 호환성 유지
+                            (u.id === id || u.email === id) && (u.password === hashedPassword || u.password === pw) // 기존 평문 비밀번호 호환성 유지
                         );
                         
                         if (!memoryUser) {
@@ -6248,7 +6330,25 @@ END:VCALENDAR`;
             };
 
             const handleCommunityCreate = (newPost) => {
-                if (!currentUser && newPost.category !== '공지사항') return alert("로그인이 필요합니다."); 
+                // 공지사항 작성 시 관리자 권한 확인
+                if (newPost.category === '공지사항') {
+                    if (!currentUser) {
+                        alert("로그인이 필요합니다.");
+                        return;
+                    }
+                    // 관리자 체크 함수 (햇반, 람람, admin@busan-ycc.com)
+                    const isAdmin = currentUser.name === '햇반' || currentUser.name === '람람' || currentUser.email === 'admin@busan-ycc.com';
+                    if (!isAdmin) {
+                        alert("공지사항은 관리자만 작성할 수 있습니다.");
+                        return;
+                    }
+                } else {
+                    // 일반 글 작성 시 로그인 확인
+                    if (!currentUser) {
+                        alert("로그인이 필요합니다.");
+                        return;
+                    }
+                } 
                 // ID 생성 시 기존 게시글의 최대 ID를 확인하여 중복 방지
                 const maxId = communityPosts.length > 0 ? Math.max(...communityPosts.map(p => p.id || 0)) : 0;
                 const post = { 
