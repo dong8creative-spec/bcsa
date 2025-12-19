@@ -2583,7 +2583,7 @@
                 setError(null);
                 
                 // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/f633aa18-4b39-46d4-95fc-da486407c201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2575',message:'fetchBidList 시작',data:{page,bidType,period,keyword:keyword.substring(0,20),BID_PROXY_URL},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                fetch('http://127.0.0.1:7242/ingest/f633aa18-4b39-46d4-95fc-da486407c201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:2575',message:'fetchBidList 시작',data:{page,bidType,period,keyword:keyword.substring(0,20),proxyServicesCount:PROXY_SERVICES.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
                 // #endregion
                 
                 try {
