@@ -1,0 +1,19 @@
+{
+  "name": "busan-ycc-website",
+  "version": "1.0.0",
+  "description": "부산청년사업가들 웹사이트",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/input.css -o ./assets/css/tailwind.css --minify",
+    "build:js": "babel index.html --out-file index-compiled.html --presets=@babel/preset-react",
+    "build": "npm run build:css && npm run build:js",
+    "watch:css": "tailwindcss -i ./src/input.css -o ./assets/css/tailwind.css --watch",
+    "dev": "npm run watch:css"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.23.0",
+    "@babel/core": "^7.23.0",
+    "@babel/preset-react": "^7.23.0",
+    "tailwindcss": "^3.3.6"
+  }
+}
+

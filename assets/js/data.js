@@ -43,12 +43,3 @@ const defaultCommunityPosts = [
     { id: 3, category: '세미나 후기', title: '지난 투자 세미나 정말 유익했습니다', author: '이성장', date: '2025.03.03', views: 30, content: '투자 심사역님의 피드백이 큰 도움이 되었습니다.', isSecret: false, password: '123', reply: "감사합니다. 다음 세미나도 기대해주세요!" },
     { id: 4, category: '건의사항', title: '다음 모임 장소 관련 건의드립니다', author: '박제안', date: '2025.03.04', views: 10, content: '비밀글입니다.', isSecret: true, password: '123', reply: null },
 ];
-
-// 기본 맛집 데이터
-const defaultFoodData = [
-    { id: 1, title: "해운대 암소갈비집", category: "한식", address: "부산 해운대구 중동2로10번길 32-10", desc: "입안에서 살살 녹는 생갈비와 감자사리가 일품인 부산 대표 맛집", img: "https://images.unsplash.com/photo-1558030006-4506719b7342?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", reservation: true, status: 'approved' },
-    { id: 2, title: "쌍둥이돼지국밥", category: "한식", address: "부산 남구 유엔평화로 35-1", desc: "진한 국물과 푸짐한 수육 백반이 유명한 로컬들의 소울 푸드", img: "https://images.unsplash.com/photo-1590301157890-4810ed352733?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", reservation: false, status: 'approved' },
-    { id: 3, title: "옵스(OPS) 해운대점", category: "카페/디저트", address: "부산 해운대구 중동1로 31", desc: "슈크림빵과 학원전이 유명한 부산의 대표 베이커리", img: "https://images.unsplash.com/photo-1509440159596-0249088772ff?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", reservation: false, status: 'approved' },
-    { id: 4, title: "이재모피자", category: "양식", address: "부산 중구 광복중앙로 31", desc: "치즈가 듬뿍 들어간 임실치즈 피자로 유명한 남포동의 터줏대감", img: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80", reservation: true, status: 'approved' },
-];
-
