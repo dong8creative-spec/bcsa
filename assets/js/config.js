@@ -174,6 +174,24 @@ const CONFIG = {
         TEMPLATE_ID_FIND_ID: '', // TODO: 아이디 찾기 템플릿 ID로 교체 필요
         TEMPLATE_ID_RESET_PASSWORD: '', // TODO: 비밀번호 재설정 템플릿 ID로 교체 필요
         PUBLIC_KEY: '' // TODO: EmailJS Public Key로 교체 필요
+    },
+    
+    // Google Apps Script 웹앱 설정 (공유 데이터베이스용)
+    GOOGLE_APPS_SCRIPT: {
+        // Google Apps Script 웹앱 URL
+        // 설정 방법:
+        // 1. Google Sheets에서 새 스프레드시트 생성
+        // 2. 확장 프로그램 > Apps Script 클릭
+        // 3. google-apps-script.gs 파일의 코드를 복사하여 붙여넣기
+        // 4. SPREADSHEET_ID를 실제 스프레드시트 ID로 변경
+        // 5. 배포 > 새 배포 > 웹 앱으로 배포
+        // 6. 실행 권한 설정 (본인 계정으로 실행)
+        // 7. 배포 후 받은 웹앱 URL을 아래에 입력
+        WEB_APP_URL: '', // TODO: Google Apps Script 웹앱 URL로 교체 필요
+        
+        // Google Sheets 스프레드시트 ID
+        // Google Sheets URL에서 추출: https://docs.google.com/spreadsheets/d/[SPREADSHEET_ID]/edit
+        SPREADSHEET_ID: '' // TODO: Google Sheets 스프레드시트 ID로 교체 필요
     }
 };
 
