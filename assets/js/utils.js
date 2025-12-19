@@ -53,7 +53,7 @@ const convertDriveLink = (url) => {
 };
 
 /**
- * CSV 데이터 파싱 함수
+ * CSV 데이터 파싱 함수 (개선된 버전 - 따옴표 및 셀 내부 쉼표 처리)
  * @param {string} csvText - CSV 텍스트
  * @returns {Array} 파싱된 데이터 배열
  */
@@ -61,19 +61,72 @@ const parseCSV = (csvText) => {
     if (!csvText) return [];
     
     try {
-        const lines = csvText.trim().split('\n');
+        const lines = csvText.trim().split('\n').filter(line => line.trim() !== '');
         if (lines.length < 2) return [];
         
-        const headers = lines[0].split(',').map(h => h.trim());
+        // CSV 파싱 함수 (따옴표 처리)
+        const parseCSVLine = (line) => {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const nextChar = line[i + 1];
+                
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        // 이스케이프된 따옴표
+                        current += '"';
+                        i++; // 다음 따옴표 건너뛰기
+                    } else {
+                        // 따옴표 시작/끝
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    // 필드 구분자
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            
+            // 마지막 필드 추가
+            result.push(current.trim());
+            return result;
+        };
+        
+        const headers = parseCSVLine(lines[0]).map(h => h.replace(/^"|"$/g, ''));
         const data = [];
         
         for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map(v => v.trim());
+            const values = parseCSVLine(lines[i]).map(v => {
+                // 따옴표 제거 및 빈 값 처리
+                const cleaned = v.replace(/^"|"$/g, '');
+                return cleaned === '' ? '' : cleaned;
+            });
+            
             const item = {};
             headers.forEach((header, index) => {
-                item[header] = values[index] || '';
+                let value = values[index] || '';
+                
+                // JSON 문자열인 경우 파싱 시도
+                if (value.startsWith('[') || value.startsWith('{')) {
+                    try {
+                        value = JSON.parse(value);
+                    } catch (e) {
+                        // JSON 파싱 실패 시 문자열 그대로 사용
+                    }
+                }
+                
+                item[header] = value;
             });
-            data.push(item);
+            
+            // 빈 행 필터링 (모든 값이 비어있지 않은 경우만 추가)
+            if (Object.values(item).some(v => v !== '' && v !== null && v !== undefined)) {
+                data.push(item);
+            }
         }
         
         return data;
@@ -182,5 +235,64 @@ const setImageFallback = (imgElement, fallbackUrl = '') => {
             imgElement.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
         }
     };
+};
+
+/**
+ * 객체 배열을 CSV 문자열로 변환
+ * @param {Array} data - 변환할 데이터 배열
+ * @param {Array} headers - CSV 헤더 배열 (선택사항, 자동 감지 가능)
+ * @returns {string} CSV 문자열
+ */
+const convertToCSV = (data, headers = null) => {
+    if (!data || !Array.isArray(data) || data.length === 0) {
+        return '';
+    }
+    
+    try {
+        // 헤더 자동 감지
+        if (!headers) {
+            headers = Object.keys(data[0]);
+        }
+        
+        // CSV 이스케이프 함수 (쉼표, 따옴표, 줄바꿈 처리)
+        const escapeCSV = (value) => {
+            if (value === null || value === undefined) {
+                return '';
+            }
+            
+            // 배열이나 객체인 경우 JSON 문자열로 변환
+            if (typeof value === 'object') {
+                value = JSON.stringify(value);
+            } else {
+                value = String(value);
+            }
+            
+            // 쉼표, 따옴표, 줄바꿈이 있으면 따옴표로 감싸기
+            if (value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r')) {
+                // 따옴표는 두 개로 이스케이프
+                value = value.replace(/"/g, '""');
+                return `"${value}"`;
+            }
+            
+            return value;
+        };
+        
+        // 헤더 행 생성
+        const headerRow = headers.map(escapeCSV).join(',');
+        
+        // 데이터 행 생성
+        const dataRows = data.map(item => {
+            return headers.map(header => {
+                const value = item[header];
+                return escapeCSV(value);
+            }).join(',');
+        });
+        
+        // CSV 문자열 조합
+        return [headerRow, ...dataRows].join('\n');
+    } catch (error) {
+        console.error('CSV 변환 오류:', error);
+        return '';
+    }
 };
 

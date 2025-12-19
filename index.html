@@ -502,6 +502,12 @@
         const loadUsersFromStorage = () => {
             // 먼저 localStorage에서 즉시 반환 (동기)
             try {
+                // localStorage 접근 가능 여부 확인
+                if (typeof Storage === 'undefined' || typeof localStorage === 'undefined') {
+                    console.warn('localStorage를 사용할 수 없습니다.');
+                    return [];
+                }
+                
                 const stored = localStorage.getItem(STORAGE_KEY_USERS);
                 const localUsers = stored ? JSON.parse(stored) : [];
                 
@@ -510,7 +516,13 @@
                     getUsersFromSheet().then(users => {
                         if (users && users.length > 0) {
                             // API에서 받은 데이터로 localStorage 업데이트
-                            localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+                            try {
+                                if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                                    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+                                }
+                            } catch (error) {
+                                console.error('localStorage 저장 오류:', error);
+                            }
                         }
                     }).catch(error => {
                         console.error('사용자 데이터 API 로드 오류:', error);
@@ -597,7 +609,9 @@
             
             // localStorage에도 저장 (폴백용)
             try {
-                localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+                if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+                }
             } catch (error) {
                 console.error('사용자 데이터 저장 오류:', error);
             }
@@ -606,6 +620,9 @@
         // 현재 사용자 로드
         const loadCurrentUserFromStorage = () => {
             try {
+                if (typeof Storage === 'undefined' || typeof localStorage === 'undefined') {
+                    return null;
+                }
                 const stored = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
                 return stored ? JSON.parse(stored) : null;
             } catch (error) {
@@ -617,6 +634,9 @@
         // 현재 사용자 저장
         const saveCurrentUserToStorage = (user) => {
             try {
+                if (typeof Storage === 'undefined' || typeof localStorage === 'undefined') {
+                    return;
+                }
                 if (user) {
                     localStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(user));
                 } else {
@@ -785,87 +805,18 @@
             about_contact_email: "pujar@naver.com",
         };
 
-        const defaultMembersData = [
-            // 파트너사 등급 (3명) - 후원한 회원만
-            { id: 1, name: "김민수", industry: "IT/소프트웨어", role: "CEO", company: "넥스트웨이브", img: "https://randomuser.me/api/portraits/men/32.jpg", memberGrade: "파트너사", approvalStatus: "approved", hasDonated: true },
-            { id: 2, name: "이영희", industry: "유통/무역", role: "대표", company: "글로벌트레이드", img: "https://randomuser.me/api/portraits/women/44.jpg", memberGrade: "파트너사", approvalStatus: "approved", hasDonated: true },
-            { id: 3, name: "박지성", industry: "제조업", role: "이사", company: "부산정밀", img: "https://randomuser.me/api/portraits/men/85.jpg", memberGrade: "파트너사", approvalStatus: "approved", hasDonated: true },
-            // 운영진 등급 (3명) - 관리자가 지정
-            { id: 4, name: "최수진", industry: "디자인", role: "프리랜서", company: "크리에이티브랩", img: "https://randomuser.me/api/portraits/women/65.jpg", memberGrade: "운영진", approvalStatus: "approved" },
-            { id: 5, name: "정대현", industry: "마케팅", role: "대표", company: "디지털마케팅코리아", img: "https://randomuser.me/api/portraits/men/45.jpg", memberGrade: "운영진", approvalStatus: "approved" },
-            { id: 6, name: "한소영", industry: "교육", role: "원장", company: "부산창업아카데미", img: "https://randomuser.me/api/portraits/women/28.jpg", memberGrade: "운영진", approvalStatus: "approved" },
-            // 사업자 등급 (3명)
-            { id: 7, name: "오준호", industry: "요식업", role: "사장", company: "부산맛집협동조합", img: "https://randomuser.me/api/portraits/men/67.jpg", memberGrade: "사업자", approvalStatus: "approved" },
-            { id: 8, name: "윤미라", industry: "패션", role: "대표", company: "부산패션스튜디오", img: "https://randomuser.me/api/portraits/women/52.jpg", memberGrade: "사업자", approvalStatus: "approved" },
-            { id: 9, name: "강태영", industry: "부동산", role: "대표", company: "부산부동산컨설팅", img: "https://randomuser.me/api/portraits/men/23.jpg", memberGrade: "사업자", approvalStatus: "approved" },
-            // 예창 등급 (3명)
-            { id: 10, name: "송지은", industry: "컨설팅", role: "대표", company: "비즈니스컨설팅그룹", img: "https://randomuser.me/api/portraits/women/38.jpg", memberGrade: "예창", approvalStatus: "approved" },
-            { id: 11, name: "임동욱", industry: "IT/소프트웨어", role: "CTO", company: "테크스타트업", img: "https://randomuser.me/api/portraits/men/56.jpg", memberGrade: "예창", approvalStatus: "approved" },
-            { id: 12, name: "조혜진", industry: "미디어", role: "대표", company: "부산미디어랩", img: "https://randomuser.me/api/portraits/women/41.jpg", memberGrade: "예창", approvalStatus: "approved" },
-        ];
+        // 기본 회원 데이터 (테스트 데이터 제거됨 - CSV 또는 localStorage에서 로드)
+        const defaultMembersData = [];
 
-        const calculateStatus = (dateStr) => {
-            if (!dateStr) return "미정";
-            const matches = dateStr.match(/(\d{4})[\.-](\d{2})[\.-](\d{2})/);
-            if (!matches) return "모집중";
-            const year = parseInt(matches[1]);
-            const month = parseInt(matches[2]) - 1;
-            const day = parseInt(matches[3]);
-            const seminarDate = new Date(year, month, day);
-            const today = new Date();
-            seminarDate.setHours(0,0,0,0);
-            today.setHours(0,0,0,0);
-            const diffTime = seminarDate - today;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays < 0) return "종료";
-            if (diffDays <= 14) return "마감임박";
-            return "모집중";
-        };
+        // calculateStatus는 utils.js에서 로드됨 (중복 선언 방지)
 
-        const defaultSeminarsData = [
-            { id: 1, category: "투자/IR", title: "2025 상반기 스타트업 투자 트렌드", date: "2025.03.15", location: "부산 유라시아 플랫폼 104호", desc: "VC 심사역 초청, 2025년 주목해야 할 스타트업 트렌드와 투자 유치 전략 공유.", img: "https://images.unsplash.com/photo-1544531586-fde5298cdd40?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80", currentParticipants: 142, maxParticipants: 150, price: 50000, requiresPayment: true },
-            { id: 2, category: "네트워킹/모임", title: "부산 청년 창업가 네트워킹 나이트", date: "2025.03.22", location: "해운대 더베이 101 루프탑", desc: "부산 지역 청년 창업가들이 모여 자유롭게 네트워킹하고 협업 기회를 찾는 파티.", img: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80", currentParticipants: 85, maxParticipants: 100, price: 30000, requiresPayment: true },
-            { id: 3, category: "교육/세미나", title: "초기 창업가를 위한 세무/노무 특강", date: "2025.04.05", location: "부산창조경제혁신센터 3층", desc: "창업 초기에 꼭 알아야 할 세금 관리와 근로 계약서 작성법 실무 강의.", img: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80", currentParticipants: 20, maxParticipants: 50, price: 0, requiresPayment: false },
-        ].map(item => ({ ...item, status: calculateStatus(item.date) }));
+        // 기본 세미나 데이터 (테스트 데이터 제거됨 - CSV 또는 localStorage에서 로드)
+        const defaultSeminarsData = [].map(item => ({ ...item, status: calculateStatus(item.date) }));
 
-        const defaultCommunityPosts = [
-            // 공지사항 (3개)
-            { id: 1, category: '공지사항', title: '부청사 커뮤니티 이용 가이드', author: '관리자', date: '2025.03.01', views: 120, content: '서로 존중하며 유익한 정보를 나누는 공간이 됩시다. 부청사 커뮤니티는 모든 회원들이 함께 성장할 수 있는 플랫폼입니다.', isSecret: false, password: 'admin', reply: null, likes: 15, comments: [], seminarTitle: null },
-            { id: 2, category: '공지사항', title: '2025년 상반기 정기 모임 안내', author: '관리자', date: '2025.03.05', views: 89, content: '2025년 상반기 정기 모임이 3월 15일 해운대 그랜드호텔에서 개최됩니다. 많은 참석 부탁드립니다.', isSecret: false, password: 'admin', reply: null, likes: 22, comments: [], seminarTitle: null },
-            { id: 3, category: '공지사항', title: '신규 회원 환영 이벤트', author: '관리자', date: '2025.03.10', views: 156, content: '신규 회원 가입 시 첫 달 멤버십 할인 혜택을 제공합니다. 자세한 내용은 문의 바랍니다.', isSecret: false, password: 'admin', reply: null, likes: 18, comments: [], seminarTitle: null },
-            
-            // 프로그램 후기 (3개)
-            { id: 4, category: '프로그램 후기', title: '지난 투자 프로그램 정말 유익했습니다', author: '이성장', date: '2025.03.03', views: 30, content: '투자 심사역님의 피드백이 큰 도움이 되었습니다. 실제 투자 유치에 필요한 실무적인 조언을 많이 얻을 수 있었어요.', isSecret: false, password: '123', reply: "감사합니다. 다음 프로그램도 기대해주세요!", rating: 5, images: ['https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1556761175-4b46a572b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'], likes: 12, comments: [{ id: 1, author: '관리자', content: '감사합니다!', date: '2025.03.03' }], seminarTitle: '2025 상반기 스타트업 투자 트렌드' },
-            { id: 5, category: '프로그램 후기', title: '마케팅 세미나 후기', author: '최마케팅', date: '2025.03.06', views: 42, content: '디지털 마케팅 전략에 대한 깊이 있는 강의였습니다. 실전 사례가 많아서 바로 적용할 수 있을 것 같아요.', isSecret: false, password: '123', reply: null, rating: 4, images: ['https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'], likes: 15, comments: [], seminarTitle: '디지털 마케팅 마스터클래스' },
-            { id: 6, category: '프로그램 후기', title: '세무 세미나 정말 도움됐어요', author: '한세무', date: '2025.03.09', views: 55, content: '사업 운영 중 궁금했던 세무 관련 질문들을 모두 해결할 수 있었습니다. 전문가님의 상세한 설명이 인상적이었어요.', isSecret: false, password: '123', reply: null, rating: 5, images: ['https://images.unsplash.com/photo-1556761175-4b46a572b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'], likes: 20, comments: [], seminarTitle: '스타트업 세무 가이드' },
-            
-            // 인력구인 (3개)
-            { id: 7, category: '인력구인', title: '카페 마감 알바 구합니다', author: '김카페', date: '2025.03.02', views: 45, content: '저녁 시간대 마감 알바를 구합니다. 경력 무관하며 성실하신 분 우대합니다.', isSecret: false, password: '123', reply: null, likes: 8, comments: [], seminarTitle: null, jobDetails: '저녁 시간대 마감 및 청소 업무', recruitCount: '2명', workHours: '18:00~22:00', salary: '시급 12,000원', preferred: '경력무관, 성실함', deadline: '2025.03.20', storeLocation: '부산 해운대구 해운대해변로 264', storePhone: '010-1234-5678', storeImages: ['https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'] },
-            { id: 8, category: '인력구인', title: '프론트엔드 개발자 구합니다 (React)', author: '김스타트', date: '2025.03.07', views: 67, content: '부산 센텀시티 근무, 경력 3년차 이상 구합니다. React, TypeScript 경험 필수입니다.', isSecret: false, password: '123', reply: null, likes: 12, comments: [], seminarTitle: null, jobDetails: '웹 애플리케이션 프론트엔드 개발, React/TypeScript 기반 프로젝트 담당', recruitCount: '1명', workHours: '09:00~18:00 (유연근무제)', salary: '월급 350만원~ (경력에 따라 협의)', preferred: '경력 3년 이상, React, TypeScript 경험 필수', deadline: '2025.03.31', storeLocation: '부산 해운대구 센텀시티', storePhone: '010-2345-6789', storeImages: ['https://images.unsplash.com/photo-1498050108023-c5249f4df085?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'] },
-            { id: 9, category: '인력구인', title: '마케팅 전문가 채용 공고', author: '박마케팅', date: '2025.03.12', views: 34, content: '디지털 마케팅 경력 5년 이상, 부산 지역 근무 가능하신 분을 찾습니다.', isSecret: false, password: '123', reply: null, likes: 6, comments: [], seminarTitle: null, jobDetails: '디지털 마케팅 전략 수립 및 실행, 온라인 광고 캠페인 운영', recruitCount: '1명', workHours: '09:00~18:00', salary: '월급 400만원~ (경력에 따라 협의)', preferred: '디지털 마케팅 경력 5년 이상, 구글 애즈/페이스북 광고 경험', deadline: '2025.04.15', storeLocation: '부산 부산진구 중앙대로 692', storePhone: '010-3456-7890', storeImages: ['https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'] },
-            
-            // 중고거래 (3개)
-            { id: 10, category: '중고거래', title: '업소용 냉장고 급처', author: '김판매', date: '2025.03.20', views: 78, content: '카페 폐업으로 인해 업소용 냉장고를 급처합니다. 상태 양호하며 가격 협의 가능합니다.', isSecret: false, password: '123', reply: null, likes: 5, comments: [], seminarTitle: null, itemName: '업소용 냉장고', itemCategory: '가전제품', price: '150,000원', itemCondition: 'A급', tradeMethod: '직거래', tradeLocation: '부산 해운대구', itemImages: ['https://images.unsplash.com/photo-1571171637578-41bc2dd41cd2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'], businessNumber: '123-45-67890' },
-            { id: 11, category: '중고거래', title: '맥북 프로 13인치 판매합니다', author: '이판매', date: '2025.03.21', views: 45, content: '2023년형 맥북 프로 13인치 M2 칩셋입니다. 사용감 적고 상태 양호합니다. 택배 거래 가능합니다.', isSecret: false, password: '123', reply: null, likes: 3, comments: [], seminarTitle: null, itemName: '맥북 프로 13인치', itemCategory: '전자제품', price: '1,200,000원', itemCondition: 'S급', tradeMethod: '택배', tradeLocation: '부산 부산진구', itemImages: ['https://images.unsplash.com/photo-1517336714731-489689fd1ca8?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'], businessNumber: '987-65-43210' },
-            { id: 12, category: '중고거래', title: '사무용 책상 의자 세트 판매', author: '박사무', date: '2025.03.22', views: 32, content: '사무실 이전으로 인해 책상과 의자 세트를 판매합니다. 용달 필요하며 상태 좋습니다.', isSecret: false, password: '123', reply: null, likes: 2, comments: [], seminarTitle: null, itemName: '사무용 책상 의자 세트', itemCategory: '가구', price: '80,000원', itemCondition: 'B급', tradeMethod: '직거래', tradeLocation: '부산 남구', itemImages: ['https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'], businessNumber: '111-22-33333' },
-            
-            // 건의사항 (3개)
-            { id: 13, category: '건의사항', title: '다음 모임 장소 관련 건의드립니다', author: '박제안', date: '2025.03.04', views: 10, content: '비밀글입니다. 다음 모임 장소를 좀 더 접근하기 편한 곳으로 변경해주시면 좋을 것 같습니다.', isSecret: true, password: '123', reply: null, likes: 3, comments: [], seminarTitle: null },
-            { id: 14, category: '건의사항', title: '프로그램 일정 조정 건의', author: '이제안', date: '2025.03.18', views: 8, content: '비밀글입니다. 평일 저녁 시간대 프로그램이 많아서 주말 프로그램도 추가해주시면 좋을 것 같습니다.', isSecret: true, password: '123', reply: null, likes: 2, comments: [], seminarTitle: null },
-            { id: 15, category: '건의사항', title: '온라인 세미나 개최 건의', author: '최제안', date: '2025.03.19', views: 12, content: '비밀글입니다. 원격지 회원들을 위해 온라인 세미나도 함께 진행해주시면 좋을 것 같습니다.', isSecret: true, password: '123', reply: null, likes: 5, comments: [], seminarTitle: null },
-        ];
+        // 기본 커뮤니티 게시글 데이터 (테스트 데이터 제거됨 - Google Apps Script API 또는 localStorage에서 로드)
+        const defaultCommunityPosts = [];
 
-
-        const convertDriveLink = (url) => {
-            if (!url) return "";
-            if (url.includes('drive.google.com') && url.includes('/d/')) {
-                try {
-                    const fileId = url.split('/d/')[1].split('/')[0];
-                    return `https://drive.google.com/uc?export=view&id=${fileId}`;
-                } catch (e) { return url; }
-            }
-            return url;
-        };
+        // convertDriveLink는 utils.js에서 로드됨 (중복 선언 방지)
 
         const CalendarSelectModal = ({ seminar, onClose, onConfirm, autoRegister = false }) => {
             const [deviceInfo, setDeviceInfo] = useState(null);
@@ -1045,9 +996,11 @@
                         
                         // 로컬 스토리지에 저장 (실제로는 서버로 전송)
                         try {
-                            const storageKey = `seminar_${seminar.id}_images_${Date.now()}`;
-                            localStorage.setItem(storageKey, JSON.stringify(seminarWithImages));
-                            console.log('세미나 신청 정보 저장:', storageKey, seminarWithImages);
+                            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                                const storageKey = `seminar_${seminar.id}_images_${Date.now()}`;
+                                localStorage.setItem(storageKey, JSON.stringify(seminarWithImages));
+                                console.log('세미나 신청 정보 저장:', storageKey, seminarWithImages);
+                            }
                         } catch (error) {
                             console.error('저장 오류:', error);
                         }
@@ -4380,11 +4333,14 @@
             const getAppliedSeminars = () => {
                 if (!currentUser || !seminars) return [];
                 try {
-                    const applications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
-                    const appliedSeminarIds = applications
-                        .filter(app => app.userId === currentUser.id)
-                        .map(app => app.seminarId);
-                    return seminars.filter(seminar => appliedSeminarIds.includes(seminar.id));
+                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                        const applications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
+                        const appliedSeminarIds = applications
+                            .filter(app => app.userId === currentUser.id)
+                            .map(app => app.seminarId);
+                        return seminars.filter(seminar => appliedSeminarIds.includes(seminar.id));
+                    }
+                    return [];
                 } catch (error) {
                     console.error('신청 정보 로드 오류:', error);
                     return [];
@@ -4499,12 +4455,20 @@
                         return;
                     }
                     // 신청 여부 확인
-                    const applications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
-                    const hasApplied = applications.some(app => 
-                        app.seminarId === formData.seminarId && app.userId === currentUser.id
-                    );
-                    if (!hasApplied) {
-                        alert('신청하신 프로그램에 대해서만 후기를 작성할 수 있습니다.');
+                    try {
+                        if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                            const applications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
+                            const hasApplied = applications.some(app => 
+                                app.seminarId === formData.seminarId && app.userId === currentUser.id
+                            );
+                            if (!hasApplied) {
+                                alert('신청하신 프로그램에 대해서만 후기를 작성할 수 있습니다.');
+                                return;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('신청 정보 확인 오류:', error);
+                        alert('신청 정보를 확인할 수 없습니다. 다시 시도해주세요.');
                         return;
                     }
                     if (!formData.rating || formData.rating === 0) {
@@ -6120,11 +6084,13 @@
             const [scrolled, setScrolled] = useState(false);
             const [content, setContent] = useState(() => {
                 try {
-                    const stored = localStorage.getItem('busan_ycc_content');
-                    if (stored) {
-                        const parsed = JSON.parse(stored);
-                        // 기본값과 병합하여 누락된 필드 보완
-                        return { ...defaultContent, ...parsed };
+                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                        const stored = localStorage.getItem('busan_ycc_content');
+                        if (stored) {
+                            const parsed = JSON.parse(stored);
+                            // 기본값과 병합하여 누락된 필드 보완
+                            return { ...defaultContent, ...parsed };
+                        }
                     }
                     return defaultContent;
                 } catch (error) {
@@ -6134,8 +6100,11 @@
             });
             const [membersData, setMembersData] = useState(() => {
                 try {
-                    const stored = localStorage.getItem('busan_ycc_members');
-                    return stored ? JSON.parse(stored) : defaultMembersData;
+                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                        const stored = localStorage.getItem('busan_ycc_members');
+                        return stored ? JSON.parse(stored) : defaultMembersData;
+                    }
+                    return defaultMembersData;
                 } catch (error) {
                     console.error('회원 데이터 로드 오류:', error);
                     return defaultMembersData;
@@ -6143,8 +6112,35 @@
             });
             const [seminarsData, setSeminarsData] = useState(() => {
                 try {
-                    const stored = localStorage.getItem('busan_ycc_seminars');
-                    return stored ? JSON.parse(stored) : defaultSeminarsData;
+                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                        const stored = localStorage.getItem('busan_ycc_seminars');
+                        if (stored) {
+                            const parsed = JSON.parse(stored);
+                            // 테스트 세미나 데이터 제거 (id가 1, 2, 3인 테스트 데이터)
+                            const filtered = parsed.filter(s => {
+                                // 테스트 세미나 ID 필터링
+                                if (s.id === 1 || s.id === 2 || s.id === 3) return false;
+                                // 테스트 세미나 제목으로도 필터링
+                                const testTitles = [
+                                    '2025 상반기 스타트업 투자 트렌드',
+                                    '부산 청년 창업가 네트워킹 나이트',
+                                    '초기 창업가를 위한 세무/노무 특강'
+                                ];
+                                if (testTitles.includes(s.title)) return false;
+                                return true;
+                            });
+                            
+                            // 필터링된 데이터가 있으면 저장하고 반환, 없으면 빈 배열
+                            if (filtered.length !== parsed.length) {
+                                localStorage.setItem('busan_ycc_seminars', JSON.stringify(filtered));
+                                console.log('✅ 테스트 세미나 데이터 제거 완료');
+                            }
+                            
+                            return filtered.length > 0 ? filtered : defaultSeminarsData;
+                        }
+                        return defaultSeminarsData;
+                    }
+                    return defaultSeminarsData;
                 } catch (error) {
                     console.error('세미나 데이터 로드 오류:', error);
                     return defaultSeminarsData;
@@ -6171,7 +6167,13 @@
                     getUsersFromSheet().then(users => {
                         if (users && users.length > 0) {
                             setUsers(users);
-                            localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+                            try {
+                                if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                                    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+                                }
+                            } catch (error) {
+                                console.error('localStorage 저장 오류:', error);
+                            }
                         }
                     }).catch(error => {
                         console.error('사용자 데이터 API 로드 오류:', error);
@@ -6226,9 +6228,20 @@
                 return daysLeft <= 3 || participantRatio >= 0.8;
             };
             
-            // 메인페이지 진입 시 다가오는 프로그램 팝업 표시 (최대 3개)
+            // 메인페이지 진입 시 다가오는 프로그램 팝업 표시 (최대 3개, 1회만 표시)
             useEffect(() => {
                 if (currentView === 'home' && seminarsData.length > 0) {
+                    // localStorage에서 팝업 표시 여부 확인
+                    try {
+                        const popupShown = localStorage.getItem('busan_ycc_popup_shown');
+                        if (popupShown === 'true') {
+                            // 이미 표시된 경우 팝업을 표시하지 않음
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('팝업 표시 여부 확인 오류:', e);
+                    }
+                    
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     
@@ -6269,7 +6282,9 @@
             // 데이터 저장 useEffect
             useEffect(() => {
                 try {
-                    localStorage.setItem('busan_ycc_members', JSON.stringify(membersData));
+                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                        localStorage.setItem('busan_ycc_members', JSON.stringify(membersData));
+                    }
                 } catch (error) {
                     console.error('회원 데이터 저장 오류:', error);
                 }
@@ -6277,7 +6292,27 @@
             
             useEffect(() => {
                 try {
-                    localStorage.setItem('busan_ycc_seminars', JSON.stringify(seminarsData));
+                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                        // 테스트 세미나 데이터 필터링 후 저장
+                        const filtered = seminarsData.filter(s => {
+                            if (s.id === 1 || s.id === 2 || s.id === 3) return false;
+                            const testTitles = [
+                                '2025 상반기 스타트업 투자 트렌드',
+                                '부산 청년 창업가 네트워킹 나이트',
+                                '초기 창업가를 위한 세무/노무 특강'
+                            ];
+                            if (testTitles.includes(s.title)) return false;
+                            return true;
+                        });
+                        
+                        // 필터링된 데이터가 다르면 상태 업데이트
+                        if (filtered.length !== seminarsData.length) {
+                            setSeminarsData(filtered);
+                            return;
+                        }
+                        
+                        localStorage.setItem('busan_ycc_seminars', JSON.stringify(filtered));
+                    }
                 } catch (error) {
                     console.error('세미나 데이터 저장 오류:', error);
                 }
@@ -6297,9 +6332,11 @@
                         console.error('게시글 로드 오류:', error);
                         // 오류 발생 시 localStorage에서 로드 시도 (폴백)
                         try {
-                            const stored = localStorage.getItem('busan_ycc_posts');
-                            if (stored) {
-                                setCommunityPosts(JSON.parse(stored));
+                            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                                const stored = localStorage.getItem('busan_ycc_posts');
+                                if (stored) {
+                                    setCommunityPosts(JSON.parse(stored));
+                                }
                             }
                         } catch (e) {
                             console.error('localStorage 로드 오류:', e);
@@ -6308,9 +6345,11 @@
                 } else {
                     // API 함수가 없으면 localStorage에서 로드
                     try {
-                        const stored = localStorage.getItem('busan_ycc_posts');
-                        if (stored) {
-                            setCommunityPosts(JSON.parse(stored));
+                        if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                            const stored = localStorage.getItem('busan_ycc_posts');
+                            if (stored) {
+                                setCommunityPosts(JSON.parse(stored));
+                            }
                         }
                     } catch (error) {
                         console.error('게시글 데이터 로드 오류:', error);
@@ -6321,21 +6360,68 @@
             // 게시글 데이터 변경 시 localStorage에도 저장 (폴백용)
             useEffect(() => {
                 try {
-                    localStorage.setItem('busan_ycc_posts', JSON.stringify(communityPosts));
+                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                        localStorage.setItem('busan_ycc_posts', JSON.stringify(communityPosts));
+                    }
                 } catch (error) {
                     console.error('게시글 데이터 저장 오류:', error);
                 }
             }, [communityPosts]);
             
-            // localStorage 변경 감지 (다른 탭/창에서 데이터 변경 시)
+            // localStorage 변경 감지 (다른 탭/창에서 데이터 변경 시) - CSV 재로드 트리거
             useEffect(() => {
-                const handleStorageChange = (e) => {
+                const handleStorageChange = async (e) => {
                     if (e.key === 'busan_ycc_seminars' && e.newValue) {
                         try {
+                            // 다른 탭에서 변경된 경우 CSV에서 최신 데이터 로드 시도
+                            const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.SEMINAR) 
+                                ? CONFIG.SHEET_URLS.SEMINAR 
+                                : SEMINAR_SHEET_URL;
+                            
+                            if (csvUrl) {
+                                const csvSeminars = await loadSeminarsFromCSV();
+                                if (csvSeminars && csvSeminars.length > 0) {
+                                    setSeminarsData(csvSeminars);
+                                    console.log('✅ 다른 탭 변경 감지: CSV에서 세미나 데이터 재로드');
+                                    return;
+                                }
+                            }
+                            
+                            // CSV 로드 실패 시 localStorage 데이터 사용 (테스트 데이터 필터링)
                             const newData = JSON.parse(e.newValue);
-                            setSeminarsData(newData);
+                            const filtered = newData.filter(s => {
+                                if (s.id === 1 || s.id === 2 || s.id === 3) return false;
+                                const testTitles = [
+                                    '2025 상반기 스타트업 투자 트렌드',
+                                    '부산 청년 창업가 네트워킹 나이트',
+                                    '초기 창업가를 위한 세무/노무 특강'
+                                ];
+                                if (testTitles.includes(s.title)) return false;
+                                return true;
+                            });
+                            setSeminarsData(filtered);
                         } catch (error) {
-                            console.error('세미나 데이터 업데이트 오류:', error);
+                            console.error('❌ 세미나 데이터 업데이트 오류:', error);
+                        }
+                    } else if (e.key === 'busan_ycc_members' && e.newValue) {
+                        try {
+                            const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.MEMBER) 
+                                ? CONFIG.SHEET_URLS.MEMBER 
+                                : MEMBER_SHEET_URL;
+                            
+                            if (csvUrl) {
+                                const csvMembers = await loadMembersFromCSV();
+                                if (csvMembers && csvMembers.length > 0) {
+                                    setMembersData(csvMembers);
+                                    console.log('✅ 다른 탭 변경 감지: CSV에서 회원 데이터 재로드');
+                                    return;
+                                }
+                            }
+                            
+                            const newData = JSON.parse(e.newValue);
+                            setMembersData(newData);
+                        } catch (error) {
+                            console.error('❌ 회원 데이터 업데이트 오류:', error);
                         }
                     }
                 };
@@ -6344,17 +6430,87 @@
                 return () => window.removeEventListener('storage', handleStorageChange);
             }, []);
             
-            // 페이지 포커스 시 데이터 재로드 (같은 탭에서 admin.html이 데이터를 변경한 경우)
+            // 페이지 포커스 시 데이터 재로드 (CSV 우선, localStorage 폴백)
             useEffect(() => {
-                const handleFocus = () => {
+                const handleFocus = async () => {
                     try {
-                        const stored = localStorage.getItem('busan_ycc_seminars');
-                        if (stored) {
-                            const newData = JSON.parse(stored);
-                            setSeminarsData(newData);
+                        // CSV에서 최신 데이터 로드 시도
+                        const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.SEMINAR) 
+                            ? CONFIG.SHEET_URLS.SEMINAR 
+                            : SEMINAR_SHEET_URL;
+                        
+                        if (csvUrl) {
+                            const csvSeminars = await loadSeminarsFromCSV();
+                            if (csvSeminars && csvSeminars.length > 0) {
+                                setSeminarsData(csvSeminars);
+                                localStorage.setItem('busan_ycc_seminars', JSON.stringify(csvSeminars));
+                                console.log('✅ 포커스 시 CSV에서 세미나 데이터 재로드 완료');
+                                return;
+                            }
+                        }
+                        
+                        // CSV 로드 실패 시 localStorage에서 로드 (테스트 데이터 필터링)
+                        if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                            const stored = localStorage.getItem('busan_ycc_seminars');
+                            if (stored) {
+                                const newData = JSON.parse(stored);
+                                // 테스트 세미나 데이터 필터링
+                                const filtered = newData.filter(s => {
+                                    if (s.id === 1 || s.id === 2 || s.id === 3) return false;
+                                    const testTitles = [
+                                        '2025 상반기 스타트업 투자 트렌드',
+                                        '부산 청년 창업가 네트워킹 나이트',
+                                        '초기 창업가를 위한 세무/노무 특강'
+                                    ];
+                                    if (testTitles.includes(s.title)) return false;
+                                    return true;
+                                });
+                                
+                                if (filtered.length !== newData.length) {
+                                    localStorage.setItem('busan_ycc_seminars', JSON.stringify(filtered));
+                                    console.log('✅ 포커스 시 테스트 세미나 데이터 제거 완료');
+                                }
+                                
+                                setSeminarsData(filtered);
+                                console.log('✅ 포커스 시 localStorage에서 세미나 데이터 재로드 완료');
+                            }
                         }
                     } catch (error) {
-                        console.error('세미나 데이터 재로드 오류:', error);
+                        console.error('❌ 포커스 시 데이터 재로드 오류:', error);
+                    }
+                };
+                
+                window.addEventListener('focus', handleFocus);
+                return () => window.removeEventListener('focus', handleFocus);
+            }, []);
+            
+            // 회원 데이터도 포커스 시 재로드
+            useEffect(() => {
+                const handleFocus = async () => {
+                    try {
+                        const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.MEMBER) 
+                            ? CONFIG.SHEET_URLS.MEMBER 
+                            : MEMBER_SHEET_URL;
+                        
+                        if (csvUrl) {
+                            const csvMembers = await loadMembersFromCSV();
+                            if (csvMembers && csvMembers.length > 0) {
+                                setMembersData(csvMembers);
+                                localStorage.setItem('busan_ycc_members', JSON.stringify(csvMembers));
+                                console.log('✅ 포커스 시 CSV에서 회원 데이터 재로드 완료');
+                                return;
+                            }
+                        }
+                        
+                        if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                            const stored = localStorage.getItem('busan_ycc_members');
+                            if (stored) {
+                                const newData = JSON.parse(stored);
+                                setMembersData(newData);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('❌ 포커스 시 회원 데이터 재로드 오류:', error);
                     }
                 };
                 
@@ -6365,31 +6521,33 @@
             // 메뉴 항목 활성/비활성 상태 관리 (로컬 스토리지에서 로드)
             const loadMenuEnabledFromStorage = () => {
                 try {
-                    const stored = localStorage.getItem('busan_ycc_menu_enabled');
-                    const parsed = stored ? JSON.parse(stored) : {};
-                    // 기본값 설정 (admin.html과 일치)
-                    return {
-                        '홈': parsed['홈'] !== undefined ? parsed['홈'] : true,
-                        '소개': parsed['소개'] !== undefined ? parsed['소개'] : true,
-                        '프로그램': parsed['프로그램'] !== undefined ? parsed['프로그램'] : true,
-                        '부청사 회원': parsed['부청사 회원'] !== undefined ? parsed['부청사 회원'] : true,
-                        '커뮤니티': parsed['커뮤니티'] !== undefined ? parsed['커뮤니티'] : true,
-                        '입찰공고': parsed['입찰공고'] !== undefined ? parsed['입찰공고'] : true,
-                        '후원': parsed['후원'] !== undefined ? parsed['후원'] : true,
-                        ...parsed
-                    };
+                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                        const stored = localStorage.getItem('busan_ycc_menu_enabled');
+                        const parsed = stored ? JSON.parse(stored) : {};
+                        // 기본값 설정 (admin.html과 일치)
+                        return {
+                            '홈': parsed['홈'] !== undefined ? parsed['홈'] : true,
+                            '소개': parsed['소개'] !== undefined ? parsed['소개'] : true,
+                            '프로그램': parsed['프로그램'] !== undefined ? parsed['프로그램'] : true,
+                            '부청사 회원': parsed['부청사 회원'] !== undefined ? parsed['부청사 회원'] : true,
+                            '커뮤니티': parsed['커뮤니티'] !== undefined ? parsed['커뮤니티'] : true,
+                            '입찰공고': parsed['입찰공고'] !== undefined ? parsed['입찰공고'] : true,
+                            '후원': parsed['후원'] !== undefined ? parsed['후원'] : true,
+                            ...parsed
+                        };
+                    }
                 } catch (error) {
                     console.error('메뉴 활성화 상태 로드 오류:', error);
-                    return {
-                '홈': true,
-                '소개': true,
-                '프로그램': true,
-                '부청사 회원': true,
-                '커뮤니티': true,
-                '입찰공고': true,
-                '후원': true
-                    };
                 }
+                return {
+                    '홈': true,
+                    '소개': true,
+                    '프로그램': true,
+                    '부청사 회원': true,
+                    '커뮤니티': true,
+                    '입찰공고': true,
+                    '후원': true
+                };
             };
 
             const [menuEnabled, setMenuEnabled] = useState(loadMenuEnabledFromStorage());
@@ -6408,18 +6566,22 @@
             // 로컬 스토리지에서 메뉴 명칭 로드
             const loadMenuNamesFromStorage = () => {
                 try {
-                    const stored = localStorage.getItem('busan_ycc_menu_names');
-                    return stored ? JSON.parse(stored) : defaultMenuNames;
+                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                        const stored = localStorage.getItem('busan_ycc_menu_names');
+                        return stored ? JSON.parse(stored) : defaultMenuNames;
+                    }
                 } catch (error) {
                     console.error('메뉴 명칭 로드 오류:', error);
-                    return defaultMenuNames;
                 }
+                return defaultMenuNames;
             };
 
             // 메뉴 명칭 저장
             const saveMenuNamesToStorage = (menuNames) => {
                 try {
-                    localStorage.setItem('busan_ycc_menu_names', JSON.stringify(menuNames));
+                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                        localStorage.setItem('busan_ycc_menu_names', JSON.stringify(menuNames));
+                    }
                 } catch (error) {
                     console.error('메뉴 명칭 저장 오류:', error);
                 }
@@ -6450,10 +6612,352 @@
 
             // addLog 함수는 admin.html로 이동되었습니다.
 
-            // Sheet Data Loading Effects
-            useEffect(() => { if (CONFIG_SHEET_URL) { /* fetch config */ } }, []);
-            useEffect(() => { if (MEMBER_SHEET_URL) { /* fetch members */ } }, []);
-            useEffect(() => { if (SEMINAR_SHEET_URL) { /* fetch seminars */ } }, []);
+            // ==========================================
+            // CSV 데이터 로딩 함수
+            // ==========================================
+            
+            /**
+             * 회원 데이터 CSV에서 로드
+             */
+            const loadMembersFromCSV = async () => {
+                try {
+                    // CONFIG에서 URL 가져오기
+                    const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.MEMBER) 
+                        ? CONFIG.SHEET_URLS.MEMBER 
+                        : MEMBER_SHEET_URL;
+                    
+                    if (!csvUrl) {
+                        console.log('⚠️ 회원 CSV URL이 설정되지 않았습니다.');
+                        return null;
+                    }
+                    
+                    console.log('📥 회원 CSV 데이터 로딩 시작...');
+                    const csvData = await fetchSheetData(
+                        csvUrl,
+                        (typeof CONFIG !== 'undefined' && CONFIG.SHEET_LOADING?.RETRY_ATTEMPTS) 
+                            ? CONFIG.SHEET_LOADING.RETRY_ATTEMPTS 
+                            : 3,
+                        (typeof CONFIG !== 'undefined' && CONFIG.SHEET_LOADING?.RETRY_DELAY) 
+                            ? CONFIG.SHEET_LOADING.RETRY_DELAY 
+                            : 1000
+                    );
+                    
+                    if (csvData && csvData.length > 0) {
+                        // CSV 데이터를 애플리케이션 형식으로 변환
+                        const members = csvData.map((row, index) => {
+                            // 기본 필드 매핑
+                            const member = {
+                                id: row.id || row.ID || `member_${index + 1}`,
+                                name: row.name || row.이름 || row.Name || '',
+                                email: row.email || row.Email || row.이메일 || '',
+                                phone: row.phone || row.Phone || row.전화번호 || '',
+                                company: row.company || row.Company || row.회사명 || '',
+                                businessRegistrationNumber: row.businessRegistrationNumber || row.BusinessRegistrationNumber || row.사업자등록번호 || '',
+                                businessType: row.businessType || row.BusinessType || row.사업자유형 || '',
+                                businessCategory: row.businessCategory || row.BusinessCategory || row.업종 || '',
+                                role: row.role || row.Role || row.직책 || '',
+                                status: row.status || row.Status || 'approved',
+                                approvalStatus: row.approvalStatus || row.ApprovalStatus || 'approved',
+                                memberGrade: row.memberGrade || row.MemberGrade || row.회원등급 || '',
+                                img: row.img || row.Img || row.이미지 || row.image || '',
+                                createdAt: row.createdAt || row.CreatedAt || row.생성일 || new Date().toISOString()
+                            };
+                            
+                            // JSON 문자열 필드 파싱
+                            if (typeof member.img === 'string' && member.img.startsWith('[')) {
+                                try {
+                                    member.img = JSON.parse(member.img)[0] || member.img;
+                                } catch (e) {
+                                    console.warn('이미지 JSON 파싱 실패:', e);
+                                }
+                            }
+                            
+                            return member;
+                        }).filter(m => m.name && m.name.trim() !== ''); // 이름이 있는 회원만
+                        
+                        console.log(`✅ 회원 CSV 데이터 로드 완료: ${members.length}명`);
+                        return members;
+                    } else {
+                        console.warn('⚠️ 회원 CSV 데이터가 비어있습니다.');
+                    }
+                    
+                    return null;
+                } catch (error) {
+                    console.error('❌ 회원 CSV 로드 오류:', error);
+                    // 에러 발생 시 사용자에게 알림 (선택적)
+                    // alert('회원 데이터를 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+                    return null;
+                }
+            };
+            
+            /**
+             * 세미나 데이터 CSV에서 로드
+             */
+            const loadSeminarsFromCSV = async () => {
+                try {
+                    const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.SEMINAR) 
+                        ? CONFIG.SHEET_URLS.SEMINAR 
+                        : SEMINAR_SHEET_URL;
+                    
+                    if (!csvUrl) {
+                        console.log('⚠️ 세미나 CSV URL이 설정되지 않았습니다.');
+                        return null;
+                    }
+                    
+                    console.log('📥 세미나 CSV 데이터 로딩 시작...');
+                    const csvData = await fetchSheetData(
+                        csvUrl,
+                        (typeof CONFIG !== 'undefined' && CONFIG.SHEET_LOADING?.RETRY_ATTEMPTS) 
+                            ? CONFIG.SHEET_LOADING.RETRY_ATTEMPTS 
+                            : 3,
+                        (typeof CONFIG !== 'undefined' && CONFIG.SHEET_LOADING?.RETRY_DELAY) 
+                            ? CONFIG.SHEET_LOADING.RETRY_DELAY 
+                            : 1000
+                    );
+                    
+                    if (csvData && csvData.length > 0) {
+                        const seminars = csvData.map((row, index) => {
+                            const seminar = {
+                                id: row.id || row.ID || `seminar_${index + 1}`,
+                                title: row.title || row.Title || row.제목 || '',
+                                category: row.category || row.Category || row.카테고리 || '',
+                                date: row.date || row.Date || row.날짜 || '',
+                                location: row.location || row.Location || row.장소 || '',
+                                locationAddress: row.locationAddress || row.LocationAddress || row.주소 || '',
+                                locationLat: row.locationLat ? parseFloat(row.locationLat) : null,
+                                locationLng: row.locationLng ? parseFloat(row.locationLng) : null,
+                                desc: row.desc || row.Desc || row.설명 || row.description || '',
+                                images: [],
+                                price: row.price ? parseInt(row.price) : 0,
+                                maxParticipants: row.maxParticipants ? parseInt(row.maxParticipants) : 0,
+                                currentParticipants: row.currentParticipants ? parseInt(row.currentParticipants) : 0,
+                                requiresPayment: row.requiresPayment === 'true' || row.requiresPayment === true,
+                                status: calculateStatus(row.date || row.Date || row.날짜 || '')
+                            };
+                            
+                            // 이미지 처리
+                            const imgField = row.images || row.Images || row.이미지 || row.image || '';
+                            if (imgField) {
+                                if (typeof imgField === 'string' && (imgField.startsWith('[') || imgField.startsWith('"'))) {
+                                    try {
+                                        seminar.images = JSON.parse(imgField.replace(/^"|"$/g, ''));
+                                    } catch (e) {
+                                        console.warn('이미지 JSON 파싱 실패:', e);
+                                        seminar.images = [imgField];
+                                    }
+                                } else {
+                                    seminar.images = [imgField];
+                                }
+                            }
+                            
+                            // 첫 번째 이미지를 img 필드로도 설정
+                            if (seminar.images.length > 0) {
+                                seminar.img = seminar.images[0];
+                            }
+                            
+                            return seminar;
+                        }).filter(s => s.title && s.title.trim() !== ''); // 제목이 있는 세미나만
+                        
+                        console.log(`✅ 세미나 CSV 데이터 로드 완료: ${seminars.length}개`);
+                        return seminars;
+                    } else {
+                        console.warn('⚠️ 세미나 CSV 데이터가 비어있습니다.');
+                    }
+                    
+                    return null;
+                } catch (error) {
+                    console.error('❌ 세미나 CSV 로드 오류:', error);
+                    // 에러 발생 시 사용자에게 알림 (선택적)
+                    // alert('세미나 데이터를 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+                    return null;
+                }
+            };
+            
+            /**
+             * 게시글 데이터 CSV에서 로드
+             */
+            const loadPostsFromCSV = async () => {
+                try {
+                    // 게시글 CSV URL은 config에 없을 수 있으므로 Google Apps Script API 사용
+                    // 또는 별도 CSV URL이 있다면 사용
+                    if (typeof getPostsFromSheet === 'function') {
+                        console.log('📥 게시글 데이터 로딩 (Google Apps Script API 사용)...');
+                        const posts = await getPostsFromSheet();
+                        if (posts && posts.length > 0) {
+                            console.log(`✅ 게시글 데이터 로드 완료: ${posts.length}개`);
+                            return posts;
+                        }
+                    }
+                    
+                    return null;
+                } catch (error) {
+                    console.error('❌ 게시글 CSV 로드 오류:', error);
+                    return null;
+                }
+            };
+
+            // Sheet Data Loading Effects - CSV 우선 로드, localStorage 폴백
+            useEffect(() => {
+                const loadCSVData = async () => {
+                    // 회원 데이터 CSV 로드 (우선)
+                    const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.MEMBER) 
+                        ? CONFIG.SHEET_URLS.MEMBER 
+                        : MEMBER_SHEET_URL;
+                    
+                    if (csvUrl) {
+                        const csvMembers = await loadMembersFromCSV();
+                        if (csvMembers && csvMembers.length > 0) {
+                            setMembersData(csvMembers);
+                            // localStorage에도 저장 (캐시용)
+                            try {
+                                localStorage.setItem('busan_ycc_members', JSON.stringify(csvMembers));
+                            } catch (e) {
+                                console.error('회원 데이터 저장 오류:', e);
+                            }
+                        } else {
+                            // CSV 로드 실패 시 localStorage 폴백
+                            console.log('CSV 로드 실패, localStorage에서 회원 데이터 로드 시도...');
+                            try {
+                                const stored = localStorage.getItem('busan_ycc_members');
+                                if (stored) {
+                                    const members = JSON.parse(stored);
+                                    if (members && members.length > 0) {
+                                        setMembersData(members);
+                                        console.log('✅ localStorage에서 회원 데이터 로드 완료');
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('localStorage 회원 데이터 로드 오류:', e);
+                            }
+                        }
+                    } else {
+                        // CSV URL이 없으면 localStorage에서 로드
+                        try {
+                            const stored = localStorage.getItem('busan_ycc_members');
+                            if (stored) {
+                                const members = JSON.parse(stored);
+                                if (members && members.length > 0) {
+                                    setMembersData(members);
+                                }
+                            }
+                        } catch (e) {
+                            console.error('localStorage 회원 데이터 로드 오류:', e);
+                        }
+                    }
+                };
+                
+                loadCSVData();
+                
+                // 주기적 갱신 (5분마다 또는 설정된 캐시 시간)
+                const cacheDuration = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_LOADING?.CACHE_DURATION) 
+                    ? CONFIG.SHEET_LOADING.CACHE_DURATION 
+                    : 5 * 60 * 1000; // 기본 5분
+                
+                const intervalId = setInterval(() => {
+                    loadCSVData();
+                }, cacheDuration);
+                
+                return () => clearInterval(intervalId);
+            }, []);
+            
+            useEffect(() => {
+                const loadCSVData = async () => {
+                    // 세미나 데이터 CSV 로드 (우선)
+                    const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.SEMINAR) 
+                        ? CONFIG.SHEET_URLS.SEMINAR 
+                        : SEMINAR_SHEET_URL;
+                    
+                    if (csvUrl) {
+                        const csvSeminars = await loadSeminarsFromCSV();
+                        if (csvSeminars && csvSeminars.length > 0) {
+                            setSeminarsData(csvSeminars);
+                            // localStorage에도 저장 (캐시용)
+                            try {
+                                localStorage.setItem('busan_ycc_seminars', JSON.stringify(csvSeminars));
+                            } catch (e) {
+                                console.error('세미나 데이터 저장 오류:', e);
+                            }
+                        } else {
+                            // CSV 로드 실패 시 localStorage 폴백
+                            console.log('CSV 로드 실패, localStorage에서 세미나 데이터 로드 시도...');
+                            try {
+                                const stored = localStorage.getItem('busan_ycc_seminars');
+                                if (stored) {
+                                    const seminars = JSON.parse(stored);
+                                    // 테스트 세미나 데이터 필터링
+                                    const filtered = seminars.filter(s => {
+                                        if (s.id === 1 || s.id === 2 || s.id === 3) return false;
+                                        const testTitles = [
+                                            '2025 상반기 스타트업 투자 트렌드',
+                                            '부산 청년 창업가 네트워킹 나이트',
+                                            '초기 창업가를 위한 세무/노무 특강'
+                                        ];
+                                        if (testTitles.includes(s.title)) return false;
+                                        return true;
+                                    });
+                                    
+                                    if (filtered.length !== seminars.length) {
+                                        localStorage.setItem('busan_ycc_seminars', JSON.stringify(filtered));
+                                        console.log('✅ 테스트 세미나 데이터 제거 완료');
+                                    }
+                                    
+                                    if (filtered && filtered.length > 0) {
+                                        setSeminarsData(filtered);
+                                        console.log('✅ localStorage에서 세미나 데이터 로드 완료');
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('localStorage 세미나 데이터 로드 오류:', e);
+                            }
+                        }
+                    } else {
+                        // CSV URL이 없으면 localStorage에서 로드
+                        try {
+                            const stored = localStorage.getItem('busan_ycc_seminars');
+                            if (stored) {
+                                const seminars = JSON.parse(stored);
+                                // 테스트 세미나 데이터 필터링
+                                const filtered = seminars.filter(s => {
+                                    if (s.id === 1 || s.id === 2 || s.id === 3) return false;
+                                    const testTitles = [
+                                        '2025 상반기 스타트업 투자 트렌드',
+                                        '부산 청년 창업가 네트워킹 나이트',
+                                        '초기 창업가를 위한 세무/노무 특강'
+                                    ];
+                                    if (testTitles.includes(s.title)) return false;
+                                    return true;
+                                });
+                                
+                                if (filtered.length !== seminars.length) {
+                                    localStorage.setItem('busan_ycc_seminars', JSON.stringify(filtered));
+                                    console.log('✅ 테스트 세미나 데이터 제거 완료');
+                                }
+                                
+                                if (filtered && filtered.length > 0) {
+                                    setSeminarsData(filtered);
+                                }
+                            }
+                        } catch (e) {
+                            console.error('localStorage 세미나 데이터 로드 오류:', e);
+                        }
+                    }
+                };
+                
+                loadCSVData();
+                
+                // 주기적 갱신
+                const cacheDuration = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_LOADING?.CACHE_DURATION) 
+                    ? CONFIG.SHEET_LOADING.CACHE_DURATION 
+                    : 5 * 60 * 1000; // 기본 5분
+                
+                const intervalId = setInterval(() => {
+                    loadCSVData();
+                }, cacheDuration);
+                
+                return () => clearInterval(intervalId);
+            }, []);
+            
+            // 게시글은 Google Apps Script API 사용 (이미 구현됨)
             
             // 테스트 계정 자동 생성
             useEffect(() => {
@@ -6608,7 +7112,13 @@
                     setMembersData(prev => {
                         const updated = [...prev, newMember];
                         // admin.html과 공유하기 위해 busan_ycc_members에도 저장
-                        localStorage.setItem('busan_ycc_members', JSON.stringify(updated));
+                        try {
+                            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                                localStorage.setItem('busan_ycc_members', JSON.stringify(updated));
+                            }
+                        } catch (error) {
+                            console.error('회원 데이터 저장 오류:', error);
+                        }
                         return updated;
                     });
                     
@@ -6753,10 +7263,12 @@
                 
                 // localStorage에도 저장 (폴백용)
                 try {
-                    const storageKey = 'busan_ycc_seminar_applications';
-                    const existingApplications = JSON.parse(localStorage.getItem(storageKey) || '[]');
-                    existingApplications.push(application);
-                    localStorage.setItem(storageKey, JSON.stringify(existingApplications));
+                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                        const storageKey = 'busan_ycc_seminar_applications';
+                        const existingApplications = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                        existingApplications.push(application);
+                        localStorage.setItem(storageKey, JSON.stringify(existingApplications));
+                    }
                 } catch (error) {
                     console.error('신청 정보 저장 오류:', error);
                 }
@@ -6766,11 +7278,21 @@
                 return true;
             };
 
+            // 팝업 닫기 및 표시 기록 함수
+            const closePopupAndMarkAsShown = () => {
+                setPopupPrograms([]);
+                try {
+                    localStorage.setItem('busan_ycc_popup_shown', 'true');
+                } catch (e) {
+                    console.error('팝업 표시 기록 저장 오류:', e);
+                }
+            };
+            
             // 팝업에서 신청하기 버튼 클릭 핸들러
-            const handlePopupApply = (program) => {
+            const handlePopupApply = async (program) => {
                 if (!currentUser) {
                     setShowLoginModal(true);
-                    setPopupPrograms([]);
+                    closePopupAndMarkAsShown();
                     return;
                 }
                 
@@ -6794,13 +7316,15 @@
                     
                     // localStorage에서 확인 (폴백)
                     try {
-                        const applications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
-                        const hasApplied = applications.some(app => 
-                            app.seminarId === program.id && app.userId === currentUser.id
-                        );
-                        if (hasApplied) {
-                            alert('이미 신청한 프로그램입니다.');
-                            return true;
+                        if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                            const applications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
+                            const hasApplied = applications.some(app => 
+                                app.seminarId === program.id && app.userId === currentUser.id
+                            );
+                            if (hasApplied) {
+                                alert('이미 신청한 프로그램입니다.');
+                                return true;
+                            }
                         }
                     } catch (error) {
                         console.error('신청 정보 확인 오류:', error);
@@ -6834,9 +7358,9 @@
                     // 캘린더 파일 생성 및 다운로드
                     generateAndDownloadCalendar(applySeminarFromPopup);
                     
-                    // 팝업 닫기
+                    // 팝업 닫기 및 표시 기록
                     setIsPopupApplyModalOpen(false);
-                    setPopupPrograms([]);
+                    closePopupAndMarkAsShown();
                     setApplySeminarFromPopup(null);
                     setPopupApplicationData({ reason: '', questions: ['', ''] });
                 }
@@ -6872,19 +7396,17 @@
                 
                 // localStorage에도 저장 (폴백용)
                 try {
-                    const existingInquiries = JSON.parse(localStorage.getItem('busan_ycc_inquiries') || '[]');
-                    const updatedInquiries = [...existingInquiries, newInquiry];
-                    localStorage.setItem('busan_ycc_inquiries', JSON.stringify(updatedInquiries));
+                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                        const existingInquiries = JSON.parse(localStorage.getItem('busan_ycc_inquiries') || '[]');
+                        const updatedInquiries = [...existingInquiries, newInquiry];
+                        localStorage.setItem('busan_ycc_inquiries', JSON.stringify(updatedInquiries));
+                    }
                 } catch (error) {
                     console.error('문의 저장 오류:', error);
                 }
                 
                 alert('문의하기가 등록되었습니다. 관리자가 확인 후 답변드리겠습니다.');
-                    setIsInquiryModalOpen(false);
-                } catch (error) {
-                    console.error('문의하기 저장 오류:', error);
-                    alert('문의하기 등록에 실패했습니다.');
-                }
+                setIsInquiryModalOpen(false);
             };
 
             // .ics 파일 생성 및 다운로드
@@ -7698,9 +8220,9 @@ END:VCALENDAR`;
 
             return (
                 <div className="min-h-screen bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">
-                    {/* 프로그램 팝업 (최대 3개 동시 표시) */}
+                    {/* 프로그램 팝업 (최대 3개 동시 표시, 1회만 표시) */}
                     {popupPrograms.length > 0 && (
-                        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setPopupPrograms([]); }}>
+                        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) closePopupAndMarkAsShown(); }}>
                             <div className="flex flex-col md:flex-row gap-4 max-w-6xl w-full overflow-x-auto py-4" onClick={(e) => e.stopPropagation()}>
                                 {popupPrograms.map((program, idx) => {
                                     const isMobile = window.innerWidth < 768;
@@ -7723,7 +8245,14 @@ END:VCALENDAR`;
                                                     {/* 닫기 버튼 */}
                                                     <button 
                                                         type="button" 
-                                                        onClick={() => setPopupPrograms(prev => prev.filter((_, i) => i !== idx))} 
+                                                        onClick={() => {
+                                                            const remaining = popupPrograms.filter((_, i) => i !== idx);
+                                                            if (remaining.length === 0) {
+                                                                closePopupAndMarkAsShown();
+                                                            } else {
+                                                                setPopupPrograms(remaining);
+                                                            }
+                                                        }} 
                                                         className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 z-10 shadow-md"
                                                     >
                                                         <Icons.X size={18} />
@@ -7741,7 +8270,7 @@ END:VCALENDAR`;
                                                 <button 
                                                     type="button"
                                                     onClick={() => {
-                                                        setPopupPrograms([]);
+                                                        closePopupAndMarkAsShown();
                                                         setCurrentView('allSeminars');
                                                         // 해당 프로그램을 선택하여 상세 모달 열기
                                                         setTimeout(() => {
@@ -7844,10 +8373,10 @@ END:VCALENDAR`;
                                                             신청하기
                                                         </button>
                                                     ) : (
-                                                        <button 
+                                                        <button
                                                             type="button"
                                                             onClick={() => {
-                                                                setPopupPrograms([]);
+                                                                closePopupAndMarkAsShown();
                                                                 setShowLoginModal(true);
                                                             }}
                                                             className="w-full py-3 bg-gray-300 text-gray-500 font-bold rounded-xl cursor-not-allowed"
@@ -7866,7 +8395,7 @@ END:VCALENDAR`;
                             {popupPrograms.length > 1 && (
                                 <button 
                                     type="button" 
-                                    onClick={() => setPopupPrograms([])} 
+                                    onClick={() => closePopupAndMarkAsShown()} 
                                     className="fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 bg-white/90 hover:bg-white text-gray-700 rounded-full font-bold shadow-lg z-20"
                                 >
                                     모두 닫기

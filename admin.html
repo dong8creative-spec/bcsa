@@ -24,6 +24,15 @@
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=f35b8c9735d77cced1235c5775c7c3b1&libraries=services"></script>
 
+    <!-- 설정 파일 -->
+    <script src="./assets/js/config.js"></script>
+    
+    <!-- 유틸리티 함수 -->
+    <script src="./assets/js/utils.js"></script>
+    
+    <!-- Google Sheets API 통신 모듈 -->
+    <script src="./assets/js/sheets-api.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -120,11 +129,7 @@
             }
         };
         
-        const formatDate = (date) => {
-            if (!date) return '';
-            const d = new Date(date);
-            return d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
-        };
+        // formatDate는 utils.js에서 로드됨 (중복 선언 방지)
         
         // 카카오 지도 모달 컴포넌트
         const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) => {
@@ -722,18 +727,7 @@
             }
         };
         
-        // 상태 계산 함수
-        const calculateStatus = (dateString) => {
-            if (!dateString) return "모집중";
-            const seminarDate = new Date(dateString.replace(/\./g, '-'));
-            const today = new Date();
-            today.setHours(0,0,0,0);
-            const diffTime = seminarDate - today;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays < 0) return "종료";
-            if (diffDays <= 14) return "마감임박";
-            return "모집중";
-        };
+        // calculateStatus는 utils.js에서 로드됨 (중복 선언 방지)
 
         // ==========================================
         // 기본 데이터
@@ -798,7 +792,28 @@
         const AdminDashboard = () => {
             // 데이터 상태
             const [members, setMembers] = useState(() => loadDataFromStorage(STORAGE_KEY_MEMBERS, defaultMembersData));
-            const [seminars, setSeminars] = useState(() => loadDataFromStorage(STORAGE_KEY_SEMINARS, defaultSeminarsData));
+            const [seminars, setSeminars] = useState(() => {
+                const loaded = loadDataFromStorage(STORAGE_KEY_SEMINARS, defaultSeminarsData);
+                // 테스트 세미나 데이터 필터링
+                const filtered = loaded.filter(s => {
+                    if (s.id === 1 || s.id === 2 || s.id === 3) return false;
+                    const testTitles = [
+                        '2025 상반기 스타트업 투자 트렌드',
+                        '부산 청년 창업가 네트워킹 나이트',
+                        '초기 창업가를 위한 세무/노무 특강'
+                    ];
+                    if (testTitles.includes(s.title)) return false;
+                    return true;
+                });
+                
+                // 필터링된 데이터가 다르면 저장
+                if (filtered.length !== loaded.length) {
+                    saveDataToStorage(STORAGE_KEY_SEMINARS, filtered);
+                    console.log('✅ admin.html: 테스트 세미나 데이터 제거 완료');
+                }
+                
+                return filtered;
+            });
             const [posts, setPosts] = useState(() => loadDataFromStorage(STORAGE_KEY_POSTS, defaultCommunityPosts));
             const [content, setContent] = useState(() => loadDataFromStorage(STORAGE_KEY_CONTENT, defaultContent));
             const [menuEnabled, setMenuEnabled] = useState(() => {
@@ -838,17 +853,179 @@
             const [showMasterLogin, setShowMasterLogin] = useState(false);
             const [masterPwInput, setMasterPwInput] = useState('');
             
-            // 데이터 저장 (변경 시 자동)
+            // ==========================================
+            // CSV 자동 백업 함수
+            // ==========================================
+            
+            /**
+             * 데이터를 CSV 형식으로 변환하여 Google Sheets에 백업
+             * @param {Array} data - 백업할 데이터 배열
+             * @param {string} type - 데이터 타입 ('members', 'seminars', 'posts')
+             */
+            const backupToCSV = async (data, type) => {
+                try {
+                    if (!data || !Array.isArray(data) || data.length === 0) {
+                        console.log(`⚠️ 백업할 ${type} 데이터가 없습니다.`);
+                        return;
+                    }
+                    
+                    // CSV 변환
+                    const csvContent = convertToCSV(data);
+                    
+                    if (!csvContent) {
+                        console.error(`❌ CSV 변환 실패: ${type}`);
+                        addLog('ERROR', type, `CSV 변환 실패: ${type}`, currentUser?.name);
+                        return;
+                    }
+                    
+                    // Google Apps Script API를 통한 백업 시도
+                    if (typeof CONFIG !== 'undefined' && CONFIG.GOOGLE_APPS_SCRIPT?.WEB_APP_URL) {
+                        try {
+                            // Google Apps Script 웹앱에 CSV 데이터 전송
+                            const response = await fetch(CONFIG.GOOGLE_APPS_SCRIPT.WEB_APP_URL, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    action: 'backupCSV',
+                                    type: type,
+                                    csvContent: csvContent,
+                                    data: data
+                                })
+                            });
+                            
+                            if (response.ok) {
+                                const result = await response.json();
+                                if (result.success) {
+                                    console.log(`✅ ${type} CSV 백업 성공 (Google Apps Script)`);
+                                    addLog('BACKUP', type, `${type} 데이터 CSV 백업 완료 (${data.length}개)`, currentUser?.name);
+                                } else {
+                                    throw new Error(result.error || '백업 실패');
+                                }
+                            } else {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                        } catch (error) {
+                            console.error(`❌ ${type} CSV 백업 실패 (Google Apps Script):`, error);
+                            addLog('ERROR', type, `CSV 백업 실패: ${error.message}`, currentUser?.name);
+                            // Google Apps Script 실패 시 CSV 다운로드 링크 생성 (수동 백업)
+                            console.log(`대안: CSV 파일 다운로드 제공`);
+                            // downloadCSVFile(csvContent, type); // 주석 처리: 자동 다운로드는 사용자 경험을 해칠 수 있음
+                        }
+                    } else {
+                        // Google Apps Script URL이 없으면 로그만 기록
+                        console.log(`⚠️ Google Apps Script URL이 설정되지 않았습니다. CSV 백업을 위해 config.js에 WEB_APP_URL을 설정하세요.`);
+                        addLog('INFO', type, `CSV 백업 준비 완료 (Google Apps Script URL 미설정)`, currentUser?.name);
+                    }
+                } catch (error) {
+                    console.error(`❌ CSV 백업 오류 (${type}):`, error);
+                    addLog('ERROR', type, `CSV 백업 중 오류 발생: ${error.message}`, currentUser?.name);
+                }
+            };
+            
+            /**
+             * CSV 파일 다운로드 (수동 백업용)
+             * @param {string} csvContent - CSV 문자열
+             * @param {string} type - 파일 타입
+             */
+            const downloadCSVFile = (csvContent, type) => {
+                try {
+                    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM 추가 (한글 깨짐 방지)
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `backup_${type}_${new Date().toISOString().split('T')[0]}.csv`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    console.log(`✅ ${type} CSV 파일 다운로드 완료`);
+                } catch (error) {
+                    console.error(`CSV 파일 다운로드 오류:`, error);
+                }
+            };
+            
+            // 데이터 저장 (변경 시 자동) 및 CSV 백업
             useEffect(() => {
                 saveDataToStorage(STORAGE_KEY_MEMBERS, members);
+                
+                // CSV 자동 백업 (초기 로드가 아닌 경우에만)
+                if (members.length > 0) {
+                    const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.MEMBER) 
+                        ? CONFIG.SHEET_URLS.MEMBER 
+                        : '';
+                    
+                    // CSV URL이 설정되어 있고, Google Apps Script가 설정되어 있으면 백업
+                    if (csvUrl || (typeof CONFIG !== 'undefined' && CONFIG.GOOGLE_APPS_SCRIPT?.WEB_APP_URL)) {
+                        // 디바운싱: 2초 후 백업 (연속 변경 방지)
+                        const timeoutId = setTimeout(() => {
+                            backupToCSV(members, 'members');
+                        }, 2000);
+                        
+                        return () => clearTimeout(timeoutId);
+                    }
+                }
             }, [members]);
             
             useEffect(() => {
-                saveDataToStorage(STORAGE_KEY_SEMINARS, seminars);
+                // 테스트 세미나 데이터 필터링 후 저장
+                const filtered = seminars.filter(s => {
+                    if (s.id === 1 || s.id === 2 || s.id === 3) return false;
+                    const testTitles = [
+                        '2025 상반기 스타트업 투자 트렌드',
+                        '부산 청년 창업가 네트워킹 나이트',
+                        '초기 창업가를 위한 세무/노무 특강'
+                    ];
+                    if (testTitles.includes(s.title)) return false;
+                    return true;
+                });
+                
+                // 필터링된 데이터가 다르면 상태 업데이트
+                if (filtered.length !== seminars.length) {
+                    setSeminars(filtered);
+                    return;
+                }
+                
+                saveDataToStorage(STORAGE_KEY_SEMINARS, filtered);
+                
+                // CSV 자동 백업
+                if (filtered.length > 0) {
+                    const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.SEMINAR) 
+                        ? CONFIG.SHEET_URLS.SEMINAR 
+                        : '';
+                    
+                    if (csvUrl || (typeof CONFIG !== 'undefined' && CONFIG.GOOGLE_APPS_SCRIPT?.WEB_APP_URL)) {
+                        const timeoutId = setTimeout(() => {
+                            backupToCSV(filtered, 'seminars');
+                        }, 2000);
+                        
+                        return () => clearTimeout(timeoutId);
+                    }
+                }
             }, [seminars]);
             
             useEffect(() => {
                 saveDataToStorage(STORAGE_KEY_POSTS, posts);
+                
+                // CSV 자동 백업 (게시글은 Google Apps Script API 사용)
+                if (posts.length > 0 && typeof addPostToSheet === 'function') {
+                    // 게시글은 Google Apps Script API를 통해 직접 저장되므로 여기서는 로그만 기록
+                    console.log('게시글 데이터 변경됨 (Google Apps Script API 사용)');
+                } else if (posts.length > 0) {
+                    // Google Apps Script API가 없으면 CSV 백업
+                    const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.POSTS) 
+                        ? CONFIG.SHEET_URLS.POSTS 
+                        : '';
+                    
+                    if (csvUrl || (typeof CONFIG !== 'undefined' && CONFIG.GOOGLE_APPS_SCRIPT?.WEB_APP_URL)) {
+                        const timeoutId = setTimeout(() => {
+                            backupToCSV(posts, 'posts');
+                        }, 2000);
+                        
+                        return () => clearTimeout(timeoutId);
+                    }
+                }
             }, [posts]);
             
             useEffect(() => {
