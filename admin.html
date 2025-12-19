@@ -886,6 +886,7 @@
                 { id: 'members', label: '회원 관리', icon: Icons.Users },
                 { id: 'seminars', label: '프로그램 관리', icon: Icons.Calendar },
                 { id: 'community', label: '커뮤니티 관리', icon: Icons.MessageSquare },
+                { id: 'inquiries', label: '문의하기 관리', icon: Icons.MessageSquare },
                 { id: 'master', label: 'admin', icon: Icons.Lock, masterOnly: true },
             ];
 
@@ -958,6 +959,9 @@
                             )}
                             {activeTab === 'community' && (
                                 <CommunityTab posts={posts} setPosts={setPosts} addLog={addLog} currentUser={currentUser} />
+                            )}
+                            {activeTab === 'inquiries' && (
+                                <InquiriesTab addLog={addLog} currentUser={currentUser} />
                             )}
                             {activeTab === 'master' && isMaster && (
                                 <MasterTab
@@ -2616,6 +2620,192 @@
                                         <div>
                     <MasterTabHeader masterSubTab={masterSubTab} setMasterSubTab={setMasterSubTab} />
                     {renderContent()}
+                </div>
+            );
+        };
+
+        // 문의하기 관리 탭
+        const InquiriesTab = ({ addLog, currentUser }) => {
+            const [inquiries, setInquiries] = useState([]);
+            const [selectedInquiry, setSelectedInquiry] = useState(null);
+            const [replyText, setReplyText] = useState('');
+            const [statusFilter, setStatusFilter] = useState('전체');
+            
+            // 문의하기 데이터 로드
+            const loadInquiries = () => {
+                try {
+                    const stored = localStorage.getItem('busan_ycc_inquiries');
+                    return stored ? JSON.parse(stored) : [];
+                } catch (error) {
+                    console.error('문의하기 데이터 로드 오류:', error);
+                    return [];
+                }
+            };
+            
+            useEffect(() => {
+                setInquiries(loadInquiries());
+                
+                // 주기적으로 업데이트 (2초마다)
+                const interval = setInterval(() => {
+                    setInquiries(loadInquiries());
+                }, 2000);
+                
+                return () => clearInterval(interval);
+            }, []);
+            
+            const filteredInquiries = statusFilter === '전체' 
+                ? inquiries 
+                : inquiries.filter(i => i.status === statusFilter);
+            
+            const handleReply = (inquiry) => {
+                if (!replyText.trim()) {
+                    alert('답변 내용을 입력해주세요.');
+                    return;
+                }
+                
+                const updatedInquiries = inquiries.map(i => 
+                    i.id === inquiry.id 
+                        ? { 
+                            ...i, 
+                            reply: replyText, 
+                            status: 'answered',
+                            repliedAt: new Date().toISOString()
+                        }
+                        : i
+                );
+                
+                localStorage.setItem('busan_ycc_inquiries', JSON.stringify(updatedInquiries));
+                setInquiries(updatedInquiries);
+                setSelectedInquiry(null);
+                setReplyText('');
+                addLog('REPLY', '문의하기', `${currentUser?.name || '관리자'}님이 문의하기에 답변했습니다.`, currentUser?.name, `문의: ${inquiry.title}`);
+                alert('답변이 등록되었습니다.');
+            };
+            
+            const handleStatusChange = (inquiry, newStatus) => {
+                const updatedInquiries = inquiries.map(i => 
+                    i.id === inquiry.id ? { ...i, status: newStatus } : i
+                );
+                
+                localStorage.setItem('busan_ycc_inquiries', JSON.stringify(updatedInquiries));
+                setInquiries(updatedInquiries);
+                addLog('UPDATE', '문의하기', `${currentUser?.name || '관리자'}님이 문의하기 상태를 변경했습니다.`, currentUser?.name, `문의: ${inquiry.title}, 상태: ${newStatus}`);
+            };
+            
+            const getStatusLabel = (status) => {
+                switch(status) {
+                    case 'pending': return '대기중';
+                    case 'answered': return '답변완료';
+                    case 'closed': return '종료';
+                    default: return status;
+                }
+            };
+            
+            const getStatusColor = (status) => {
+                switch(status) {
+                    case 'pending': return 'bg-yellow-100 text-yellow-700';
+                    case 'answered': return 'bg-green-100 text-green-700';
+                    case 'closed': return 'bg-gray-100 text-gray-700';
+                    default: return 'bg-gray-100 text-gray-700';
+                }
+            };
+            
+            return (
+                <div>
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-2xl font-bold text-dark">문의하기 관리</h2>
+                        <div className="flex items-center gap-4">
+                            <select 
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                            >
+                                <option value="전체">전체</option>
+                                <option value="pending">대기중</option>
+                                <option value="answered">답변완료</option>
+                                <option value="closed">종료</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                        {filteredInquiries.length === 0 ? (
+                            <div className="p-10 text-center text-gray-400">문의하기가 없습니다.</div>
+                        ) : (
+                            <div className="space-y-4 p-4">
+                                {filteredInquiries.map((inquiry) => (
+                                    <div key={inquiry.id} className="border border-gray-200 rounded-xl p-6 hover:bg-gray-50 transition-colors">
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <h3 className="text-lg font-bold text-dark">{inquiry.title}</h3>
+                                                    <span className={`text-xs px-2 py-1 rounded font-bold ${getStatusColor(inquiry.status)}`}>
+                                                        {getStatusLabel(inquiry.status)}
+                                                    </span>
+                                                </div>
+                                                <div className="text-sm text-gray-600 space-y-1">
+                                                    <div><span className="font-bold">작성자:</span> {inquiry.name} ({inquiry.email})</div>
+                                                    {inquiry.phone && <div><span className="font-bold">전화번호:</span> {inquiry.phone}</div>}
+                                                    <div><span className="font-bold">작성일:</span> {new Date(inquiry.createdAt).toLocaleString('ko-KR')}</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    onClick={() => setSelectedInquiry(selectedInquiry?.id === inquiry.id ? null : inquiry)}
+                                                    className="px-4 py-2 bg-brand text-white rounded-lg font-bold hover:bg-blue-700"
+                                                >
+                                                    {selectedInquiry?.id === inquiry.id ? '닫기' : '답변하기'}
+                                                </button>
+                                                <select 
+                                                    value={inquiry.status}
+                                                    onChange={(e) => handleStatusChange(inquiry, e.target.value)}
+                                                    className="px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm"
+                                                >
+                                                    <option value="pending">대기중</option>
+                                                    <option value="answered">답변완료</option>
+                                                    <option value="closed">종료</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                                            <p className="text-gray-700 whitespace-pre-wrap">{inquiry.content}</p>
+                                        </div>
+                                        
+                                        {inquiry.reply && (
+                                            <div className="bg-blue-50 rounded-lg p-4 mb-4 border-l-4 border-brand">
+                                                <div className="font-bold text-brand mb-2">관리자 답변</div>
+                                                <p className="text-gray-700 whitespace-pre-wrap">{inquiry.reply}</p>
+                                                {inquiry.repliedAt && (
+                                                    <div className="text-xs text-gray-500 mt-2">
+                                                        답변일: {new Date(inquiry.repliedAt).toLocaleString('ko-KR')}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        
+                                        {selectedInquiry?.id === inquiry.id && !inquiry.reply && (
+                                            <div className="border-t border-gray-200 pt-4 mt-4">
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">답변 작성</label>
+                                                <textarea 
+                                                    value={replyText}
+                                                    onChange={(e) => setReplyText(e.target.value)}
+                                                    placeholder="답변 내용을 입력하세요"
+                                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-32 resize-none mb-3"
+                                                />
+                                                <button 
+                                                    onClick={() => handleReply(inquiry)}
+                                                    className="px-6 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700"
+                                                >
+                                                    답변 등록
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         };

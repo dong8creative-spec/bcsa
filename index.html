@@ -31,6 +31,9 @@
     <!-- 다음 우편번호 서비스 (API 키 불필요) -->
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     
+    <!-- 설정 파일 -->
+    <script src="./assets/js/config.js"></script>
+    
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
@@ -327,11 +330,15 @@
         // ==========================================
         // 🔐 PortOne 초기화
         // ==========================================
-        // PortOne 가맹점 식별코드 (실제 사용 시 발급받은 코드로 교체 필요)
-        const PORTONE_IMP_CODE = 'imp00000000'; // TODO: 실제 가맹점 식별코드로 교체 필요
+        // PortOne 가맹점 식별코드 (config.js에서 가져옴)
+        const PORTONE_IMP_CODE = (typeof CONFIG !== 'undefined' && CONFIG.PORTONE?.IMP_CODE) 
+            ? CONFIG.PORTONE.IMP_CODE 
+            : 'imp00000000'; // 기본값 (실제 사용 시 config.js에서 교체 필요)
         
-        // ImgBB API 키
-        const IMGBB_API_KEY = '4c975214037cdf1889d5d02a01a7831d';
+        // ImgBB API 키 (config.js에서 가져옴)
+        const IMGBB_API_KEY = (typeof CONFIG !== 'undefined' && CONFIG.IMGBB?.API_KEY) 
+            ? CONFIG.IMGBB.API_KEY 
+            : '4c975214037cdf1889d5d02a01a7831d'; // 기본값
         
         // ImgBB 이미지 업로드 함수 (전역 사용)
         const uploadImageToImgBB = async (base64Image, fileName) => {
@@ -1205,42 +1212,46 @@
 
                 try {
                     // 공공데이터포털 API 호출
-                    // 실제 구현 시 아래 주석을 해제하고 API 키를 설정하세요
-                    /*
-                    const API_KEY = 'YOUR_PUBLIC_DATA_API_KEY'; // 공공데이터포털에서 발급받은 Service Key
-                    const url = `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${API_KEY}&b_no=${cleaned}`;
+                    // config.js에서 API 키를 가져옴
+                    const API_KEY = (typeof CONFIG !== 'undefined' && CONFIG.PUBLIC_DATA_API?.API_KEY) 
+                        ? CONFIG.PUBLIC_DATA_API.API_KEY 
+                        : '';
                     
-                    const response = await fetch(url);
-                    if (!response.ok) {
-                        throw new Error('API 호출 실패');
-                    }
-                    
-                    const data = await response.json();
-                    
-                    // 응답 데이터 구조에 따라 검증
-                    if (data.status_code === '01' && data.valid === '01') {
-                        // 운영 중인 사업자
+                    // API 키가 설정되어 있으면 실제 API 호출
+                    if (API_KEY && API_KEY.trim() !== '') {
+                        const url = `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${API_KEY}&b_no=${cleaned}`;
+                        
+                        const response = await fetch(url);
+                        if (!response.ok) {
+                            throw new Error('API 호출 실패');
+                        }
+                        
+                        const data = await response.json();
+                        
+                        // 응답 데이터 구조에 따라 검증
+                        if (data.status_code === '01' && data.valid === '01') {
+                            // 운영 중인 사업자
+                            return { 
+                                success: true, 
+                                message: '운영 중인 사업자로 확인되었습니다.',
+                                data: data
+                            };
+                        } else {
+                            return { 
+                                success: false, 
+                                message: '운영 중인 사업자만 등록 가능합니다.',
+                                data: data
+                            };
+                        }
+                    } else {
+                        // API 키가 없으면 체크섬 검증만 수행
+                        // 실제 API 키 발급 후 config.js의 PUBLIC_DATA_API.API_KEY를 설정하세요
                         return { 
                             success: true, 
-                            message: '운영 중인 사업자로 확인되었습니다.',
-                            data: data
-                        };
-                    } else {
-                        return { 
-                            success: false, 
-                            message: '운영 중인 사업자만 등록 가능합니다.',
-                            data: data
+                            message: '사업자등록번호 형식이 올바릅니다. (실제 API 연동 필요)',
+                            data: { status: 'FORMAT_VALID' }
                         };
                     }
-                    */
-                    
-                    // 임시: 실제 API 연동 전까지 체크섬 검증만 수행
-                    // 실제 API 키 발급 후 위 주석을 해제하고 사용하세요
-                    return { 
-                        success: true, 
-                        message: '사업자등록번호 형식이 올바릅니다. (실제 API 연동 필요)',
-                        data: { status: 'FORMAT_VALID' }
-                    };
                 } catch (error) {
                     console.error('사업자등록번호 검증 API 오류:', error);
                     return { 
@@ -1918,6 +1929,117 @@
             );
         };
 
+        // 문의하기 모달 컴포넌트
+        const InquiryModal = ({ onClose, currentUser, onSubmit }) => {
+            const [formData, setFormData] = useState({
+                name: currentUser?.name || '',
+                email: currentUser?.email || '',
+                phone: currentUser?.phone || '',
+                title: '',
+                content: ''
+            });
+            
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                
+                if (!formData.name.trim()) {
+                    alert('이름을 입력해주세요.');
+                    return;
+                }
+                if (!formData.email.trim() || !formData.email.includes('@')) {
+                    alert('올바른 이메일을 입력해주세요.');
+                    return;
+                }
+                if (!formData.title.trim()) {
+                    alert('문의 제목을 입력해주세요.');
+                    return;
+                }
+                if (!formData.content.trim()) {
+                    alert('문의 내용을 입력해주세요.');
+                    return;
+                }
+                
+                onSubmit(formData);
+            };
+            
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60 backdrop-blur-md"></div>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md z-10 p-8 relative" onClick={(e) => e.stopPropagation()}>
+                        <button type="button" onClick={onClose} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-all">
+                            <Icons.X size={18}/>
+                        </button>
+                        <div className="mb-6">
+                            <div className="w-16 h-16 bg-gradient-to-br from-brand to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand/30">
+                                <Icons.MessageSquare className="w-8 h-8 text-white" />
+                            </div>
+                            <h3 className="text-3xl font-bold text-dark mb-2 text-center">문의하기</h3>
+                            <p className="text-sm text-gray-500 text-center">문의사항을 남겨주시면 관리자가 확인 후 답변드리겠습니다.</p>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-4 text-left">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 mb-2">이름 *</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="이름을 입력하세요" 
+                                    className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" 
+                                    value={formData.name}
+                                    onChange={e => setFormData({...formData, name: e.target.value})}
+                                    disabled={!!currentUser}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 mb-2">이메일 *</label>
+                                <input 
+                                    type="email" 
+                                    placeholder="이메일을 입력하세요" 
+                                    className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" 
+                                    value={formData.email}
+                                    onChange={e => setFormData({...formData, email: e.target.value})}
+                                    disabled={!!currentUser}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 mb-2">전화번호 (선택)</label>
+                                <input 
+                                    type="tel" 
+                                    placeholder="전화번호를 입력하세요" 
+                                    className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" 
+                                    value={formData.phone}
+                                    onChange={e => setFormData({...formData, phone: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 mb-2">문의 제목 *</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="문의 제목을 입력하세요" 
+                                    className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" 
+                                    value={formData.title}
+                                    onChange={e => setFormData({...formData, title: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 mb-2">문의 내용 *</label>
+                                <textarea 
+                                    placeholder="문의 내용을 입력하세요" 
+                                    className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors h-32 resize-none" 
+                                    value={formData.content}
+                                    onChange={e => setFormData({...formData, content: e.target.value})}
+                                />
+                            </div>
+                            <button type="submit" className="w-full py-4 bg-gradient-to-r from-brand to-blue-600 text-white font-bold rounded-2xl hover:shadow-lg hover:shadow-brand/30 transition-all mt-6 text-lg">
+                                문의하기
+                            </button>
+                        </form>
+                        <button type="button" onClick={onClose} className="w-full mt-4 text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors">
+                            취소
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
         const LoginModal = ({ onClose, onLogin }) => {
             const [id, setId] = useState('');
             const [password, setPassword] = useState('');
@@ -2383,6 +2505,8 @@
 
         // 나라장터 입찰공고 검색 컴포넌트
         const G2B_API_KEY = '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
+        // 서버리스 함수 프록시 URL (Vercel 배포 후 실제 URL로 교체 필요)
+        const BID_PROXY_URL = 'https://your-vercel-app.vercel.app/api/proxy-bid';
         
         const BidSearchView = ({ onBack }) => {
             const [keyword, setKeyword] = useState('');
@@ -2452,11 +2576,7 @@
                 setIsLoading(true);
                 setError(null);
                 
-                let retries = 2; // 최대 2회 재시도
-                let lastError = null;
-                
-                while (retries >= 0) {
-                    try {
+                try {
                     const dateRange = getDateRange(period);
                     
                     // 입찰 유형에 따른 API 엔드포인트 선택
@@ -2475,169 +2595,52 @@
                             apiPath = 'getBidPblancListInfoThngPPSSrch'; // 기본: 물품
                     }
                     
-                    const params = new URLSearchParams({
-                        serviceKey: G2B_API_KEY,
-                        pageNo: page.toString(),
-                        numOfRows: itemsPerPage.toString(),
-                        inqryDiv: '1', // 검색구분 (1: 공고명)
-                        inqryBgnDt: dateRange.start,
-                        inqryEndDt: dateRange.end,
-                        type: 'json'
-                    });
+                    // 서버리스 함수 프록시 URL 구성
+                    const proxyUrl = new URL(BID_PROXY_URL);
+                    proxyUrl.searchParams.append('apiPath', apiPath);
+                    proxyUrl.searchParams.append('serviceKey', G2B_API_KEY);
+                    proxyUrl.searchParams.append('pageNo', page.toString());
+                    proxyUrl.searchParams.append('numOfRows', itemsPerPage.toString());
+                    proxyUrl.searchParams.append('inqryDiv', '1');
+                    proxyUrl.searchParams.append('inqryBgnDt', dateRange.start);
+                    proxyUrl.searchParams.append('inqryEndDt', dateRange.end);
+                    proxyUrl.searchParams.append('type', 'json');
                     
                     if (keyword.trim()) {
-                        params.append('bidNtceNm', keyword.trim());
+                        proxyUrl.searchParams.append('bidNtceNm', keyword.trim());
                     }
                     
-                    const apiUrl = `https://apis.data.go.kr/1230000/BidPublicInfoService04/${apiPath}?${params.toString()}`;
+                    // 타임아웃 설정 (15초)
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 15000);
                     
-                    // 여러 프록시 서비스를 순차적으로 시도 (웹에서 바로 작동)
-                    const tryFetchWithProxies = async (targetUrl) => {
-                        // 직접 호출 시도 (타임아웃 적용)
-                        try {
-                            const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), 10000);
-                            
-                            try {
-                                const response = await fetch(targetUrl, {
-                                    method: 'GET',
-                                    mode: 'cors',
-                                    headers: { 'Accept': 'application/json' },
-                                    signal: controller.signal
-                                });
-                                clearTimeout(timeoutId);
-                                
-                                if (response.ok) {
-                                    // 응답이 JSON인지 사전 확인
-                                    const contentType = response.headers.get('content-type');
-                                    if (contentType && contentType.includes('application/json')) {
-                                        return response;
-                                    }
-                                }
-                            } catch (fetchError) {
-                                clearTimeout(timeoutId);
-                                if (fetchError.name === 'AbortError') {
-                                    console.log('직접 호출 타임아웃, 프록시 시도');
-                                } else {
-                                    throw fetchError;
-                                }
-                            }
-                        } catch (e) {
-                            console.log('직접 호출 실패, 프록시 시도');
+                    const response = await fetch(proxyUrl.toString(), {
+                        method: 'GET',
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'application/json'
                         }
-                        
-                        // 프록시 서비스 순차 시도
-                        const proxies = [
-                            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-                            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-                            (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-                            (url) => `https://thingproxy.freeboard.io/fetch/${url}`,
-                            (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}&origin=*`
-                        ];
-                        
-                        for (let i = 0; i < proxies.length; i++) {
-                            try {
-                                const proxyUrl = proxies[i](targetUrl);
-                                const controller = new AbortController();
-                                const timeoutId = setTimeout(() => controller.abort(), 10000);
-                                
-                                try {
-                                    const response = await fetch(proxyUrl, {
-                                        method: 'GET',
-                                        mode: 'cors',
-                                        signal: controller.signal
-                                    });
-                                    clearTimeout(timeoutId);
-                                    
-                                    if (response.ok) {
-                                        // 응답 텍스트 미리 확인
-                                        const text = await response.text();
-                                        const trimmedText = text.trim();
-                                        
-                                        // HTML 에러 페이지인지 확인
-                                        if (trimmedText.toLowerCase().startsWith('<!doctype') || 
-                                            trimmedText.toLowerCase().startsWith('<html') ||
-                                            (trimmedText.includes('Error') && !trimmedText.startsWith('{') && !trimmedText.startsWith('['))) {
-                                            console.log(`프록시 ${i + 1}가 HTML 응답 반환, 다음 프록시 시도`);
-                                            continue;
-                                        }
-                                        
-                                        // JSON 형식인지 확인
-                                        if (trimmedText.startsWith('{') || trimmedText.startsWith('[')) {
-                                            // 새로운 Response 객체 생성하여 반환
-                                            return new Response(text, {
-                                                status: response.status,
-                                                statusText: response.statusText,
-                                                headers: response.headers
-                                            });
-                                        } else {
-                                            console.log(`프록시 ${i + 1}가 유효하지 않은 응답 반환, 다음 프록시 시도`);
-                                            continue;
-                                        }
-                                    }
-                                } catch (fetchError) {
-                                    clearTimeout(timeoutId);
-                                    if (fetchError.name === 'AbortError') {
-                                        console.log(`프록시 ${i + 1} 타임아웃`);
-                                    } else {
-                                        console.log(`프록시 ${i + 1} 시도 실패:`, fetchError.message);
-                                    }
-                                    continue;
-                                }
-                            } catch (error) {
-                                console.log(`프록시 ${i + 1} 설정 오류:`, error.message);
-                                continue;
-                            }
-                        }
-                        
-                        throw new Error('모든 프록시 서비스 시도 실패');
-                    };
+                    });
                     
-                    let response;
-                    try {
-                        response = await tryFetchWithProxies(apiUrl);
-                    } catch (proxyError) {
-                        throw new Error('프록시를 통한 API 호출 실패: ' + proxyError.message);
-                    }
+                    clearTimeout(timeoutId);
                     
                     if (!response.ok) {
-                        throw new Error(`API 요청 실패: ${response.status}`);
+                        throw new Error(`서버 응답 오류: ${response.status}`);
                     }
                     
-                    const responseText = await response.text();
+                    const data = await response.json();
                     
-                    // 응답이 JSON인지 확인 (HTML 에러 페이지 방지)
-                    const trimmedText = responseText.trim();
-                    
-                    // HTML 에러 페이지 체크
-                    if (trimmedText.toLowerCase().startsWith('<!doctype') || 
-                        trimmedText.toLowerCase().startsWith('<html') ||
-                        trimmedText.toLowerCase().includes('<body')) {
-                        console.error('HTML 에러 페이지 수신:', trimmedText.substring(0, 300));
-                        throw new Error('프록시 서버가 HTML 에러 페이지를 반환했습니다.');
+                    // 에러 응답 체크
+                    if (data.error) {
+                        throw new Error(data.error);
                     }
                     
-                    // JSON 형식 확인
-                    if (!trimmedText.startsWith('{') && !trimmedText.startsWith('[')) {
-                        console.error('Invalid JSON response:', trimmedText.substring(0, 200));
-                        throw new Error('API가 유효하지 않은 응답을 반환했습니다.');
-                    }
-                    
-                    let data;
-                    try {
-                        data = JSON.parse(responseText);
-                    } catch (parseErr) {
-                        console.error('JSON 파싱 오류:', parseErr);
-                        console.error('응답 내용:', responseText.substring(0, 500));
-                        throw new Error(`API 응답을 파싱할 수 없습니다: ${parseErr.message}`);
-                    }
-                    
+                    // 데이터 파싱
                     if (data.response && data.response.body) {
                         const body = data.response.body;
                         const items = body.items || [];
                         const totalCnt = body.totalCount || 0;
                         
-                        // items가 배열이 아닌 경우 처리
                         let bidItems = [];
                         if (Array.isArray(items)) {
                             bidItems = items;
@@ -2648,43 +2651,30 @@
                         setBidList(bidItems);
                         setTotalCount(totalCnt);
                         setCurrentPage(page);
+                        setError(null);
                     } else {
                         setBidList([]);
                         setTotalCount(0);
                     }
-                        
-                        // 성공 시 루프 종료
-                        break;
-                    } catch (err) {
-                        lastError = err;
-                        console.error(`나라장터 API 오류 (재시도 ${2 - retries + 1}/3):`, err);
-                        
-                        if (retries > 0) {
-                            // 재시도 전 대기 (지수 백오프)
-                            const delay = Math.pow(2, 2 - retries) * 1000; // 1초, 2초
-                            await new Promise(resolve => setTimeout(resolve, delay));
-                            retries--;
-                        } else {
-                            // 모든 재시도 실패
-                            let errorMessage = '입찰공고 데이터를 불러오는데 실패했습니다.';
-                            
-                            if (lastError.message.includes('프록시')) {
-                                errorMessage += ' 네트워크 연결을 확인해주세요.';
-                            } else if (lastError.message.includes('타임아웃') || lastError.message.includes('시간 초과') || lastError.message.includes('AbortError')) {
-                                errorMessage += ' 요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.';
-                            } else if (lastError.message.includes('HTML') || lastError.message.includes('유효하지 않은 응답')) {
-                                errorMessage += ' 서버 응답 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
-                            } else {
-                                errorMessage += ' 잠시 후 다시 시도해주세요.';
-                            }
-                            
-                            setError(errorMessage);
-                            setBidList([]);
-                        }
+                    
+                } catch (err) {
+                    console.error('입찰공고 API 오류:', err);
+                    
+                    let errorMessage = '입찰공고 데이터를 불러오는데 실패했습니다.';
+                    
+                    if (err.name === 'AbortError') {
+                        errorMessage += ' 요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.';
+                    } else if (err.message.includes('서버 응답')) {
+                        errorMessage += ' 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+                    } else {
+                        errorMessage += ' ' + (err.message || '잠시 후 다시 시도해주세요.');
                     }
+                    
+                    setError(errorMessage);
+                    setBidList([]);
+                } finally {
+                    setIsLoading(false);
                 }
-                
-                setIsLoading(false);
             };
             
             // 검색 버튼 클릭
@@ -4948,7 +4938,7 @@
                         {filteredSeminars.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredSeminars.map((seminar) => (
-                                    <div key={seminar.id} className="bg-white rounded-3xl shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 cursor-pointer overflow-hidden" onClick={() => setSelectedSeminar(seminar)}>
+                                    <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-3xl shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 cursor-pointer overflow-hidden" onClick={() => setSelectedSeminar(seminar)}>
                                         {seminar.img && (
                                             <div className="w-full overflow-hidden" style={{ aspectRatio: '3/4' }}>
                                                 <img src={seminar.img} alt={seminar.title} className="w-full h-full object-cover" />
@@ -5679,6 +5669,7 @@
                 reason: '', 
                 questions: ['', ''] // 사전 질문 2개
             });
+            const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
             
             // 모달 상태 변경 디버깅
             useEffect(() => {
@@ -6189,6 +6180,35 @@
                     setPopupPrograms([]);
                     setApplySeminarFromPopup(null);
                     setPopupApplicationData({ reason: '', questions: ['', ''] });
+                }
+            };
+
+            // 문의하기 저장 함수
+            const handleInquirySubmit = (inquiryData) => {
+                const newInquiry = {
+                    id: Date.now(),
+                    name: inquiryData.name,
+                    email: inquiryData.email,
+                    phone: inquiryData.phone || '',
+                    title: inquiryData.title,
+                    content: inquiryData.content,
+                    createdAt: new Date().toISOString(),
+                    status: 'pending',
+                    reply: null,
+                    repliedAt: null,
+                    userId: currentUser?.id || null
+                };
+                
+                try {
+                    const existingInquiries = JSON.parse(localStorage.getItem('busan_ycc_inquiries') || '[]');
+                    const updatedInquiries = [...existingInquiries, newInquiry];
+                    localStorage.setItem('busan_ycc_inquiries', JSON.stringify(updatedInquiries));
+                    
+                    alert('문의하기가 등록되었습니다. 관리자가 확인 후 답변드리겠습니다.');
+                    setIsInquiryModalOpen(false);
+                } catch (error) {
+                    console.error('문의하기 저장 오류:', error);
+                    alert('문의하기 등록에 실패했습니다.');
                 }
             };
 
@@ -6950,7 +6970,7 @@ END:VCALENDAR`;
                                                 setShowSignUpModal(true); 
                                                 setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); 
                                             }} className="px-8 py-4 bg-white text-brand font-bold rounded-2xl hover:bg-gray-50 transition-all shadow-lg btn-hover">{content.cta_join_button || '지금 가입하기'}</button>
-                                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('community'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="px-8 py-4 bg-transparent border border-white/30 text-white font-bold rounded-2xl hover:bg-white/10 transition-all">{content.cta_contact_button || '문의하기'}</button>
+                                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsInquiryModalOpen(true); }} className="px-8 py-4 bg-transparent border border-white/30 text-white font-bold rounded-2xl hover:bg-white/10 transition-all">{content.cta_contact_button || '문의하기'}</button>
                                         </div>
                                     </div>
                                 </div>
@@ -6966,100 +6986,165 @@ END:VCALENDAR`;
                     {popupPrograms.length > 0 && (
                         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setPopupPrograms([]); }}>
                             <div className="flex flex-col md:flex-row gap-4 max-w-6xl w-full overflow-x-auto py-4" onClick={(e) => e.stopPropagation()}>
-                                {popupPrograms.map((program, idx) => (
-                                    <div 
-                                        key={program.id || idx} 
-                                        className="bg-white rounded-3xl shadow-2xl w-full md:w-80 flex-shrink-0 overflow-hidden relative mx-auto flex flex-col"
-                                    >
-                                        {/* 이미지 영역 (3:4 비율 유지) */}
-                                        <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
-                                            {/* 마감임박 마크 */}
-                                            {program.isDeadlineSoon && (
-                                                <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
-                                                    마감임박
-                                                </div>
-                                            )}
-                                            {/* 닫기 버튼 */}
-                                            <button 
-                                                type="button" 
-                                                onClick={() => setPopupPrograms(prev => prev.filter((_, i) => i !== idx))} 
-                                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 z-10 shadow-md"
+                                {popupPrograms.map((program, idx) => {
+                                    const isMobile = window.innerWidth < 768;
+                                    
+                                    if (isMobile) {
+                                        // 모바일: 간단한 팝업 (이미지 + 더 자세히 알아보기 버튼만)
+                                        return (
+                                            <div 
+                                                key={program.id || idx} 
+                                                className="bg-white rounded-2xl shadow-2xl w-[85vw] max-w-sm overflow-hidden relative mx-auto"
                                             >
-                                                <Icons.X size={18} />
-                                            </button>
-                                            {/* 이미지 */}
-                                            {program.img && (
-                                                <img 
-                                                    src={program.img} 
-                                                    alt={program.title} 
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            )}
-                                        </div>
-                                        
-                                        {/* 정보 영역 (스크롤 가능) */}
-                                        <div className="p-6 max-h-[60vh] overflow-y-auto flex-1">
-                                            <h3 className="text-xl font-bold text-dark mb-3">{program.title}</h3>
-                                            
-                                            {/* 카테고리 및 유료/무료 배지 */}
-                                            <div className="flex items-center gap-2 mb-3 flex-wrap">
-                                                {program.category && (
-                                                    <span className="text-xs font-bold px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
-                                                        {program.category}
-                                                    </span>
-                                                )}
-                                                <span className="text-xs font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">
-                                                    {program.requiresPayment ? (program.price ? `${program.price.toLocaleString()}원` : '유료') : '무료'}
-                                                </span>
-                                            </div>
-                                            
-                                            {/* 날짜, 장소, 신청현황 */}
-                                            <div className="space-y-2 text-sm text-gray-600 mb-4">
-                                                <div className="flex items-center gap-2">
-                                                    <Icons.Calendar size={16} className="text-brand" /> {program.date}
+                                                {/* 이미지 영역 (3:4 비율) */}
+                                                <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
+                                                    {/* 마감임박 마크 */}
+                                                    {program.isDeadlineSoon && (
+                                                        <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+                                                            마감임박
+                                                        </div>
+                                                    )}
+                                                    {/* 닫기 버튼 */}
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => setPopupPrograms(prev => prev.filter((_, i) => i !== idx))} 
+                                                        className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 z-10 shadow-md"
+                                                    >
+                                                        <Icons.X size={18} />
+                                                    </button>
+                                                    {/* 이미지 */}
+                                                    {program.img && (
+                                                        <img 
+                                                            src={program.img} 
+                                                            alt={program.title} 
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    )}
                                                 </div>
-                                                {program.location && (
-                                                    <div className="flex items-center gap-2">
-                                                        <Icons.MapPin size={16} className="text-brand" /> {program.location}
-                                                    </div>
-                                                )}
-                                                <div className="flex items-center gap-2">
-                                                    <Icons.Users size={16} className="text-brand" /> {program.currentParticipants || 0} / {program.maxParticipants || 0}명
-                                                </div>
-                                            </div>
-                                            
-                                            {/* 프로그램 설명 */}
-                                            {program.desc && (
-                                                <div className="mb-4">
-                                                    <p className="text-sm text-gray-700 leading-relaxed">{program.desc}</p>
-                                                </div>
-                                            )}
-                                            
-                                            {/* 신청하기 버튼 */}
-                                            {currentUser ? (
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => handlePopupApply(program)}
-                                                    className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
-                                                >
-                                                    신청하기
-                                                </button>
-                                            ) : (
+                                                {/* 더 자세히 알아보기 버튼 */}
                                                 <button 
                                                     type="button"
                                                     onClick={() => {
                                                         setPopupPrograms([]);
-                                                        setShowLoginModal(true);
+                                                        setCurrentView('allSeminars');
+                                                        // 해당 프로그램을 선택하여 상세 모달 열기
+                                                        setTimeout(() => {
+                                                            const allSeminarsView = document.querySelector('[data-view="allSeminars"]');
+                                                            if (allSeminarsView) {
+                                                                // 프로그램 상세 모달을 열기 위해 이벤트 트리거
+                                                                const programCard = Array.from(allSeminarsView.querySelectorAll('[data-program-id]')).find(
+                                                                    el => el.getAttribute('data-program-id') === String(program.id)
+                                                                );
+                                                                if (programCard) {
+                                                                    programCard.click();
+                                                                }
+                                                            }
+                                                        }, 100);
                                                     }}
-                                                    className="w-full py-3 bg-gray-300 text-gray-500 font-bold rounded-xl cursor-not-allowed"
-                                                    disabled
+                                                    className="w-full py-4 bg-brand text-white font-bold rounded-b-2xl hover:bg-blue-700 transition-colors"
                                                 >
-                                                    로그인 후 신청 가능
+                                                    더 자세히 알아보기
                                                 </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
+                                            </div>
+                                        );
+                                    } else {
+                                        // 데스크톱: 기존 레이아웃
+                                        return (
+                                            <div 
+                                                key={program.id || idx} 
+                                                className="bg-white rounded-3xl shadow-2xl w-full md:w-80 flex-shrink-0 overflow-hidden relative mx-auto flex flex-col"
+                                            >
+                                                {/* 이미지 영역 (3:4 비율 유지) */}
+                                                <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
+                                                    {/* 마감임박 마크 */}
+                                                    {program.isDeadlineSoon && (
+                                                        <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+                                                            마감임박
+                                                        </div>
+                                                    )}
+                                                    {/* 닫기 버튼 */}
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => setPopupPrograms(prev => prev.filter((_, i) => i !== idx))} 
+                                                        className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 z-10 shadow-md"
+                                                    >
+                                                        <Icons.X size={18} />
+                                                    </button>
+                                                    {/* 이미지 */}
+                                                    {program.img && (
+                                                        <img 
+                                                            src={program.img} 
+                                                            alt={program.title} 
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    )}
+                                                </div>
+                                                
+                                                {/* 정보 영역 (스크롤 가능) */}
+                                                <div className="p-6 max-h-[60vh] overflow-y-auto flex-1">
+                                                    <h3 className="text-xl font-bold text-dark mb-3">{program.title}</h3>
+                                                    
+                                                    {/* 카테고리 및 유료/무료 배지 */}
+                                                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                                                        {program.category && (
+                                                            <span className="text-xs font-bold px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
+                                                                {program.category}
+                                                            </span>
+                                                        )}
+                                                        <span className="text-xs font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">
+                                                            {program.requiresPayment ? (program.price ? `${program.price.toLocaleString()}원` : '유료') : '무료'}
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    {/* 날짜, 장소, 신청현황 */}
+                                                    <div className="space-y-2 text-sm text-gray-600 mb-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <Icons.Calendar size={16} className="text-brand" /> {program.date}
+                                                        </div>
+                                                        {program.location && (
+                                                            <div className="flex items-center gap-2">
+                                                                <Icons.MapPin size={16} className="text-brand" /> {program.location}
+                                                            </div>
+                                                        )}
+                                                        <div className="flex items-center gap-2">
+                                                            <Icons.Users size={16} className="text-brand" /> {program.currentParticipants || 0} / {program.maxParticipants || 0}명
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* 프로그램 설명 */}
+                                                    {program.desc && (
+                                                        <div className="mb-4">
+                                                            <p className="text-sm text-gray-700 leading-relaxed">{program.desc}</p>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* 신청하기 버튼 */}
+                                                    {currentUser ? (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => handlePopupApply(program)}
+                                                            className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                                                        >
+                                                            신청하기
+                                                        </button>
+                                                    ) : (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setPopupPrograms([]);
+                                                                setShowLoginModal(true);
+                                                            }}
+                                                            className="w-full py-3 bg-gray-300 text-gray-500 font-bold rounded-xl cursor-not-allowed"
+                                                            disabled
+                                                        >
+                                                            로그인 후 신청 가능
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                })}
                             </div>
                             {/* 전체 닫기 버튼 */}
                             {popupPrograms.length > 1 && (
@@ -7318,6 +7403,15 @@ END:VCALENDAR`;
                                 setShowLoginModal(false);
                             }} 
                             onLogin={handleLogin} 
+                        />
+                    )}
+                    
+                    {/* 문의하기 모달 */}
+                    {isInquiryModalOpen && (
+                        <InquiryModal 
+                            onClose={() => setIsInquiryModalOpen(false)}
+                            currentUser={currentUser}
+                            onSubmit={handleInquirySubmit}
                         />
                     )}
                     {/* 🌟 모바일 메뉴 오버레이 */}

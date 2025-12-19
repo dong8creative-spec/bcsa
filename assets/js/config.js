@@ -1,24 +1,88 @@
 /**
  * 부산청년사업가들 웹사이트 설정 파일
  * Google Sheets 연동 URL 및 기본 설정
+ * 
+ * ====================================================================
+ * 📋 설정 가이드 및 체크리스트
+ * ====================================================================
+ * 
+ * 실제 운영 전에 다음 항목들을 반드시 확인하고 설정하세요:
+ * 
+ * ✅ 필수 설정 항목 (운영 전 반드시 완료)
+ * 
+ * [ ] 1. PortOne 가맹점 식별코드
+ *        - 위치: CONFIG.PORTONE.IMP_CODE (현재: 'imp00000000')
+ *        - 발급: https://admin.portone.io/ 에서 가맹점 식별코드 확인
+ *        - 용도: 본인인증 및 결제 서비스
+ *        - 상태: 설정하지 않으면 본인인증 기능이 작동하지 않습니다
+ * 
+ * [ ] 2. 관리자 계정 보안 설정
+ *        - 위치: CONFIG.ADMIN
+ *        - 관리자 비밀번호 변경 (현재: '1234')
+ *        - 마스터 코드 변경 (현재: 'master9999')
+ *        - 보안: 실제 운영 시 반드시 강력한 비밀번호로 변경하세요
+ * 
+ * ⚠️ 권장 설정 항목 (기능 향상을 위해 권장)
+ * 
+ * [ ] 3. 공공데이터포털 API 키
+ *        - 위치: CONFIG.PUBLIC_DATA_API.API_KEY (현재: 빈 값)
+ *        - 발급: https://www.data.go.kr/ → "사업자등록번호 진위확인" 검색 → API 신청
+ *        - 용도: 사업자등록번호 실제 검증
+ *        - 참고: 설정하지 않으면 형식 검증만 수행됩니다 (체크섬 검증)
+ *        - 상태: 선택사항이지만 실제 사업자 검증을 위해 권장됩니다
+ * 
+ * [ ] 4. Google Sheets URL 확인
+ *        - 위치: CONFIG.SHEET_URLS
+ *        - MEMBER: 회원 데이터 시트 URL 확인
+ *        - SEMINAR: 세미나 데이터 시트 URL 확인
+ *        - FOOD: 맛집 데이터 시트 URL 확인
+ *        - 참고: 각 시트가 공개 설정되어 있고 CSV 형식으로 공개되어 있는지 확인
+ * 
+ * 📝 설정 방법 상세 가이드
+ * 
+ * 1. PortOne 가맹점 식별코드 설정:
+ *    - PortOne 대시보드(https://admin.portone.io/) 접속
+ *    - 회원가입 또는 로그인
+ *    - 대시보드에서 가맹점 식별코드 확인
+ *    - CONFIG.PORTONE.IMP_CODE에 실제 코드 입력
+ * 
+ * 2. 공공데이터포털 API 키 설정:
+ *    - 공공데이터포털(https://www.data.go.kr/) 접속
+ *    - "사업자등록번호 진위확인" 검색
+ *    - 원하는 API 선택 후 신청
+ *    - 발급받은 Service Key를 CONFIG.PUBLIC_DATA_API.API_KEY에 입력
+ * 
+ * 3. 관리자 계정 보안:
+ *    - CONFIG.ADMIN.PASSWORD를 강력한 비밀번호로 변경
+ *    - CONFIG.ADMIN.MASTER_CODE를 복잡한 코드로 변경
+ *    - 파일을 Git에 커밋하기 전에 .gitignore에 추가하거나 별도 관리
+ * 
+ * ====================================================================
  */
 
 // Google Sheets CSV URL 설정
+// 각 시트의 CSV 공개 URL을 설정합니다.
+// Google Sheets에서 "파일 > 공유 > 웹에 게시" 후 CSV 형식으로 공개 URL을 복사하세요.
 const CONFIG = {
     SHEET_URLS: {
+        // 설정 시트 URL (현재 미사용, 향후 확장 가능)
         CONFIG: "", 
+        // 회원 데이터 시트 URL
         MEMBER: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTEmEPSeDn1EUcf0DQWJ1EJ3t4nonCL42odDnJn7j8kxAkxl2qJDsXs6mDnxX2tfBJusuNC8ULgWXt4/pub?output=csv", 
+        // 세미나 데이터 시트 URL
         SEMINAR: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQUgeDh3zYtSZ57dm1bVKKZIgYUaCjbCDE5ZxMI_EkzctTfKdT6_1KMI0nDT47MT_Flmp47zd8258Q7/pub?output=csv", 
+        // 맛집 데이터 시트 URL
         FOOD: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT4XbOCG-q4zXslRt9RhKYeDNqh2oPgwZP_Y1odlRpybG72n0K4Pb0YvXq9-O40_jYJSa8xadm9ZAUF/pub?output=csv", 
+        // 관리자 편집 페이지 링크 (실제 편집은 Google Sheets에서 직접 수행)
         ADMIN_EDIT: "https://docs.google.com/spreadsheets"
     },
     
     // Google Sheets 데이터 로딩 설정
     SHEET_LOADING: {
-        ENABLED: true,
-        CACHE_DURATION: 5 * 60 * 1000, // 5분 캐시
-        RETRY_ATTEMPTS: 3,
-        RETRY_DELAY: 1000 // 1초
+        ENABLED: true, // Google Sheets 데이터 로딩 활성화 여부
+        CACHE_DURATION: 5 * 60 * 1000, // 캐시 지속 시간 (5분)
+        RETRY_ATTEMPTS: 3, // 실패 시 재시도 횟수
+        RETRY_DELAY: 1000 // 재시도 간 지연 시간 (1초)
     },
     
     // 기본 콘텐츠
@@ -41,10 +105,37 @@ const CONFIG = {
     },
     
     // 관리자 설정
+    // 실제 운영 시 반드시 비밀번호와 마스터 코드를 변경하세요
     ADMIN: {
-        ID: 'admin',
-        PASSWORD: '1234',
-        MASTER_CODE: 'master9999'
+        ID: 'admin', // 관리자 아이디
+        PASSWORD: '1234', // 관리자 비밀번호 (변경 권장)
+        MASTER_CODE: 'master9999' // 마스터 코드 (특수 기능 접근용, 변경 권장)
+    },
+    
+    // PortOne (구 아임포트) 결제 및 본인인증 설정
+    // 본인인증 기능을 사용하려면 반드시 설정해야 합니다
+    PORTONE: {
+        // PortOne 대시보드에서 발급받은 가맹점 식별코드
+        // 발급 방법:
+        // 1. https://admin.portone.io/ 에서 회원가입/로그인
+        // 2. 대시보드에서 가맹점 식별코드 확인
+        // 3. 아래 값에 실제 코드로 교체
+        IMP_CODE: 'imp00000000' // TODO: 실제 가맹점 식별코드로 교체 필요
+    },
+    
+    // ImgBB 이미지 업로드 API 키
+    // 커뮤니티 게시글 및 후기 이미지 업로드에 사용됩니다
+    IMGBB: {
+        // ImgBB API 키 (https://api.imgbb.com/ 에서 발급 가능)
+        API_KEY: '4c975214037cdf1889d5d02a01a7831d'
+    },
+    
+    // 공공데이터포털 API 설정
+    PUBLIC_DATA_API: {
+        // 공공데이터포털(https://www.data.go.kr/)에서 발급받은 Service Key
+        // 사업자등록번호 진위확인 서비스 API 키 필요
+        // 발급 방법: https://www.data.go.kr/ → "사업자등록번호 진위확인" 검색 → API 신청
+        API_KEY: '' // TODO: 실제 API 키로 교체 필요
     }
 };
 
