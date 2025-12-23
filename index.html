@@ -40,8 +40,10 @@
     <!-- 유틸리티 함수 -->
     <script src="./assets/js/utils.js"></script>
     
-    <!-- Google Sheets API 통신 모듈 -->
-    <script src="./assets/js/sheets-api.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -208,133 +210,33 @@
         // 다만, 일부 브라우저에서는 SVG 내부 CSS가 작동하지 않을 수 있으므로
         // 동적 업데이트를 위한 함수를 제공합니다.
         
-        const updateSVGFaviconForTheme = () => {
-            const faviconSvg = document.getElementById('favicon-svg');
-            if (!faviconSvg) return;
-            
-            // 파비콘은 브랜드 블루 색상으로 설정
-            const faviconColor = '#0045a5'; // 브랜드 블루
-            
-            // SVG 파일을 동적으로 로드하여 색상 업데이트
-            // 여러 경로 시도 (상대 경로, 절대 경로)
-            const tryLoadSVG = (path) => {
-                return fetch(path)
-                    .then(response => {
-                        if (!response.ok) throw new Error('Not found');
-                        return response.text();
-                    })
-                    .then(svgText => {
-                        // SVG 내용에서 색상을 브랜드 블루로 유지
-                        let updatedSvg = svgText;
-                        
-                        // 흰색이 있으면 브랜드 블루로 변경 (필요한 경우만)
-                        updatedSvg = updatedSvg.replace(/fill:\s*#ffffff/g, `fill: ${faviconColor}`);
-                        updatedSvg = updatedSvg.replace(/fill:\s*#fff/g, `fill: ${faviconColor}`);
-                        // 배경 투명도 조정
-                        updatedSvg = updatedSvg.replace(/opacity:\s*1/g, 'opacity: 0.1');
-                        
-                        // Data URI로 변환하여 적용
-                        const svgBlob = new Blob([updatedSvg], { type: 'image/svg+xml' });
-                        const url = URL.createObjectURL(svgBlob);
-                        faviconSvg.href = url;
-                        
-                        // 메모리 정리
-                        setTimeout(() => URL.revokeObjectURL(url), 100);
-                        return true;
-                    });
-            };
-            
-            // 여러 경로 시도 (CORS 오류 방지를 위해 try-catch로 감싸기)
-            try {
-            tryLoadSVG('./assets/images/favicon.svg')
-                .catch(() => tryLoadSVG('/assets/images/favicon.svg'))
-                .catch(() => tryLoadSVG('assets/images/favicon.svg'))
-                .catch(() => {
-                        // 모든 경로 실패 시 조용히 실패 (CORS 오류는 정상적인 현상)
-                });
-            } catch (error) {
-                // CORS 오류는 무시 (로컬 파일 직접 열기 시 정상적인 현상)
-            }
-        };
-
-        // 초기 로드 시 SVG 파비콘 설정
-        // SVG 파일이 있으면 자동으로 CSS 미디어 쿼리가 작동하지만,
-        // 일부 브라우저 호환성을 위해 JavaScript로도 업데이트
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                // SVG 파일이 있으면 사용, 없으면 동적 생성
-                const faviconSvg = document.getElementById('favicon-svg');
-                if (faviconSvg) {
-                    // SVG 파일 존재 여부 확인 (여러 경로 시도)
-                    const checkSVG = (path) => {
-                        return fetch(path, { method: 'HEAD' })
-                            .then(response => {
-                                if (response.ok) {
-                                    faviconSvg.href = path;
-                                    setTimeout(updateSVGFaviconForTheme, 100);
-                                    return true;
-                                }
-                                throw new Error('Not found');
-                            })
-                            .catch(() => {
-                                // CORS 오류는 무시
-                                return false;
-                            });
-                    };
-                    
-                    try {
-                    checkSVG('./assets/images/favicon.svg')
-                        .catch(() => checkSVG('/assets/images/favicon.svg'))
-                        .catch(() => checkSVG('assets/images/favicon.svg'))
-                        .catch(() => {
-                                // 모든 경로 실패 시 동적 생성 (CORS 오류는 정상)
-                        });
-                    } catch (error) {
-                        // CORS 오류는 무시
-                    }
-                }
-            });
-        } else {
+        // 파비콘 설정 (단순화)
+        // SVG 파일이 있으면 사용, 없으면 기본 파비콘 사용
+        const initFavicon = () => {
             const faviconSvg = document.getElementById('favicon-svg');
             if (faviconSvg) {
-                const checkSVG = (path) => {
-                    return fetch(path, { method: 'HEAD' })
-                        .then(response => {
-                            if (response.ok) {
-                                faviconSvg.href = path;
-                                setTimeout(updateSVGFaviconForTheme, 100);
-                                return true;
-                            }
-                            throw new Error('Not found');
-                        })
-                        .catch(() => {
-                            // CORS 오류는 무시
-                            return false;
-                        });
+                // SVG 파일 경로 설정 (여러 경로 시도)
+                const paths = ['./assets/images/favicon.svg', '/assets/images/favicon.svg', 'assets/images/favicon.svg'];
+                let currentPathIndex = 0;
+                
+                const trySetFavicon = () => {
+                    if (currentPathIndex < paths.length) {
+                        faviconSvg.href = paths[currentPathIndex];
+                        currentPathIndex++;
+                    }
                 };
                 
-                try {
-                checkSVG('./assets/images/favicon.svg')
-                    .catch(() => checkSVG('/assets/images/favicon.svg'))
-                    .catch(() => checkSVG('assets/images/favicon.svg'))
-                    .catch(() => {
-                        updateSVGFaviconForTheme();
-                    });
-                } catch (error) {
-                    // CORS 오류는 무시
-                }
+                trySetFavicon();
             }
+        };
+        
+        // 초기 로드 시 파비콘 설정
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initFavicon);
+        } else {
+            initFavicon();
         }
         
-        // 다크 모드 변경 감지
-        if (window.matchMedia) {
-            const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-            if (darkModeQuery.addEventListener) {
-                darkModeQuery.addEventListener('change', updateSVGFaviconForTheme);
-            } else if (darkModeQuery.addListener) {
-                darkModeQuery.addListener(updateSVGFaviconForTheme);
-            }
-        }
 
         // ==========================================
         // 🔐 PortOne 초기화
@@ -349,90 +251,9 @@
             ? CONFIG.IMGBB.API_KEY 
             : '4c975214037cdf1889d5d02a01a7831d'; // 기본값
         
-        // ImgBB 이미지 업로드 함수 (전역 사용)
-        const uploadImageToImgBB = async (base64Image, fileName) => {
-            try {
-                // Base64 데이터에서 헤더 제거 (data:image/jpeg;base64, 부분)
-                const base64Data = base64Image.split(',')[1] || base64Image;
-                
-                // FormData 형식으로 전송
-                const formData = new FormData();
-                formData.append('key', IMGBB_API_KEY);
-                formData.append('image', base64Data);
-                formData.append('name', fileName || 'image');
-
-                const response = await fetch('https://api.imgbb.com/1/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-                
-                if (data.success && data.data && data.data.url) {
-                    return {
-                        success: true,
-                        url: data.data.url,
-                        deleteUrl: data.data.delete_url || null,
-                        id: data.data.id
-                    };
-                } else {
-                    throw new Error(data.error?.message || data.error || '이미지 업로드 실패');
-                }
-            } catch (error) {
-                console.error('ImgBB 업로드 오류:', error);
-                throw error;
-            }
-        };
-
-        // 로고/파비콘용 깃허브 업로드 가이드 함수
-        // 실제 깃허브 업로드는 GitHub API를 사용하거나 수동 업로드 필요
-        const uploadLogoOrFaviconToGitHub = async (file, type, options = {}) => {
-            // 깃허브에 직접 업로드하는 것은 GitHub API 토큰이 필요하므로
-            // 여기서는 파일을 다운로드할 수 있도록 Base64 데이터 URI를 제공
-            try {
-                let base64Image;
-                
-                // 로고인 경우 리사이징 옵션이 있으면 리사이징
-                if (type === 'logo' && options.maxWidth && options.maxHeight) {
-                    base64Image = await resizeImage(file, options.maxWidth, options.maxHeight, options.quality || 0.9);
-                } else {
-                    base64Image = await fileToBase64(file);
-                }
-                
-                // 파일 다운로드 링크 생성
-                const blob = await fetch(base64Image).then(r => r.blob());
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                
-                if (type === 'logo') {
-                    const extension = file.name.split('.').pop() || 'png';
-                    a.download = `logo.${extension}`;
-                    alert('로고 파일을 다운로드했습니다.\n이제 깃허브의 assets/images/ 폴더에 업로드해주세요.');
-                } else if (type === 'favicon') {
-                    const fileName = file.name || 'favicon.ico';
-                    a.download = fileName;
-                    alert('파비콘 파일을 다운로드했습니다.\n이제 깃허브의 assets/images/ 폴더에 업로드해주세요.');
-                }
-                
-                a.click();
-                URL.revokeObjectURL(url);
-                
-                return {
-                    success: true,
-                    url: base64Image, // 임시로 Base64 사용
-                    message: '파일을 다운로드했습니다. 깃허브에 수동으로 업로드해주세요.',
-                    githubPath: type === 'logo' 
-                        ? 'assets/images/logo.png'
-                        : `assets/images/${file.name || 'favicon.ico'}`
-                };
-            } catch (error) {
-                console.error('파일 처리 오류:', error);
-                throw error;
-            }
-        };
-
-        // 파일을 Base64로 변환하는 헬퍼 함수
+        // ==========================================
+        // 이미지 관련 함수
+        // ==========================================
         const fileToBase64 = (file) => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -442,7 +263,6 @@
             });
         };
         
-        // 이미지 리사이징 함수 (로고용)
         const resizeImage = (file, maxWidth, maxHeight, quality = 0.9) => {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -453,7 +273,6 @@
                         let width = img.width;
                         let height = img.height;
                         
-                        // 비율 유지하면서 리사이징
                         if (width > maxWidth || height > maxHeight) {
                             const ratio = Math.min(maxWidth / width, maxHeight / height);
                             width = width * ratio;
@@ -484,6 +303,36 @@
             });
         };
         
+        const uploadImageToImgBB = async (base64Image, fileName) => {
+            try {
+                const base64Data = base64Image.split(',')[1] || base64Image;
+                const formData = new FormData();
+                formData.append('key', IMGBB_API_KEY);
+                formData.append('image', base64Data);
+                formData.append('name', fileName || 'image');
+
+                const response = await fetch('https://api.imgbb.com/1/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.success && data.data && data.data.url) {
+                    return {
+                        success: true,
+                        url: data.data.url,
+                        deleteUrl: data.data.delete_url || null,
+                        id: data.data.id
+                    };
+                } else {
+                    throw new Error(data.error?.message || data.error || '이미지 업로드 실패');
+                }
+            } catch (error) {
+                console.error('ImgBB 업로드 오류:', error);
+                throw error;
+            }
+        };
+        
         // PortOne 초기화
         if (window.IMP) {
             window.IMP.init(PORTONE_IMP_CODE);
@@ -491,48 +340,93 @@
         } else {
             console.error('❌ PortOne SDK가 로드되지 않았습니다.');
         }
+        
+        // ==========================================
+        // Firebase 초기화
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9aeP_SeSCJIgzST45tPj7FFZZcEfEaec",
+            authDomain: "bcsa-b190f.firebaseapp.com",
+            projectId: "bcsa-b190f",
+            storageBucket: "bcsa-b190f.firebasestorage.app",
+            messagingSenderId: "999075400884",
+            appId: "1:999075400884:web:a1ff5389741417e4ca5be1",
+            measurementId: "G-13X3J2EYQ2"
+        };
+        
+        // Firebase 초기화
+        let firebaseApp, firebaseAuth, firebaseDb;
+        if (typeof firebase !== 'undefined') {
+            firebaseApp = firebase.initializeApp(firebaseConfig);
+            firebaseAuth = firebase.auth();
+            firebaseDb = firebase.firestore();
+            console.log('✅ Firebase 초기화 완료 (Auth + Firestore)');
+        } else {
+            console.error('❌ Firebase SDK가 로드되지 않았습니다.');
+        }
 
         // ==========================================
-        // 💾 로컬 스토리지 기반 사용자 관리
+        // 💾 로컬 스토리지 기반 사용자 관리 (Firestore로 전환 예정)
         // ==========================================
         const STORAGE_KEY_USERS = 'busan_ycc_users';
         const STORAGE_KEY_CURRENT_USER = 'busan_ycc_current_user';
         
-        // 사용자 데이터 로드
-        const loadUsersFromStorage = () => {
-            // 먼저 localStorage에서 즉시 반환 (동기)
+        // 스토리지 관련 함수 (Firestore 전환 전 임시 유지)
+        const loadDataFromStorage = (key, defaultValue) => {
             try {
-                // localStorage 접근 가능 여부 확인
-                if (typeof Storage === 'undefined' || typeof localStorage === 'undefined') {
-                    console.warn('localStorage를 사용할 수 없습니다.');
-                    return [];
-                }
-                
+                const stored = localStorage.getItem(key);
+                return stored ? JSON.parse(stored) : defaultValue;
+            } catch (error) {
+                console.error(`데이터 로드 오류 (${key}):`, error);
+                return defaultValue;
+            }
+        };
+        
+        const saveDataToStorage = (key, data) => {
+            try {
+                localStorage.setItem(key, JSON.stringify(data));
+            } catch (error) {
+                console.error(`데이터 저장 오류 (${key}):`, error);
+            }
+        };
+        
+        const loadUsersFromStorage = () => {
+            try {
                 const stored = localStorage.getItem(STORAGE_KEY_USERS);
-                const localUsers = stored ? JSON.parse(stored) : [];
-                
-                // 백그라운드에서 API 호출하여 업데이트 (비동기)
-                if (typeof getUsersFromSheet === 'function') {
-                    getUsersFromSheet().then(users => {
-                        if (users && users.length > 0) {
-                            // API에서 받은 데이터로 localStorage 업데이트
-                            try {
-                                if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                                    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
-                                }
-                            } catch (error) {
-                                console.error('localStorage 저장 오류:', error);
-                            }
-                        }
-                    }).catch(error => {
-                        console.error('사용자 데이터 API 로드 오류:', error);
-                    });
-                }
-                
-                return localUsers;
+                return stored ? JSON.parse(stored) : [];
             } catch (error) {
                 console.error('사용자 데이터 로드 오류:', error);
                 return [];
+            }
+        };
+        
+        const saveUsersToStorage = (users) => {
+            try {
+                localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+            } catch (error) {
+                console.error('사용자 데이터 저장 오류:', error);
+            }
+        };
+        
+        const loadCurrentUserFromStorage = () => {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
+                return stored ? JSON.parse(stored) : null;
+            } catch (error) {
+                console.error('현재 사용자 로드 오류:', error);
+                return null;
+            }
+        };
+        
+        const saveCurrentUserToStorage = (user) => {
+            try {
+                if (user) {
+                    localStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(user));
+                } else {
+                    localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
+                }
+            } catch (error) {
+                console.error('현재 사용자 저장 오류:', error);
             }
         };
         
@@ -593,59 +487,6 @@
             }
         };
         
-        // 사용자 데이터 저장
-        const saveUsersToStorage = async (users) => {
-            // Google Sheets에 저장 시도
-            if (typeof saveUserToSheet === 'function' && users && users.length > 0) {
-                // 각 사용자를 개별적으로 저장
-                for (const user of users) {
-                    try {
-                        await saveUserToSheet(user);
-                    } catch (error) {
-                        console.error(`사용자 ${user.id} 저장 오류:`, error);
-                    }
-                }
-            }
-            
-            // localStorage에도 저장 (폴백용)
-            try {
-                if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
-                }
-            } catch (error) {
-                console.error('사용자 데이터 저장 오류:', error);
-            }
-        };
-        
-        // 현재 사용자 로드
-        const loadCurrentUserFromStorage = () => {
-            try {
-                if (typeof Storage === 'undefined' || typeof localStorage === 'undefined') {
-                    return null;
-                }
-                const stored = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
-                return stored ? JSON.parse(stored) : null;
-            } catch (error) {
-                console.error('현재 사용자 로드 오류:', error);
-                return null;
-            }
-        };
-        
-        // 현재 사용자 저장
-        const saveCurrentUserToStorage = (user) => {
-            try {
-                if (typeof Storage === 'undefined' || typeof localStorage === 'undefined') {
-                    return;
-                }
-                if (user) {
-                    localStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(user));
-                } else {
-                    localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
-                }
-            } catch (error) {
-                console.error('현재 사용자 저장 오류:', error);
-            }
-        };
 
         // ==========================================
         // 🚀 [관리자 설정] 데이터 링크
@@ -2225,10 +2066,147 @@
                     return;
                 }
                 
+                // Firebase 비밀번호 재설정 사용
+                if (typeof firebaseAuth !== 'undefined' && firebaseAuth) {
+                    try {
+                        // 이메일 형식인지 확인
+                        const isEmail = resetPasswordEmailOrPhone.includes('@');
+                        
+                        if (isEmail) {
+                            // Firebase 비밀번호 재설정 이메일 발송
+                            await firebaseAuth.sendPasswordResetEmail(resetPasswordEmailOrPhone.trim());
+                            setResult({ 
+                                type: 'success', 
+                                message: '비밀번호 재설정 이메일이 발송되었습니다.\n이메일을 확인하여 비밀번호를 재설정해주세요.' 
+                            });
+                            return;
+                        } else {
+                            // 전화번호인 경우, Google Sheets에서 이메일 찾기
+                            const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.MEMBER) 
+                                ? CONFIG.SHEET_URLS.MEMBER 
+                                : MEMBER_SHEET_URL;
+                            
+                            if (csvUrl) {
+                                const members = await fetchSheetData(csvUrl);
+                                const member = members.find(m => 
+                                    (m.id === resetPasswordId.trim() || m.email === resetPasswordId.trim()) &&
+                                    (m.phone && m.phone.replace(/[^0-9]/g, '') === resetPasswordEmailOrPhone.replace(/[^0-9]/g, ''))
+                                );
+                                
+                                if (member && member.email) {
+                                    await firebaseAuth.sendPasswordResetEmail(member.email);
+                                    setResult({ 
+                                        type: 'success', 
+                                        message: '비밀번호 재설정 이메일이 발송되었습니다.\n이메일을 확인하여 비밀번호를 재설정해주세요.' 
+                                    });
+                                    return;
+                                }
+                            }
+                            
+                            // Google Sheets에서 찾지 못한 경우, localStorage에서 확인 (폴백)
+                            const storedUsers = loadUsersFromStorage();
+                            const foundUser = storedUsers.find(u => {
+                                const idMatch = u.id === resetPasswordId.trim();
+                                const phoneMatch = u.phone && u.phone.replace(/[^0-9]/g, '') === resetPasswordEmailOrPhone.replace(/[^0-9]/g, '');
+                                return idMatch && phoneMatch;
+                            });
+                            
+                            if (foundUser && foundUser.email) {
+                                await firebaseAuth.sendPasswordResetEmail(foundUser.email);
+                                setResult({ 
+                                    type: 'success', 
+                                    message: '비밀번호 재설정 이메일이 발송되었습니다.\n이메일을 확인하여 비밀번호를 재설정해주세요.' 
+                                });
+                                return;
+                            }
+                            
+                            setResult({ type: 'error', message: '일치하는 회원 정보를 찾을 수 없습니다.' });
+                            return;
+                        }
+                    } catch (error) {
+                        console.error('비밀번호 재설정 오류:', error);
+                        let errorMessage = '비밀번호 재설정에 실패했습니다.';
+                        
+                        if (error.code) {
+                            switch (error.code) {
+                                case 'auth/user-not-found':
+                                    errorMessage = '등록되지 않은 이메일입니다.';
+                                    break;
+                                case 'auth/invalid-email':
+                                    errorMessage = '이메일 형식이 올바르지 않습니다.';
+                                    break;
+                                default:
+                                    errorMessage = error.message || '비밀번호 재설정에 실패했습니다.';
+                            }
+                        }
+                        
+                        setResult({ type: 'error', message: errorMessage });
+                        return;
+                    }
+                }
+                
+                // Firebase가 없는 경우 기존 방식으로 폴백
+                
                 setIsLoading(true);
                 setResult(null);
                 
                 try {
+                    // Firebase 비밀번호 재설정 사용
+                    if (typeof firebaseAuth !== 'undefined' && firebaseAuth) {
+                        // 이메일 형식인지 확인
+                        const isEmail = resetPasswordEmailOrPhone.includes('@');
+                        
+                        if (isEmail) {
+                            // Firebase 비밀번호 재설정 이메일 발송
+                            await firebaseAuth.sendPasswordResetEmail(resetPasswordEmailOrPhone.trim());
+                            setResult({ 
+                                type: 'success', 
+                                message: '비밀번호 재설정 이메일이 발송되었습니다.\n이메일을 확인하여 비밀번호를 재설정해주세요.' 
+                            });
+                            setIsLoading(false);
+                            return;
+                        } else {
+                            // 전화번호인 경우, Google Sheets에서 이메일 찾기
+                            const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.MEMBER) 
+                                ? CONFIG.SHEET_URLS.MEMBER 
+                                : MEMBER_SHEET_URL;
+                            
+                            let foundUser = null;
+                            if (csvUrl) {
+                                const members = await fetchSheetData(csvUrl);
+                                foundUser = members.find(m => 
+                                    (m.id === resetPasswordId.trim() || m.email === resetPasswordId.trim()) &&
+                                    (m.phone && m.phone.replace(/[^0-9]/g, '') === resetPasswordEmailOrPhone.replace(/[^0-9]/g, ''))
+                                );
+                            }
+                            
+                            // Google Sheets에서 찾지 못한 경우, localStorage에서 확인 (폴백)
+                            if (!foundUser) {
+                                const storedUsers = loadUsersFromStorage();
+                                foundUser = storedUsers.find(u => {
+                                    const idMatch = u.id === resetPasswordId.trim();
+                                    const phoneMatch = u.phone && u.phone.replace(/[^0-9]/g, '') === resetPasswordEmailOrPhone.replace(/[^0-9]/g, '');
+                                    return idMatch && phoneMatch;
+                                });
+                            }
+                            
+                            if (foundUser && foundUser.email) {
+                                await firebaseAuth.sendPasswordResetEmail(foundUser.email);
+                                setResult({ 
+                                    type: 'success', 
+                                    message: '비밀번호 재설정 이메일이 발송되었습니다.\n이메일을 확인하여 비밀번호를 재설정해주세요.' 
+                                });
+                                setIsLoading(false);
+                                return;
+                            }
+                            
+                            setResult({ type: 'error', message: '일치하는 회원 정보를 찾을 수 없습니다.' });
+                            setIsLoading(false);
+                            return;
+                        }
+                    }
+                    
+                    // Firebase가 없는 경우 기존 방식으로 폴백
                     const storedUsers = loadUsersFromStorage();
                     const foundUser = storedUsers.find(u => {
                         const idMatch = u.id === resetPasswordId.trim();
@@ -2287,7 +2265,22 @@
                     }
                 } catch (error) {
                     console.error('비밀번호 재설정 오류:', error);
-                    setResult({ type: 'error', message: '비밀번호 재설정 중 오류가 발생했습니다.' });
+                    let errorMessage = '비밀번호 재설정 중 오류가 발생했습니다.';
+                    
+                    if (error.code) {
+                        switch (error.code) {
+                            case 'auth/user-not-found':
+                                errorMessage = '등록되지 않은 이메일입니다.';
+                                break;
+                            case 'auth/invalid-email':
+                                errorMessage = '이메일 형식이 올바르지 않습니다.';
+                                break;
+                            default:
+                                errorMessage = error.message || '비밀번호 재설정 중 오류가 발생했습니다.';
+                        }
+                    }
+                    
+                    setResult({ type: 'error', message: errorMessage });
                 } finally {
                     setIsLoading(false);
                 }
@@ -4352,7 +4345,7 @@
             // 관리자 체크 함수
             const checkIsAdmin = (user) => {
                 if (!user) return false;
-                return user.name === '햇반' || user.name === '람람' || user.email === 'admin@busan-ycc.com';
+                return user.name === '햇반' || user.email === 'admin@busan-ycc.com';
             };
             
             const isCurrentUserAdmin = checkIsAdmin(currentUser);
@@ -4386,15 +4379,14 @@
                 setUploadingImages(true);
                 const uploadPromises = Array.from(files).map(async (file) => {
                     try {
-                    const base64Image = await fileToBase64(file);
                         const resizedImage = await resizeImage(file, 1200, 800, 0.9);
                         const result = await uploadImageToImgBB(resizedImage, file.name);
-                    return result.url;
-                } catch (error) {
+                        return result.url;
+                    } catch (error) {
                         console.error('이미지 업로드 오류:', error);
                         alert(`${file.name} 업로드에 실패했습니다.`);
-                    return null;
-                }
+                        return null;
+                    }
                 });
 
                 const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
@@ -4560,14 +4552,14 @@
                                 <div className="flex gap-4 justify-center">
                                     <button type="button" onClick={() => { if (setShowLoginModal) setShowLoginModal(true); }} className="px-8 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">
                                         로그인하기
-                                                            </button>
+                                    </button>
                                     <button type="button" onClick={onBack} className="px-8 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
                                         메인으로 돌아가기
-                                                            </button>
-                                    </div>
+                                    </button>
                                 </div>
-                                    </div>
-                                    </div>
+                            </div>
+                        </div>
+                    </div>
                 );
             }
 
@@ -6098,88 +6090,148 @@
                     return defaultContent;
                 }
             });
-            const [membersData, setMembersData] = useState(() => {
-                try {
-                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                        const stored = localStorage.getItem('busan_ycc_members');
-                        return stored ? JSON.parse(stored) : defaultMembersData;
-                    }
-                    return defaultMembersData;
-                } catch (error) {
-                    console.error('회원 데이터 로드 오류:', error);
-                    return defaultMembersData;
+            const [membersData, setMembersData] = useState(defaultMembersData);
+            
+            // Firestore에서 회원 데이터 실시간 로드
+            useEffect(() => {
+                if (typeof firebaseDb !== 'undefined' && firebaseDb) {
+                    const unsubscribe = firebaseDb.collection('users')
+                        .orderBy('createdAt', 'desc')
+                        .onSnapshot((snapshot) => {
+                            const members = snapshot.docs.map(doc => ({ 
+                                id: doc.id, 
+                                ...doc.data() 
+                            }));
+                            setMembersData(members);
+                            console.log('✅ Firestore에서 회원 데이터 로드:', members.length, '명');
+                        }, (error) => {
+                            console.error('❌ Firestore 회원 데이터 로드 오류:', error);
+                        });
+                    
+                    return () => unsubscribe();
                 }
-            });
-            const [seminarsData, setSeminarsData] = useState(() => {
-                try {
-                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                        const stored = localStorage.getItem('busan_ycc_seminars');
-                        if (stored) {
-                            const parsed = JSON.parse(stored);
-                            // 테스트 세미나 데이터 제거 (id가 1, 2, 3인 테스트 데이터)
-                            const filtered = parsed.filter(s => {
-                                // 테스트 세미나 ID 필터링
-                                if (s.id === 1 || s.id === 2 || s.id === 3) return false;
-                                // 테스트 세미나 제목으로도 필터링
-                                const testTitles = [
-                                    '2025 상반기 스타트업 투자 트렌드',
-                                    '부산 청년 창업가 네트워킹 나이트',
-                                    '초기 창업가를 위한 세무/노무 특강'
-                                ];
-                                if (testTitles.includes(s.title)) return false;
-                                return true;
-                            });
-                            
-                            // 필터링된 데이터가 있으면 저장하고 반환, 없으면 빈 배열
-                            if (filtered.length !== parsed.length) {
-                                localStorage.setItem('busan_ycc_seminars', JSON.stringify(filtered));
-                                console.log('✅ 테스트 세미나 데이터 제거 완료');
-                            }
-                            
-                            return filtered.length > 0 ? filtered : defaultSeminarsData;
-                        }
-                        return defaultSeminarsData;
-                    }
-                    return defaultSeminarsData;
-                } catch (error) {
-                    console.error('세미나 데이터 로드 오류:', error);
-                    return defaultSeminarsData;
+            }, []);
+            const [seminarsData, setSeminarsData] = useState(defaultSeminarsData);
+            
+            // Firestore에서 세미나 데이터 실시간 로드
+            useEffect(() => {
+                if (typeof firebaseDb !== 'undefined' && firebaseDb) {
+                    const unsubscribe = firebaseDb.collection('seminars')
+                        .orderBy('createdAt', 'desc')
+                        .onSnapshot((snapshot) => {
+                            const seminars = snapshot.docs.map(doc => ({ 
+                                id: doc.id, 
+                                ...doc.data() 
+                            }));
+                            setSeminarsData(seminars);
+                            console.log('✅ Firestore에서 세미나 데이터 로드:', seminars.length, '개');
+                        }, (error) => {
+                            console.error('❌ Firestore 세미나 데이터 로드 오류:', error);
+                        });
+                    
+                    return () => unsubscribe();
                 }
-            });
-            const [communityPosts, setCommunityPosts] = useState(() => {
-                // 초기값은 기본 데이터로 설정, 실제 데이터는 useEffect에서 로드
-                return defaultCommunityPosts;
-            });
+            }, []);
+            const [communityPosts, setCommunityPosts] = useState(defaultCommunityPosts);
+            
+            // Firestore에서 커뮤니티 게시글 실시간 로드
+            useEffect(() => {
+                if (typeof firebaseDb !== 'undefined' && firebaseDb) {
+                    const unsubscribe = firebaseDb.collection('posts')
+                        .orderBy('createdAt', 'desc')
+                        .onSnapshot((snapshot) => {
+                            const posts = snapshot.docs.map(doc => ({ 
+                                id: doc.id, 
+                                ...doc.data() 
+                            }));
+                            setCommunityPosts(posts);
+                            console.log('✅ Firestore에서 게시글 데이터 로드:', posts.length, '개');
+                        }, (error) => {
+                            console.error('❌ Firestore 게시글 데이터 로드 오류:', error);
+                        });
+                    
+                    return () => unsubscribe();
+                }
+            }, []);
             const [currentView, setCurrentView] = useState('home');
             const [showAdminLogin, setShowAdminLogin] = useState(false);
             const [currentUser, setCurrentUser] = useState(null);
             const [users, setUsers] = useState([]);
             
-            // 사용자 데이터 로드 (페이지 로드 시)
+            // Firestore 사용자 데이터 실시간 로드
             useEffect(() => {
-                const loadedUsers = loadUsersFromStorage();
-                if (loadedUsers && loadedUsers.length > 0) {
-                    setUsers(loadedUsers);
-                }
-                
-                // 백그라운드에서 최신 데이터로 업데이트
-                if (typeof getUsersFromSheet === 'function') {
-                    getUsersFromSheet().then(users => {
-                        if (users && users.length > 0) {
-                            setUsers(users);
-                            try {
-                                if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                                    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
-                                }
-                            } catch (error) {
-                                console.error('localStorage 저장 오류:', error);
-                            }
-                        }
-                    }).catch(error => {
-                        console.error('사용자 데이터 API 로드 오류:', error);
+                if (typeof firebaseDb !== 'undefined' && firebaseDb) {
+                    const unsubscribe = firebaseDb.collection('users').onSnapshot((snapshot) => {
+                        const usersData = snapshot.docs.map(doc => ({ 
+                            id: doc.id, 
+                            ...doc.data() 
+                        }));
+                        setUsers(usersData);
+                        console.log('✅ Firestore에서 사용자 데이터 로드:', usersData.length, '명');
+                    }, (error) => {
+                        console.error('❌ Firestore 사용자 데이터 로드 오류:', error);
                     });
+                    
+                    return () => unsubscribe();
                 }
             }, []);
+            
+            // Firebase 인증 상태 리스너
+            useEffect(() => {
+                if (typeof firebaseAuth !== 'undefined' && firebaseAuth && typeof firebaseDb !== 'undefined' && firebaseDb) {
+                    const unsubscribe = firebaseAuth.onAuthStateChanged(async (firebaseUser) => {
+                        if (firebaseUser) {
+                            // 로그인 상태 - Firestore에서 회원 데이터 조회
+                            const firebaseUid = firebaseUser.uid;
+                            
+                            try {
+                                const userDoc = await firebaseDb.collection('users').doc(firebaseUid).get();
+                                
+                                let foundUser = null;
+                                if (userDoc.exists) {
+                                    foundUser = { id: userDoc.id, ...userDoc.data() };
+                                } else {
+                                    // email로 검색
+                                    const userSnapshot = await firebaseDb.collection('users')
+                                        .where('email', '==', firebaseUser.email)
+                                        .limit(1)
+                                        .get();
+                                    
+                                    if (!userSnapshot.empty) {
+                                        const doc = userSnapshot.docs[0];
+                                        foundUser = { id: doc.id, ...doc.data() };
+                                    } else {
+                                        // 기본 사용자 데이터 생성
+                                        foundUser = {
+                                            id: firebaseUser.email.split('@')[0],
+                                            email: firebaseUser.email,
+                                            name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+                                            firebaseUid: firebaseUid,
+                                            approvalStatus: 'pending'
+                                        };
+                                    }
+                                }
+                                
+                                // 현재 사용자 설정
+                                setCurrentUser(foundUser);
+                                saveCurrentUserToStorage(foundUser);
+                                setMyPosts(communityPosts.filter(p => p.author === foundUser.name));
+                            } catch (error) {
+                                console.error('Firestore 회원 데이터 로드 오류:', error);
+                            }
+                        } else {
+                            // 로그아웃 상태
+                            setCurrentUser(null);
+                            saveCurrentUserToStorage(null);
+                            setMyPosts([]);
+                        }
+                    });
+                    
+                    // 클린업 함수
+                    return () => unsubscribe();
+                }
+            }, [communityPosts]);
+            
             const [showSignUpModal, setShowSignUpModal] = useState(false);
             const [showLoginModal, setShowLoginModal] = useState(false);
             const [mySeminars, setMySeminars] = useState([]);
@@ -7041,88 +7093,98 @@
                     return alert('사업자등록번호를 입력해주세요.');
                 }
 
-                // 비밀번호 해시화
-                const hashedPassword = await hashPassword(userInfo.password);
-
-                // 로컬 중복 체크 (이메일 및 사업자번호 기반)
-                // 예비창업자는 사업자번호가 없을 수 있으므로, 사업자번호가 있는 경우에만 중복 체크
-                const existingUser = users.find(u => {
-                    if (u.email === userInfo.email) return true;
-                    // 사업자번호가 있는 경우에만 사업자번호로 중복 체크
-                    if (userInfo.businessRegistrationNumber && u.businessRegistrationNumber && 
-                        u.businessRegistrationNumber === userInfo.businessRegistrationNumber) {
-                        return true;
-                    }
-                    return false;
-                });
-                
-                if (existingUser) {
-                    return alert("이미 가입된 이메일" + (userInfo.businessRegistrationNumber ? " 또는 사업자등록번호" : "") + "입니다. 로그인을 시도해주세요.");
-                }
-
-                try {
-                    // 사업자번호 기반 사용자 생성
-                    const newUser = {
-                        id: userInfo.id || `user_${Date.now()}`,
-                        email: userInfo.email,
-                        password: hashedPassword, // 해시된 비밀번호 저장
-                        name: userInfo.name,
-                        company: userInfo.company || '',
-                        role: userInfo.role || '',
-                        industry: userInfo.businessCategory || userInfo.industry || '기타',
-                        userType: userInfo.userType || '사업자',
-                        businessType: userInfo.businessType || '',
-                        businessCategory: userInfo.businessCategory || '',
-                        address: userInfo.address || '',
-                        phone: userInfo.phone || '',
-                        img: userInfo.img || `https://ui-avatars.com/api/?name=${userInfo.name}&background=random`,
-                        approvalStatus: userInfo.approvalStatus || 'pending',
-                        businessRegistrationNumber: userInfo.businessRegistrationNumber || null,
-                        // 본인인증 정보 제거
-                        isIdentityVerified: false,
-                        createdAt: new Date().toISOString()
-                    };
-
-                    // 로컬 스토리지에 저장
-                    const updatedUsers = [...users, newUser];
-                    setUsers(updatedUsers);
-                    saveUsersToStorage(updatedUsers);
-                    
-                    // 멤버 리스트에도 추가 (모든 회원 표시 - 승인 대기 포함)
-                    const newMember = {
-                        id: newUser.id || Date.now(),
-                        name: newUser.name,
-                        industry: newUser.businessCategory || newUser.industry || '기타',
-                        role: newUser.role || '',
-                        company: newUser.company || '',
-                        userType: newUser.userType,
-                        businessType: newUser.businessType || '',
-                        businessCategory: newUser.businessCategory || '',
-                        address: newUser.address || '',
-                        phone: newUser.phone || '',
-                        email: newUser.email,
-                        img: newUser.img,
-                        approvalStatus: newUser.approvalStatus || 'pending',
-                        businessRegistrationNumber: newUser.businessRegistrationNumber || null,
-                        isIdentityVerified: false,
-                        createdAt: newUser.createdAt
-                    };
-                    
-                    // membersData에 추가 및 busan_ycc_members에 저장 (admin.html과 공유)
-                    setMembersData(prev => {
-                        const updated = [...prev, newMember];
-                        // admin.html과 공유하기 위해 busan_ycc_members에도 저장
-                        try {
-                            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                                localStorage.setItem('busan_ycc_members', JSON.stringify(updated));
-                            }
-                        } catch (error) {
-                            console.error('회원 데이터 저장 오류:', error);
+                // Firebase 인증 사용
+                if (typeof firebaseAuth !== 'undefined' && firebaseAuth) {
+                    try {
+                        // 중복 체크: Google Sheets에서 확인
+                        const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.MEMBER) 
+                            ? CONFIG.SHEET_URLS.MEMBER 
+                            : MEMBER_SHEET_URL;
+                        
+                        let existingUser = null;
+                        if (csvUrl) {
+                            const members = await fetchSheetData(csvUrl);
+                            existingUser = members.find(m => {
+                                if (m.email === userInfo.email) return true;
+                                if (userInfo.businessRegistrationNumber && m.businessRegistrationNumber && 
+                                    m.businessRegistrationNumber === userInfo.businessRegistrationNumber) {
+                                    return true;
+                                }
+                                return false;
+                            });
                         }
-                        return updated;
-                    });
+                        
+                        // localStorage에서도 확인 (폴백)
+                        if (!existingUser) {
+                            existingUser = users.find(u => {
+                                if (u.email === userInfo.email) return true;
+                                if (userInfo.businessRegistrationNumber && u.businessRegistrationNumber && 
+                                    u.businessRegistrationNumber === userInfo.businessRegistrationNumber) {
+                                    return true;
+                                }
+                                return false;
+                            });
+                        }
+                        
+                        if (existingUser) {
+                            return alert("이미 가입된 이메일" + (userInfo.businessRegistrationNumber ? " 또는 사업자등록번호" : "") + "입니다. 로그인을 시도해주세요.");
+                        }
+                        
+                        // Firebase 계정 생성
+                        const userCredential = await firebaseAuth.createUserWithEmailAndPassword(
+                            userInfo.email,
+                            userInfo.password
+                        );
+                        
+                        const firebaseUser = userCredential.user;
+                        const firebaseUid = firebaseUser.uid;
+                        
+                        // Firestore에 회원 데이터 저장
+                        const newUserData = {
+                            id: userInfo.id || `user_${Date.now()}`,
+                            email: userInfo.email,
+                            firebaseUid: firebaseUid,
+                            name: userInfo.name,
+                            company: userInfo.company || '',
+                            role: userInfo.role || '',
+                            industry: userInfo.businessCategory || userInfo.industry || '기타',
+                            userType: userInfo.userType || '사업자',
+                            businessType: userInfo.businessType || '',
+                            businessCategory: userInfo.businessCategory || '',
+                            address: userInfo.address || '',
+                            roadAddress: userInfo.roadAddress || '',
+                            zipCode: userInfo.zipCode || '',
+                            phone: userInfo.phone || '',
+                            img: userInfo.img || `https://ui-avatars.com/api/?name=${userInfo.name}&background=random`,
+                            approvalStatus: userInfo.approvalStatus || 'pending',
+                            memberGrade: '일반회원',
+                            businessRegistrationNumber: userInfo.businessRegistrationNumber || null,
+                            businessVerificationStatus: userInfo.businessVerificationStatus || null,
+                            isIdentityVerified: userInfo.isIdentityVerified || false,
+                            verifiedName: userInfo.verifiedName || null,
+                            verifiedPhone: userInfo.verifiedPhone || null,
+                            verifiedBirthday: userInfo.verifiedBirthday || null,
+                            verifiedGender: userInfo.verifiedGender || null,
+                            impUid: userInfo.impUid || null,
+                            isAdmin: false,
+                            hasDonated: false,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        };
+                        
+                        // Firestore users 컬렉션에 저장
+                        await firebaseDb.collection('users').doc(firebaseUid).set(newUserData);
+                        console.log('✅ Firestore에 회원 데이터 저장 완료');
+                        
+                        // 로컬 상태 업데이트
+                        const newUser = { ...newUserData, createdAt: new Date().toISOString() };
+                        const updatedUsers = [...users, newUser];
+                        setUsers(updatedUsers);
+                        
+                        // membersData에도 추가
+                        setMembersData(prev => [...prev, newUser]);
                     
-                    alert("회원가입 신청이 완료되었습니다!\n관리자 승인 후 서비스를 이용하실 수 있습니다.\n승인 상태는 마이페이지에서 확인하실 수 있습니다.");
+                    alert("회원가입이 완료되었습니다!\n관리자 승인 후 서비스를 이용하실 수 있습니다.\n승인 상태는 마이페이지에서 확인하실 수 있습니다.");
                     
                 } catch (error) {
                     console.error('회원가입 오류:', error);
@@ -7132,68 +7194,160 @@
 
             const handleLogin = async (id, pw) => {
                 try {
-                    // 비밀번호 해시화
-                    const hashedPassword = await hashPassword(pw);
-                    
-                    // 로컬 스토리지에서 사용자 찾기 (아이디 또는 이메일로 로그인)
-                    const storedUsers = loadUsersFromStorage();
-                    const foundUser = storedUsers.find(u => 
-                        (u.id === id || u.email === id) && (u.password === hashedPassword || u.password === pw) // 기존 평문 비밀번호 호환성 유지
-                    );
-
-                    if (!foundUser) {
-                        // 기존 메모리 상태에서도 확인 (아이디 또는 이메일로 로그인)
-                        const memoryUser = users.find(u => 
-                            (u.id === id || u.email === id) && (u.password === hashedPassword || u.password === pw) // 기존 평문 비밀번호 호환성 유지
+                    // Firebase 인증 시도
+                    if (typeof firebaseAuth !== 'undefined' && firebaseAuth) {
+                        // 이메일 형식인지 확인 (id가 이메일인지 체크)
+                        const email = id.includes('@') ? id : null;
+                        
+                        // 먼저 Firebase로 로그인 시도
+                        let userCredential;
+                        if (email) {
+                            // 이메일로 직접 로그인
+                            userCredential = await firebaseAuth.signInWithEmailAndPassword(email, pw);
+                        } else {
+                            // 아이디인 경우, Google Sheets에서 이메일 찾기
+                            const csvUrl = (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.MEMBER) 
+                                ? CONFIG.SHEET_URLS.MEMBER 
+                                : MEMBER_SHEET_URL;
+                            
+                            if (csvUrl) {
+                                const members = await fetchSheetData(csvUrl);
+                                const member = members.find(m => m.id === id || m.email === id);
+                                
+                                if (!member || !member.email) {
+                                    throw new Error('아이디 또는 비밀번호가 올바르지 않습니다.');
+                                }
+                                
+                                userCredential = await firebaseAuth.signInWithEmailAndPassword(member.email, pw);
+                            } else {
+                                throw new Error('회원 데이터를 불러올 수 없습니다.');
+                            }
+                        }
+                        
+                        // Firebase 인증 성공
+                        const firebaseUser = userCredential.user;
+                        const firebaseUid = firebaseUser.uid;
+                        
+                        // Firestore에서 회원 데이터 조회
+                        const userDoc = await firebaseDb.collection('users').doc(firebaseUid).get();
+                        
+                        let foundUser = null;
+                        if (userDoc.exists) {
+                            foundUser = { id: userDoc.id, ...userDoc.data() };
+                        } else {
+                            // Firestore에 없으면 email로 검색
+                            const userSnapshot = await firebaseDb.collection('users')
+                                .where('email', '==', firebaseUser.email)
+                                .limit(1)
+                                .get();
+                            
+                            if (!userSnapshot.empty) {
+                                const doc = userSnapshot.docs[0];
+                                foundUser = { id: doc.id, ...doc.data() };
+                                // firebaseUid 업데이트
+                                await firebaseDb.collection('users').doc(doc.id).update({
+                                    firebaseUid: firebaseUid
+                                });
+                            } else {
+                                // 회원 데이터가 없으면 기본 데이터 생성
+                                foundUser = {
+                                    id: firebaseUser.email.split('@')[0],
+                                    email: firebaseUser.email,
+                                    name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+                                    firebaseUid: firebaseUid,
+                                    approvalStatus: 'pending'
+                                };
+                            }
+                        }
+                        
+                        // 로그인 성공
+                        setCurrentUser(foundUser);
+                        saveCurrentUserToStorage(foundUser);
+                        setShowLoginModal(false);
+                        setMyPosts(communityPosts.filter(p => p.author === foundUser.name));
+                        
+                        const approvalStatus = foundUser.approvalStatus || 'pending';
+                        if (approvalStatus === 'pending') {
+                            alert("로그인 성공!\n\n회원가입 신청이 관리자 승인 대기 중입니다.\n승인 후 서비스를 이용하실 수 있습니다.");
+                        } else if (approvalStatus === 'rejected') {
+                            alert("로그인 성공!\n\n회원가입 신청이 거절되었습니다.\n관리자에게 문의하세요.");
+                        } else {
+                            alert("로그인 성공!");
+                        }
+                        
+                        return true;
+                    } else {
+                        // Firebase가 없는 경우 기존 방식으로 폴백
+                        console.warn('Firebase가 초기화되지 않았습니다. 기존 방식으로 로그인 시도...');
+                        const hashedPassword = await hashPassword(pw);
+                        const storedUsers = loadUsersFromStorage();
+                        const foundUser = storedUsers.find(u => 
+                            (u.id === id || u.email === id) && (u.password === hashedPassword || u.password === pw)
                         );
                         
-                        if (!memoryUser) {
+                        if (!foundUser) {
                             throw new Error('아이디 또는 비밀번호가 올바르지 않습니다.');
                         }
-
-                        // 로그인 성공
-                        setCurrentUser(memoryUser);
-                        saveCurrentUserToStorage(memoryUser);
+                        
+                        setCurrentUser(foundUser);
+                        saveCurrentUserToStorage(foundUser);
                         setShowLoginModal(false);
-                        setMyPosts(communityPosts.filter(p => p.author === memoryUser.name));
-
-                        const approvalStatus = memoryUser.approvalStatus || 'pending';
-                    if (approvalStatus === 'pending') {
-                        alert("로그인 성공!\n\n회원가입 신청이 관리자 승인 대기 중입니다.\n승인 후 서비스를 이용하실 수 있습니다.");
-                    } else if (approvalStatus === 'rejected') {
-                        alert("로그인 성공!\n\n회원가입 신청이 거절되었습니다.\n관리자에게 문의하세요.");
+                        setMyPosts(communityPosts.filter(p => p.author === foundUser.name));
+                        
+                        const approvalStatus = foundUser.approvalStatus || 'pending';
+                        if (approvalStatus === 'pending') {
+                            alert("로그인 성공!\n\n회원가입 신청이 관리자 승인 대기 중입니다.\n승인 후 서비스를 이용하실 수 있습니다.");
+                        } else if (approvalStatus === 'rejected') {
+                            alert("로그인 성공!\n\n회원가입 신청이 거절되었습니다.\n관리자에게 문의하세요.");
                         } else {
                             alert("로그인 성공!");
                         }
                         
                         return true;
                     }
-
-                    // 로그인 성공
-                    setCurrentUser(foundUser);
-                    saveCurrentUserToStorage(foundUser);
-                    setShowLoginModal(false);
-                    setMyPosts(communityPosts.filter(p => p.author === foundUser.name));
-                    
-                    const approvalStatus = foundUser.approvalStatus || 'pending';
-                    if (approvalStatus === 'pending') {
-                        alert("로그인 성공!\n\n회원가입 신청이 관리자 승인 대기 중입니다.\n승인 후 서비스를 이용하실 수 있습니다.");
-                    } else if (approvalStatus === 'rejected') {
-                        alert("로그인 성공!\n\n회원가입 신청이 거절되었습니다.\n관리자에게 문의하세요.");
-                    } else {
-                        alert("로그인 성공!");
-                    }
-                    
-                    return true;
-
                 } catch (error) {
                     console.error('로그인 오류:', error);
-                    alert(error.message || '로그인에 실패했습니다.');
+                    let errorMessage = '로그인에 실패했습니다.';
+                    
+                    if (error.code) {
+                        switch (error.code) {
+                            case 'auth/user-not-found':
+                                errorMessage = '등록되지 않은 이메일입니다.';
+                                break;
+                            case 'auth/wrong-password':
+                                errorMessage = '비밀번호가 올바르지 않습니다.';
+                                break;
+                            case 'auth/invalid-email':
+                                errorMessage = '이메일 형식이 올바르지 않습니다.';
+                                break;
+                            case 'auth/user-disabled':
+                                errorMessage = '비활성화된 계정입니다.';
+                                break;
+                            case 'auth/too-many-requests':
+                                errorMessage = '너무 많은 로그인 시도가 있었습니다. 나중에 다시 시도해주세요.';
+                                break;
+                            default:
+                                errorMessage = error.message || '로그인에 실패했습니다.';
+                        }
+                    } else {
+                        errorMessage = error.message || '로그인에 실패했습니다.';
+                    }
+                    
+                    alert(errorMessage);
                     return false;
                 }
             };
 
             const handleLogout = async () => {
+                try {
+                    // Firebase 로그아웃
+                    if (typeof firebaseAuth !== 'undefined' && firebaseAuth) {
+                        await firebaseAuth.signOut();
+                    }
+                } catch (error) {
+                    console.error('Firebase 로그아웃 오류:', error);
+                }
+                
                 // 로컬 스토리지에서 현재 사용자 제거
                 saveCurrentUserToStorage(null);
                 setCurrentUser(null);
@@ -7553,8 +7707,8 @@ END:VCALENDAR`;
                         alert("로그인이 필요합니다.");
                         return;
                     }
-                    // 관리자 체크 함수 (햇반, 람람, admin@busan-ycc.com)
-                    const isAdmin = currentUser.name === '햇반' || currentUser.name === '람람' || currentUser.email === 'admin@busan-ycc.com';
+                    // 관리자 체크 함수 (햇반만 허용)
+                    const isAdmin = currentUser.name === '햇반' || currentUser.email === 'admin@busan-ycc.com';
                     if (!isAdmin) {
                         alert("공지사항은 관리자만 작성할 수 있습니다.");
                         return;
@@ -7624,13 +7778,37 @@ END:VCALENDAR`;
                 alert("건의사항이 등록되었습니다. 관리자에게 전달되었습니다.");
             };
 
-            const handleAdminLogin = (id, pw) => {
-                // 관리자 계정: 햇반/0219, 람람/1122
-                if ((id === '햇반' && pw === '0219') || (id === '람람' && pw === '1122')) {
-                    // admin.html로 리다이렉트
-                    window.location.href = 'admin.html';
-                } else {
-                    alert("아이디 또는 비밀번호가 일치하지 않습니다.");
+            const handleAdminLogin = async (id, pw) => {
+                try {
+                    // Firebase 인증 사용 (햇반 계정: admin@busan-ycc.com)
+                    if (typeof firebaseAuth !== 'undefined' && firebaseAuth) {
+                        // 햇반 계정은 admin@busan-ycc.com으로 가정
+                        const adminEmail = 'admin@busan-ycc.com';
+                        
+                        // 아이디가 '햇반'이고 비밀번호가 '0219'인 경우 Firebase 로그인 시도
+                        if (id === '햇반' && pw === '0219') {
+                            try {
+                                await firebaseAuth.signInWithEmailAndPassword(adminEmail, pw);
+                                // Firebase 로그인 성공 시 admin.html로 리다이렉트
+                                window.location.href = 'admin.html';
+                                return;
+                            } catch (error) {
+                                // Firebase 로그인 실패 시 기존 방식으로 폴백
+                                console.warn('Firebase 관리자 로그인 실패, 기존 방식으로 시도:', error);
+                            }
+                        }
+                    }
+                    
+                    // 기존 방식 (폴백)
+                    if (id === '햇반' && pw === '0219') {
+                        // admin.html로 리다이렉트
+                        window.location.href = 'admin.html';
+                    } else {
+                        alert("아이디 또는 비밀번호가 일치하지 않습니다.");
+                    }
+                } catch (error) {
+                    console.error('관리자 로그인 오류:', error);
+                    alert("로그인에 실패했습니다. 다시 시도해주세요.");
                 }
             };
 
@@ -8501,7 +8679,7 @@ END:VCALENDAR`;
                                     <div key={idx} className="flex flex-col items-center gap-1 relative flex-shrink-0 min-w-fit">
                                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} relative`}>
                                             {menuNames[item] || item}
-                                    </button>
+                                        </button>
                                     </div>
                                 ))}
                             </nav>
@@ -8703,10 +8881,12 @@ END:VCALENDAR`;
                     </div>
                 </div>
             );
-        };
-
+        }; // App 컴포넌트 끝 (return 문 닫기)
+        }; // App 함수 끝 (함수 본문 닫기)
+        
+        // React 렌더링
         const root = ReactDOM.createRoot(document.getElementById("root"));
         root.render(<App />);
     </script>
 </body>
-</html> 
+</html>

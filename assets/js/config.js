@@ -73,6 +73,8 @@ const CONFIG = {
         SEMINAR: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQUgeDh3zYtSZ57dm1bVKKZIgYUaCjbCDE5ZxMI_EkzctTfKdT6_1KMI0nDT47MT_Flmp47zd8258Q7/pub?output=csv", 
         // 맛집 데이터 시트 URL
         FOOD: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT4XbOCG-q4zXslRt9RhKYeDNqh2oPgwZP_Y1odlRpybG72n0K4Pb0YvXq9-O40_jYJSa8xadm9ZAUF/pub?output=csv", 
+        // 게시글 데이터 시트 URL
+        POSTS: "", // TODO: 게시글 시트 CSV 공개 URL을 설정하세요
         // 관리자 편집 페이지 링크 (실제 편집은 Google Sheets에서 직접 수행)
         ADMIN_EDIT: "https://docs.google.com/spreadsheets"
     },

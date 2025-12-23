@@ -30,8 +30,10 @@
     <!-- 유틸리티 함수 -->
     <script src="./assets/js/utils.js"></script>
     
-    <!-- Google Sheets API 통신 모듈 -->
-    <script src="./assets/js/sheets-api.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <script>
         tailwind.config = {
@@ -83,6 +85,30 @@
         
         // 카카오 Maps JavaScript 키
         const KAKAO_MAP_APP_KEY = 'f35b8c9735d77cced1235c5775c7c3b1';
+        
+        // ==========================================
+        // Firebase 초기화
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9aeP_SeSCJIgzST45tPj7FFZZcEfEaec",
+            authDomain: "bcsa-b190f.firebaseapp.com",
+            projectId: "bcsa-b190f",
+            storageBucket: "bcsa-b190f.firebasestorage.app",
+            messagingSenderId: "999075400884",
+            appId: "1:999075400884:web:a1ff5389741417e4ca5be1",
+            measurementId: "G-13X3J2EYQ2"
+        };
+        
+        // Firebase 초기화
+        let firebaseApp, firebaseAuth, firebaseDb;
+        if (typeof firebase !== 'undefined') {
+            firebaseApp = firebase.initializeApp(firebaseConfig);
+            firebaseAuth = firebase.auth();
+            firebaseDb = firebase.firestore();
+            console.log('✅ admin.html: Firebase 초기화 완료 (Auth + Firestore)');
+        } else {
+            console.error('❌ admin.html: Firebase SDK가 로드되지 않았습니다.');
+        }
 
         // ==========================================
         // 아이콘 컴포넌트
@@ -130,6 +156,16 @@
         };
         
         // formatDate는 utils.js에서 로드됨 (중복 선언 방지)
+        
+        // 비밀번호 해시화 함수 (SHA-256)
+        const hashPassword = async (password) => {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        };
         
         // 카카오 지도 모달 컴포넌트
         const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) => {
@@ -791,30 +827,69 @@
         // ==========================================
         const AdminDashboard = () => {
             // 데이터 상태
-            const [members, setMembers] = useState(() => loadDataFromStorage(STORAGE_KEY_MEMBERS, defaultMembersData));
-            const [seminars, setSeminars] = useState(() => {
-                const loaded = loadDataFromStorage(STORAGE_KEY_SEMINARS, defaultSeminarsData);
-                // 테스트 세미나 데이터 필터링
-                const filtered = loaded.filter(s => {
-                    if (s.id === 1 || s.id === 2 || s.id === 3) return false;
-                    const testTitles = [
-                        '2025 상반기 스타트업 투자 트렌드',
-                        '부산 청년 창업가 네트워킹 나이트',
-                        '초기 창업가를 위한 세무/노무 특강'
-                    ];
-                    if (testTitles.includes(s.title)) return false;
-                    return true;
-                });
-                
-                // 필터링된 데이터가 다르면 저장
-                if (filtered.length !== loaded.length) {
-                    saveDataToStorage(STORAGE_KEY_SEMINARS, filtered);
-                    console.log('✅ admin.html: 테스트 세미나 데이터 제거 완료');
+            const [members, setMembers] = useState(defaultMembersData);
+            
+            // Firestore에서 회원 데이터 실시간 로드
+            useEffect(() => {
+                if (typeof firebaseDb !== 'undefined' && firebaseDb) {
+                    const unsubscribe = firebaseDb.collection('users')
+                        .orderBy('createdAt', 'desc')
+                        .onSnapshot((snapshot) => {
+                            const usersData = snapshot.docs.map(doc => ({ 
+                                id: doc.id, 
+                                ...doc.data() 
+                            }));
+                            setMembers(usersData);
+                            console.log('✅ admin.html: Firestore에서 회원 데이터 로드:', usersData.length, '명');
+                        }, (error) => {
+                            console.error('❌ admin.html: Firestore 회원 데이터 로드 오류:', error);
+                        });
+                    
+                    return () => unsubscribe();
                 }
-                
-                return filtered;
-            });
-            const [posts, setPosts] = useState(() => loadDataFromStorage(STORAGE_KEY_POSTS, defaultCommunityPosts));
+            }, []);
+            const [seminars, setSeminars] = useState(defaultSeminarsData);
+            
+            // Firestore에서 세미나 데이터 실시간 로드
+            useEffect(() => {
+                if (typeof firebaseDb !== 'undefined' && firebaseDb) {
+                    const unsubscribe = firebaseDb.collection('seminars')
+                        .orderBy('createdAt', 'desc')
+                        .onSnapshot((snapshot) => {
+                            const seminarsData = snapshot.docs.map(doc => ({ 
+                                id: doc.id, 
+                                ...doc.data() 
+                            }));
+                            setSeminars(seminarsData);
+                            console.log('✅ admin.html: Firestore에서 세미나 데이터 로드:', seminarsData.length, '개');
+                        }, (error) => {
+                            console.error('❌ admin.html: Firestore 세미나 데이터 로드 오류:', error);
+                        });
+                    
+                    return () => unsubscribe();
+                }
+            }, []);
+            const [posts, setPosts] = useState(defaultCommunityPosts);
+            
+            // Firestore에서 게시글 데이터 실시간 로드
+            useEffect(() => {
+                if (typeof firebaseDb !== 'undefined' && firebaseDb) {
+                    const unsubscribe = firebaseDb.collection('posts')
+                        .orderBy('createdAt', 'desc')
+                        .onSnapshot((snapshot) => {
+                            const postsData = snapshot.docs.map(doc => ({ 
+                                id: doc.id, 
+                                ...doc.data() 
+                            }));
+                            setPosts(postsData);
+                            console.log('✅ admin.html: Firestore에서 게시글 데이터 로드:', postsData.length, '개');
+                        }, (error) => {
+                            console.error('❌ admin.html: Firestore 게시글 데이터 로드 오류:', error);
+                        });
+                    
+                    return () => unsubscribe();
+                }
+            }, []);
             const [content, setContent] = useState(() => loadDataFromStorage(STORAGE_KEY_CONTENT, defaultContent));
             const [menuEnabled, setMenuEnabled] = useState(() => {
                 const stored = loadDataFromStorage(STORAGE_KEY_MENU_ENABLED, {});
@@ -846,12 +921,76 @@
             });
             const [logs, setLogs] = useState(() => loadDataFromStorage(STORAGE_KEY_ADMIN_LOGS, []));
             const [currentUser] = useState(() => loadDataFromStorage(STORAGE_KEY_CURRENT_USER, null));
+            const [isLoadingSheets, setIsLoadingSheets] = useState(false);
             
             // UI 상태
             const [activeTab, setActiveTab] = useState('members'); 
             const [isMaster, setIsMaster] = useState(false);
             const [showMasterLogin, setShowMasterLogin] = useState(false);
             const [masterPwInput, setMasterPwInput] = useState('');
+            
+            // Google Sheets에서 데이터 로드
+            useEffect(() => {
+                const loadDataFromSheets = async () => {
+                    setIsLoadingSheets(true);
+                    try {
+                        // 회원 데이터 로드
+                        if (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.MEMBER) {
+                            const csvUrl = CONFIG.SHEET_URLS.MEMBER;
+                            if (csvUrl) {
+                                const csvData = await fetchSheetData(csvUrl);
+                                if (csvData && csvData.length > 0) {
+                                    // localStorage에 캐시 저장
+                                    saveDataToStorage(STORAGE_KEY_MEMBERS, csvData);
+                                    setMembers(csvData);
+                                    console.log('✅ Google Sheets에서 회원 데이터 로드 완료:', csvData.length, '명');
+                                }
+                            }
+                        }
+                        
+                        // 프로그램 데이터 로드
+                        if (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.SEMINAR) {
+                            const csvUrl = CONFIG.SHEET_URLS.SEMINAR;
+                            if (csvUrl) {
+                                const csvData = await fetchSheetData(csvUrl);
+                                if (csvData && csvData.length > 0) {
+                                    // 상태 계산 추가
+                                    const seminarsWithStatus = csvData.map(item => ({
+                                        ...item,
+                                        status: calculateStatus(item.date || item.Date || item.날짜 || '')
+                                    }));
+                                    // localStorage에 캐시 저장
+                                    saveDataToStorage(STORAGE_KEY_SEMINARS, seminarsWithStatus);
+                                    setSeminars(seminarsWithStatus);
+                                    console.log('✅ Google Sheets에서 프로그램 데이터 로드 완료:', seminarsWithStatus.length, '개');
+                                }
+                            }
+                        }
+                        
+                        // 게시글 데이터 로드
+                        if (typeof CONFIG !== 'undefined' && CONFIG.SHEET_URLS?.POSTS) {
+                            const csvUrl = CONFIG.SHEET_URLS.POSTS;
+                            if (csvUrl) {
+                                const csvData = await fetchSheetData(csvUrl);
+                                if (csvData && csvData.length > 0) {
+                                    // localStorage에 캐시 저장
+                                    saveDataToStorage(STORAGE_KEY_POSTS, csvData);
+                                    setPosts(csvData);
+                                    console.log('✅ Google Sheets에서 게시글 데이터 로드 완료:', csvData.length, '개');
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Google Sheets 데이터 로드 오류:', error);
+                        addLog('ERROR', '데이터 로드', `Google Sheets 데이터 로드 실패: ${error.message}`, currentUser?.name || '시스템');
+                    } finally {
+                        setIsLoadingSheets(false);
+                    }
+                };
+                
+                // 초기 로드
+                loadDataFromSheets();
+            }, []); // 컴포넌트 마운트 시 한 번만 실행
             
             // ==========================================
             // CSV 자동 백업 함수
@@ -1048,13 +1187,158 @@
             
             // 마스터 로그인 핸들러
             const handleMasterLogin = () => {
-                if (masterPwInput === '0219' || masterPwInput === '1122') {
+                if (masterPwInput.trim() === '0219') {
                     setIsMaster(true);
                     setShowMasterLogin(false);
                     setMasterPwInput('');
                     addLog('MASTER_LOGIN', '시스템', '마스터 모드 로그인', currentUser?.name || '익명');
                     } else {
                     alert('비밀번호가 일치하지 않습니다.');
+                }
+            };
+            
+            // 마스터코드 자동 진입 기능 (useEffect로 상태 변경 감지)
+            useEffect(() => {
+                if (showMasterLogin && masterPwInput.trim() === '0219') {
+                    const timer = setTimeout(() => {
+                        handleMasterLogin();
+                    }, 100);
+                    return () => clearTimeout(timer);
+                }
+            }, [masterPwInput, showMasterLogin]);
+            
+            // localStorage에서 Firestore로 데이터 마이그레이션
+            const migrateToFirestore = async () => {
+                if (!confirm('localStorage 데이터를 Firestore로 마이그레이션하시겠습니까?\n\n이 작업은 기존 localStorage 데이터를 Firestore에 복사합니다.')) {
+                    return;
+                }
+                
+                try {
+                    let migrated = { users: 0, seminars: 0, posts: 0 };
+                    
+                    // 회원 데이터 마이그레이션
+                    const usersData = localStorage.getItem('busan_ycc_members') || localStorage.getItem('busan_ycc_users');
+                    if (usersData) {
+                        const users = JSON.parse(usersData);
+                        for (const user of users) {
+                            // 중복 체크
+                            const existing = await firebaseDb.collection('users')
+                                .where('email', '==', user.email)
+                                .limit(1)
+                                .get();
+                            
+                            if (existing.empty) {
+                                await firebaseDb.collection('users').add({
+                                    ...user,
+                                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                });
+                                migrated.users++;
+                            }
+                        }
+                    }
+                    
+                    // 세미나 데이터 마이그레이션
+                    const seminarsData = localStorage.getItem('busan_ycc_seminars');
+                    if (seminarsData) {
+                        const seminars = JSON.parse(seminarsData);
+                        for (const seminar of seminars) {
+                            await firebaseDb.collection('seminars').add({
+                                ...seminar,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            migrated.seminars++;
+                        }
+                    }
+                    
+                    // 게시글 데이터 마이그레이션
+                    const postsData = localStorage.getItem('busan_ycc_posts');
+                    if (postsData) {
+                        const posts = JSON.parse(postsData);
+                        for (const post of posts) {
+                            await firebaseDb.collection('posts').add({
+                                ...post,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            migrated.posts++;
+                        }
+                    }
+                    
+                    alert(`✅ 마이그레이션 완료!\n\n회원: ${migrated.users}명\n세미나: ${migrated.seminars}개\n게시글: ${migrated.posts}개`);
+                    addLog('MIGRATION', '시스템', 'localStorage → Firestore 마이그레이션 완료', currentUser?.name || '시스템');
+                } catch (error) {
+                    console.error('마이그레이션 오류:', error);
+                    alert('마이그레이션 중 오류가 발생했습니다: ' + error.message);
+                }
+            };
+            
+            // 데이터 초기화 함수 (햇반 계정만 유지)
+            const handleDataReset = async () => {
+                if (!confirm('⚠️ 경고: 모든 데이터가 초기화됩니다.\n\n햇반 계정만 남고 모든 회원, 프로그램, 게시글 데이터가 삭제됩니다.\n\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?')) {
+                    return;
+                }
+                
+                if (!confirm('정말로 모든 데이터를 초기화하시겠습니까?\n\n마지막 확인입니다.')) {
+                    return;
+                }
+                
+                try {
+                    // 햇반 계정 비밀번호 해시화
+                    const hashedPassword = await hashPassword('0219');
+                    
+                    // 햇반 계정 기본 데이터
+                    const hatbanAccount = {
+                        id: '햇반',
+                        name: '햇반',
+                        password: hashedPassword,
+                        email: 'admin@busan-ycc.com',
+                        phone: '',
+                        address: '',
+                        company: '부산청년사업가들',
+                        industry: '',
+                        role: '관리자',
+                        businessType: '사업자',
+                        businessRegistrationNumber: '',
+                        memberGrade: '관리자',
+                        approvalStatus: 'approved',
+                        isAdmin: true,
+                        img: 'https://ui-avatars.com/api/?name=햇반&background=0045a5&color=fff',
+                        hasDonated: false,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                    
+                    // 모든 localStorage 데이터 초기화
+                    localStorage.removeItem(STORAGE_KEY_MEMBERS);
+                    localStorage.removeItem(STORAGE_KEY_SEMINARS);
+                    localStorage.removeItem(STORAGE_KEY_POSTS);
+                    localStorage.removeItem(STORAGE_KEY_CONTENT);
+                    localStorage.removeItem(STORAGE_KEY_MENU_ENABLED);
+                    localStorage.removeItem(STORAGE_KEY_MENU_NAMES);
+                    localStorage.removeItem(STORAGE_KEY_ADMIN_LOGS);
+                    localStorage.removeItem(STORAGE_KEY_CSV_URLS);
+                    localStorage.removeItem('busan_ycc_users');
+                    localStorage.removeItem('busan_ycc_current_user');
+                    localStorage.removeItem('busan_ycc_seminar_applications');
+                    localStorage.removeItem('busan_ycc_inquiries');
+                    
+                    // 햇반 계정만 저장
+                    saveDataToStorage(STORAGE_KEY_MEMBERS, [hatbanAccount]);
+                    
+                    // 상태 업데이트
+                    setMembers([hatbanAccount]);
+                    setSeminars([]);
+                    setPosts([]);
+                    
+                    // 로그 추가
+                    addLog('RESET', '전체 데이터', '모든 데이터가 초기화되었습니다. (햇반 계정만 유지)', currentUser?.name || '시스템');
+                    
+                    alert('✅ 데이터 초기화가 완료되었습니다.\n\n햇반 계정만 남아있습니다.');
+                } catch (error) {
+                    console.error('데이터 초기화 오류:', error);
+                    alert('데이터 초기화 중 오류가 발생했습니다: ' + error.message);
                 }
             };
             
@@ -1151,6 +1435,8 @@
                                     logs={logs}
                                     addLog={addLog}
                                     currentUser={currentUser}
+                                    onDataReset={handleDataReset}
+                                    onMigrate={migrateToFirestore}
                                 />
                             )}
                             {activeTab === 'master' && !isMaster && (
@@ -1178,16 +1464,13 @@
                                     onChange={(e) => {
                                         const value = e.target.value;
                                         setMasterPwInput(value);
-                                        // 비밀번호가 일치하면 자동으로 로그인
-                                        if (value === '0219' || value === '1122') {
-                                            setIsMaster(true);
-                                            setShowMasterLogin(false);
-                                            setMasterPwInput('');
-                                            addLog('MASTER_LOGIN', '시스템', '마스터 모드 로그인', currentUser?.name || '익명');
-                                        }
                                     }}
                                     placeholder="Master Code"
-                                    onKeyPress={(e) => e.key === 'Enter' && handleMasterLogin()}
+                                    onKeyPress={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleMasterLogin();
+                                        }
+                                    }}
                                     autoFocus
                                 />
                                 <div className="flex gap-4">
@@ -1236,29 +1519,53 @@
                 setFormData({ name: '', industry: '', role: '', company: '', img: '', memberGrade: '일반회원', approvalStatus: 'approved', isAdmin: false });
             };
             
-            const handleSubmit = () => {
+            const handleSubmit = async () => {
                 if (!formData.name || !formData.company) {
                     alert('이름과 회사명은 필수입니다.');
                     return;
                 }
                 
-                if (editingItem) {
-                    const updated = members.map(m => m.id === editingItem.id ? { ...formData, id: editingItem.id } : m);
-                    setMembers(updated);
-                    addLog('UPDATE', '회원', `${currentUser?.name || '관리자'}님이 회원 정보를 수정했습니다.`, currentUser?.name, `회원: ${formData.name}`);
-                } else {
-                    const newMember = { ...formData, id: Date.now() };
-                    setMembers([...members, newMember]);
-                    addLog('CREATE', '회원', `${currentUser?.name || '관리자'}님이 회원을 추가했습니다.`, currentUser?.name, `회원: ${formData.name}`);
+                try {
+                    if (editingItem) {
+                        // Firestore 업데이트
+                        await firebaseDb.collection('users').doc(editingItem.id).update({
+                            ...formData,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        addLog('UPDATE', '회원', `${currentUser?.name || '관리자'}님이 회원 정보를 수정했습니다.`, currentUser?.name, `회원: ${formData.name}`);
+                    } else {
+                        // Firestore 추가
+                        await firebaseDb.collection('users').add({
+                            ...formData,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        addLog('CREATE', '회원', `${currentUser?.name || '관리자'}님이 회원을 추가했습니다.`, currentUser?.name, `회원: ${formData.name}`);
+                    }
+                    handleCloseModal();
+                } catch (error) {
+                    console.error('회원 저장 오류:', error);
+                    alert('회원 저장 중 오류가 발생했습니다: ' + error.message);
                 }
-                handleCloseModal();
             };
             
-            const handleDelete = (id) => {
-                if (confirm('정말 삭제하시겠습니까?')) {
+            const handleDelete = async (id) => {
+                if (!confirm('정말 삭제하시겠습니까?')) {
+                    return;
+                }
+                
+                try {
                     const member = members.find(m => m.id === id);
-                    setMembers(members.filter(m => m.id !== id));
+                    
+                    // Firestore에서 삭제
+                    await firebaseDb.collection('users').doc(id).delete();
+                    
                     addLog('DELETE', '회원', `${currentUser?.name || '관리자'}님이 회원을 삭제했습니다.`, currentUser?.name, `회원: ${member?.name || ''}`);
+                } catch (error) {
+                    console.error('회원 삭제 오류:', error);
+                    alert('회원 삭제 중 오류가 발생했습니다: ' + error.message);
                 }
             };
             
@@ -1489,34 +1796,57 @@
                 setEditingItem(null);
             };
             
-            const handleSubmit = () => {
+            const handleSubmit = async () => {
                 if (!formData.title || !formData.date) {
                     alert('제목과 날짜는 필수입니다.');
-                                                                    return;
-                                                                }
-                
-                const status = calculateStatus(formData.date);
-                // 기존 코드 호환성: images 배열의 첫 번째 이미지를 img 필드로도 저장
-                const img = (formData.images && formData.images.length > 0) ? formData.images[0] : '';
-                const seminarData = { ...formData, status, img };
-                
-                if (editingItem) {
-                    const updated = seminars.map(s => s.id === editingItem.id ? { ...seminarData, id: editingItem.id } : s);
-                    setSeminars(updated);
-                    addLog('UPDATE', '프로그램', `${currentUser?.name || '관리자'}님이 프로그램을 수정했습니다.`, currentUser?.name, `프로그램: ${formData.title}`);
-                } else {
-                    const newSeminar = { ...seminarData, id: Date.now() };
-                    setSeminars([...seminars, newSeminar]);
-                    addLog('CREATE', '프로그램', `${currentUser?.name || '관리자'}님이 프로그램을 추가했습니다.`, currentUser?.name, `프로그램: ${formData.title}`);
+                    return;
                 }
-                handleCloseModal();
+                
+                try {
+                    const status = calculateStatus(formData.date);
+                    const img = (formData.images && formData.images.length > 0) ? formData.images[0] : '';
+                    const seminarData = { ...formData, status, img };
+                    
+                    if (editingItem) {
+                        // Firestore 업데이트
+                        await firebaseDb.collection('seminars').doc(editingItem.id).update({
+                            ...seminarData,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        addLog('UPDATE', '프로그램', `${currentUser?.name || '관리자'}님이 프로그램을 수정했습니다.`, currentUser?.name, `프로그램: ${formData.title}`);
+                    } else {
+                        // Firestore 추가
+                        await firebaseDb.collection('seminars').add({
+                            ...seminarData,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        addLog('CREATE', '프로그램', `${currentUser?.name || '관리자'}님이 프로그램을 추가했습니다.`, currentUser?.name, `프로그램: ${formData.title}`);
+                    }
+                    handleCloseModal();
+                } catch (error) {
+                    console.error('프로그램 저장 오류:', error);
+                    alert('프로그램 저장 중 오류가 발생했습니다: ' + error.message);
+                }
             };
             
-            const handleDelete = (id) => {
-                if (confirm('정말 삭제하시겠습니까?')) {
+            const handleDelete = async (id) => {
+                if (!confirm('정말 삭제하시겠습니까?')) {
+                    return;
+                }
+                
+                try {
                     const seminar = seminars.find(s => s.id === id);
-                    setSeminars(seminars.filter(s => s.id !== id));
+                    
+                    // Firestore에서 삭제
+                    await firebaseDb.collection('seminars').doc(id).delete();
+                    
                     addLog('DELETE', '프로그램', `${currentUser?.name || '관리자'}님이 프로그램을 삭제했습니다.`, currentUser?.name, `프로그램: ${seminar?.title || ''}`);
+                } catch (error) {
+                    console.error('프로그램 삭제 오류:', error);
+                    alert('프로그램 삭제 중 오류가 발생했습니다: ' + error.message);
                 }
             };
             
@@ -1951,48 +2281,78 @@
                 setEditingItem(null);
             };
             
-            const handleSubmit = () => {
+            const handleSubmit = async () => {
                 if (!formData.title || !formData.content) {
                     alert('제목과 내용은 필수입니다.');
-                                        return;
-                                    }
-                
-                if (editingItem) {
-                    const updatedPost = {
-                        ...formData,
-                        id: editingItem.id,
-                        date: editingItem.date,
-                        views: editingItem.views || 0,
-                        likes: editingItem.likes || 0,
-                        comments: editingItem.comments || [],
-                        reply: editingItem.reply || null,
-                        author: formData.author || editingItem.author || currentUser?.name || '관리자'
-                    };
-                    const updated = posts.map(p => p.id === editingItem.id ? updatedPost : p);
-                    setPosts(updated);
-                    addLog('UPDATE', '게시글', `${currentUser?.name || '관리자'}님이 게시글을 수정했습니다.`, currentUser?.name, `게시글: ${formData.title}`);
-                } else {
-                    const newPost = { 
-                        ...formData, 
-                        id: Date.now(), 
-                        date: new Date().toISOString().slice(0, 10).replace(/-/g, '.'), 
-                        views: 0, 
-                        likes: 0, 
-                        comments: [],
-                        reply: null,
-                        author: formData.author || currentUser?.name || '관리자'
-                    };
-                    setPosts([newPost, ...posts]);
-                    addLog('CREATE', '게시글', `${currentUser?.name || '관리자'}님이 게시글을 추가했습니다.`, currentUser?.name, `게시글: ${formData.title}`);
+                    return;
                 }
-                handleCloseModal();
+                
+                try {
+                    if (editingItem) {
+                        const updatedPost = {
+                            ...formData,
+                            id: editingItem.id,
+                            date: editingItem.date,
+                            views: editingItem.views || 0,
+                            likes: editingItem.likes || 0,
+                            comments: editingItem.comments || [],
+                            reply: editingItem.reply || null,
+                            author: formData.author || editingItem.author || currentUser?.name || '관리자'
+                        };
+                        const updated = posts.map(p => p.id === editingItem.id ? updatedPost : p);
+                        setPosts(updated);
+                        
+                        // Google Sheets에 저장 (Google Apps Script 사용)
+                        if (typeof updatePostInSheet === 'function') {
+                            await updatePostInSheet(editingItem.id, updatedPost);
+                        }
+                        
+                        addLog('UPDATE', '게시글', `${currentUser?.name || '관리자'}님이 게시글을 수정했습니다.`, currentUser?.name, `게시글: ${formData.title}`);
+                    } else {
+                        const newPost = { 
+                            ...formData, 
+                            id: Date.now(), 
+                            date: new Date().toISOString().slice(0, 10).replace(/-/g, '.'), 
+                            views: 0, 
+                            likes: 0, 
+                            comments: [],
+                            reply: null,
+                            author: formData.author || currentUser?.name || '관리자'
+                        };
+                        setPosts([newPost, ...posts]);
+                        
+                        // Google Sheets에 저장 (Google Apps Script 사용)
+                        if (typeof addPostToSheet === 'function') {
+                            await addPostToSheet(newPost);
+                        }
+                        
+                        addLog('CREATE', '게시글', `${currentUser?.name || '관리자'}님이 게시글을 추가했습니다.`, currentUser?.name, `게시글: ${formData.title}`);
+                    }
+                    handleCloseModal();
+                } catch (error) {
+                    console.error('게시글 저장 오류:', error);
+                    alert('게시글 저장 중 오류가 발생했습니다: ' + error.message);
+                }
             };
             
-            const handleDelete = (id) => {
-                if (confirm('정말 삭제하시겠습니까?')) {
+            const handleDelete = async (id) => {
+                if (!confirm('정말 삭제하시겠습니까?')) {
+                    return;
+                }
+                
+                try {
                     const post = posts.find(p => p.id === id);
                     setPosts(posts.filter(p => p.id !== id));
+                    
+                    // Google Sheets에서 삭제 (Google Apps Script 사용)
+                    if (typeof deletePostFromSheet === 'function') {
+                        await deletePostFromSheet(id);
+                    }
+                    
                     addLog('DELETE', '게시글', `${currentUser?.name || '관리자'}님이 게시글을 삭제했습니다.`, currentUser?.name, `게시글: ${post?.title || ''}`);
+                } catch (error) {
+                    console.error('게시글 삭제 오류:', error);
+                    alert('게시글 삭제 중 오류가 발생했습니다: ' + error.message);
                 }
             };
                             
@@ -2423,6 +2783,14 @@
                         >
                             CSV 관리
                                 </button>
+                                <button
+                            onClick={() => setMasterSubTab('reset')}
+                            className={`px-4 py-2 font-bold text-sm transition-colors border-b-2 ${
+                                masterSubTab === 'reset' ? 'border-red-500 text-red-500' : 'border-transparent text-gray-400 hover:text-gray-600'
+                            }`}
+                        >
+                            데이터 초기화
+                                </button>
                             </div>
                         </div>
             );
@@ -2687,6 +3055,76 @@
             );
         };
 
+        const ResetView = ({ onDataReset, onMigrate }) => {
+            return (
+                <div className="space-y-6">
+                    {/* 마이그레이션 섹션 */}
+                    <div className="bg-blue-50 rounded-2xl p-6 border-2 border-blue-200">
+                        <div className="flex items-center gap-3 mb-4">
+                            <Icons.Download className="text-blue-500" size={24} />
+                            <h3 className="font-bold text-blue-700 text-xl">Firestore 마이그레이션</h3>
+                        </div>
+                        <div className="bg-white rounded-xl p-6 space-y-4 mb-6">
+                            <p className="text-sm text-gray-600">
+                                localStorage에 저장된 기존 데이터를 Firebase Firestore로 이전합니다.
+                            </p>
+                            <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                                <li>회원 데이터 → Firestore users 컬렉션</li>
+                                <li>세미나 데이터 → Firestore seminars 컬렉션</li>
+                                <li>게시글 데이터 → Firestore posts 컬렉션</li>
+                                <li>중복 데이터는 자동으로 건너뜁니다</li>
+                            </ul>
+                        </div>
+                        <button
+                            onClick={onMigrate}
+                            className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg"
+                        >
+                            localStorage → Firestore 마이그레이션 실행
+                        </button>
+                    </div>
+                    
+                    {/* 데이터 초기화 섹션 */}
+                    <div className="bg-red-50 rounded-2xl p-6 border-2 border-red-200">
+                        <div className="flex items-center gap-3 mb-4">
+                            <Icons.Trash className="text-red-500" size={24} />
+                            <h3 className="font-bold text-red-700 text-xl">데이터 초기화</h3>
+                        </div>
+                    <div className="bg-white rounded-xl p-6 space-y-4 mb-6">
+                        <div className="flex items-start gap-3">
+                            <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-red-600 font-bold text-sm">!</span>
+                            </div>
+                            <div>
+                                <p className="font-bold text-gray-800 mb-2">⚠️ 주의사항</p>
+                                <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                                    <li>모든 회원 데이터가 삭제됩니다 (햇반 계정 제외)</li>
+                                    <li>모든 프로그램 데이터가 삭제됩니다</li>
+                                    <li>모든 게시글 데이터가 삭제됩니다</li>
+                                    <li>이 작업은 되돌릴 수 없습니다</li>
+                                    <li>초기화 후 햇반 계정만 남습니다</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <p className="text-sm text-yellow-800">
+                                <strong>햇반 계정 정보:</strong><br/>
+                                아이디: 햇반<br/>
+                                비밀번호: 0219<br/>
+                                이메일: admin@busan-ycc.com
+                            </p>
+                        </div>
+                    </div>
+                        <button
+                            onClick={onDataReset}
+                            className="w-full py-4 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg"
+                        >
+                            모든 데이터 초기화 (햇반 계정만 유지)
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+        
         const CsvView = ({ csvUrls, setCsvUrls, handleSaveCsvUrls }) => {
             return (
                 <div className="bg-gray-50 rounded-2xl p-6">
@@ -2752,7 +3190,7 @@
             );
         };
 
-        const MasterTab = ({ content, setContent, menuEnabled, setMenuEnabled, menuNames, setMenuNames, logs, addLog, currentUser }) => {
+        const MasterTab = ({ content, setContent, menuEnabled, setMenuEnabled, menuNames, setMenuNames, logs, addLog, currentUser, onDataReset, onMigrate }) => {
             const [masterSubTab, setMasterSubTab] = useState('logs');
             const [csvUrls, setCsvUrls] = useState(() => loadDataFromStorage(STORAGE_KEY_CSV_URLS, { members: '', seminars: '', posts: '' }));
             
@@ -2787,6 +3225,10 @@
                                 setCsvUrls={setCsvUrls}
                                 handleSaveCsvUrls={handleSaveCsvUrls}
                             />
+                        );
+                    case 'reset':
+                        return (
+                            <ResetView onDataReset={onDataReset} onMigrate={onMigrate} />
                         );
                     default:
                         return null;
