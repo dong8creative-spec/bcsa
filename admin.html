@@ -180,93 +180,153 @@
             const [mapLoaded, setMapLoaded] = useState(false);
             
             React.useEffect(() => {
-                // 카카오 지도 SDK가 로드되었는지 확인
-                if (typeof kakao === 'undefined' || !kakao.maps) {
-                    console.error('카카오 지도 SDK가 로드되지 않았습니다. API 키를 확인해주세요.');
-                    return;
-                }
-                
-                // 지도 초기화
-                const center = initialLocation 
-                    ? new kakao.maps.LatLng(initialLocation.lat, initialLocation.lng)
-                    : new kakao.maps.LatLng(35.1796, 129.0756); // 부산 중심
-                
-                const mapOption = {
-                    center: center,
-                    level: 3
+                // 카카오 지도 SDK 로드 확인 및 대기
+                const initMap = () => {
+                    try {
+                        if (typeof kakao === 'undefined' || !kakao.maps) {
+                            console.error('❌ 카카오 지도 SDK가 로드되지 않았습니다. API 키를 확인해주세요.');
+                            alert('지도 SDK 로드에 실패했습니다. 페이지를 새로고침해주세요.');
+                            return;
+                        }
+                        
+                        console.log('✅ 카카오 지도 SDK 로드 확인');
+                        
+                        // 지도 초기화
+                        const center = initialLocation 
+                            ? new kakao.maps.LatLng(initialLocation.lat, initialLocation.lng)
+                            : new kakao.maps.LatLng(35.1796, 129.0756); // 부산 중심
+                        
+                        const mapOption = {
+                            center: center,
+                            level: 3
+                        };
+                        
+                        mapRef.current = new kakao.maps.Map(mapContainerRef.current, mapOption);
+                        console.log('✅ 카카오 지도 초기화 완료');
+                        
+                        // Geocoder 서비스 초기화
+                        if (kakao.maps.services && kakao.maps.services.Geocoder) {
+                            geocoderRef.current = new kakao.maps.services.Geocoder();
+                            console.log('✅ Geocoder 서비스 초기화 완료');
+                        } else {
+                            console.error('❌ Geocoder 서비스를 사용할 수 없습니다.');
+                        }
+                        
+                        // Places 서비스 초기화
+                        if (kakao.maps.services && kakao.maps.services.Places) {
+                            placesServiceRef.current = new kakao.maps.services.Places();
+                            console.log('✅ Places 서비스 초기화 완료');
+                        } else {
+                            console.error('❌ Places 서비스를 사용할 수 없습니다. libraries=services 파라미터를 확인하세요.');
+                            alert('장소 검색 기능을 사용할 수 없습니다. SDK 로드 설정을 확인해주세요.');
+                        }
+                        
+                        // 지도 컨트롤 추가
+                        const zoomControl = new kakao.maps.ZoomControl();
+                        mapRef.current.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+                        
+                        // 초기 위치에 마커 표시
+                        if (initialLocation && initialLocation.lat && initialLocation.lng) {
+                            markerRef.current = new kakao.maps.Marker({
+                                position: center,
+                                map: mapRef.current
+                            });
+                            setSelectedPlace({
+                                name: initialLocation.name || '',
+                                address: initialLocation.address || '',
+                                lat: parseFloat(initialLocation.lat),
+                                lng: parseFloat(initialLocation.lng)
+                            });
+                            console.log('✅ 초기 위치 마커 표시:', initialLocation);
+                        }
+                        
+                        // 지도 클릭 이벤트
+                        kakao.maps.event.addListener(mapRef.current, 'click', (mouseEvent) => {
+                            const latlng = mouseEvent.latLng;
+                            console.log('🗺️ 지도 클릭:', latlng.getLat(), latlng.getLng());
+                            
+                            // 기존 마커 제거
+                            if (markerRef.current) {
+                                markerRef.current.setMap(null);
+                            }
+                            
+                            // 새 마커 추가
+                            markerRef.current = new kakao.maps.Marker({
+                                position: latlng,
+                                map: mapRef.current
+                            });
+                            
+                            // 역지오코딩으로 주소 가져오기
+                            if (geocoderRef.current) {
+                                geocoderRef.current.coord2Address(latlng.getLng(), latlng.getLat(), (result, status) => {
+                                    if (status === kakao.maps.services.Status.OK && result && result.length > 0) {
+                                        const roadAddr = result[0].road_address;
+                                        const jibunAddr = result[0].address;
+                                        
+                                        setSelectedPlace({
+                                            name: '',
+                                            address: roadAddr ? roadAddr.address_name : jibunAddr.address_name,
+                                            lat: latlng.getLat(),
+                                            lng: latlng.getLng()
+                                        });
+                                        console.log('✅ 주소 변환 성공:', roadAddr || jibunAddr);
+                                    } else {
+                                        setSelectedPlace({
+                                            name: '',
+                                            address: `위도: ${latlng.getLat().toFixed(6)}, 경도: ${latlng.getLng().toFixed(6)}`,
+                                            lat: latlng.getLat(),
+                                            lng: latlng.getLng()
+                                        });
+                                        console.warn('⚠️ 주소 변환 실패, 좌표 사용');
+                                    }
+                                });
+                            } else {
+                                // Geocoder가 없으면 좌표만 저장
+                                setSelectedPlace({
+                                    name: '',
+                                    address: `위도: ${latlng.getLat().toFixed(6)}, 경도: ${latlng.getLng().toFixed(6)}`,
+                                    lat: latlng.getLat(),
+                                    lng: latlng.getLng()
+                                });
+                                console.warn('⚠️ Geocoder 서비스 없음, 좌표 사용');
+                            }
+                        });
+                        
+                        setMapLoaded(true);
+                        console.log('✅ 카카오 지도 초기화 완료');
+                        
+                    } catch (error) {
+                        console.error('❌ 카카오 지도 초기화 오류:', error);
+                        alert('지도 초기화에 실패했습니다: ' + error.message);
+                    }
                 };
                 
-                mapRef.current = new kakao.maps.Map(mapContainerRef.current, mapOption);
-                geocoderRef.current = new kakao.maps.services.Geocoder();
-                
-                // Places 서비스 초기화
-                if (kakao.maps.services && kakao.maps.services.Places) {
-                    placesServiceRef.current = new kakao.maps.services.Places();
+                // SDK가 이미 로드되었으면 즉시 초기화, 아니면 대기
+                if (typeof kakao !== 'undefined' && kakao.maps) {
+                    initMap();
                 } else {
-                    console.error('Places 서비스가 사용할 수 없습니다.');
-                }
-                
-                // 지도 컨트롤 추가
-                const zoomControl = new kakao.maps.ZoomControl();
-                mapRef.current.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
-                
-                // 초기 위치에 마커 표시
-                if (initialLocation) {
-                    markerRef.current = new kakao.maps.Marker({
-                        position: center,
-                        map: mapRef.current
-                    });
-                    setSelectedPlace({
-                        name: initialLocation.name || '',
-                        address: initialLocation.address || '',
-                        lat: initialLocation.lat,
-                        lng: initialLocation.lng
-                    });
-                }
-                
-                // 지도 클릭 이벤트
-                kakao.maps.event.addListener(mapRef.current, 'click', (mouseEvent) => {
-                    const latlng = mouseEvent.latLng;
-                    
-                    // 기존 마커 제거
-                    if (markerRef.current) {
-                        markerRef.current.setMap(null);
-                    }
-                    
-                    // 새 마커 추가
-                    markerRef.current = new kakao.maps.Marker({
-                        position: latlng,
-                        map: mapRef.current
-                    });
-                    
-                    // 역지오코딩으로 주소 가져오기
-                    geocoderRef.current.coord2Address(latlng.getLng(), latlng.getLat(), (result, status) => {
-                        if (status === kakao.maps.services.Status.OK) {
-                            const roadAddr = result[0].road_address;
-                            const jibunAddr = result[0].address;
-                            
-                            setSelectedPlace({
-                                name: '',
-                                address: roadAddr ? roadAddr.address_name : jibunAddr.address_name,
-                                lat: latlng.getLat(),
-                                lng: latlng.getLng()
-                            });
-                        } else {
-                            setSelectedPlace({
-                                name: '',
-                                address: `위도: ${latlng.getLat().toFixed(6)}, 경도: ${latlng.getLng().toFixed(6)}`,
-                                lat: latlng.getLat(),
-                                lng: latlng.getLng()
-                            });
+                    // SDK 로드 대기 (최대 3초)
+                    let attempts = 0;
+                    const checkInterval = setInterval(() => {
+                        attempts++;
+                        if (typeof kakao !== 'undefined' && kakao.maps) {
+                            clearInterval(checkInterval);
+                            initMap();
+                        } else if (attempts >= 30) {
+                            clearInterval(checkInterval);
+                            console.error('❌ 카카오 지도 SDK 로드 타임아웃');
+                            alert('지도 SDK 로드에 실패했습니다. 페이지를 새로고침해주세요.');
                         }
-                    });
-                });
-                
-                setMapLoaded(true);
+                    }, 100);
+                    
+                    return () => clearInterval(checkInterval);
+                }
             }, []);
             
             // 장소 검색
             const handleSearch = () => {
+                console.log('🔍 장소 검색 시작:', searchKeyword);
+                
                 if (!searchKeyword.trim()) {
                     alert('검색어를 입력해주세요.');
                     return;
@@ -278,52 +338,75 @@
                 }
                 
                 if (!placesServiceRef.current) {
-                    console.error('Places 서비스가 초기화되지 않았습니다.');
-                    alert('검색 서비스를 사용할 수 없습니다. 페이지를 새로고침해주세요.');
+                    console.error('❌ Places 서비스가 초기화되지 않았습니다.');
+                    alert('검색 서비스를 사용할 수 없습니다.\nlibrary=services 파라미터가 포함되었는지 확인하고 페이지를 새로고침해주세요.');
                     return;
                 }
                 
                 setSearchResults([]); // 검색 결과 초기화
                 
-                // 키워드 검색
-                placesServiceRef.current.keywordSearch(searchKeyword, (data, status) => {
-                    if (status === kakao.maps.services.Status.OK) {
-                        const results = data.map(place => ({
-                            name: place.place_name,
-                            address: place.road_address_name || place.address_name,
-                            lat: parseFloat(place.y),
-                            lng: parseFloat(place.x)
-                        }));
-                        setSearchResults(results);
+                try {
+                    // 키워드 검색
+                    placesServiceRef.current.keywordSearch(searchKeyword, (data, status) => {
+                        console.log('🔍 검색 결과 상태:', status);
                         
-                        if (results.length === 0) {
-                            alert('검색 결과가 없습니다.');
-                        }
-                    } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
-                        // 키워드 검색 실패 시 주소 검색 시도
-                        if (geocoderRef.current) {
-                            geocoderRef.current.addressSearch(searchKeyword, (result, geocodeStatus) => {
-                                if (geocodeStatus === kakao.maps.services.Status.OK) {
-                                    const results = result.map(item => ({
-                                        name: '',
-                                        address: item.road_address ? item.road_address.address_name : item.address_name,
-                                        lat: parseFloat(item.y),
-                                        lng: parseFloat(item.x)
-                                    }));
-                                    setSearchResults(results);
-                                } else {
-                                    alert('검색 결과가 없습니다.');
-                                    setSearchResults([]);
-                                }
-                            });
+                        if (status === kakao.maps.services.Status.OK) {
+                            if (!data || data.length === 0) {
+                                alert('검색 결과가 없습니다.');
+                                setSearchResults([]);
+                                return;
+                            }
+                            
+                            const results = data.map(place => ({
+                                name: place.place_name || '',
+                                address: place.road_address_name || place.address_name || '',
+                                lat: parseFloat(place.y),
+                                lng: parseFloat(place.x)
+                            })).filter(r => !isNaN(r.lat) && !isNaN(r.lng)); // 유효한 좌표만 필터링
+                            
+                            setSearchResults(results);
+                            console.log('✅ 검색 결과:', results.length, '개');
+                            
+                            if (results.length === 0) {
+                                alert('유효한 검색 결과가 없습니다.');
+                            }
+                        } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
+                            console.log('⚠️ 키워드 검색 결과 없음, 주소 검색 시도');
+                            // 키워드 검색 실패 시 주소 검색 시도
+                            if (geocoderRef.current) {
+                                geocoderRef.current.addressSearch(searchKeyword, (result, geocodeStatus) => {
+                                    if (geocodeStatus === kakao.maps.services.Status.OK && result && result.length > 0) {
+                                        const results = result.map(item => ({
+                                            name: '',
+                                            address: item.road_address ? item.road_address.address_name : item.address_name,
+                                            lat: parseFloat(item.y),
+                                            lng: parseFloat(item.x)
+                                        })).filter(r => !isNaN(r.lat) && !isNaN(r.lng));
+                                        
+                                        setSearchResults(results);
+                                        console.log('✅ 주소 검색 결과:', results.length, '개');
+                                    } else {
+                                        alert('검색 결과가 없습니다.');
+                                        setSearchResults([]);
+                                        console.log('❌ 주소 검색 결과 없음');
+                                    }
+                                });
+                            } else {
+                                alert('검색 결과가 없습니다.');
+                                setSearchResults([]);
+                            }
+                        } else if (status === kakao.maps.services.Status.ERROR) {
+                            console.error('❌ 카카오맵 API 오류:', status);
+                            alert('검색 중 오류가 발생했습니다. API 키를 확인하거나 나중에 다시 시도해주세요.');
                         } else {
-                            alert('검색 결과가 없습니다.');
+                            console.error('❌ 카카오맵 검색 오류:', status);
+                            alert('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
                         }
-                    } else {
-                        console.error('카카오맵 검색 오류:', status);
-                        alert('검색 중 오류가 발생했습니다. 다시 시도해주세요.');
-                    }
-                });
+                    });
+                } catch (error) {
+                    console.error('❌ 장소 검색 오류:', error);
+                    alert('검색 중 오류가 발생했습니다: ' + error.message);
+                }
             };
             
             // 검색 결과 선택
@@ -356,11 +439,30 @@
             
             // 장소 확정
             const handleConfirm = () => {
+                console.log('✔️ 장소 확정 시도:', selectedPlace);
+                
                 if (!selectedPlace) {
                     alert('지도에서 장소를 선택해주세요.');
                     return;
                 }
-                onSelectLocation(selectedPlace);
+                
+                // 필수 필드 검증
+                if (!selectedPlace.lat || !selectedPlace.lng || isNaN(selectedPlace.lat) || isNaN(selectedPlace.lng)) {
+                    console.error('❌ 좌표 정보 누락 또는 잘못됨:', selectedPlace);
+                    alert('장소의 좌표 정보가 올바르지 않습니다. 다시 선택해주세요.');
+                    return;
+                }
+                
+                // Firestore 저장을 위한 데이터 정규화
+                const normalizedPlace = {
+                    name: selectedPlace.name || '',
+                    address: selectedPlace.address || '',
+                    lat: parseFloat(selectedPlace.lat),
+                    lng: parseFloat(selectedPlace.lng)
+                };
+                
+                console.log('✅ 장소 확정 완료:', normalizedPlace);
+                onSelectLocation(normalizedPlace);
                 onClose();
             };
             
