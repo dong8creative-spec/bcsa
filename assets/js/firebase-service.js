@@ -317,6 +317,17 @@ const firebaseService = {
     }
   },
 
+  subscribeSettings(callback) {
+    return window.firebaseServices.db.collection('settings').doc('main')
+      .onSnapshot((doc) => {
+        if (doc.exists) {
+          callback(doc.data());
+        } else {
+          callback({});
+        }
+      });
+  },
+
   // ==========================================
   // Bulk Delete Functions
   // ==========================================
@@ -434,6 +445,157 @@ const firebaseService = {
     } catch (error) {
       console.error('Error resetting settings:', error);
       throw error;
+    }
+  },
+
+  // ==========================================
+  // SearchLogs Collection
+  // ==========================================
+  async createSearchLog(logData) {
+    try {
+      const docRef = await window.firebaseServices.db.collection('searchLogs').add({
+        ...logData,
+        searchedAt: firebase.firestore.FieldValue.serverTimestamp ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating search log:', error);
+      throw error;
+    }
+  },
+
+  async getSearchLogs(limit = 50) {
+    try {
+      let query = window.firebaseServices.db.collection('searchLogs')
+        .orderBy('searchedAt', 'desc');
+      
+      if (limit > 0) {
+        query = query.limit(limit);
+      }
+      
+      const snapshot = await query.get();
+      return snapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data(),
+        // Timestamp를 Date로 변환
+        searchedAt: doc.data().searchedAt?.toDate ? doc.data().searchedAt.toDate() : doc.data().searchedAt
+      }));
+    } catch (error) {
+      console.error('Error getting search logs:', error);
+      throw error;
+    }
+  },
+
+  subscribeSearchLogs(callback, limit = 50) {
+    try {
+      let query = window.firebaseServices.db.collection('searchLogs')
+        .orderBy('searchedAt', 'desc');
+      
+      if (limit > 0) {
+        query = query.limit(limit);
+      }
+      
+      return query.onSnapshot((snapshot) => {
+        const logs = snapshot.docs.map(doc => ({ 
+          id: doc.id, 
+          ...doc.data(),
+          // Timestamp를 Date로 변환
+          searchedAt: doc.data().searchedAt?.toDate ? doc.data().searchedAt.toDate() : doc.data().searchedAt
+        }));
+        callback(logs);
+      }, (error) => {
+        console.error('Error in search logs subscription:', error);
+      });
+    } catch (error) {
+      console.error('Error subscribing to search logs:', error);
+      throw error;
+    }
+  },
+
+  // ==========================================
+  // Bookmarks Collection
+  // ==========================================
+  async addBookmark(userId, bidData) {
+    try {
+      // 기존 북마크 확인
+      const existingBookmark = await this.getBookmarkByBidNo(userId, bidData.bidNtceNo, bidData.bidNtceOrd);
+      if (existingBookmark) {
+        return existingBookmark.id; // 이미 북마크 되어 있으면 기존 ID 반환
+      }
+      
+      const docRef = await window.firebaseServices.db.collection('bookmarks').add({
+        userId: userId,
+        bidNtceNo: bidData.bidNtceNo || '',
+        bidNtceOrd: bidData.bidNtceOrd || '',
+        bidNtceNm: bidData.bidNtceNm || '',
+        bookmarkedAt: firebase.firestore.FieldValue.serverTimestamp ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error adding bookmark:', error);
+      throw error;
+    }
+  },
+
+  async removeBookmark(userId, bidNtceNo, bidNtceOrd) {
+    try {
+      const bookmark = await this.getBookmarkByBidNo(userId, bidNtceNo, bidNtceOrd);
+      if (bookmark) {
+        await window.firebaseServices.db.collection('bookmarks').doc(bookmark.id).delete();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error removing bookmark:', error);
+      throw error;
+    }
+  },
+
+  async getBookmarkByBidNo(userId, bidNtceNo, bidNtceOrd) {
+    try {
+      const snapshot = await window.firebaseServices.db.collection('bookmarks')
+        .where('userId', '==', userId)
+        .where('bidNtceNo', '==', bidNtceNo || '')
+        .where('bidNtceOrd', '==', bidNtceOrd || '')
+        .limit(1)
+        .get();
+      
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        return { id: doc.id, ...doc.data() };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting bookmark:', error);
+      throw error;
+    }
+  },
+
+  async getUserBookmarks(userId) {
+    try {
+      const snapshot = await window.firebaseServices.db.collection('bookmarks')
+        .where('userId', '==', userId)
+        .orderBy('bookmarkedAt', 'desc')
+        .get();
+      
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        bookmarkedAt: doc.data().bookmarkedAt?.toDate ? doc.data().bookmarkedAt.toDate() : doc.data().bookmarkedAt
+      }));
+    } catch (error) {
+      console.error('Error getting user bookmarks:', error);
+      throw error;
+    }
+  },
+
+  async isBookmarked(userId, bidNtceNo, bidNtceOrd) {
+    try {
+      const bookmark = await this.getBookmarkByBidNo(userId, bidNtceNo, bidNtceOrd);
+      return bookmark !== null;
+    } catch (error) {
+      console.error('Error checking bookmark:', error);
+      return false;
     }
   }
 };
