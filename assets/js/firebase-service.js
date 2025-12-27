@@ -308,6 +308,126 @@ const firebaseService = {
       console.error('Error updating settings:', error);
       throw error;
     }
+  },
+
+  // ==========================================
+  // Bulk Delete Functions
+  // ==========================================
+  async deleteAllUsers(exceptEmail) {
+    try {
+      const batch = window.firebaseServices.db.batch();
+      const snapshot = await window.firebaseServices.db.collection('users').get();
+      let deletedCount = 0;
+      
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        // exceptEmail이 제공된 경우 해당 이메일 제외
+        if (!exceptEmail || data.email !== exceptEmail) {
+          batch.delete(doc.ref);
+          deletedCount++;
+        }
+      });
+      
+      if (deletedCount > 0) {
+        await batch.commit();
+        console.log(`✅ ${deletedCount}명의 사용자가 삭제되었습니다.`);
+      } else {
+        console.log('삭제할 사용자가 없습니다.');
+      }
+      
+      return deletedCount;
+    } catch (error) {
+      console.error('Error deleting all users:', error);
+      throw error;
+    }
+  },
+
+  async deleteAllSeminars() {
+    try {
+      const batch = window.firebaseServices.db.batch();
+      const snapshot = await window.firebaseServices.db.collection('seminars').get();
+      let deletedCount = 0;
+      
+      snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+        deletedCount++;
+      });
+      
+      if (deletedCount > 0) {
+        await batch.commit();
+        console.log(`✅ ${deletedCount}개의 프로그램이 삭제되었습니다.`);
+      } else {
+        console.log('삭제할 프로그램이 없습니다.');
+      }
+      
+      return deletedCount;
+    } catch (error) {
+      console.error('Error deleting all seminars:', error);
+      throw error;
+    }
+  },
+
+  async deleteAllPosts() {
+    try {
+      const batch = window.firebaseServices.db.batch();
+      const snapshot = await window.firebaseServices.db.collection('posts').get();
+      let deletedCount = 0;
+      
+      snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+        deletedCount++;
+      });
+      
+      if (deletedCount > 0) {
+        await batch.commit();
+        console.log(`✅ ${deletedCount}개의 게시글이 삭제되었습니다.`);
+      } else {
+        console.log('삭제할 게시글이 없습니다.');
+      }
+      
+      return deletedCount;
+    } catch (error) {
+      console.error('Error deleting all posts:', error);
+      throw error;
+    }
+  },
+
+  async deleteAllApplications() {
+    try {
+      const batch = window.firebaseServices.db.batch();
+      const snapshot = await window.firebaseServices.db.collection('applications').get();
+      let deletedCount = 0;
+      
+      snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+        deletedCount++;
+      });
+      
+      if (deletedCount > 0) {
+        await batch.commit();
+        console.log(`✅ ${deletedCount}개의 신청이 삭제되었습니다.`);
+      } else {
+        console.log('삭제할 신청이 없습니다.');
+      }
+      
+      return deletedCount;
+    } catch (error) {
+      console.error('Error deleting all applications:', error);
+      throw error;
+    }
+  },
+
+  async resetSettings(defaultSettings) {
+    try {
+      await window.firebaseServices.db.collection('settings').doc('main').set({
+        ...defaultSettings,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+      });
+      console.log('✅ Settings가 기본값으로 초기화되었습니다.');
+    } catch (error) {
+      console.error('Error resetting settings:', error);
+      throw error;
+    }
   }
 };
 

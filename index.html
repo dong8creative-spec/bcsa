@@ -492,6 +492,66 @@
         }
         
         // ==========================================
+        // Firebase 에러 메시지 한국어 변환 함수
+        // ==========================================
+        const translateFirebaseError = (error) => {
+            if (!error) return '알 수 없는 오류가 발생했습니다.';
+            
+            // Firebase Auth 에러 코드
+            if (error.code) {
+                const errorMessages = {
+                    // Auth 에러
+                    'auth/email-already-in-use': '이미 사용 중인 이메일입니다.',
+                    'auth/invalid-email': '유효하지 않은 이메일 주소입니다.',
+                    'auth/operation-not-allowed': '이 작업은 허용되지 않습니다.',
+                    'auth/weak-password': '비밀번호가 너무 약합니다. 6자 이상 입력해주세요.',
+                    'auth/user-disabled': '이 계정은 비활성화되었습니다.',
+                    'auth/user-not-found': '등록되지 않은 이메일입니다.',
+                    'auth/wrong-password': '비밀번호가 올바르지 않습니다.',
+                    'auth/too-many-requests': '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.',
+                    'auth/network-request-failed': '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.',
+                    'auth/invalid-credential': '이메일 또는 비밀번호가 올바르지 않습니다.',
+                    'auth/user-token-expired': '로그인 세션이 만료되었습니다. 다시 로그인해주세요.',
+                    'auth/requires-recent-login': '보안을 위해 다시 로그인해주세요.',
+                    // Firestore 에러
+                    'permission-denied': '권한이 없습니다. 관리자에게 문의해주세요.',
+                    'unavailable': '서비스를 사용할 수 없습니다. 잠시 후 다시 시도해주세요.',
+                    'deadline-exceeded': '요청 시간이 초과되었습니다. 다시 시도해주세요.',
+                    'already-exists': '이미 존재하는 데이터입니다.',
+                    'not-found': '요청한 데이터를 찾을 수 없습니다.',
+                    'failed-precondition': '요청을 처리할 수 없는 상태입니다.',
+                    'aborted': '요청이 취소되었습니다.',
+                    'out-of-range': '요청 범위를 벗어났습니다.',
+                    'unimplemented': '아직 구현되지 않은 기능입니다.',
+                    'internal': '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+                    'unauthenticated': '인증이 필요합니다. 로그인해주세요.',
+                    'resource-exhausted': '리소스가 부족합니다. 잠시 후 다시 시도해주세요.'
+                };
+                
+                if (errorMessages[error.code]) {
+                    return errorMessages[error.code];
+                }
+            }
+            
+            // 에러 메시지가 문자열인 경우
+            if (typeof error === 'string') {
+                return error;
+            }
+            
+            // error.message가 있는 경우
+            if (error.message) {
+                // 이미 한국어인 경우 그대로 반환
+                if (/[가-힣]/.test(error.message)) {
+                    return error.message;
+                }
+                // 영문 메시지인 경우 기본 메시지 반환
+                return '오류가 발생했습니다. 다시 시도해주세요.';
+            }
+            
+            return '알 수 없는 오류가 발생했습니다.';
+        };
+
+        // ==========================================
         // Firebase-based user management
         // ==========================================
         
@@ -4542,12 +4602,54 @@
             const appliedSeminars = getAppliedSeminars();
             
             // 관리자 체크 함수
-            const checkIsAdmin = (user) => {
+            const checkIsAdmin = async (user) => {
                 if (!user) return false;
-                return user.name === '햇반' || user.name === '람람' || user.email === 'admin@busan-ycc.com';
+                
+                // 1. 이름으로 체크 (기존 방식 유지)
+                if (user.name === '햇반' || user.name === '람람') {
+                    return true;
+                }
+                
+                // 2. 이메일로 체크
+                if (user.email === 'admin@busan-ycc.com' || user.email === 'haetban@bcsa-b190f.firebaseapp.com') {
+                    return true;
+                }
+                
+                // 3. Firestore의 isAdmin 필드 확인
+                if (user.uid && window.firebaseService) {
+                    try {
+                        const userData = await window.firebaseService.getUser(user.uid);
+                        if (userData && userData.isAdmin === true) {
+                            return true;
+                        }
+                    } catch (error) {
+                        console.error('관리자 권한 확인 오류:', error);
+                    }
+                }
+                
+                // 4. user 객체에 직접 isAdmin 필드가 있는 경우
+                if (user.isAdmin === true) {
+                    return true;
+                }
+                
+                return false;
             };
             
-            const isCurrentUserAdmin = checkIsAdmin(currentUser);
+            // 관리자 상태 관리
+            const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
+            
+            // currentUser 변경 시 관리자 권한 확인
+            useEffect(() => {
+                const verifyAdmin = async () => {
+                    if (currentUser) {
+                        const isAdmin = await checkIsAdmin(currentUser);
+                        setIsCurrentUserAdmin(isAdmin);
+                    } else {
+                        setIsCurrentUserAdmin(false);
+                    }
+                };
+                verifyAdmin();
+            }, [currentUser]);
             
             // 공지사항과 일반 게시글 분리
             const noticePosts = posts.filter(p => p.category === '공지사항');
@@ -5668,13 +5770,14 @@
                         {selectedSeminar && (
                             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setSelectedSeminar(null); }}>
                             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl z-10 max-h-[90vh] overflow-y-auto modal-scroll relative">
-                                    <button type="button" onClick={() => setSelectedSeminar(null)} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 z-10">
+                                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl z-10 max-h-[90vh] flex flex-col md:flex-row overflow-hidden relative">
+                                    <button type="button" onClick={() => setSelectedSeminar(null)} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 z-20">
                                     <Icons.X size={18}/>
                                 </button>
+                                    {/* 이미지 영역 (왼쪽) */}
                                     {selectedSeminar.img && (
-                                        <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
-                                            <img src={selectedSeminar.img} alt={selectedSeminar.title} className="w-full h-full object-cover" />
+                                        <div className="flex-[0_0_100%] md:flex-[0_0_400px] lg:flex-[0_0_450px] relative bg-gray-50" style={{ minHeight: '400px' }}>
+                                            <img src={selectedSeminar.img} alt={selectedSeminar.title} className="w-full h-full object-contain" style={{ maxHeight: '90vh' }} />
                                             <div className="absolute top-3 left-3 flex items-center gap-2">
                                                     {selectedSeminar.category && (
                                                     <span className={`text-xs font-bold px-2 py-1 rounded-full shadow-sm ${getCategoryColor(selectedSeminar.category)}`} style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
@@ -5687,7 +5790,8 @@
                                                 </div>
                                             </div>
                                                 )}
-                                <div className="p-8">
+                                    {/* 텍스트 영역 (오른쪽) */}
+                                <div className="flex-1 p-6 md:p-8 overflow-y-auto modal-scroll" style={{ minWidth: '300px' }}>
                                     <div className="flex items-center gap-3 mb-4">
                                             <span className={`text-xs font-bold px-3 py-1 rounded-full ${getStatusColor(selectedSeminar.status)}`}>{selectedSeminar.status}</span>
                                             </div>
@@ -5699,14 +5803,14 @@
                                         <div className="bg-soft p-6 rounded-2xl border border-brand/5 mb-6">
                                             <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{selectedSeminar.desc}</p>
                                                 </div>
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                             <span className="text-sm text-gray-500">신청: {selectedSeminar.currentParticipants || 0} / {selectedSeminar.maxParticipants || 0}명</span>
                                             {currentUser && (
                                                                 <button 
                                                                     type="button"
                                                     onClick={() => { handleOpenApplyModal(selectedSeminar); }} 
                                                     disabled={selectedSeminar.status === '종료'}
-                                                    className={`px-6 py-3 font-bold rounded-xl ${
+                                                    className={`px-6 py-3 font-bold rounded-xl transition-colors ${
                                                         selectedSeminar.status === '종료' 
                                                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                                                             : 'bg-brand text-white hover:bg-blue-700'
@@ -7053,12 +7157,12 @@
 
             const handleSignUp = async (userInfo) => {
                 if (userInfo.userType === '사업자' && !userInfo.businessRegistrationNumber) {
-                    return alert('Business registration number is required.');
+                    return alert('사업자등록번호를 입력해주세요.');
                 }
 
                 try {
                     if (typeof signUp !== 'function') {
-                        throw new Error('Firebase Auth not initialized');
+                        throw new Error('Firebase Auth가 초기화되지 않았습니다.');
                     }
                     
                     // Check for existing user by email
@@ -7073,7 +7177,10 @@
                     });
                     
                     if (existingUser) {
-                        return alert("Email" + (userInfo.businessRegistrationNumber ? " or business registration number" : "") + " already exists. Please try logging in.");
+                        const message = userInfo.businessRegistrationNumber 
+                            ? '이미 사용 중인 이메일 또는 사업자등록번호입니다. 로그인을 시도해주세요.'
+                            : '이미 사용 중인 이메일입니다. 로그인을 시도해주세요.';
+                        return alert(message);
                     }
 
                     // Create Firebase Auth user
@@ -7094,7 +7201,8 @@
                     });
                     
                     if (!authResult.success) {
-                        throw new Error(authResult.error || 'Sign up failed');
+                        const errorMsg = translateFirebaseError(authResult.error || { message: '회원가입에 실패했습니다.' });
+                        throw new Error(errorMsg);
                     }
                     
                     // Create member data
@@ -7123,18 +7231,19 @@
                     const updatedUsers = await loadUsersFromStorage();
                     setUsers(updatedUsers);
                     
-                    alert("Registration completed!\nYour account is pending approval.\nYou can check approval status in My Page.");
+                    alert("회원가입이 완료되었습니다!\n\n계정 승인 대기 중입니다.\n승인 상태는 마이페이지에서 확인할 수 있습니다.");
                     
                 } catch (error) {
                     console.error('Sign up error:', error);
-                    alert(error.message || 'Sign up failed. Please try again.');
+                    const errorMessage = translateFirebaseError(error);
+                    alert(errorMessage);
                 }
             };
 
             const handleLogin = async (id, pw) => {
                 try {
                     if (!window.authService || !window.authService.signIn) {
-                        throw new Error('Firebase Auth not initialized');
+                        throw new Error('Firebase Auth가 초기화되지 않았습니다.');
                     }
                     
                     // Sign in with email and password
@@ -7143,7 +7252,7 @@
                     // Get user data from Firestore
                     const userDoc = await window.authService.getUserData(user.uid);
                     if (!userDoc) {
-                        throw new Error('User data not found');
+                        throw new Error('사용자 정보를 찾을 수 없습니다.');
                     }
                     
                     setCurrentUser(userDoc);
@@ -7152,17 +7261,18 @@
                         
                     const approvalStatus = userDoc.approvalStatus || 'pending';
                         if (approvalStatus === 'pending') {
-                        alert("Login successful!\n\nYour registration is pending approval.");
+                        alert("로그인 성공!\n\n회원가입 승인 대기 중입니다.");
                         } else if (approvalStatus === 'rejected') {
-                        alert("Login successful!\n\nYour registration was rejected. Please contact admin.");
+                        alert("로그인 성공!\n\n회원가입이 거부되었습니다. 관리자에게 문의해주세요.");
                         } else {
-                        alert("Login successful!");
+                            alert("로그인 성공!");
                         }
                         
                         return true;
                 } catch (error) {
                     console.error('Login error:', error);
-                    alert(error.message || 'Login failed');
+                    const errorMessage = translateFirebaseError(error);
+                    alert(errorMessage);
                     return false;
                 }
             };
@@ -7546,48 +7656,77 @@ END:VCALENDAR`;
                         return;
                     }
                 } 
-                // ID 생성 시 기존 게시글의 최대 ID를 확인하여 중복 방지
-                const maxId = communityPosts.length > 0 ? Math.max(...communityPosts.map(p => p.id || 0)) : 0;
+                // 게시글 데이터 준비 (Firebase는 자체 ID를 생성하므로 id 필드 제거)
+                const { id, ...postDataWithoutId } = newPost;
+                
+                // undefined 값 제거 및 데이터 정리
+                const cleanPostData = Object.keys(postDataWithoutId).reduce((acc, key) => {
+                    const value = postDataWithoutId[key];
+                    // undefined가 아닌 값만 포함
+                    if (value !== undefined) {
+                        // 함수나 복잡한 객체는 제외
+                        if (typeof value !== 'function') {
+                            acc[key] = value;
+                        }
+                    }
+                    return acc;
+                }, {});
+                
                 const post = { 
-                    ...newPost, 
-                    id: maxId + 1, 
+                    ...cleanPostData,
                     date: new Date().toISOString().slice(0, 10).replace(/-/g, '.'), 
                     views: 0, 
                     reply: null, 
                     author: currentUser ? currentUser.name : '익명',
+                    authorId: currentUser ? (currentUser.id || currentUser.uid || null) : null,
                     likes: newPost.likes || 0,
                     comments: newPost.comments || []
                 };
                 
                 // Save to Firebase
                 if (window.firebaseService && window.firebaseService.createPost) {
-                    window.firebaseService.createPost(post).then(() => {
-                            setCommunityPosts([post, ...communityPosts]);
-                            if(currentUser) setMyPosts([post, ...myPosts]);
+                    window.firebaseService.createPost(post).then((postId) => {
+                        // Firebase에서 반환된 ID를 사용하여 게시글 업데이트
+                        const savedPost = { ...post, id: postId };
+                        setCommunityPosts([savedPost, ...communityPosts]);
+                        if(currentUser) setMyPosts([savedPost, ...myPosts]);
+                        alert('게시글이 등록되었습니다.');
                     }).catch(error => {
                         console.error('Post save error:', error);
-                        alert('Failed to save post. Please try again.');
+                        const errorMessage = translateFirebaseError(error);
+                        alert(`게시글 저장에 실패했습니다.\n${errorMessage}`);
                     });
                 } else {
-                    setCommunityPosts([post, ...communityPosts]);
-                    if(currentUser) setMyPosts([post, ...myPosts]);
+                    // Firebase service not available, use local ID
+                    const maxId = communityPosts.length > 0 ? Math.max(...communityPosts.map(p => p.id || 0)) : 0;
+                    const localPost = { ...post, id: maxId + 1 };
+                    setCommunityPosts([localPost, ...communityPosts]);
+                    if(currentUser) setMyPosts([localPost, ...myPosts]);
+                    alert('게시글이 등록되었습니다.');
                 }
             };
             const handleCommunityDelete = async (id) => {
+                if (!confirm('정말 이 게시글을 삭제하시겠습니까?')) {
+                    return;
+                }
+                
                 // Delete from Firebase
                 if (window.firebaseService && window.firebaseService.deletePost) {
                     try {
                         await window.firebaseService.deletePost(id);
                         setCommunityPosts(communityPosts.filter(p => p.id !== id));
                         setMyPosts(myPosts.filter(p => p.id !== id));
+                        alert('게시글이 삭제되었습니다.');
                     } catch (error) {
                         console.error('Post delete error:', error);
-                        alert('Failed to delete post. Please try again.');
+                        const errorMessage = translateFirebaseError(error);
+                        alert(`게시글 삭제에 실패했습니다.\n${errorMessage}`);
                     }
                 } else {
                     // Firebase service not available, delete locally
                     setCommunityPosts(communityPosts.filter(p => p.id !== id));
                     setMyPosts(myPosts.filter(p => p.id !== id));
+                    alert('게시글이 삭제되었습니다.');
                 }
             };
 
@@ -8241,14 +8380,15 @@ END:VCALENDAR`;
                                             </div>
                                         );
                                     } else {
-                                        // 데스크톱: 기존 레이아웃
+                                        // 데스크톱: 가로 레이아웃
                                         return (
                                             <div 
                                                 key={program.id || idx} 
-                                                className="bg-white rounded-3xl shadow-2xl w-full md:w-80 flex-shrink-0 overflow-hidden relative mx-auto flex flex-col"
+                                                className="bg-white rounded-3xl shadow-2xl w-full md:w-auto md:max-w-5xl flex-shrink-0 overflow-hidden relative mx-auto flex flex-col md:flex-row"
+                                                style={{ maxHeight: '90vh' }}
                                             >
-                                                {/* 이미지 영역 (3:4 비율 유지) */}
-                                                <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
+                                                {/* 이미지 영역 (왼쪽) */}
+                                                <div className="w-full md:flex-[0_0_400px] lg:flex-[0_0_450px] relative bg-gray-50 flex items-center justify-center overflow-hidden" style={{ minHeight: '400px' }}>
                                                     {/* 마감임박 마크 */}
                                                     {program.isDeadlineSoon && (
                                                         <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
@@ -8258,7 +8398,14 @@ END:VCALENDAR`;
                                                     {/* 닫기 버튼 */}
                                                     <button 
                                                         type="button" 
-                                                        onClick={() => setPopupPrograms(prev => prev.filter((_, i) => i !== idx))} 
+                                                        onClick={() => {
+                                                            const remaining = popupPrograms.filter((_, i) => i !== idx);
+                                                            if (remaining.length === 0) {
+                                                                closePopupAndMarkAsShown();
+                                                            } else {
+                                                                setPopupPrograms(remaining);
+                                                            }
+                                                        }} 
                                                         className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 z-10 shadow-md"
                                                     >
                                                         <Icons.X size={18} />
@@ -8268,13 +8415,14 @@ END:VCALENDAR`;
                                                         <img 
                                                             src={program.img} 
                                                             alt={program.title} 
-                                                            className="w-full h-full object-cover"
+                                                            className="w-full h-full object-contain"
+                                                            style={{ maxHeight: '90vh' }}
                                                         />
                                                     )}
                                                 </div>
                                                 
-                                                {/* 정보 영역 (스크롤 가능) */}
-                                                <div className="p-6 max-h-[60vh] overflow-y-auto flex-1">
+                                                {/* 정보 영역 (오른쪽) */}
+                                                <div className="flex-1 p-6 overflow-y-auto modal-scroll" style={{ minWidth: '300px', maxHeight: '90vh' }}>
                                                     <h3 className="text-xl font-bold text-dark mb-3">{program.title}</h3>
                                                     
                                                     {/* 카테고리 및 유료/무료 배지 */}
@@ -8307,7 +8455,7 @@ END:VCALENDAR`;
                                                     {/* 프로그램 설명 */}
                                                     {program.desc && (
                                                         <div className="mb-4">
-                                                            <p className="text-sm text-gray-700 leading-relaxed">{program.desc}</p>
+                                                            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{program.desc}</p>
                                                         </div>
                                                     )}
                                                     
