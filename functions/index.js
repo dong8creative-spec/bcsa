@@ -10,7 +10,11 @@ const app = express();
 // Firebase Console > Functions > 환경 변수에서 ALLOWED_ORIGINS 설정
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['https://bcsa-b190f.web.app', 'https://bcsa-b190f.firebaseapp.com'];
+  : [
+      'https://bcsa.co.kr',
+      'https://bcsa-b190f.web.app', 
+      'https://bcsa-b190f.firebaseapp.com'
+    ];
 
 app.use(cors({
   origin: function (origin, callback) {

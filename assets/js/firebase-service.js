@@ -69,6 +69,13 @@ const firebaseService = {
       });
   },
 
+  // 햇반 계정 식별 함수
+  isHaetbanAccount(user) {
+    return user.name === '햇반' || 
+           user.email === 'haetban@bcsa-b190f.firebaseapp.com' || 
+           (user.isAdmin === true && user.name === '햇반');
+  },
+
   // ==========================================
   // Seminars Collection
   // ==========================================
