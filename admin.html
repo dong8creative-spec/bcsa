@@ -96,6 +96,11 @@
         (function() {
         const { useState, useEffect } = React;
         
+        // 개발 환경 체크 (console.log 정리를 위해)
+        const isDev = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1' ||
+                      window.location.hostname.includes('localhost');
+        
         // ==========================================
         // 관리자 인증 설정
         // ==========================================
@@ -1656,7 +1661,7 @@
             
             // 로그인 폼 상태 (최상위에 선언 - Hooks 규칙 준수)
             const [loginUsername, setLoginUsername] = useState('햇반');
-            const [loginPassword, setLoginPassword] = useState('0219');
+            const [loginPassword, setLoginPassword] = useState('021900');
             const [isLoggingIn, setIsLoggingIn] = useState(false);
             
             // 활성 메뉴 (사이드바)
@@ -1668,6 +1673,31 @@
             const [posts, setPosts] = useState([]);
             const [settings, setSettings] = useState({});
             const [loading, setLoading] = useState(false);
+            
+            // 기존 데이터 상태 (호환성 유지 - Firebase에서 로드됨)
+            const [members, setMembers] = useState([]);
+            const [content, setContent] = useState({});
+            const [menuEnabled, setMenuEnabled] = useState({
+                '홈': true,
+                '소개': true,
+                '프로그램': true,
+                '부청사 회원': true,
+                '커뮤니티': true,
+                '입찰공고': true,
+                '후원': true,
+            });
+            const [menuNames, setMenuNames] = useState({
+                '홈': '홈',
+                '소개': '소개',
+                '프로그램': '프로그램',
+                '부청사 회원': '부청사 회원',
+                '커뮤니티': '커뮤니티',
+                '입찰공고': '입찰공고',
+                '후원': '후원',
+            });
+            // 기존 코드 호환성을 위한 변수들 (사용하지 않음)
+            const [logs, setLogs] = useState([]);
+            const currentUser = currentAdmin; // 호환성 유지
             
             // 관리자 인증 체크
             useEffect(() => {
@@ -1824,31 +1854,6 @@
                 };
             }, [isAuthenticated]);
             
-            // 기존 데이터 상태 (호환성 유지 - Firebase에서 로드됨)
-            const [members, setMembers] = useState([]);
-            const [content, setContent] = useState({});
-            const [menuEnabled, setMenuEnabled] = useState({
-                '홈': true,
-                '소개': true,
-                '프로그램': true,
-                '부청사 회원': true,
-                '커뮤니티': true,
-                '입찰공고': true,
-                '후원': true,
-            });
-            const [menuNames, setMenuNames] = useState({
-                '홈': '홈',
-                '소개': '소개',
-                '프로그램': '프로그램',
-                '부청사 회원': '부청사 회원',
-                '커뮤니티': '커뮤니티',
-                '입찰공고': '입찰공고',
-                '후원': '후원',
-            });
-            // 기존 코드 호환성을 위한 변수들 (사용하지 않음)
-            const [logs, setLogs] = useState([]);
-            const currentUser = currentAdmin; // 호환성 유지
-            
             // ==========================================
             // CSV 자동 백업 함수
             // ==========================================
@@ -1861,7 +1866,7 @@
             const backupToCSV = async (data, type) => {
                 try {
                     if (!data || !Array.isArray(data) || data.length === 0) {
-                        console.log(`⚠️ 백업할 ${type} 데이터가 없습니다.`);
+                        if (isDev) console.log(`⚠️ 백업할 ${type} 데이터가 없습니다.`);
                     return;
                 }
                 
@@ -1894,7 +1899,7 @@
                             if (response.ok) {
                                 const result = await response.json();
                                 if (result.success) {
-                                    console.log(`✅ ${type} CSV 백업 성공 (Google Apps Script)`);
+                                    if (isDev) console.log(`✅ ${type} CSV 백업 성공 (Google Apps Script)`);
                                     addLog('BACKUP', type, `${type} 데이터 CSV 백업 완료 (${data.length}개)`, currentUser?.name);
                                 } else {
                                     throw new Error(result.error || '백업 실패');
@@ -1906,12 +1911,12 @@
                             console.error(`❌ ${type} CSV 백업 실패 (Google Apps Script):`, error);
                             addLog('ERROR', type, `CSV 백업 실패: ${error.message}`, currentUser?.name);
                             // Google Apps Script 실패 시 CSV 다운로드 링크 생성 (수동 백업)
-                            console.log(`대안: CSV 파일 다운로드 제공`);
+                            if (isDev) console.log(`대안: CSV 파일 다운로드 제공`);
                             // downloadCSVFile(csvContent, type); // 주석 처리: 자동 다운로드는 사용자 경험을 해칠 수 있음
                         }
                     } else {
                         // Google Apps Script URL이 없으면 로그만 기록
-                        console.log(`⚠️ Google Apps Script URL이 설정되지 않았습니다. CSV 백업을 위해 config.js에 WEB_APP_URL을 설정하세요.`);
+                        if (isDev) console.log(`⚠️ Google Apps Script URL이 설정되지 않았습니다. CSV 백업을 위해 config.js에 WEB_APP_URL을 설정하세요.`);
                         addLog('INFO', type, `CSV 백업 준비 완료 (Google Apps Script URL 미설정)`, currentUser?.name);
                     }
                 } catch (error) {
@@ -1936,7 +1941,7 @@
                     link.click();
                     document.body.removeChild(link);
                     URL.revokeObjectURL(url);
-                    console.log(`✅ ${type} CSV 파일 다운로드 완료`);
+                    if (isDev) console.log(`✅ ${type} CSV 파일 다운로드 완료`);
                 } catch (error) {
                     console.error(`CSV 파일 다운로드 오류:`, error);
                 }
@@ -1993,7 +1998,7 @@
             const createAdminAccount = async () => {
                 try {
                     const adminEmail = 'haetban@bcsa-b190f.firebaseapp.com';
-                    const adminPassword = '0219';
+                    const adminPassword = '021900';
                     
                     // Firebase Auth에 계정 생성 시도
                     let authUser = null;
@@ -2002,7 +2007,7 @@
                         const existingUser = await window.firebaseServices.auth.signInWithEmailAndPassword(adminEmail, adminPassword).catch(() => null);
                         if (existingUser) {
                             authUser = existingUser.user;
-                            console.log('✅ 기존 관리자 계정이 존재합니다.');
+                            if (isDev) console.log('✅ 기존 관리자 계정이 존재합니다.');
                         }
                     } catch (error) {
                         // 계정이 없으면 생성
@@ -2010,7 +2015,7 @@
                             try {
                                 const userCredential = await window.firebaseServices.auth.createUserWithEmailAndPassword(adminEmail, adminPassword);
                                 authUser = userCredential.user;
-                                console.log('✅ 관리자 계정이 생성되었습니다.');
+                                if (isDev) console.log('✅ 관리자 계정이 생성되었습니다.');
                             } catch (createError) {
                                 console.error('관리자 계정 생성 오류:', createError);
                                 throw createError;
@@ -2147,19 +2152,30 @@
                     try {
                         await window.authService.signIn(email, password);
                         loginSuccess = true;
-                        console.log('✅ 로그인 성공');
+                        if (isDev) console.log('✅ 로그인 성공');
                     } catch (loginError) {
-                        console.log('로그인 실패, 오류 코드:', loginError.code, '메시지:', loginError.message);
+                        if (isDev) console.log('로그인 실패, 오류 코드:', loginError.code, '메시지:', loginError.message);
+                        
+                        // 오류 메시지에서 INVALID_LOGIN_CREDENTIALS 확인
+                        const errorMessage = loginError.message || '';
+                        const isInvalidCredentials = errorMessage.includes('INVALID_LOGIN_CREDENTIALS') || 
+                                                     errorMessage.includes('INVALID_LOGIN');
                         
                         // 로그인 실패 시 계정이 없을 수 있으므로 계정 생성 시도
-                        if (loginError.code === 'auth/user-not-found' || loginError.code === 'auth/wrong-password' || loginError.code === 'auth/invalid-credential') {
-                            if (username === '햇반' && password === '0219') {
+                        // auth/internal-error도 INVALID_LOGIN_CREDENTIALS를 포함할 수 있음
+                        const shouldTryCreateAccount = loginError.code === 'auth/user-not-found' || 
+                                                       loginError.code === 'auth/wrong-password' || 
+                                                       loginError.code === 'auth/invalid-credential' ||
+                                                       (loginError.code === 'auth/internal-error' && isInvalidCredentials);
+                        
+                        if (shouldTryCreateAccount) {
+                            if (username === '햇반' && password === '021900') {
                                 try {
-                                    console.log('관리자 계정 생성 시도 중...');
+                                    if (isDev) console.log('관리자 계정 생성 시도 중...');
                                     // 관리자 계정 생성
                                     const userCredential = await window.firebaseServices.auth.createUserWithEmailAndPassword(email, password);
                                     const newUser = userCredential.user;
-                                    console.log('✅ 관리자 계정 생성 성공:', newUser.uid);
+                                    if (isDev) console.log('✅ 관리자 계정 생성 성공:', newUser.uid);
                                     
                                     // Firestore에 관리자 정보 저장
                                     if (window.firebaseService) {
@@ -2172,23 +2188,31 @@
                                             memberGrade: '관리자',
                                             createdAt: new Date().toISOString()
                                         });
-                                        console.log('✅ 관리자 정보 저장 완료');
+                                        if (isDev) console.log('✅ 관리자 정보 저장 완료');
                                     }
                                     
                                     // 생성 후 다시 로그인
                                     await window.authService.signIn(email, password);
                                     loginSuccess = true;
-                                    console.log('✅ 계정 생성 후 로그인 성공');
+                                    if (isDev) console.log('✅ 계정 생성 후 로그인 성공');
                                 } catch (createError) {
                                     console.error('계정 생성 실패:', createError.code, createError.message);
                                     // 계정이 이미 존재하는 경우 다시 로그인 시도
                                     if (createError.code === 'auth/email-already-in-use') {
                                         try {
+                                            // 잠시 대기 후 다시 로그인 시도 (계정 생성 직후 인증이 완료되지 않을 수 있음)
+                                            await new Promise(resolve => setTimeout(resolve, 500));
                                             await window.authService.signIn(email, password);
                                             loginSuccess = true;
-                                            console.log('✅ 기존 계정으로 로그인 성공');
+                                            if (isDev) console.log('✅ 기존 계정으로 로그인 성공');
                                         } catch (retryError) {
-                                            console.error('재로그인 실패:', retryError.code, retryError.message);
+                                            if (isDev) console.error('재로그인 실패:', retryError.code, retryError.message);
+                                            // 비밀번호가 잘못된 경우
+                                            if (retryError.code === 'auth/wrong-password' || 
+                                                retryError.code === 'auth/invalid-credential' ||
+                                                (retryError.code === 'auth/internal-error' && retryError.message.includes('INVALID_LOGIN_CREDENTIALS'))) {
+                                                throw new Error('비밀번호가 올바르지 않습니다. Firebase Console에서 비밀번호를 재설정해주세요.');
+                                            }
                                             throw createError;
                                         }
                                     } else {
@@ -2226,10 +2250,17 @@
                     
                     // Firebase 오류 메시지를 한국어로 변환
                     let errorMessage = '로그인에 실패했습니다.';
-                    if (error.code === 'auth/user-not-found') {
-                        errorMessage = '등록되지 않은 아이디입니다.';
-                    } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-                        errorMessage = '비밀번호가 올바르지 않습니다.';
+                    const errorMsg = error.message || '';
+                    const isInvalidCredentials = errorMsg.includes('INVALID_LOGIN_CREDENTIALS') || 
+                                                 errorMsg.includes('INVALID_LOGIN');
+                    
+                    if (error.code === 'auth/user-not-found' || 
+                        (error.code === 'auth/internal-error' && isInvalidCredentials)) {
+                        errorMessage = '등록되지 않은 계정입니다. 계정을 생성합니다.';
+                    } else if (error.code === 'auth/wrong-password' || 
+                               error.code === 'auth/invalid-credential' ||
+                               (error.code === 'auth/internal-error' && isInvalidCredentials)) {
+                        errorMessage = '비밀번호가 올바르지 않습니다. Firebase Console에서 비밀번호를 재설정해주세요.';
                     } else if (error.code === 'auth/invalid-email') {
                         errorMessage = '올바른 형식이 아닙니다.';
                     } else if (error.code === 'auth/too-many-requests') {
@@ -2238,6 +2269,8 @@
                         errorMessage = '이미 사용 중인 이메일입니다. 로그인을 시도합니다.';
                     } else if (error.code === 'auth/network-request-failed') {
                         errorMessage = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
+                    } else if (error.code === 'auth/internal-error') {
+                        errorMessage = 'Firebase 인증 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.';
                     } else if (error.message) {
                         errorMessage = error.message;
                     }
