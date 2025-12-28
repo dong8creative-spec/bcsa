@@ -509,3 +509,5 @@ firebase functions:log --only apiBid --follow
 
 이제 호스팅케이알에서 입찰공고 검색 기능이 정상적으로 작동합니다!
 
+
+
