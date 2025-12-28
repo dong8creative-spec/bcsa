@@ -1,0 +1,134 @@
+/**
+ * 부산청년사업가들 웹사이트 커스텀 스타일
+ */
+
+/* 기본 스타일 */
+body {
+    background-color: #ffffff;
+    color: #1e293b;
+    font-family: 'Noto Sans KR', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* 텍스트 유틸리티 */
+.break-keep {
+    word-break: keep-all;
+    word-wrap: break-word;
+}
+
+/* 버튼 호버 효과 */
+.btn-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 69, 165, 0.5);
+}
+
+/* 카드 줌 효과 */
+.card-zoom {
+    overflow: hidden;
+}
+
+.card-zoom img {
+    transition: transform 0.5s ease;
+}
+
+.card-zoom:hover img {
+    transform: scale(1.05);
+}
+
+/* 네비게이션 아이템 */
+.nav-item {
+    position: relative;
+    transition: color 0.3s ease;
+}
+
+.nav-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: rgba(59, 130, 246, 0.1);
+    transform: scale(0.8);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: -1;
+}
+
+.nav-item:hover::before {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.nav-item.active {
+    color: #0045a5;
+    font-weight: 700;
+}
+
+.nav-item.active::before {
+    background: rgba(0, 69, 165, 0.08);
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* 모달 스크롤바 */
+.modal-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-scroll::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.modal-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.modal-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* 캘린더 전용 스타일 */
+.calendar-top-border {
+    border-top: 1px solid #0045a5;
+}
+
+.calendar-left-border {
+    border-left: 1px solid #0045a5;
+}
+
+/* 무한 롤링 컨테이너 */
+.scrolling-wrapper {
+    display: flex;
+    width: max-content;
+}
+
+.scrolling-wrapper:hover {
+    animation-play-state: paused;
+}
+
+/* 스크롤바 숨기기 */
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* 반응형 유틸리티 */
+@media (max-width: 768px) {
+    .break-keep {
+        word-break: break-word;
+    }
+}
+

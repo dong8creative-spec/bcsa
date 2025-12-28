@@ -3,7 +3,7 @@ module.exports = {
   content: [
     "./index.html",
     "./admin.html",
-    "./**/*.{html,js}"
+    "./src/**/*.{js,jsx,ts,tsx}"
   ],
   theme: {
     extend: {
@@ -77,6 +77,7 @@ module.exports = {
   },
   plugins: [],
 }
+
 
 
 

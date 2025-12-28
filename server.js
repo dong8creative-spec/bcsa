@@ -198,6 +198,294 @@ app.get('/api/bid-search', async (req, res) => {
   }
 });
 
+// 개찰결과 검색 API 프록시 엔드포인트
+app.get('/api/bid-openg-result', async (req, res) => {
+  const keyword = req.query.keyword || '';
+  const pageNo = parseInt(req.query.pageNo) || 1;
+  const numOfRows = parseInt(req.query.numOfRows) || 10;
+  const userId = req.query.userId || '';
+  const userEmail = req.query.userEmail || '';
+  const userName = req.query.userName || '';
+
+  const serviceKey = process.env.G2B_API_KEY || '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
+  
+  if (!serviceKey || serviceKey.trim() === '') {
+    return res.status(500).json({ 
+      error: 'API 키가 설정되지 않았습니다. 관리자에게 문의하세요.' 
+    });
+  }
+
+  const baseUrl = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
+  const apiPath = 'getOpengResultListInfoThngPPSSrch'; // 물품 개찰결과 조회
+  
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 30);
+  
+  const formatDate = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}${m}${d}`;
+  };
+
+  const inqryBgnDt = formatDate(startDate) + '0000';
+  const inqryEndDt = formatDate(today) + '2359';
+
+  const apiUrl = new URL(`${baseUrl}/${apiPath}`);
+  apiUrl.searchParams.append('ServiceKey', serviceKey);
+  apiUrl.searchParams.append('pageNo', pageNo.toString());
+  apiUrl.searchParams.append('numOfRows', numOfRows.toString());
+  apiUrl.searchParams.append('inqryDiv', '1');
+  apiUrl.searchParams.append('inqryBgnDt', inqryBgnDt);
+  apiUrl.searchParams.append('inqryEndDt', inqryEndDt);
+  apiUrl.searchParams.append('type', 'json');
+  
+  if (keyword.trim()) {
+    apiUrl.searchParams.append('bidNtceNm', keyword.trim());
+  }
+
+  console.log(`[Bid Openg Result] Request: keyword="${keyword}", pageNo=${pageNo}`);
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    let apiResponse;
+    try {
+      apiResponse = await fetch(apiUrl.toString(), {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { 'Accept': 'application/json' }
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        return res.status(504).json({ error: 'API 요청 시간이 초과되었습니다.' });
+      }
+      throw fetchError;
+    }
+
+    if (!apiResponse.ok) {
+      const errorText = await apiResponse.text();
+      return res.status(apiResponse.status).json({ 
+        error: `API 요청 실패: HTTP ${apiResponse.status}`,
+        details: errorText.substring(0, 200)
+      });
+    }
+
+    let responseText = await apiResponse.text();
+    let data;
+    
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseErr) {
+      return res.status(500).json({ 
+        error: 'API 응답을 파싱할 수 없습니다.',
+        details: responseText.substring(0, 200)
+      });
+    }
+
+    if (data.response && data.response.body) {
+      const body = data.response.body;
+      const items = body.items || [];
+      const totalCnt = body.totalCount || 0;
+      
+      let bidItems = [];
+      if (Array.isArray(items)) {
+        bidItems = items;
+      } else if (items.item) {
+        bidItems = Array.isArray(items.item) ? items.item : [items.item];
+      }
+
+      res.status(200).json({
+        success: true,
+        data: {
+          items: bidItems,
+          totalCount: totalCnt,
+          pageNo: pageNo,
+          numOfRows: numOfRows
+        }
+      });
+    } else if (data.response && data.response.header) {
+      const resultCode = data.response.header.resultCode;
+      const resultMsg = data.response.header.resultMsg || '알 수 없는 오류';
+      
+      if (resultCode !== '00') {
+        return res.status(400).json({ 
+          error: `API 에러 (${resultCode}): ${resultMsg}` 
+        });
+      }
+      
+      res.status(200).json({
+        success: true,
+        data: {
+          items: [],
+          totalCount: 0,
+          pageNo: pageNo,
+          numOfRows: numOfRows
+        }
+      });
+    } else {
+      return res.status(500).json({ 
+        error: '예상하지 못한 응답 구조입니다.' 
+      });
+    }
+
+  } catch (error) {
+    console.error('[Bid Openg Result] Error:', error.message);
+    res.status(500).json({ 
+      error: `서버 오류: ${error.message}` 
+    });
+  }
+});
+
+// 최종낙찰자 검색 API 프록시 엔드포인트
+app.get('/api/bid-award', async (req, res) => {
+  const keyword = req.query.keyword || '';
+  const pageNo = parseInt(req.query.pageNo) || 1;
+  const numOfRows = parseInt(req.query.numOfRows) || 10;
+  const userId = req.query.userId || '';
+  const userEmail = req.query.userEmail || '';
+  const userName = req.query.userName || '';
+
+  const serviceKey = process.env.G2B_API_KEY || '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
+  
+  if (!serviceKey || serviceKey.trim() === '') {
+    return res.status(500).json({ 
+      error: 'API 키가 설정되지 않았습니다. 관리자에게 문의하세요.' 
+    });
+  }
+
+  const baseUrl = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
+  const apiPath = 'getBidPblancListInfoThngPPSSrch'; // 최종낙찰자 조회 (입찰공고와 동일한 API 사용, 필터로 구분)
+  
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 30);
+  
+  const formatDate = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}${m}${d}`;
+  };
+
+  const inqryBgnDt = formatDate(startDate) + '0000';
+  const inqryEndDt = formatDate(today) + '2359';
+
+  const apiUrl = new URL(`${baseUrl}/${apiPath}`);
+  apiUrl.searchParams.append('ServiceKey', serviceKey);
+  apiUrl.searchParams.append('pageNo', pageNo.toString());
+  apiUrl.searchParams.append('numOfRows', numOfRows.toString());
+  apiUrl.searchParams.append('inqryDiv', '1');
+  apiUrl.searchParams.append('inqryBgnDt', inqryBgnDt);
+  apiUrl.searchParams.append('inqryEndDt', inqryEndDt);
+  apiUrl.searchParams.append('type', 'json');
+  
+  if (keyword.trim()) {
+    apiUrl.searchParams.append('bidNtceNm', keyword.trim());
+  }
+
+  console.log(`[Bid Award] Request: keyword="${keyword}", pageNo=${pageNo}`);
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    let apiResponse;
+    try {
+      apiResponse = await fetch(apiUrl.toString(), {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { 'Accept': 'application/json' }
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        return res.status(504).json({ error: 'API 요청 시간이 초과되었습니다.' });
+      }
+      throw fetchError;
+    }
+
+    if (!apiResponse.ok) {
+      const errorText = await apiResponse.text();
+      return res.status(apiResponse.status).json({ 
+        error: `API 요청 실패: HTTP ${apiResponse.status}`,
+        details: errorText.substring(0, 200)
+      });
+    }
+
+    let responseText = await apiResponse.text();
+    let data;
+    
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseErr) {
+      return res.status(500).json({ 
+        error: 'API 응답을 파싱할 수 없습니다.',
+        details: responseText.substring(0, 200)
+      });
+    }
+
+    if (data.response && data.response.body) {
+      const body = data.response.body;
+      const items = body.items || [];
+      const totalCnt = body.totalCount || 0;
+      
+      // 최종낙찰자만 필터링 (낙찰자 정보가 있는 항목만)
+      let bidItems = [];
+      if (Array.isArray(items)) {
+        bidItems = items.filter(item => item.sucsfbidAmt || item.sucsfbidAmt === '0');
+      } else if (items.item) {
+        const itemArray = Array.isArray(items.item) ? items.item : [items.item];
+        bidItems = itemArray.filter(item => item.sucsfbidAmt || item.sucsfbidAmt === '0');
+      }
+
+      res.status(200).json({
+        success: true,
+        data: {
+          items: bidItems,
+          totalCount: bidItems.length,
+          pageNo: pageNo,
+          numOfRows: numOfRows
+        }
+      });
+    } else if (data.response && data.response.header) {
+      const resultCode = data.response.header.resultCode;
+      const resultMsg = data.response.header.resultMsg || '알 수 없는 오류';
+      
+      if (resultCode !== '00') {
+        return res.status(400).json({ 
+          error: `API 에러 (${resultCode}): ${resultMsg}` 
+        });
+      }
+      
+      res.status(200).json({
+        success: true,
+        data: {
+          items: [],
+          totalCount: 0,
+          pageNo: pageNo,
+          numOfRows: numOfRows
+        }
+      });
+    } else {
+      return res.status(500).json({ 
+        error: '예상하지 못한 응답 구조입니다.' 
+      });
+    }
+
+  } catch (error) {
+    console.error('[Bid Award] Error:', error.message);
+    res.status(500).json({ 
+      error: `서버 오류: ${error.message}` 
+    });
+  }
+});
+
 // G2B API 프록시 엔드포인트 (기존)
 app.get('/api/bid', async (req, res) => {
   const targetUrl = req.query.url;
