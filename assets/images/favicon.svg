@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <style>
+        /* 브랜드 블루 색상으로 설정 */
+        .favicon-bg { fill: #0045a5; opacity: 0.1; }
+        .favicon-text { fill: #0045a5; }
+    </style>
+    <!-- 배경 원 -->
+    <circle cx="50" cy="50" r="45" class="favicon-bg"/>
+    <!-- 부청사 로고 텍스트 (부) -->
+    <text x="50" y="68" font-size="50" font-weight="bold" text-anchor="middle" class="favicon-text" font-family="'Noto Sans KR', sans-serif">부</text>
+</svg>
