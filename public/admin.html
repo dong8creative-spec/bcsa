@@ -31,12 +31,50 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
     
-    <!-- Firebase Configuration -->
+    <!-- Firebase Configuration (동기 로드) -->
     <script src="./assets/js/firebase-config.js"></script>
     
-    <!-- Firebase Services -->
+    <!-- Firebase Services (동기 로드) -->
     <script src="./assets/js/firebase-service.js"></script>
     <script src="./assets/js/auth-service.js"></script>
+    
+    <!-- Firebase 초기화 확인 스크립트 -->
+    <script>
+        // Firebase 초기화 확인 및 재시도 로직
+        (function() {
+            let attempts = 0;
+            const maxAttempts = 50; // 최대 5초 대기
+            
+            const checkFirebaseInit = setInterval(() => {
+                attempts++;
+                
+                if (window.firebaseServices && window.firebaseServices.db && window.firebaseServices.auth) {
+                    clearInterval(checkFirebaseInit);
+                    console.log('✅ Firebase initialization confirmed');
+                    
+                    // 초기화 완료 이벤트 발생
+                    window.dispatchEvent(new CustomEvent('firebaseInitialized'));
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkFirebaseInit);
+                    console.error('❌ Firebase initialization timeout after', attempts * 100, 'ms');
+                    console.error('Firebase SDK loaded:', typeof firebase !== 'undefined');
+                    console.error('firebaseServices:', window.firebaseServices);
+                    console.error('firebaseService:', window.firebaseService);
+                    console.error('authService:', window.authService);
+                    
+                    // 초기화 실패 이벤트 발생
+                    window.dispatchEvent(new CustomEvent('firebaseInitFailed', {
+                        detail: {
+                            firebaseSDK: typeof firebase !== 'undefined',
+                            firebaseServices: !!window.firebaseServices,
+                            firebaseService: !!window.firebaseService,
+                            authService: !!window.authService
+                        }
+                    }));
+                }
+            }, 100);
+        })();
+    </script>
 
     <!-- 설정 파일 -->
     <script src="./assets/js/config.js"></script>
@@ -1941,6 +1979,9 @@
             // 활성 메뉴 (사이드바)
             const [activeMenu, setActiveMenu] = useState('dashboard');
             
+            // Firebase 초기화 상태
+            const [firebaseReady, setFirebaseReady] = useState(false);
+            
             // Firebase 데이터 상태
             const [users, setUsers] = useState([]);
             const [seminars, setSeminars] = useState([]);
@@ -1975,11 +2016,15 @@
             
             // 관리자 계정 자동 생성 (햇반 계정)
             useEffect(() => {
+                if (!firebaseReady) {
+                    console.log('⏳ Waiting for Firebase initialization before creating admin account...');
+                    return;
+                }
+                
                 const createAdminAccount = async () => {
-                    // Firebase 서비스가 초기화될 때까지 대기
+                    // Firebase 서비스 확인
                     if (!window.firebaseServices || !window.firebaseService || !window.authService) {
-                        // 1초 후 다시 시도
-                        setTimeout(createAdminAccount, 1000);
+                        console.error('❌ Firebase services not available');
                         return;
                     }
                     
@@ -2025,13 +2070,16 @@
                 
                 // 페이지 로드 후 관리자 계정 생성 시도
                 createAdminAccount();
-            }, []);
+            }, [firebaseReady]);
             
             // 관리자 인증 체크 (초기 로드 시 - 로그인된 사용자 확인)
             useEffect(() => {
+                if (!firebaseReady) return;
+                
                 const checkAuth = async () => {
-                    // Firebase 서비스 초기화 대기
+                    // Firebase 서비스 확인
                     if (!window.firebaseServices || !window.firebaseServices.auth) {
+                        console.error('❌ Firebase Auth not available');
                         return;
                     }
                     
@@ -2062,7 +2110,7 @@
                     
                     return () => unsubscribe();
                 }
-            }, []);
+            }, [firebaseReady]);
             
             // Firebase 초기화 대기 함수
             const waitForFirebase = () => {
@@ -2087,14 +2135,13 @@
             
             // Firebase 데이터 로드
             useEffect(() => {
-                if (!isAuthenticated) return;
+                if (!isAuthenticated || !firebaseReady) return;
                 
                 const loadFirebaseData = async () => {
                     setLoading(true);
                     
-                    // Firebase 초기화 대기
-                    const isInitialized = await waitForFirebase();
-                    if (!isInitialized) {
+                    // Firebase 서비스 확인 (이미 firebaseReady가 true이므로 추가 확인만)
+                    if (!window.firebaseServices || !window.firebaseService || !window.firebaseServices.db) {
                         alert('Firebase 서비스가 초기화되지 않았습니다. 페이지를 새로고침해주세요.');
                         setLoading(false);
                         return;
@@ -2166,11 +2213,11 @@
                 };
                 
                 loadFirebaseData();
-            }, [isAuthenticated]);
+            }, [isAuthenticated, firebaseReady]);
             
             // 실시간 업데이트 구독
             useEffect(() => {
-                if (!isAuthenticated) return;
+                if (!isAuthenticated || !firebaseReady) return;
                 
                 const setupSubscriptions = async () => {
                     // Firebase 초기화 대기

@@ -3655,7 +3655,7 @@ const BidSearchView = ({ onBack, currentUser }) => {
     const checkProxyServer = async (baseUrl) => {
         try {
             // CORS 프록시인 경우 간단한 테스트 요청
-            if (baseUrl.includes('allorigins.win') || baseUrl.includes('cors-anywhere') || baseUrl.includes('corsproxy.io')) {
+            if (baseUrl.includes('allorigins.win') || baseUrl.includes('cors-anywhere') || baseUrl.includes('corsproxy.io') || baseUrl.includes('codetabs.com')) {
                 // CORS 프록시는 실제 API 호출로 테스트 (간단한 요청)
                 const g2bApiKey = CONFIG.G2B_API?.API_KEY || '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
                 const g2bBaseUrl = CONFIG.G2B_API?.BASE_URL || 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
@@ -3720,18 +3720,19 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 }
                 
                 // 3. 프로덕션 환경
-                // 호스팅케이알: CORS 프록시 서비스 사용
+                // 호스팅케이알: CORS 프록시 서비스 사용 (여러 대안 시도)
                 // Firebase Hosting: Firebase Functions 사용 (fallback)
                 const hostname = window.location.hostname;
                 if (hostname === 'bcsa.co.kr' || hostname === 'www.bcsa.co.kr') {
-                    // 호스팅케이알 - CORS 프록시 서비스 사용
-                    return 'https://api.allorigins.win/raw?url=';
+                    // 호스팅케이알 - CORS 프록시 서비스 사용 (여러 대안)
+                    // 우선순위: corsproxy.io > codetabs > allorigins.win
+                    return 'https://corsproxy.io/?';
                 } else if (hostname.includes('web.app') || hostname.includes('firebaseapp.com')) {
                     // Firebase Hosting - Firebase Functions 사용
                     return 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
                 } else {
                     // 기타 도메인 - CORS 프록시 시도
-                    return 'https://api.allorigins.win/raw?url=';
+                    return 'https://corsproxy.io/?';
                 }
             };
 
@@ -3762,7 +3763,8 @@ const BidSearchView = ({ onBack, currentUser }) => {
             // CORS 프록시인지 확인
             const isCorsProxy = cleanProxyUrl.includes('allorigins.win') || 
                                cleanProxyUrl.includes('cors-anywhere') ||
-                               cleanProxyUrl.includes('corsproxy.io');
+                               cleanProxyUrl.includes('corsproxy.io') ||
+                               cleanProxyUrl.includes('codetabs.com');
             
             if (cleanProxyUrl.includes('cloudfunctions.net')) {
                 // Firebase Functions
@@ -3820,8 +3822,17 @@ const BidSearchView = ({ onBack, currentUser }) => {
                     g2bUrl.searchParams.append('bidNtceNm', searchKeyword);
                 }
                 
-                // CORS 프록시로 감싸기
-                apiEndpoint = `${cleanProxyUrl}${encodeURIComponent(g2bUrl.toString())}`;
+                // CORS 프록시로 감싸기 (프록시 서비스별 URL 형식 차이 처리)
+                if (cleanProxyUrl.includes('corsproxy.io')) {
+                    // corsproxy.io 형식: https://corsproxy.io/?URL
+                    apiEndpoint = `${cleanProxyUrl}${encodeURIComponent(g2bUrl.toString())}`;
+                } else if (cleanProxyUrl.includes('codetabs.com')) {
+                    // codetabs 형식: https://api.codetabs.com/v1/proxy?quest=URL
+                    apiEndpoint = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(g2bUrl.toString())}`;
+                } else {
+                    // allorigins.win 등 기타 형식
+                    apiEndpoint = `${cleanProxyUrl}${encodeURIComponent(g2bUrl.toString())}`;
+                }
             } else {
                 // 로컬 Express 서버
                 baseUrl = cleanProxyUrl;
@@ -3925,38 +3936,105 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 throw new Error(`잘못된 API URL 형식입니다: ${proxyRequestUrl}`);
             }
 
+            // CORS 프록시 fallback 목록 (여러 프록시 서비스 시도)
+            const corsProxyFallbacks = [
+                'https://corsproxy.io/?',
+                'https://api.codetabs.com/v1/proxy?quest=',
+                'https://api.allorigins.win/raw?url='
+            ];
+            
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 30000);
 
             let response;
-            try {
-                response = await fetch(proxyRequestUrl, {
-                    method: 'GET',
-                    signal: controller.signal,
-                    headers: {
-                        'Accept': 'application/json'
+            let lastError = null;
+            
+            // CORS 프록시를 사용하는 경우 여러 대안 시도
+            if (isCorsProxy) {
+                let proxyIndex = 0;
+                if (cleanProxyUrl.includes('corsproxy.io')) proxyIndex = 0;
+                else if (cleanProxyUrl.includes('codetabs.com')) proxyIndex = 1;
+                else if (cleanProxyUrl.includes('allorigins.win')) proxyIndex = 2;
+                
+                // 현재 프록시부터 시작하여 순차적으로 시도
+                for (let i = proxyIndex; i < corsProxyFallbacks.length; i++) {
+                    try {
+                        const fallbackProxy = corsProxyFallbacks[i];
+                        let fallbackUrl;
+                        
+                        if (fallbackProxy.includes('corsproxy.io')) {
+                            fallbackUrl = `${fallbackProxy}${encodeURIComponent(g2bUrl.toString())}`;
+                        } else if (fallbackProxy.includes('codetabs.com')) {
+                            fallbackUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(g2bUrl.toString())}`;
+                        } else {
+                            fallbackUrl = `${fallbackProxy}${encodeURIComponent(g2bUrl.toString())}`;
+                        }
+                        
+                        console.log(`🔄 Trying CORS proxy ${i + 1}/${corsProxyFallbacks.length}: ${fallbackProxy}`);
+                        
+                        const testController = new AbortController();
+                        const testTimeout = setTimeout(() => testController.abort(), 10000);
+                        
+                        response = await fetch(fallbackUrl, {
+                            method: 'GET',
+                            signal: testController.signal,
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        clearTimeout(testTimeout);
+                        
+                        if (response.ok) {
+                            console.log(`✅ CORS proxy ${i + 1} succeeded: ${fallbackProxy}`);
+                            clearTimeout(timeoutId);
+                            break; // 성공하면 루프 종료
+                        } else {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+                    } catch (error) {
+                        lastError = error;
+                        console.warn(`❌ CORS proxy ${i + 1} failed: ${corsProxyFallbacks[i]}`, error.message);
+                        if (i === corsProxyFallbacks.length - 1) {
+                            // 모든 프록시 실패
+                            clearTimeout(timeoutId);
+                            throw new Error('모든 CORS 프록시 서버에 연결할 수 없습니다. 네트워크 연결을 확인하거나 잠시 후 다시 시도해주세요.');
+                        }
+                        // 다음 프록시 시도
+                        continue;
                     }
-                });
-                clearTimeout(timeoutId);
-            } catch (fetchError) {
-                clearTimeout(timeoutId);
-                if (fetchError.name === 'AbortError') {
-                    throw new Error('요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
                 }
-                if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('NetworkError') || fetchError.message.includes('CORS')) {
-                    let errorMsg;
-                    if (PROXY_SERVER_URL.includes('cloudfunctions.net')) {
-                        errorMsg = '프록시 서버에 연결할 수 없습니다. Firebase Functions가 배포되었는지 확인해주세요.';
-                    } else if (PROXY_SERVER_URL.includes('localhost')) {
-                        errorMsg = `프록시 서버에 연결할 수 없습니다.\n\n로컬 개발 서버를 시작하려면:\n1. 터미널에서 "npm run server" 실행\n2. 서버가 포트 3001에서 실행되는지 확인\n\n또는 전체 서버 시작:\n- "npm run start" (http-server + proxy server)\n- 브라우저에서 "http://localhost:3000/index.html" 접속`;
-                    } else if (PROXY_SERVER_URL.includes('allorigins.win') || PROXY_SERVER_URL.includes('cors-anywhere') || PROXY_SERVER_URL.includes('corsproxy.io')) {
-                        errorMsg = 'CORS 프록시 서버에 연결할 수 없습니다.\n\n네트워크 연결을 확인하거나 잠시 후 다시 시도해주세요.';
-                    } else {
-                        errorMsg = '프록시 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.';
+            } else {
+                // CORS 프록시가 아닌 경우 기존 로직 사용
+                try {
+                    response = await fetch(proxyRequestUrl, {
+                        method: 'GET',
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+                    clearTimeout(timeoutId);
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
                     }
-                    throw new Error(errorMsg);
+                    if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('NetworkError') || fetchError.message.includes('CORS')) {
+                        let errorMsg;
+                        if (PROXY_SERVER_URL.includes('cloudfunctions.net')) {
+                            errorMsg = '프록시 서버에 연결할 수 없습니다. Firebase Functions가 배포되었는지 확인해주세요.';
+                        } else if (PROXY_SERVER_URL.includes('localhost')) {
+                            errorMsg = `프록시 서버에 연결할 수 없습니다.\n\n로컬 개발 서버를 시작하려면:\n1. 터미널에서 "npm run server" 실행\n2. 서버가 포트 3001에서 실행되는지 확인\n\n또는 전체 서버 시작:\n- "npm run start" (http-server + proxy server)\n- 브라우저에서 "http://localhost:3000/index.html" 접속`;
+                        } else if (PROXY_SERVER_URL.includes('allorigins.win') || PROXY_SERVER_URL.includes('cors-anywhere') || PROXY_SERVER_URL.includes('corsproxy.io') || PROXY_SERVER_URL.includes('codetabs.com')) {
+                            errorMsg = '모든 CORS 프록시 서버에 연결할 수 없습니다.\n\n네트워크 연결을 확인하거나 잠시 후 다시 시도해주세요.\n\n또는 Firebase Functions를 사용하도록 설정을 변경할 수 있습니다.';
+                        } else {
+                            errorMsg = '프록시 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.';
+                        }
+                        throw new Error(errorMsg);
+                    }
+                    throw new Error(`네트워크 오류: ${fetchError.message}`);
                 }
-                throw new Error(`네트워크 오류: ${fetchError.message}`);
             }
 
             if (!response.ok) {
