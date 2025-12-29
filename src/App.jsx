@@ -13,8 +13,6 @@ import { authService } from './services/authService';
 import { CONFIG } from './config';
 import { calculateStatus, fetchSheetData } from './utils';
 
-// Icons 객체 생성 (Lucide 아이콘과 커스텀 아이콘 통합)
-// Restaurant, MessageSquare, Instagram은 lucide-react에 없으므로 아래 커스텀 SVG로 정의됨
 const Icons = {
     Menu, Search, MapPin, Calendar, Users, ArrowRight, Star, CheckCircle, X, Info, ArrowLeft,
     Clock, Settings, Plus, Trash, Edit, Lock, Unlock, Eye, EyeOff, Key, Tag, List,
@@ -23,7 +21,6 @@ const Icons = {
     FileSearch, Building2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
     ExternalLink, ChevronUp, ChevronDown,
     Google, Apple, Facebook, Youtube
-    // Restaurant, MessageSquare, Instagram은 아래에서 커스텀 SVG로 추가됨
 };
 
 const PORTONE_IMP_CODE = CONFIG.PORTONE?.IMP_CODE || 'imp00000000';
@@ -33,8 +30,6 @@ const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d
 const uploadImageToImgBB = async (base64Image, fileName) => {
     try {
         const base64Data = base64Image.split(',')[1] || base64Image;
-        
-        // FormData 형식으로 전송
         const formData = new FormData();
         formData.append('key', IMGBB_API_KEY);
         formData.append('image', base64Data);
@@ -72,7 +67,6 @@ const uploadLogoOrFaviconToGitHub = async (file, type, options = {}) => {
             base64Image = await fileToBase64(file);
         }
         
-        // 파일 다운로드 링크 생성
         const blob = await fetch(base64Image).then(r => r.blob());
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -3766,6 +3760,9 @@ const BidSearchView = ({ onBack, currentUser }) => {
                                cleanProxyUrl.includes('corsproxy.io') ||
                                cleanProxyUrl.includes('codetabs.com');
             
+            // g2bUrl을 상위 스코프에 선언 (fallback 로직에서 사용하기 위해)
+            let g2bUrl = null;
+            
             if (cleanProxyUrl.includes('cloudfunctions.net')) {
                 // Firebase Functions
                 baseUrl = cleanProxyUrl;
@@ -3786,9 +3783,9 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 if (searchType === '개찰결과') {
                     g2bApiPath = 'getOpengResultListInfoThngPPSSrch';
                 } else if (searchType === '최종낙찰자') {
-                    g2bApiPath = 'getBidPblancListInfoThngPPSSrch'; // 입찰공고와 동일
+                    g2bApiPath = 'getBidPblancListInfoThngPPSSrch';
                 } else {
-                    g2bApiPath = 'getBidPblancListInfoThngPPSSrch'; // 입찰공고
+                    g2bApiPath = 'getBidPblancListInfoThngPPSSrch';
                 }
                 
                 // 날짜 범위 설정 (최근 30일)
@@ -3807,7 +3804,7 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 const inqryEndDt = formatDate(today) + '2359';
                 
                 // 조달청 API URL 구성
-                const g2bUrl = new URL(`${g2bBaseUrl}/${g2bApiPath}`);
+                g2bUrl = new URL(`${g2bBaseUrl}/${g2bApiPath}`);
                 g2bUrl.searchParams.append('ServiceKey', g2bApiKey);
                 g2bUrl.searchParams.append('pageNo', page.toString());
                 g2bUrl.searchParams.append('numOfRows', itemsPerPage.toString());
@@ -3824,13 +3821,10 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 
                 // CORS 프록시로 감싸기 (프록시 서비스별 URL 형식 차이 처리)
                 if (cleanProxyUrl.includes('corsproxy.io')) {
-                    // corsproxy.io 형식: https://corsproxy.io/?URL
                     apiEndpoint = `${cleanProxyUrl}${encodeURIComponent(g2bUrl.toString())}`;
                 } else if (cleanProxyUrl.includes('codetabs.com')) {
-                    // codetabs 형식: https://api.codetabs.com/v1/proxy?quest=URL
                     apiEndpoint = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(g2bUrl.toString())}`;
                 } else {
-                    // allorigins.win 등 기타 형식
                     apiEndpoint = `${cleanProxyUrl}${encodeURIComponent(g2bUrl.toString())}`;
                 }
             } else {
@@ -3951,6 +3945,11 @@ const BidSearchView = ({ onBack, currentUser }) => {
             
             // CORS 프록시를 사용하는 경우 여러 대안 시도
             if (isCorsProxy) {
+                // g2bUrl이 없으면 에러
+                if (!g2bUrl) {
+                    throw new Error('조달청 API URL 구성에 실패했습니다.');
+                }
+                
                 let proxyIndex = 0;
                 if (cleanProxyUrl.includes('corsproxy.io')) proxyIndex = 0;
                 else if (cleanProxyUrl.includes('codetabs.com')) proxyIndex = 1;
@@ -3970,8 +3969,6 @@ const BidSearchView = ({ onBack, currentUser }) => {
                             fallbackUrl = `${fallbackProxy}${encodeURIComponent(g2bUrl.toString())}`;
                         }
                         
-                        console.log(`🔄 Trying CORS proxy ${i + 1}/${corsProxyFallbacks.length}: ${fallbackProxy}`);
-                        
                         const testController = new AbortController();
                         const testTimeout = setTimeout(() => testController.abort(), 10000);
                         
@@ -3986,15 +3983,13 @@ const BidSearchView = ({ onBack, currentUser }) => {
                         clearTimeout(testTimeout);
                         
                         if (response.ok) {
-                            console.log(`✅ CORS proxy ${i + 1} succeeded: ${fallbackProxy}`);
                             clearTimeout(timeoutId);
-                            break; // 성공하면 루프 종료
+                            break;
                         } else {
                             throw new Error(`HTTP ${response.status}`);
                         }
                     } catch (error) {
                         lastError = error;
-                        console.warn(`❌ CORS proxy ${i + 1} failed: ${corsProxyFallbacks[i]}`, error.message);
                         if (i === corsProxyFallbacks.length - 1) {
                             // 모든 프록시 실패
                             clearTimeout(timeoutId);
@@ -6982,34 +6977,26 @@ const App = () => {
         }
     }, []);
     
-    // 테스트 계정 필터링 함수
-    const filterTestAccounts = (users) => {
+    // 승인된 회원만 필터링 (테스트 계정 필터링 제거)
+    const filterApprovedMembers = (users) => {
         if (!Array.isArray(users)) return [];
         
+        // approvalStatus가 'approved'이거나 없는 회원만 표시
         return users.filter(user => {
-            // 테스트 계정 제외
-            const isTestAccount = 
-                user.name === '햇반' || 
-                user.email === 'haetban@bcsa-b190f.firebaseapp.com' ||
-                user.name === '람람' ||
-                user.email === 'admin@busan-ycc.com';
-            
-            // 실제 회원가입 완료된 사용자만 (approvalStatus가 없으면 기존 데이터이므로 포함)
             const isApproved = !user.approvalStatus || user.approvalStatus === 'approved';
-            
-            return !isTestAccount && isApproved;
+            return isApproved;
         });
     };
 
     // 사용자 데이터 로드 (페이지 로드 시)
     useEffect(() => {
-        // Load users from Firebase
+        // Load users from Firebase (우선 사용)
         if (firebaseService && firebaseService.subscribeUsers) {
             const unsubscribe = firebaseService.subscribeUsers((users) => {
-                const filteredUsers = filterTestAccounts(users);
+                const filteredUsers = filterApprovedMembers(users);
                 
                 setUsers(filteredUsers);
-                // membersData도 업데이트 (AllMembersView에서 사용)
+                // membersData도 업데이트 (AllMembersView에서 사용) - Firebase 데이터 우선
                 setMembersData(filteredUsers);
             });
             
@@ -7017,7 +7004,7 @@ const App = () => {
         } else {
             loadUsersFromStorage().then(users => {
                 if (users && users.length > 0) {
-                    const filteredUsers = filterTestAccounts(users);
+                    const filteredUsers = filterApprovedMembers(users);
                     setUsers(filteredUsers);
                     setMembersData(filteredUsers);
                 }
@@ -7251,18 +7238,19 @@ const App = () => {
         }
     }, [currentView, seminarsData]);
     
-    // Load members from Firebase
+    // Load members from Firebase (우선 사용 - 애드민과 동기화)
     useEffect(() => {
         if (firebaseService && firebaseService.subscribeUsers) {
             const unsubscribe = firebaseService.subscribeUsers((users) => {
-                const members = filterTestAccounts(users);
+                const members = filterApprovedMembers(users);
+                // Firebase 데이터를 우선적으로 사용하여 애드민과 동기화
                 setMembersData(members);
             });
             return () => unsubscribe();
         } else {
             if (firebaseService && firebaseService.getUsers) {
                 firebaseService.getUsers().then(users => {
-                    const members = filterTestAccounts(users);
+                    const members = filterApprovedMembers(users);
                     setMembersData(members);
                 });
             }
@@ -7282,7 +7270,6 @@ const App = () => {
                             setMyPosts(communityPosts.filter(p => p.author === userDoc.name));
                         }
                     } catch (error) {
-                        console.error('사용자 데이터 로드 실패:', error);
                     }
                 } else {
                     // 사용자가 로그아웃했으면 상태 초기화
@@ -7464,8 +7451,8 @@ const App = () => {
                     return member;
                 }).filter(m => m.name && m.name.trim() !== '');
                 
-                // 테스트 계정 필터링 적용
-                const filteredMembers = filterTestAccounts(members);
+                // 승인된 회원만 필터링
+                const filteredMembers = filterApprovedMembers(members);
                 return filteredMembers;
             }
             return null;
@@ -7570,40 +7557,53 @@ const App = () => {
 
     useEffect(() => {
         const loadCSVData = async () => {
-            const csvUrl = CONFIG.SHEET_URLS?.MEMBER || MEMBER_SHEET_URL;
+            // Firebase 데이터가 이미 로드되었으면 CSV는 보조로만 사용 (동기화 유지)
+            const hasFirebaseData = firebaseService && (firebaseService.subscribeUsers || firebaseService.getUsers);
             
-            if (csvUrl) {
-                const csvMembers = await loadMembersFromCSV();
-                if (csvMembers && csvMembers.length > 0) {
-                    // 이미 loadMembersFromCSV에서 필터링이 적용됨
-                    setMembersData(csvMembers);
-                    try {
-                        localStorage.setItem('busan_ycc_members', JSON.stringify(csvMembers));
-                    } catch (e) {}
+            if (!hasFirebaseData) {
+                const csvUrl = CONFIG.SHEET_URLS?.MEMBER || MEMBER_SHEET_URL;
+                
+                if (csvUrl) {
+                    const csvMembers = await loadMembersFromCSV();
+                    if (csvMembers && csvMembers.length > 0) {
+                        // 이미 loadMembersFromCSV에서 필터링이 적용됨
+                        // Firebase 데이터가 없을 때만 CSV 데이터 사용
+                        if (membersData.length === 0) {
+                            setMembersData(csvMembers);
+                        }
+                        try {
+                            localStorage.setItem('busan_ycc_members', JSON.stringify(csvMembers));
+                        } catch {}
+                    } else {
+                        try {
+                            const stored = localStorage.getItem('busan_ycc_members');
+                            if (stored) {
+                                const members = JSON.parse(stored);
+                                if (members && members.length > 0) {
+                                    // localStorage에서 로드할 때도 필터링 적용
+                                    const filteredMembers = filterApprovedMembers(members);
+                                    if (membersData.length === 0) {
+                                        setMembersData(filteredMembers);
+                                    }
+                                }
+                            }
+                        } catch {}
+                    }
                 } else {
                     try {
                         const stored = localStorage.getItem('busan_ycc_members');
                         if (stored) {
                             const members = JSON.parse(stored);
                             if (members && members.length > 0) {
-                                // localStorage에서 로드할 때도 필터링 적용
-                                const filteredMembers = filterTestAccounts(members);
-                                setMembersData(filteredMembers);
+                                const filteredMembers = filterApprovedMembers(members);
+                                if (membersData.length === 0) {
+                                    setMembersData(filteredMembers);
+                                }
                             }
                         }
-                    } catch (e) {}
-                }
-            } else {
-                try {
-                    const stored = localStorage.getItem('busan_ycc_members');
-                    if (stored) {
-                        const members = JSON.parse(stored);
-                        if (members && members.length > 0) {
-                            setMembersData(members);
-                        }
+                    } catch (e) {
+                        
                     }
-                } catch (e) {
-                    
                 }
             }
         };
@@ -7940,7 +7940,7 @@ const App = () => {
         window.resetPopupShown = () => {
             try {
                 localStorage.removeItem('busan_ycc_popup_shown');
-            } catch (e) {}
+            } catch {}
         };
     }
     
@@ -7994,13 +7994,10 @@ const App = () => {
             return;
         }
         
-        // 팝업 닫기 및 프로그램 신청 페이지로 이동
+        // 팝업 닫기 및 신청 모달 표시
         closePopupAndMarkAsShown();
-        setCurrentView('allSeminars');
-        setSelectedSeminar(program);
-        setTimeout(() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }, 100);
+        setApplySeminar(program);
+        handleOpenApplyModal(program);
     };
 
     // 팝업 신청 제출
@@ -8420,12 +8417,10 @@ END:VCALENDAR`;
             return null;
         }
         if (currentView === 'allMembers') {
-            // approvalStatus가 'approved'이거나 없는 회원만 표시, 햇반 계정 제외
+            // approvalStatus가 'approved'이거나 없는 회원만 표시 (Firebase와 동기화)
             const displayMembers = membersData.filter(m => {
-                const isApproved = m.approvalStatus === 'approved' || !m.approvalStatus;
-                const isHaetban = m.name === '햇반' || 
-                                 m.email === 'haetban@bcsa-b190f.firebaseapp.com';
-                return isApproved && !isHaetban;
+                const isApproved = !m.approvalStatus || m.approvalStatus === 'approved';
+                return isApproved;
             });
             return <AllMembersView onBack={() => setCurrentView('home')} members={displayMembers} currentUser={currentUser} />;
         }

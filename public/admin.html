@@ -50,17 +50,11 @@
                 
                 if (window.firebaseServices && window.firebaseServices.db && window.firebaseServices.auth) {
                     clearInterval(checkFirebaseInit);
-                    console.log('✅ Firebase initialization confirmed');
                     
                     // 초기화 완료 이벤트 발생
                     window.dispatchEvent(new CustomEvent('firebaseInitialized'));
                 } else if (attempts >= maxAttempts) {
                     clearInterval(checkFirebaseInit);
-                    console.error('❌ Firebase initialization timeout after', attempts * 100, 'ms');
-                    console.error('Firebase SDK loaded:', typeof firebase !== 'undefined');
-                    console.error('firebaseServices:', window.firebaseServices);
-                    console.error('firebaseService:', window.firebaseService);
-                    console.error('authService:', window.authService);
                     
                     // 초기화 실패 이벤트 발생
                     window.dispatchEvent(new CustomEvent('firebaseInitFailed', {
@@ -949,7 +943,6 @@
                 
                 return { isAdmin: false, reason: '관리자 권한이 없습니다.' };
             } catch (error) {
-                console.error('관리자 권한 확인 오류:', error);
                 return { isAdmin: false, reason: '권한 확인 중 오류가 발생했습니다.' };
             }
         };
@@ -2010,21 +2003,15 @@
                 '입찰공고': '입찰공고',
                 '후원': '후원',
             });
-            // 기존 코드 호환성을 위한 변수들 (사용하지 않음)
-            const [logs, setLogs] = useState([]);
-            const currentUser = null; // 호환성 유지 (더 이상 사용하지 않음)
             
             // 관리자 계정 자동 생성 (햇반 계정)
             useEffect(() => {
                 if (!firebaseReady) {
-                    console.log('⏳ Waiting for Firebase initialization before creating admin account...');
                     return;
                 }
                 
                 const createAdminAccount = async () => {
-                    // Firebase 서비스 확인
                     if (!window.firebaseServices || !window.firebaseService || !window.authService) {
-                        console.error('❌ Firebase services not available');
                         return;
                     }
                     
@@ -2036,7 +2023,6 @@
                         try {
                             await window.firebaseServices.auth.signInWithEmailAndPassword(adminEmail, adminPassword);
                             // 로그인 성공 = 계정 존재
-                            console.log('✅ 관리자 계정(햇반)이 이미 존재합니다.');
                         } catch (signInError) {
                             // 계정이 없거나 비밀번호가 틀린 경우
                             if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/wrong-password') {
@@ -2057,14 +2043,11 @@
                                         updatedAt: new Date().toISOString()
                                     });
                                     
-                                    console.log('✅ 관리자 계정(햇반)이 생성되었습니다.');
                                 } catch (createError) {
-                                    console.error('관리자 계정 생성 오류:', createError);
                                 }
                             }
                         }
                     } catch (error) {
-                        console.error('관리자 계정 확인/생성 오류:', error);
                     }
                 };
                 
@@ -2079,7 +2062,6 @@
                 const checkAuth = async () => {
                     // Firebase 서비스 확인
                     if (!window.firebaseServices || !window.firebaseServices.auth) {
-                        console.error('❌ Firebase Auth not available');
                         return;
                     }
                     
@@ -2122,11 +2104,9 @@
                         attempts++;
                         if (window.firebaseServices && window.firebaseService && window.firebaseServices.db) {
                             clearInterval(checkInterval);
-                            console.log('✅ Firebase services initialized');
                             resolve(true);
                         } else if (attempts >= maxAttempts) {
                             clearInterval(checkInterval);
-                            console.error('❌ Firebase services initialization timeout');
                             resolve(false);
                         }
                     }, 100);
@@ -2152,52 +2132,30 @@
                     
                     const attemptLoad = async () => {
                         try {
-                            console.log('🔄 Loading Firebase data...');
-                            
-                            // Users 컬렉션 로드
                             if (window.firebaseService && window.firebaseService.getUsers) {
                                 const usersData = await window.firebaseService.getUsers();
-                                console.log('✅ Users loaded:', usersData?.length || 0);
                                 setUsers(usersData || []);
-                                setMembers(usersData || []); // 호환성 유지
-                            } else {
-                                console.error('❌ firebaseService.getUsers is not available');
+                                setMembers(usersData || []);
                             }
                             
-                            // Seminars 컬렉션 로드
                             if (window.firebaseService && window.firebaseService.getSeminars) {
                                 const seminarsData = await window.firebaseService.getSeminars();
-                                console.log('✅ Seminars loaded:', seminarsData?.length || 0);
                                 setSeminars(seminarsData || []);
-                            } else {
-                                console.error('❌ firebaseService.getSeminars is not available');
                             }
                             
-                            // Posts 컬렉션 로드
                             if (window.firebaseService && window.firebaseService.getPosts) {
                                 const postsData = await window.firebaseService.getPosts();
-                                console.log('✅ Posts loaded:', postsData?.length || 0);
                                 setPosts(postsData || []);
-                            } else {
-                                console.error('❌ firebaseService.getPosts is not available');
                             }
                             
-                            // Settings 컬렉션 로드
                             if (window.firebaseService && window.firebaseService.getSettings) {
                                 const settingsData = await window.firebaseService.getSettings();
-                                console.log('✅ Settings loaded');
                                 setSettings(settingsData || {});
-                            } else {
-                                console.error('❌ firebaseService.getSettings is not available');
                             }
-                            
-                            console.log('✅ All Firebase data loaded successfully');
                         } catch (error) {
-                            console.error('❌ Error loading Firebase data:', error);
                             retryCount++;
                             
                             if (retryCount < maxRetries) {
-                                console.log(`🔄 Retrying... (${retryCount}/${maxRetries})`);
                                 setTimeout(attemptLoad, 1000 * retryCount); // 지수 백오프
                             } else {
                                 alert('데이터를 불러오는 중 오류가 발생했습니다: ' + (error.message || error) + '\n\n브라우저 콘솔을 확인해주세요.');
@@ -2223,7 +2181,6 @@
                     // Firebase 초기화 대기
                     const isInitialized = await waitForFirebase();
                     if (!isInitialized) {
-                        console.error('❌ Firebase services not initialized for real-time updates');
                         return;
                     }
                     
@@ -2232,49 +2189,28 @@
                     let unsubscribePosts = null;
                     
                     try {
-                        console.log('🔄 Setting up real-time subscriptions...');
-                        
-                        // Users 실시간 구독
                         if (window.firebaseService && window.firebaseService.subscribeUsers) {
                             unsubscribeUsers = window.firebaseService.subscribeUsers((users) => {
-                                console.log('📊 Users updated:', users?.length || 0);
                                 setUsers(users || []);
-                                setMembers(users || []); // 호환성 유지
+                                setMembers(users || []);
                             });
-                            console.log('✅ Users subscription active');
-                        } else {
-                            console.error('❌ firebaseService.subscribeUsers is not available');
                         }
                         
-                        // Seminars 실시간 구독
                         if (window.firebaseService && window.firebaseService.subscribeSeminars) {
                             unsubscribeSeminars = window.firebaseService.subscribeSeminars((seminars) => {
-                                console.log('📊 Seminars updated:', seminars?.length || 0);
                                 setSeminars(seminars || []);
                             });
-                            console.log('✅ Seminars subscription active');
-                        } else {
-                            console.error('❌ firebaseService.subscribeSeminars is not available');
                         }
                         
-                        // Posts 실시간 구독
                         if (window.firebaseService && window.firebaseService.subscribePosts) {
                             unsubscribePosts = window.firebaseService.subscribePosts((posts) => {
-                                console.log('📊 Posts updated:', posts?.length || 0);
                                 setPosts(posts || []);
                             });
-                            console.log('✅ Posts subscription active');
-                        } else {
-                            console.error('❌ firebaseService.subscribePosts is not available');
                         }
-                        
-                        console.log('✅ All real-time subscriptions set up');
                     } catch (error) {
-                        console.error('❌ Error setting up real-time subscriptions:', error);
                     }
                     
                     return () => {
-                        console.log('🔄 Cleaning up subscriptions...');
                         if (unsubscribeUsers) unsubscribeUsers();
                         if (unsubscribeSeminars) unsubscribeSeminars();
                         if (unsubscribePosts) unsubscribePosts();
@@ -2403,33 +2339,8 @@
                     itemInfo: itemInfo || '',
                 };
                 setLogs(prev => [...prev, newLog]);
-                // 로그는 상태로만 관리 (필요시 Firebase에 저장 가능)
             };
             
-            // 기존 코드 (새로운 레이아웃에서 사용하지 않음 - 주석 처리)
-            // 마스터 로그인 핸들러
-            // const handleMasterLogin = () => {
-            //     if (masterPwInput === '0219' || masterPwInput === '1122') {
-            //         setIsMaster(true);
-            //         setShowMasterLogin(false);
-            //         setMasterPwInput('');
-            //         addLog('MASTER_LOGIN', '시스템', '마스터 모드 로그인', currentUser?.name || '익명');
-            //     } else {
-            //         alert('비밀번호가 일치하지 않습니다.');
-            //     }
-            // };
-            
-            // 탭 목록 (새로운 레이아웃에서는 menuItems 사용)
-            // const tabs = [
-            //     { id: 'members', label: '회원 관리', icon: Icons.Users },
-            //     { id: 'seminars', label: '프로그램 관리', icon: Icons.Calendar },
-            //     { id: 'community', label: '커뮤니티 관리', icon: Icons.MessageSquare },
-            //     { id: 'inquiries', label: '문의하기 관리', icon: Icons.MessageSquare },
-            //     { id: 'master', label: 'admin', icon: Icons.Lock, masterOnly: true },
-            // ];
-
-            // 로그아웃 핸들러
-            // '햇반' 관리자 계정 생성 함수
             const createAdminAccount = async () => {
                 try {
                     const adminEmail = 'haetban@bcsa-b190f.firebaseapp.com';
@@ -2638,7 +2549,6 @@
                         await window.firebaseServices.auth.signOut();
                     }
                 } catch (error) {
-                    console.error('로그아웃 오류:', error);
                 }
                 localStorage.removeItem('admin_authenticated');
                 setIsAuthenticated(false);
