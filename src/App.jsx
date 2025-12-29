@@ -3654,6 +3654,22 @@ const BidSearchView = ({ onBack, currentUser }) => {
     // 프록시 서버 상태 확인 함수
     const checkProxyServer = async (baseUrl) => {
         try {
+            // PHP 프록시인 경우 간단한 테스트 요청
+            if (baseUrl === window.location.origin || baseUrl.includes('bcsa.co.kr')) {
+                // PHP 프록시는 실제 API 호출로 테스트 (간단한 요청)
+                const testUrl = `${baseUrl}/api-proxy.php?keyword=test&pageNo=1&numOfRows=1&type=bid-search`;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                
+                const response = await fetch(testUrl, {
+                    method: 'GET',
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                return response.ok || response.status === 200;
+            }
+            
+            // 기타 프록시 서버 (Express, Firebase Functions)
             const healthUrl = baseUrl.includes('/apiBid') 
                 ? baseUrl.replace('/apiBid/api/bid-search', '/health')
                 : baseUrl.replace('/api/bid-search', '/health');
@@ -3699,9 +3715,20 @@ const BidSearchView = ({ onBack, currentUser }) => {
                     return 'http://localhost:3001';
                 }
                 
-                // 3. 프로덕션 환경 (모든 HTTPS 사이트)
-                // 호스팅케이알, Firebase Hosting 모두 Firebase Functions 사용
-                return 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
+                // 3. 프로덕션 환경
+                // 호스팅케이알: PHP 프록시 사용
+                // Firebase Hosting: Firebase Functions 사용 (fallback)
+                const hostname = window.location.hostname;
+                if (hostname === 'bcsa.co.kr' || hostname === 'www.bcsa.co.kr') {
+                    // 호스팅케이알 - PHP 프록시 사용
+                    return window.location.origin; // https://bcsa.co.kr
+                } else if (hostname.includes('web.app') || hostname.includes('firebaseapp.com')) {
+                    // Firebase Hosting - Firebase Functions 사용
+                    return 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
+                } else {
+                    // 기타 도메인 - PHP 프록시 시도 (같은 origin)
+                    return window.location.origin;
+                }
             };
 
             const PROXY_SERVER_URL = getProxyServerUrl();
@@ -3728,13 +3755,25 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 endpointPath = 'bid-search'; // 기본값
             }
             
+            // PHP 프록시인지 확인 (같은 origin이거나 호스팅케이알 도메인)
+            const isPhpProxy = cleanProxyUrl === window.location.origin || 
+                              cleanProxyUrl.includes('bcsa.co.kr');
+            
             if (cleanProxyUrl.includes('cloudfunctions.net')) {
+                // Firebase Functions
                 baseUrl = cleanProxyUrl;
                 apiEndpoint = `${cleanProxyUrl}/apiBid/api/${endpointPath}`;
             } else if (cleanProxyUrl.includes('localhost:5001')) {
+                // Firebase Emulator
                 baseUrl = cleanProxyUrl;
                 apiEndpoint = `${cleanProxyUrl}/apiBid/api/${endpointPath}`;
+            } else if (isPhpProxy) {
+                // PHP 프록시 (호스팅케이알)
+                baseUrl = cleanProxyUrl;
+                // PHP 프록시는 단일 파일이므로 type 파라미터로 구분
+                apiEndpoint = `${cleanProxyUrl}/api-proxy.php`;
             } else {
+                // 로컬 Express 서버
                 baseUrl = cleanProxyUrl;
                 apiEndpoint = `${cleanProxyUrl}/api/${endpointPath}`;
             }
@@ -3755,6 +3794,11 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 pageNo: page.toString(),
                 numOfRows: itemsPerPage.toString()
             });
+            
+            // PHP 프록시인 경우 type 파라미터 추가
+            if (isPhpProxy) {
+                params.append('type', endpointPath); // bid-search, bid-openg-result, bid-award
+            }
 
             // 필터 파라미터 추가
             if (bidNoticeNo.trim()) {
@@ -3852,6 +3896,8 @@ const BidSearchView = ({ onBack, currentUser }) => {
                         errorMsg = '프록시 서버에 연결할 수 없습니다. Firebase Functions가 배포되었는지 확인해주세요.';
                     } else if (PROXY_SERVER_URL.includes('localhost')) {
                         errorMsg = `프록시 서버에 연결할 수 없습니다.\n\n로컬 개발 서버를 시작하려면:\n1. 터미널에서 "npm run server" 실행\n2. 서버가 포트 3001에서 실행되는지 확인\n\n또는 전체 서버 시작:\n- "npm run start" (http-server + proxy server)\n- 브라우저에서 "http://localhost:3000/index.html" 접속`;
+                    } else if (PROXY_SERVER_URL.includes('bcsa.co.kr') || PROXY_SERVER_URL === window.location.origin) {
+                        errorMsg = 'PHP 프록시 서버에 연결할 수 없습니다.\n\n호스팅케이알 서버에 api-proxy.php 파일이 업로드되었는지 확인해주세요.\n자세한 내용은 HOSTING_PROXY_SETUP.md 파일을 참조하세요.';
                     } else {
                         errorMsg = '프록시 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.';
                     }

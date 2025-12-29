@@ -9,11 +9,10 @@
       "functions/**",
       "package.json",
       "package-lock.json",
-      "server.js",
-      "http-server.js",
       "tailwind.config.js",
       "README.md",
-      ".git/**"
+      ".git/**",
+      "del/**"
     ],
     "rewrites": [
       {
