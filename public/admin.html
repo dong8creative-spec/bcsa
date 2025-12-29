@@ -905,46 +905,12 @@
         const defaultCommunityPosts = [];
 
         // ==========================================
-        // 관리자 인증 체크 함수 (로그인된 사용자 기반)
+        // 관리자 인증 체크 함수 (PIN 기반)
         // ==========================================
-        const checkAdminAccess = async () => {
-            try {
-                // Firebase Auth에서 현재 로그인된 사용자 확인
-                if (!window.firebaseServices || !window.firebaseServices.auth) {
-                    return { isAdmin: false, reason: 'Firebase가 초기화되지 않았습니다.' };
-                }
-                
-                const currentUser = window.firebaseServices.auth.currentUser;
-                if (!currentUser) {
-                    return { isAdmin: false, reason: '로그인이 필요합니다.' };
-                }
-                
-                // Firestore에서 사용자 정보 가져오기
-                const userDoc = await window.firebaseServices.db.collection('users')
-                    .where('uid', '==', currentUser.uid)
-                    .limit(1)
-                    .get();
-                
-                if (userDoc.empty) {
-                    return { isAdmin: false, reason: '사용자 정보를 찾을 수 없습니다.' };
-                }
-                
-                const userData = { id: userDoc.docs[0].id, ...userDoc.docs[0].data() };
-                
-                // 관리자 권한 확인
-                const isAdmin = userData.isAdmin === true || 
-                               userData.name === '햇반' || 
-                               userData.email === 'haetban@bcsa.co.kr';
-                
-                if (isAdmin) {
-                    localStorage.setItem('admin_authenticated', 'true');
-                    return { isAdmin: true, user: userData };
-                }
-                
-                return { isAdmin: false, reason: '관리자 권한이 없습니다.' };
-            } catch (error) {
-                return { isAdmin: false, reason: '권한 확인 중 오류가 발생했습니다.' };
-            }
+        const checkAdminAccess = () => {
+            // sessionStorage에서 인증 상태 확인
+            const isAuth = sessionStorage.getItem('admin_authenticated') === 'true';
+            return { isAdmin: isAuth };
         };
         
         // ==========================================
@@ -1964,10 +1930,8 @@
             // 인증 상태
             const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [isChecking, setIsChecking] = useState(false);
-            const [loginEmail, setLoginEmail] = useState('haetban@bcsa.co.kr');
-            const [loginPassword, setLoginPassword] = useState('0219');
+            const [pinCode, setPinCode] = useState('');
             const [authError, setAuthError] = useState(null);
-            const [currentAdmin, setCurrentAdmin] = useState(null);
             
             // 활성 메뉴 (사이드바)
             const [activeMenu, setActiveMenu] = useState('dashboard');
@@ -2004,135 +1968,12 @@
                 '후원': '후원',
             });
             
-            // 관리자 계정 자동 생성 (햇반 계정)
-            useEffect(() => {
-                if (!firebaseReady) {
-                    return;
-                }
-                
-                const createAdminAccount = async () => {
-                    if (!window.firebaseServices || !window.firebaseService || !window.authService) {
-                        return;
-                    }
-                    
-                    try {
-                        const adminEmail = 'haetban@bcsa.co.kr';
-                        const adminPassword = '0219';
-                        
-                        // 기존 계정 확인 및 생성
-                        try {
-                            // 먼저 로그인 시도
-                            const userCredential = await window.firebaseServices.auth.signInWithEmailAndPassword(adminEmail, adminPassword);
-                            const user = userCredential.user;
-                            
-                            // Firestore에 관리자 정보 확인 및 업데이트
-                            try {
-                                const existingUser = await window.firebaseService.getUser(user.uid);
-                                if (!existingUser) {
-                                    // 사용자 데이터 생성
-                                    await window.firebaseService.createUser({
-                                        uid: user.uid,
-                                        email: adminEmail,
-                                        name: '햇반',
-                                        isAdmin: true,
-                                        approvalStatus: 'approved',
-                                        role: 'admin',
-                                        memberGrade: '관리자',
-                                        userType: '사업자',
-                                        createdAt: new Date().toISOString(),
-                                        updatedAt: new Date().toISOString()
-                                    });
-                                } else {
-                                    // 기존 사용자 정보 업데이트 (관리자 권한 보장)
-                                    await window.firebaseService.updateUser(user.uid, {
-                                        isAdmin: true,
-                                        approvalStatus: 'approved',
-                                        name: '햇반',
-                                        memberGrade: '관리자'
-                                    });
-                                }
-                            } catch (firestoreError) {
-                                // Firestore 오류는 무시 (계정은 존재함)
-                            }
-                            
-                            // 로그아웃 (자동 로그인 방지)
-                            await window.firebaseServices.auth.signOut();
-                        } catch (signInError) {
-                            // 계정이 없거나 비밀번호가 틀린 경우
-                            if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/wrong-password') {
-                                // 새 계정 생성
-                                try {
-                                    const userCredential = await window.firebaseServices.auth.createUserWithEmailAndPassword(adminEmail, adminPassword);
-                                    const user = userCredential.user;
-                                    
-                                    // Firestore에 사용자 데이터 생성
-                                    await window.firebaseService.createUser({
-                                        uid: user.uid,
-                                        email: adminEmail,
-                                        name: '햇반',
-                                        isAdmin: true,
-                                        approvalStatus: 'approved',
-                                        role: 'admin',
-                                        memberGrade: '관리자',
-                                        userType: '사업자',
-                                        createdAt: new Date().toISOString(),
-                                        updatedAt: new Date().toISOString()
-                                    });
-                                    
-                                    // 계정 생성 후 로그아웃 (사용자가 직접 로그인하도록)
-                                    await window.firebaseServices.auth.signOut();
-                                } catch (createError) {
-                                    // 계정 생성 실패는 무시 (로그인 시 다시 시도)
-                                }
-                            }
-                        }
-                    } catch (error) {
-                        // 전체 오류는 무시 (로그인 시 처리)
-                    }
-                };
-                
-                // 페이지 로드 후 관리자 계정 생성 시도
-                createAdminAccount();
-            }, [firebaseReady]);
             
-            // 관리자 인증 체크 (초기 로드 시 - 로그인된 사용자 확인)
+            // 관리자 인증 체크 (초기 로드 시 - sessionStorage 확인)
             useEffect(() => {
-                if (!firebaseReady) return;
-                
-                const checkAuth = async () => {
-                    // Firebase 서비스 확인
-                    if (!window.firebaseServices || !window.firebaseServices.auth) {
-                        return;
-                    }
-                    
-                    // 현재 로그인된 사용자 확인
-                    const currentUser = window.firebaseServices.auth.currentUser;
-                    if (currentUser) {
-                        const result = await checkAdminAccess();
-                        if (result.isAdmin) {
-                            setIsAuthenticated(true);
-                        }
-                    }
-                };
-                
-                // Firebase Auth 상태 변경 리스너
-                if (window.firebaseServices && window.firebaseServices.auth) {
-                    const unsubscribe = window.firebaseServices.auth.onAuthStateChanged(async (user) => {
-                        if (user) {
-                            const result = await checkAdminAccess();
-                            if (result.isAdmin) {
-                                setIsAuthenticated(true);
-                            } else {
-                                setIsAuthenticated(false);
-                            }
-                        } else {
-                            setIsAuthenticated(false);
-                        }
-                    });
-                    
-                    return () => unsubscribe();
-                }
-            }, [firebaseReady]);
+                const isAuth = sessionStorage.getItem('admin_authenticated') === 'true';
+                setIsAuthenticated(isAuth);
+            }, []);
             
             // Firebase 초기화 대기 함수
             const waitForFirebase = () => {
@@ -2375,73 +2216,10 @@
                     action,
                     targetType,
                     details,
-                    adminName: adminName || currentUser?.name || '시스템',
+                    adminName: adminName || '관리자',
                     itemInfo: itemInfo || '',
                 };
                 setLogs(prev => [...prev, newLog]);
-            };
-            
-            const createAdminAccount = async () => {
-                try {
-                    const adminEmail = 'haetban@bcsa-b190f.firebaseapp.com';
-                    const adminPassword = '021900';
-                    
-                    // Firebase Auth에 계정 생성 시도
-                    let authUser = null;
-                    try {
-                        // 이미 존재하는 계정인지 확인
-                        const existingUser = await window.firebaseServices.auth.signInWithEmailAndPassword(adminEmail, adminPassword).catch(() => null);
-                        if (existingUser) {
-                            authUser = existingUser.user;
-                        }
-                    } catch (error) {
-                        // 계정이 없으면 생성
-                        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-                            try {
-                                const userCredential = await window.firebaseServices.auth.createUserWithEmailAndPassword(adminEmail, adminPassword);
-                                authUser = userCredential.user;
-                            } catch (createError) {
-                                
-                                throw createError;
-                            }
-                } else {
-                            throw error;
-                        }
-                    }
-                    
-                    if (!authUser) {
-                        throw new Error('관리자 계정을 생성하거나 찾을 수 없습니다.');
-                    }
-                    
-                    // Firestore에 관리자 정보 저장
-                    const existingUserDoc = await window.firebaseService.getUser(authUser.uid);
-                    if (!existingUserDoc) {
-                        await window.firebaseService.createUser({
-                            uid: authUser.uid,
-                            email: adminEmail,
-                            name: '햇반',
-                            isAdmin: true,
-                            approvalStatus: 'approved',
-                            memberGrade: '관리자',
-                            userType: '사업자'
-                        });
-                        
-                                                            } else {
-                        // 기존 사용자 정보 업데이트
-                        await window.firebaseService.updateUser(authUser.uid, {
-                            isAdmin: true,
-                            approvalStatus: 'approved',
-                            memberGrade: '관리자',
-                            name: '햇반'
-                        });
-                        
-                    }
-                    
-                    return authUser;
-                                                                } catch (error) {
-                    
-                    throw error;
-                }
             };
             
             // 데이터 초기화 함수
@@ -2484,9 +2262,6 @@
                     // 5. Settings 초기화
                     await window.firebaseService.resetSettings(defaultContent);
                     
-                    // 6. '햇반' 관리자 계정 생성/확인
-                    await createAdminAccount();
-                    
                     // 상태 업데이트
                     setUsers([]);
                     setSeminars([]);
@@ -2499,8 +2274,7 @@
                         `- 프로그램: ${deletedSeminars}개\n` +
                         `- 게시글: ${deletedPosts}개\n` +
                         `- 신청: ${deletedApplications}개\n` +
-                        `- 설정: 초기화됨\n\n` +
-                        `햇반 관리자 계정이 생성/확인되었습니다.`);
+                        `- 설정: 초기화됨`);
                     
                     // 페이지 새로고침
                     window.location.reload();
@@ -2512,159 +2286,46 @@
                 }
             };
             
-            // 로그인 핸들러
-            const handleLogin = async (email, password) => {
-                try {
+            // 로그인 핸들러 (PIN 검증)
+            const handleLogin = (pin) => {
                     setIsChecking(true);
                     setAuthError(null);
                     
-                    // Firebase 서비스 확인
-                    if (!window.firebaseServices || !window.firebaseServices.auth) {
-                        throw new Error('Firebase가 초기화되지 않았습니다. 페이지를 새로고침해주세요.');
-                    }
-                    
-                    if (!window.authService) {
-                        throw new Error('인증 서비스가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
-                    }
-                    
-                    // 햇반 계정인 경우 자동 생성 시도
-                    if (email === 'haetban@bcsa.co.kr' && password === '0219') {
-                        try {
-                            // 먼저 로그인 시도
-                            await window.firebaseServices.auth.signInWithEmailAndPassword(email, password);
-                        } catch (signInError) {
-                            // 계정이 없으면 생성
-                            if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/wrong-password') {
-                                try {
-                                    // 계정 생성
-                                    const userCredential = await window.firebaseServices.auth.createUserWithEmailAndPassword(email, password);
-                                    const user = userCredential.user;
-                                    
-                                    // Firestore에 관리자 정보 저장
-                                    if (window.firebaseService) {
-                                        try {
-                                            await window.firebaseService.createUser({
-                                                uid: user.uid,
-                                                email: email,
-                                                name: '햇반',
-                                                isAdmin: true,
-                                                approvalStatus: 'approved',
-                                                role: 'admin',
-                                                memberGrade: '관리자',
-                                                userType: '사업자',
-                                                createdAt: new Date().toISOString(),
-                                                updatedAt: new Date().toISOString()
-                                            });
-                                        } catch (createUserError) {
-                                            // 이미 존재하는 경우 업데이트 시도
-                                            await window.firebaseService.updateUser(user.uid, {
-                                                isAdmin: true,
-                                                approvalStatus: 'approved',
-                                                name: '햇반',
-                                                memberGrade: '관리자'
-                                            });
-                                        }
-                                    }
-                                    
-                                    // 계정 생성 후 자동으로 로그인 (이미 생성된 계정이므로)
-                                    // 계정이 생성되었으므로 계속 진행
-                                } catch (createError) {
-                                    // 생성 실패 시 기존 계정으로 로그인 재시도
-                                    if (createError.code === 'auth/email-already-in-use') {
-                                        // 계정이 이미 존재하므로 로그인 재시도
-                                        await window.firebaseServices.auth.signInWithEmailAndPassword(email, password);
-                                    } else {
-                                        throw createError;
-                                    }
-                                }
-                            } else {
-                                throw signInError;
-                            }
-                        }
-                    } else {
-                        // 일반 로그인
-                        await window.authService.signIn(email, password);
-                    }
-                    
-                    // 관리자 권한 확인
-                    const result = await checkAdminAccess();
-                    
-                    if (result.isAdmin) {
+                const ADMIN_PIN = '0219';
+                
+                if (pin === ADMIN_PIN) {
+                    // PIN이 맞으면 sessionStorage에 인증 상태 저장
+                    sessionStorage.setItem('admin_authenticated', 'true');
                         setIsAuthenticated(true);
-                        setCurrentAdmin(result.user);
                         setAuthError(null);
                     } else {
                         setIsAuthenticated(false);
-                        setCurrentAdmin(null);
-                        setAuthError('관리자 권한이 없습니다.');
-                        await window.firebaseServices.auth.signOut();
-                    }
-                } catch (error) {
-                    
-                    setIsAuthenticated(false);
-                    setCurrentAdmin(null);
-                    
-                    // Firebase 오류 메시지를 한국어로 변환
-                    let errorMessage = '로그인에 실패했습니다.';
-                    const errorMsg = error.message || '';
-                    const isInvalidCredentials = errorMsg.includes('INVALID_LOGIN_CREDENTIALS') || 
-                                                 errorMsg.includes('INVALID_LOGIN');
-                    
-                    if (error.code === 'auth/user-not-found' || 
-                        (error.code === 'auth/internal-error' && isInvalidCredentials)) {
-                        // 햇반 계정인 경우 자동 생성 시도
-                        if (email === 'haetban@bcsa.co.kr' && password === '0219') {
-                            errorMessage = '계정을 생성 중입니다. 잠시 후 다시 시도해주세요.';
-                            // 자동 재시도
-                            setTimeout(() => {
-                                handleLogin(email, password);
-                            }, 1500);
-                        } else {
-                            errorMessage = '등록되지 않은 계정입니다.';
-                        }
-                    } else if (error.code === 'auth/wrong-password' || 
-                               error.code === 'auth/invalid-credential' ||
-                               (error.code === 'auth/internal-error' && isInvalidCredentials)) {
-                        errorMessage = '비밀번호가 올바르지 않습니다. Firebase Console에서 비밀번호를 재설정해주세요.';
-                    } else if (error.code === 'auth/invalid-email') {
-                        errorMessage = '올바른 형식이 아닙니다.';
-                    } else if (error.code === 'auth/too-many-requests') {
-                        errorMessage = '너무 많은 시도가 있었습니다. 잠시 후 다시 시도해주세요.';
-                    } else if (error.code === 'auth/email-already-in-use') {
-                        errorMessage = '이미 사용 중인 이메일입니다. 로그인을 시도합니다.';
-                    } else if (error.code === 'auth/network-request-failed') {
-                        errorMessage = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
-                    } else if (error.code === 'auth/internal-error') {
-                        errorMessage = 'Firebase 인증 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.';
-                    } else if (error.message) {
-                        errorMessage = error.message;
-                    }
-                    
-                    setAuthError(errorMessage);
-                } finally {
-                    setIsChecking(false);
+                    setAuthError('PIN 번호가 올바르지 않습니다.');
                 }
+                
+                    setIsChecking(false);
             };
             
-            const handleLogout = async () => {
-                try {
-                    if (window.firebaseServices && window.firebaseServices.auth) {
-                        await window.firebaseServices.auth.signOut();
-                    }
-                } catch (error) {
-                }
-                localStorage.removeItem('admin_authenticated');
+            const handleLogout = () => {
+                sessionStorage.removeItem('admin_authenticated');
                 setIsAuthenticated(false);
-                setLoginEmail('haetban@bcsa.co.kr');
-                setLoginPassword('0219');
+                setPinCode('');
                 setAuthError(null);
-                setCurrentAdmin(null);
             };
             
             // 로그인 폼 제출 핸들러
-            const handleLoginSubmit = async (e) => {
+            const handleLoginSubmit = (e) => {
                 e.preventDefault();
-                await handleLogin(loginEmail, loginPassword);
+                handleLogin(pinCode);
+            };
+            
+            // PIN 입력 핸들러 (숫자만 입력 가능, 최대 4자리)
+            const handlePinChange = (e) => {
+                const value = e.target.value.replace(/\D/g, ''); // 숫자만 허용
+                if (value.length <= 4) {
+                    setPinCode(value);
+                    setAuthError(null);
+                }
             };
             
             // 인증 실패 - 로그인 화면
@@ -2680,33 +2341,18 @@
                             
                             <form onSubmit={handleLoginSubmit} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">이메일</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">PIN 번호</label>
                                     <input
-                                        type="email"
-                                        value={loginEmail}
-                                        onChange={(e) => {
-                                            setLoginEmail(e.target.value);
-                                            setAuthError(null);
-                                        }}
-                                        placeholder="이메일을 입력하세요"
-                                        className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        value={pinCode}
+                                        onChange={handlePinChange}
+                                        placeholder="4자리 숫자를 입력하세요"
+                                        className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-center text-2xl tracking-widest"
+                                        maxLength="4"
                                         required
                                         autoFocus
-                                    />
-                                </div>
-                                
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">비밀번호</label>
-                                    <input
-                                        type="password"
-                                        value={loginPassword}
-                                        onChange={(e) => {
-                                            setLoginPassword(e.target.value);
-                                            setAuthError(null);
-                                        }}
-                                        placeholder="비밀번호를 입력하세요"
-                                        className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
-                                        required
                                     />
                                 </div>
                                 
@@ -2716,14 +2362,14 @@
                                 
                                 <button
                                     type="submit"
-                                    disabled={isChecking}
+                                    disabled={isChecking || pinCode.length !== 4}
                                     className={`w-full py-3 rounded-xl font-bold transition-colors ${
-                                        isChecking
+                                        isChecking || pinCode.length !== 4
                                             ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                             : 'bg-brand text-white hover:bg-blue-700'
                                     }`}
                                 >
-                                    {isChecking ? '로그인 중...' : '로그인'}
+                                    {isChecking ? '확인 중...' : '로그인'}
                                 </button>
                             </form>
                             

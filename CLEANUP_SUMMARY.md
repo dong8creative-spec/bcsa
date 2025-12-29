@@ -105,3 +105,4 @@
 - `del/` 폴더는 `.gitignore`에 포함되지 않음 (필요시 추가 가능)
 - Firebase Hosting 배포 시 `del/**` 폴더는 자동으로 제외됨 (`firebase.json` 설정)
 
+
