@@ -1320,7 +1320,7 @@ const AllMembersView = ({ onBack, members, currentUser }) => {
                 {selectedMember && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedMember(null); }}>
                         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl z-10 p-8 max-h-[90vh] overflow-y-auto modal-scroll relative" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl z-10 p-8 max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll relative" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedMember(null); }} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-all">
                                 <Icons.X size={18}/>
                             </button>
@@ -2148,7 +2148,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                 {/* 게시글 작성 모달 */}
                 {isCreateModalOpen && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setIsCreateModalOpen(false); }}>
-                        <div className="bg-white rounded-3xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
+                        <div className="bg-white rounded-3xl p-8 max-w-3xl w-full max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-2xl font-bold text-dark">게시글 작성</h3>
                                 <button type="button" onClick={() => setIsCreateModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -2537,7 +2537,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                 {/* 게시글 수정 모달 */}
                 {isEditModalOpen && editingPost && isCurrentUserAdmin && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
-                        <div className="bg-white rounded-3xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
+                        <div className="bg-white rounded-3xl p-8 max-w-3xl w-full max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-2xl font-bold text-dark">게시글 수정</h3>
                                 <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -2587,7 +2587,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
             {selectedPost && currentUser && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPost(null); }}>
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl z-10 p-8 max-h-[90vh] overflow-y-auto modal-scroll relative">
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl z-10 p-8 max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll relative">
                             <button type="button" onClick={() => setSelectedPost(null)} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700">
                             <Icons.X size={18}/>
                         </button>
@@ -7989,11 +7989,18 @@ const App = () => {
         };
         
         const hasApplied = await checkApplication();
-        if (hasApplied) return;
+        if (hasApplied) {
+            closePopupAndMarkAsShown();
+            return;
+        }
         
-        // 신청 모달 표시
-        setApplySeminarFromPopup(program);
-        setIsPopupApplyModalOpen(true);
+        // 팝업 닫기 및 프로그램 신청 페이지로 이동
+        closePopupAndMarkAsShown();
+        setCurrentView('allSeminars');
+        setSelectedSeminar(program);
+        setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
     };
 
     // 팝업 신청 제출
