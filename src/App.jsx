@@ -9282,6 +9282,18 @@ END:VCALENDAR`;
                         <div className="flex gap-4 items-center">
                             <a href="#" className="hover:text-dark">이용약관</a>
                             <a href="#" className="hover:text-dark">개인정보처리방침</a>
+                            <button 
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.location.href = 'admin.html';
+                                }}
+                                className="hover:text-dark opacity-50 hover:opacity-100 transition-opacity"
+                                title="관리자 페이지"
+                            >
+                                Admin
+                            </button>
                         </div>
                     </div>
                 </div>

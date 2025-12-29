@@ -2019,10 +2019,44 @@
                         const adminEmail = 'haetban@bcsa.co.kr';
                         const adminPassword = '0219';
                         
-                        // 기존 계정 확인
+                        // 기존 계정 확인 및 생성
                         try {
-                            await window.firebaseServices.auth.signInWithEmailAndPassword(adminEmail, adminPassword);
-                            // 로그인 성공 = 계정 존재
+                            // 먼저 로그인 시도
+                            const userCredential = await window.firebaseServices.auth.signInWithEmailAndPassword(adminEmail, adminPassword);
+                            const user = userCredential.user;
+                            
+                            // Firestore에 관리자 정보 확인 및 업데이트
+                            try {
+                                const existingUser = await window.firebaseService.getUser(user.uid);
+                                if (!existingUser) {
+                                    // 사용자 데이터 생성
+                                    await window.firebaseService.createUser({
+                                        uid: user.uid,
+                                        email: adminEmail,
+                                        name: '햇반',
+                                        isAdmin: true,
+                                        approvalStatus: 'approved',
+                                        role: 'admin',
+                                        memberGrade: '관리자',
+                                        userType: '사업자',
+                                        createdAt: new Date().toISOString(),
+                                        updatedAt: new Date().toISOString()
+                                    });
+                                } else {
+                                    // 기존 사용자 정보 업데이트 (관리자 권한 보장)
+                                    await window.firebaseService.updateUser(user.uid, {
+                                        isAdmin: true,
+                                        approvalStatus: 'approved',
+                                        name: '햇반',
+                                        memberGrade: '관리자'
+                                    });
+                                }
+                            } catch (firestoreError) {
+                                // Firestore 오류는 무시 (계정은 존재함)
+                            }
+                            
+                            // 로그아웃 (자동 로그인 방지)
+                            await window.firebaseServices.auth.signOut();
                         } catch (signInError) {
                             // 계정이 없거나 비밀번호가 틀린 경우
                             if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/wrong-password') {
@@ -2039,15 +2073,21 @@
                                         isAdmin: true,
                                         approvalStatus: 'approved',
                                         role: 'admin',
+                                        memberGrade: '관리자',
+                                        userType: '사업자',
                                         createdAt: new Date().toISOString(),
                                         updatedAt: new Date().toISOString()
                                     });
                                     
+                                    // 계정 생성 후 로그아웃 (사용자가 직접 로그인하도록)
+                                    await window.firebaseServices.auth.signOut();
                                 } catch (createError) {
+                                    // 계정 생성 실패는 무시 (로그인 시 다시 시도)
                                 }
                             }
                         }
                     } catch (error) {
+                        // 전체 오류는 무시 (로그인 시 처리)
                     }
                 };
                 
@@ -2487,9 +2527,64 @@
                         throw new Error('인증 서비스가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
                     }
                     
-                    
-                    // Firebase Auth 로그인 시도
-                    await window.authService.signIn(email, password);
+                    // 햇반 계정인 경우 자동 생성 시도
+                    if (email === 'haetban@bcsa.co.kr' && password === '0219') {
+                        try {
+                            // 먼저 로그인 시도
+                            await window.firebaseServices.auth.signInWithEmailAndPassword(email, password);
+                        } catch (signInError) {
+                            // 계정이 없으면 생성
+                            if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/wrong-password') {
+                                try {
+                                    // 계정 생성
+                                    const userCredential = await window.firebaseServices.auth.createUserWithEmailAndPassword(email, password);
+                                    const user = userCredential.user;
+                                    
+                                    // Firestore에 관리자 정보 저장
+                                    if (window.firebaseService) {
+                                        try {
+                                            await window.firebaseService.createUser({
+                                                uid: user.uid,
+                                                email: email,
+                                                name: '햇반',
+                                                isAdmin: true,
+                                                approvalStatus: 'approved',
+                                                role: 'admin',
+                                                memberGrade: '관리자',
+                                                userType: '사업자',
+                                                createdAt: new Date().toISOString(),
+                                                updatedAt: new Date().toISOString()
+                                            });
+                                        } catch (createUserError) {
+                                            // 이미 존재하는 경우 업데이트 시도
+                                            await window.firebaseService.updateUser(user.uid, {
+                                                isAdmin: true,
+                                                approvalStatus: 'approved',
+                                                name: '햇반',
+                                                memberGrade: '관리자'
+                                            });
+                                        }
+                                    }
+                                    
+                                    // 계정 생성 후 자동으로 로그인 (이미 생성된 계정이므로)
+                                    // 계정이 생성되었으므로 계속 진행
+                                } catch (createError) {
+                                    // 생성 실패 시 기존 계정으로 로그인 재시도
+                                    if (createError.code === 'auth/email-already-in-use') {
+                                        // 계정이 이미 존재하므로 로그인 재시도
+                                        await window.firebaseServices.auth.signInWithEmailAndPassword(email, password);
+                                    } else {
+                                        throw createError;
+                                    }
+                                }
+                            } else {
+                                throw signInError;
+                            }
+                        }
+                    } else {
+                        // 일반 로그인
+                        await window.authService.signIn(email, password);
+                    }
                     
                     // 관리자 권한 확인
                     const result = await checkAdminAccess();
@@ -2502,7 +2597,6 @@
                         setIsAuthenticated(false);
                         setCurrentAdmin(null);
                         setAuthError('관리자 권한이 없습니다.');
-                        // 로그아웃
                         await window.firebaseServices.auth.signOut();
                     }
                 } catch (error) {
@@ -2518,7 +2612,16 @@
                     
                     if (error.code === 'auth/user-not-found' || 
                         (error.code === 'auth/internal-error' && isInvalidCredentials)) {
-                        errorMessage = '등록되지 않은 계정입니다. 계정을 생성합니다.';
+                        // 햇반 계정인 경우 자동 생성 시도
+                        if (email === 'haetban@bcsa.co.kr' && password === '0219') {
+                            errorMessage = '계정을 생성 중입니다. 잠시 후 다시 시도해주세요.';
+                            // 자동 재시도
+                            setTimeout(() => {
+                                handleLogin(email, password);
+                            }, 1500);
+                        } else {
+                            errorMessage = '등록되지 않은 계정입니다.';
+                        }
                     } else if (error.code === 'auth/wrong-password' || 
                                error.code === 'auth/invalid-credential' ||
                                (error.code === 'auth/internal-error' && isInvalidCredentials)) {
