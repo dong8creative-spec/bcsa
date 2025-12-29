@@ -48,7 +48,7 @@
             const checkFirebaseInit = setInterval(() => {
                 attempts++;
                 
-                if (window.firebaseServices && window.firebaseServices.db && window.firebaseServices.auth) {
+                if (window.firebaseServices && window.firebaseServices.db) {
                     clearInterval(checkFirebaseInit);
                     
                     // 초기화 완료 이벤트 발생
@@ -187,9 +187,9 @@
                 // 카카오맵 SDK 로드 완료 대기
                 await waitForKakaoMap();
                 
-                // Places 서비스 초기화 확인
-                if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
-                    alert('카카오맵 API가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
+            // Places 서비스 초기화 확인
+            if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
+                alert('카카오맵 API가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
                     return;
                 }
             } catch (error) {
@@ -348,30 +348,30 @@
                     // 카카오 지도 SDK가 로드되었는지 확인
                     if (typeof window.kakao === 'undefined' || !window.kakao.maps) {
                         console.error('카카오맵 SDK가 로드되지 않았습니다.');
-                        return;
-                    }
+                    return;
+                }
                     
                     const kakao = window.kakao;
-                    
-                    // 지도 초기화
-                    const center = initialLocation 
-                        ? new kakao.maps.LatLng(initialLocation.lat, initialLocation.lng)
-                        : new kakao.maps.LatLng(35.1796, 129.0756); // 부산 중심
-                    
-                    const mapOption = {
-                        center: center,
-                        level: 3
-                    };
-                    
-                    mapRef.current = new kakao.maps.Map(mapContainerRef.current, mapOption);
-                    geocoderRef.current = new kakao.maps.services.Geocoder();
-                    
-                    // Places 서비스 초기화
-                    if (kakao.maps.services && kakao.maps.services.Places) {
-                        placesServiceRef.current = new kakao.maps.services.Places();
-                    } else {
+                
+                // 지도 초기화
+                const center = initialLocation 
+                    ? new kakao.maps.LatLng(initialLocation.lat, initialLocation.lng)
+                    : new kakao.maps.LatLng(35.1796, 129.0756); // 부산 중심
+                
+                const mapOption = {
+                    center: center,
+                    level: 3
+                };
+                
+                mapRef.current = new kakao.maps.Map(mapContainerRef.current, mapOption);
+                geocoderRef.current = new kakao.maps.services.Geocoder();
+                
+                // Places 서비스 초기화
+                if (kakao.maps.services && kakao.maps.services.Places) {
+                    placesServiceRef.current = new kakao.maps.services.Places();
+                } else {
                         console.warn('카카오맵 Places 서비스를 사용할 수 없습니다.');
-                    }
+                }
                 
                 // 지도 컨트롤 추가
                 const zoomControl = new kakao.maps.ZoomControl();
@@ -429,7 +429,7 @@
                     });
                 });
                 
-                    setMapLoaded(true);
+                setMapLoaded(true);
                 }).catch((error) => {
                     console.error('카카오맵 SDK 로드 오류:', error);
                     alert('카카오맵을 로드할 수 없습니다. 페이지를 새로고침해주세요.');
@@ -2066,6 +2066,39 @@
             useEffect(() => {
                 const isAuth = sessionStorage.getItem('admin_authenticated') === 'true';
                 setIsAuthenticated(isAuth);
+            }, []);
+            
+            // Firebase 초기화 대기
+            useEffect(() => {
+                const handleFirebaseInitialized = () => {
+                    setFirebaseReady(true);
+                };
+                
+                const handleFirebaseInitFailed = (event) => {
+                    console.error('Firebase 초기화 실패:', event.detail);
+                    // Firebase가 초기화되지 않아도 계속 진행 (데이터 로드는 나중에 시도)
+                };
+                
+                // 이미 초기화된 경우
+                if (window.firebaseServices && window.firebaseServices.db) {
+                    setFirebaseReady(true);
+                            } else {
+                    // 이벤트 리스너 등록
+                    window.addEventListener('firebaseInitialized', handleFirebaseInitialized);
+                    window.addEventListener('firebaseInitFailed', handleFirebaseInitFailed);
+                    
+                    // Firebase 초기화 대기
+                    waitForFirebase().then((isReady) => {
+                        if (isReady) {
+                            setFirebaseReady(true);
+                        }
+                    });
+                }
+                
+                return () => {
+                    window.removeEventListener('firebaseInitialized', handleFirebaseInitialized);
+                    window.removeEventListener('firebaseInitFailed', handleFirebaseInitFailed);
+                };
             }, []);
             
             // Firebase 초기화 대기 함수
