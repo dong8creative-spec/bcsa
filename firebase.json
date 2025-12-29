@@ -16,8 +16,8 @@
     ],
     "rewrites": [
       {
-        "source": "!/admin.html",
-        "destination": "/index.html"
+        "source": "admin.html",
+        "destination": "/admin.html"
       },
       {
         "source": "**",
