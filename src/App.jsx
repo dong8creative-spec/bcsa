@@ -6894,7 +6894,6 @@ const App = () => {
     const [seminarsData, setSeminarsData] = useState([]);
     const [communityPosts, setCommunityPosts] = useState([]);
     const [currentView, setCurrentView] = useState('home');
-    const [showAdminLogin, setShowAdminLogin] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
     const [users, setUsers] = useState([]);
     
@@ -8235,16 +8234,6 @@ END:VCALENDAR`;
         alert("건의사항이 등록되었습니다. 관리자에게 전달되었습니다.");
     };
 
-    // 시크릿 코드 상수
-    const ADMIN_SECRET_CODE = '021900';
-    
-    const handleAdminSecretCode = (code) => {
-        if (code === ADMIN_SECRET_CODE) {
-            window.location.href = 'admin.html';
-        } else {
-            alert('시크릿 코드가 일치하지 않습니다.');
-        }
-    };
 
     
     // 🌟 모바일 메뉴 열기/닫기 컴포넌트
@@ -9211,38 +9200,12 @@ END:VCALENDAR`;
                     <div className="pt-8 border-t border-brand/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-400">
                         <span>&copy; 2025 BCSA. All rights reserved.</span>
                         <div className="flex gap-4 items-center">
-                            <button onClick={() => setShowAdminLogin(true)} className="opacity-0 cursor-default w-4 h-4 hover:cursor-pointer">&nbsp;</button>
                             <a href="#" className="hover:text-dark">이용약관</a>
                             <a href="#" className="hover:text-dark">개인정보처리방침</a>
                         </div>
                     </div>
                 </div>
             </footer>
-
-            {/* 🌟 관리자 로그인 모달 */}
-            {showAdminLogin && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) setShowAdminLogin(false); }}>
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm z-10 p-8 animate-zoom-in text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-4 text-white"><Icons.Key size={28} /></div>
-                        <h3 className="text-xl font-bold text-dark mb-1">관리자 접속</h3>
-                        <p className="text-sm text-gray-500 mb-6">시크릿 코드 6자리를 입력하세요.</p>
-                        <form onSubmit={(e) => { e.preventDefault(); handleAdminSecretCode(e.target.secretCode.value); }} className="space-y-3">
-                            <input 
-                                name="secretCode" 
-                                type="text" 
-                                maxLength="6"
-                                className="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-brand transition-colors text-center text-2xl tracking-widest font-mono" 
-                                placeholder="000000" 
-                                autoFocus 
-                                autoComplete="off"
-                            />
-                            <button type="submit" className="w-full py-3 bg-[#0f172a] text-white font-bold rounded-xl hover:bg-black transition-colors shadow-lg mt-2">접속</button>
-                        </form>
-                        <button onClick={() => setShowAdminLogin(false)} className="mt-4 text-xs text-gray-400 hover:text-dark underline">돌아가기</button>
-                    </div>
-                </div>
-            )}
 
             {/* 🌟 모달들 */}
             {showSignUpModal === true && (
