@@ -7059,11 +7059,88 @@ const App = () => {
     });
     const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
     
+    // 카카오맵 SDK 로드 완료를 기다리는 헬퍼 함수
+    const waitForKakaoMap = () => {
+        return new Promise((resolve, reject) => {
+            // 이미 로드된 경우
+            if (window.kakao && window.kakao.maps) {
+                resolve(window.kakao);
+                return;
+            }
+            
+            // 스크립트가 로드 중인지 확인
+            const existingScript = document.querySelector('script[src*="dapi.kakao.com"]');
+            
+            // 스크립트 로드 확인 및 대기
+            let attempts = 0;
+            const maxAttempts = 100; // 10초 대기 (100ms * 100)
+            
+            const checkInterval = setInterval(() => {
+                attempts++;
+                if (window.kakao && window.kakao.maps) {
+                    clearInterval(checkInterval);
+                    resolve(window.kakao);
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkInterval);
+                    // 스크립트가 없으면 동적으로 로드 시도
+                    if (!existingScript) {
+                        loadKakaoMapScript().then(() => {
+                            if (window.kakao && window.kakao.maps) {
+                                resolve(window.kakao);
+                            } else {
+                                reject(new Error('카카오맵 SDK를 로드할 수 없습니다.'));
+                            }
+                        }).catch(reject);
+                    } else {
+                        reject(new Error('카카오맵 SDK 로드 시간이 초과되었습니다.'));
+                    }
+                }
+            }, 100);
+        });
+    };
+    
+    // 카카오맵 SDK 동적 로드 함수
+    const loadKakaoMapScript = () => {
+        return new Promise((resolve, reject) => {
+            // 이미 로드 중이거나 로드된 경우
+            if (window.kakao && window.kakao.maps) {
+                resolve();
+                return;
+            }
+            
+            const existingScript = document.querySelector('script[src*="dapi.kakao.com"]');
+            if (existingScript) {
+                // 이미 스크립트가 있으면 로드 완료를 기다림
+                existingScript.addEventListener('load', resolve);
+                existingScript.addEventListener('error', reject);
+                return;
+            }
+            
+            // 스크립트 동적 생성 및 로드
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=f35b8c9735d77cced1235c5775c7c3b1&libraries=services';
+            script.async = true;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    };
+    
     // 카카오맵 Places API를 활용한 장소 검색 함수
-    const openKakaoPlacesSearch = (onComplete) => {
-        // Places 서비스 초기화 확인
-        if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
-            alert('카카오맵 API가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
+    const openKakaoPlacesSearch = async (onComplete) => {
+        try {
+            // 카카오맵 SDK 로드 완료 대기
+            await waitForKakaoMap();
+            
+            // Places 서비스 초기화 확인
+            if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
+                alert('카카오맵 API가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
+                return;
+            }
+        } catch (error) {
+            alert('카카오맵 API를 로드할 수 없습니다. 페이지를 새로고침해주세요.');
+            console.error('카카오맵 SDK 로드 오류:', error);
             return;
         }
         
