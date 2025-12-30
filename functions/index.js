@@ -92,7 +92,7 @@ app.get('/api/bid-search', async (req, res) => {
     (Array.isArray(req.query.businessTypes) ? req.query.businessTypes : [req.query.businessTypes]) : 
     ['전체'];
   
-  const baseUrl = 'https://apis.data.gov.kr/1230000/ad/BidPublicInfoService';
+  const baseUrl = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
   
   // 업무구분에 따라 호출할 API 경로 결정
   // 조달청 API는 업무구분별로 별도 엔드포인트를 제공

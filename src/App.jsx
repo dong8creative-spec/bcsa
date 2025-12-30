@@ -3652,7 +3652,7 @@ const BidSearchView = ({ onBack, currentUser }) => {
             if (baseUrl.includes('allorigins.win') || baseUrl.includes('cors-anywhere') || baseUrl.includes('corsproxy.io') || baseUrl.includes('codetabs.com')) {
                 // CORS 프록시는 실제 API 호출로 테스트 (간단한 요청)
                 const g2bApiKey = CONFIG.G2B_API?.API_KEY || '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
-                const g2bBaseUrl = CONFIG.G2B_API?.BASE_URL || 'https://apis.data.gov.kr/1230000/ad/BidPublicInfoService';
+                const g2bBaseUrl = CONFIG.G2B_API?.BASE_URL || 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
                 const testUrl = `${g2bBaseUrl}/getBidPblancListInfoThngPPSSrch?ServiceKey=${g2bApiKey}&pageNo=1&numOfRows=1&inqryDiv=1&type=json`;
                 
                 const testProxyUrl = `${baseUrl}${encodeURIComponent(testUrl)}`;
@@ -3714,19 +3714,18 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 }
                 
                 // 3. 프로덕션 환경
-                // 호스팅케이알: CORS 프록시 서비스 사용 (여러 대안 시도)
-                // Firebase Hosting: Firebase Functions 사용 (fallback)
+                // 모든 환경에서 Firebase Functions 우선 사용 (안정성)
+                // CORS 프록시는 fallback으로만 사용
                 const hostname = window.location.hostname;
                 if (hostname === 'bcsa.co.kr' || hostname === 'www.bcsa.co.kr') {
-                    // 호스팅케이알 - CORS 프록시 서비스 사용 (여러 대안)
-                    // 우선순위: corsproxy.io > codetabs > allorigins.win
-                    return 'https://corsproxy.io/?';
+                    // 호스팅케이알 - Firebase Functions 우선 사용 (안정성)
+                    return 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
                 } else if (hostname.includes('web.app') || hostname.includes('firebaseapp.com')) {
                     // Firebase Hosting - Firebase Functions 사용
                     return 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
                 } else {
-                    // 기타 도메인 - CORS 프록시 시도
-                    return 'https://corsproxy.io/?';
+                    // 기타 도메인 - Firebase Functions 우선, 없으면 CORS 프록시
+                    return 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
                 }
             };
 
@@ -3776,7 +3775,7 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 baseUrl = cleanProxyUrl;
                 // 조달청 API URL을 직접 구성
                 const g2bApiKey = CONFIG.G2B_API?.API_KEY || '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
-                const g2bBaseUrl = CONFIG.G2B_API?.BASE_URL || 'https://apis.data.gov.kr/1230000/ad/BidPublicInfoService';
+                const g2bBaseUrl = CONFIG.G2B_API?.BASE_URL || 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
                 
                 // 검색 타입에 따라 API 경로 결정
                 // 업무구분에 따라 여러 API를 호출 (물품, 용역, 공사)
@@ -4088,9 +4087,34 @@ const BidSearchView = ({ onBack, currentUser }) => {
                     } catch (error) {
                         lastError = error;
                         if (i === corsProxyFallbacks.length - 1) {
-                            // 모든 프록시 실패
-                            clearTimeout(timeoutId);
-                            throw new Error('모든 CORS 프록시 서버에 연결할 수 없습니다. 네트워크 연결을 확인하거나 잠시 후 다시 시도해주세요.');
+                            // 모든 CORS 프록시 실패 - Firebase Functions로 fallback 시도
+                            console.warn('[Bid Search] All CORS proxies failed, trying Firebase Functions fallback');
+                            try {
+                                const firebaseFunctionsUrl = 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
+                                const fallbackEndpoint = `${firebaseFunctionsUrl}/apiBid/api/${endpointPath}?${params.toString()}`;
+                                
+                                const fallbackController = new AbortController();
+                                const fallbackTimeout = setTimeout(() => fallbackController.abort(), 30000);
+                                
+                                response = await fetch(fallbackEndpoint, {
+                                    method: 'GET',
+                                    signal: fallbackController.signal,
+                                    headers: { 'Accept': 'application/json' }
+                                });
+                                
+                                clearTimeout(fallbackTimeout);
+                                clearTimeout(timeoutId);
+                                
+                                if (response.ok) {
+                                    console.log('[Bid Search] Firebase Functions fallback succeeded');
+                                    break;
+                                } else {
+                                    throw new Error(`Firebase Functions fallback failed: HTTP ${response.status}`);
+                                }
+                            } catch (fallbackError) {
+                                clearTimeout(timeoutId);
+                                throw new Error('모든 프록시 서버에 연결할 수 없습니다. Firebase Functions가 배포되었는지 확인하거나 네트워크 연결을 확인해주세요.');
+                            }
                         }
                         // 다음 프록시 시도
                         continue;
@@ -4119,7 +4143,7 @@ const BidSearchView = ({ onBack, currentUser }) => {
                         } else if (PROXY_SERVER_URL.includes('localhost')) {
                             errorMsg = `프록시 서버에 연결할 수 없습니다.\n\n로컬 개발 서버를 시작하려면:\n1. 터미널에서 "npm run server" 실행\n2. 서버가 포트 3001에서 실행되는지 확인\n\n또는 전체 서버 시작:\n- "npm run start" (http-server + proxy server)\n- 브라우저에서 "http://localhost:3000/index.html" 접속`;
                         } else if (PROXY_SERVER_URL.includes('allorigins.win') || PROXY_SERVER_URL.includes('cors-anywhere') || PROXY_SERVER_URL.includes('corsproxy.io') || PROXY_SERVER_URL.includes('codetabs.com')) {
-                            errorMsg = '모든 CORS 프록시 서버에 연결할 수 없습니다.\n\n네트워크 연결을 확인하거나 잠시 후 다시 시도해주세요.\n\n또는 Firebase Functions를 사용하도록 설정을 변경할 수 있습니다.';
+                            errorMsg = 'CORS 프록시 서버에 연결할 수 없습니다.\n\nFirebase Functions로 자동 전환을 시도했습니다.\n\nFirebase Functions가 배포되었는지 확인하거나 잠시 후 다시 시도해주세요.';
                         } else {
                             errorMsg = '프록시 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.';
                         }

@@ -57,7 +57,7 @@ export const CONFIG = {
     
     G2B_API: {
         API_KEY: '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b',
-        BASE_URL: 'https://apis.data.gov.kr/1230000/ad/BidPublicInfoService'
+        BASE_URL: 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService'
     },
     
     EMAILJS: {
