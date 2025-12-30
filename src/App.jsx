@@ -2803,6 +2803,12 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
     const [searchKeyword, setSearchKeyword] = useState('');
     
     const filteredRestaurants = restaurants.filter(restaurant => {
+        // 승인 상태 및 노출 여부 체크
+        const isApproved = restaurant.approvalStatus === 'approved' || !restaurant.approvalStatus;
+        const isVisible = restaurant.isVisible !== false; // 기본값 true
+        if (!isApproved || !isVisible) return false;
+        
+        // 검색어 매칭
         const matchKeyword = !searchKeyword || 
             restaurant.title?.toLowerCase().includes(searchKeyword.toLowerCase()) || 
             restaurant.location?.address?.toLowerCase().includes(searchKeyword.toLowerCase()) ||
