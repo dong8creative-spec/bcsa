@@ -2798,6 +2798,652 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
 };
 
 
+// 맛집 리스트 뷰
+const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessOwner, onRestaurantClick, onCreateClick }) => {
+    const [searchKeyword, setSearchKeyword] = useState('');
+    
+    const filteredRestaurants = restaurants.filter(restaurant => {
+        const matchKeyword = !searchKeyword || 
+            restaurant.title?.toLowerCase().includes(searchKeyword.toLowerCase()) || 
+            restaurant.location?.address?.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+            restaurant.ownerName?.toLowerCase().includes(searchKeyword.toLowerCase());
+        return matchKeyword;
+    });
+
+    return (
+        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+            <div className="container mx-auto max-w-7xl">
+                <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+                    <div>
+                        <h2 className="text-3xl font-bold text-dark mb-2">부산맛집</h2>
+                        <p className="text-gray-500 text-sm">부산 지역 맛집 정보</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        {isFoodBusinessOwner(currentUser) && (
+                            <button 
+                                type="button" 
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCreateClick(); }} 
+                                className="flex items-center gap-2 bg-brand text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors"
+                            >
+                                <Icons.Plus size={20} /> 맛집 등록
+                            </button>
+                        )}
+                        <button 
+                            type="button" 
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} 
+                            className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors"
+                        >
+                            <Icons.ArrowLeft size={20} /> 메인으로
+                        </button>
+                    </div>
+                </div>
+
+                {/* 검색 */}
+                <div className="bg-white rounded-3xl shadow-card p-6 mb-8">
+                    <div className="mb-4">
+                        <label className="block text-xs font-bold text-gray-600 mb-2">검색</label>
+                        <div className="relative">
+                            <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input 
+                                type="text" 
+                                placeholder="맛집명, 주소, 등록자명 검색" 
+                                className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm" 
+                                value={searchKeyword} 
+                                onChange={(e) => setSearchKeyword(e.target.value)} 
+                            />
+                        </div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                        검색 결과: <span className="font-bold text-brand">{filteredRestaurants.length}</span>개
+                    </div>
+                </div>
+
+                {/* 맛집 리스트 */}
+                {filteredRestaurants.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredRestaurants.map((restaurant) => (
+                            <div 
+                                key={restaurant.id} 
+                                className="bg-white rounded-3xl shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 cursor-pointer overflow-hidden" 
+                                onClick={() => onRestaurantClick(restaurant)}
+                            >
+                                {restaurant.images && restaurant.images.length > 0 && (
+                                    <div className="w-full overflow-hidden" style={{ aspectRatio: '3/2' }}>
+                                        <img 
+                                            src={restaurant.images[0]} 
+                                            alt={restaurant.title} 
+                                            className="w-full h-full object-cover" 
+                                            onError={(e) => { e.target.src = 'https://via.placeholder.com/400x267?text=No+Image'; }}
+                                        />
+                                    </div>
+                                )}
+                                <div className="p-6">
+                                    <h3 className="text-lg font-bold text-dark mb-2 line-clamp-2">{restaurant.title || '제목 없음'}</h3>
+                                    {restaurant.location?.address && (
+                                        <div className="flex items-center gap-1 text-sm text-gray-600 mb-3">
+                                            <Icons.MapPin size={14} />
+                                            <span className="line-clamp-1">{restaurant.location.address}</span>
+                                        </div>
+                                    )}
+                                    {restaurant.ownerName && (
+                                        <div className="text-xs text-gray-500 mb-2">
+                                            등록자: {restaurant.ownerName}
+                                        </div>
+                                    )}
+                                    {restaurant.menuItems && restaurant.menuItems.length > 0 && (
+                                        <div className="text-xs text-gray-500 mb-2">
+                                            대표메뉴: {restaurant.menuItems[0].name}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-20 text-gray-500">
+                        <Icons.Info className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <p>등록된 맛집이 없습니다.</p>
+                        {isFoodBusinessOwner(currentUser) && (
+                            <button 
+                                type="button"
+                                onClick={onCreateClick}
+                                className="mt-4 px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                            >
+                                맛집 등록하기
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// 맛집 상세 뷰
+const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelete, waitForKakaoMap, openKakaoPlacesSearch }) => {
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const mapContainerRef = useRef(null);
+    const mapRef = useRef(null);
+    const markerRef = useRef(null);
+    
+    const isOwner = restaurant && currentUser && (restaurant.ownerId === (currentUser.id || currentUser.uid));
+    
+    // 지도 초기화
+    useEffect(() => {
+        if (!restaurant?.location?.lat || !restaurant?.location?.lng || !mapContainerRef.current) return;
+        
+        const initMap = async () => {
+            try {
+                await waitForKakaoMap();
+                const kakao = window.kakao;
+                const position = new kakao.maps.LatLng(restaurant.location.lat, restaurant.location.lng);
+                
+                const mapOption = {
+                    center: position,
+                    level: 3
+                };
+                
+                mapRef.current = new kakao.maps.Map(mapContainerRef.current, mapOption);
+                
+                // 마커 표시
+                markerRef.current = new kakao.maps.Marker({
+                    position: position,
+                    map: mapRef.current
+                });
+            } catch (error) {
+                console.error('지도 초기화 실패:', error);
+            }
+        };
+        
+        initMap();
+    }, [restaurant?.location, waitForKakaoMap]);
+    
+    if (!restaurant) {
+        return (
+            <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+                <div className="container mx-auto max-w-7xl text-center">
+                    <p className="text-gray-500">맛집 정보를 찾을 수 없습니다.</p>
+                    <button onClick={onBack} className="mt-4 px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">
+                        목록으로
+                    </button>
+                </div>
+            </div>
+        );
+    }
+    
+    return (
+        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+            <div className="container mx-auto max-w-7xl">
+                <button onClick={onBack} className="mb-6 flex items-center gap-2 text-brand font-bold hover:underline">
+                    <Icons.ArrowLeft size={20} /> 목록으로
+                </button>
+                
+                {/* 갤러리 */}
+                {restaurant.images && restaurant.images.length > 0 && (
+                    <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
+                        <div className="relative" style={{ aspectRatio: '3/2' }}>
+                            <img 
+                                src={restaurant.images[currentImageIndex]} 
+                                alt={restaurant.title}
+                                className="w-full h-full object-cover rounded-xl"
+                            />
+                            {restaurant.images.length > 1 && (
+                                <>
+                                    <button
+                                        onClick={() => setCurrentImageIndex((prev) => (prev - 1 + restaurant.images.length) % restaurant.images.length)}
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white"
+                                    >
+                                        <Icons.ChevronLeft size={20} />
+                                    </button>
+                                    <button
+                                        onClick={() => setCurrentImageIndex((prev) => (prev + 1) % restaurant.images.length)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/80 rounded-full flex items-center justify-center hover:bg-white"
+                                    >
+                                        <Icons.ChevronRight size={20} />
+                                    </button>
+                                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                                        {restaurant.images.map((_, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => setCurrentImageIndex(idx)}
+                                                className={`w-2 h-2 rounded-full ${idx === currentImageIndex ? 'bg-brand w-6' : 'bg-gray-300'}`}
+                                            />
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+                
+                {/* 기본 정보 */}
+                <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
+                    <div className="flex justify-between items-start mb-4">
+                        <h2 className="text-3xl font-bold text-dark">{restaurant.title}</h2>
+                        {isOwner && (
+                            <div className="flex gap-2">
+                                <button onClick={onEdit} className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700">
+                                    수정
+                                </button>
+                                <button onClick={onDelete} className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600">
+                                    삭제
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    
+                    {restaurant.location?.address && (
+                        <div className="flex items-center gap-2 text-gray-600 mb-2">
+                            <Icons.MapPin size={18} />
+                            <span>{restaurant.location.address}</span>
+                        </div>
+                    )}
+                    
+                    {restaurant.phone && (
+                        <div className="flex items-center gap-2 text-gray-600 mb-2">
+                            <Icons.Phone size={18} />
+                            <span>{restaurant.phone}</span>
+                        </div>
+                    )}
+                    
+                    {restaurant.businessHours && (
+                        <div className="flex items-center gap-2 text-gray-600 mb-2">
+                            <Icons.Clock size={18} />
+                            <span>{restaurant.businessHours}</span>
+                        </div>
+                    )}
+                    
+                    {restaurant.priceRange && (
+                        <div className="flex items-center gap-2 text-gray-600 mb-4">
+                            <Icons.DollarSign size={18} />
+                            <span>{restaurant.priceRange}</span>
+                        </div>
+                    )}
+                    
+                    {restaurant.description && (
+                        <p className="text-gray-700 mb-4">{restaurant.description}</p>
+                    )}
+                    
+                    {/* 예약 버튼 */}
+                    <div className="flex gap-4 mt-6">
+                        {restaurant.naverReservationUrl && (
+                            <a 
+                                href={restaurant.naverReservationUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="flex-1 px-6 py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 text-center"
+                            >
+                                네이버 예약
+                            </a>
+                        )}
+                        {restaurant.smartPlaceUrl && (
+                            <a 
+                                href={restaurant.smartPlaceUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="flex-1 px-6 py-3 bg-blue-500 text-white font-bold rounded-xl hover:bg-blue-600 text-center"
+                            >
+                                스마트플레이스
+                            </a>
+                        )}
+                    </div>
+                </div>
+                
+                {/* 대표메뉴 */}
+                {restaurant.menuItems && restaurant.menuItems.length > 0 && (
+                    <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
+                        <h3 className="text-xl font-bold text-dark mb-4">대표메뉴</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {restaurant.menuItems.map((menu, idx) => (
+                                <div key={idx} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
+                                    <span className="font-bold text-dark">{menu.name}</span>
+                                    {menu.price && <span className="text-brand font-bold">{menu.price}</span>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                
+                {/* 지도 */}
+                {restaurant.location?.lat && restaurant.location?.lng && (
+                    <div className="bg-white rounded-3xl shadow-card p-6">
+                        <h3 className="text-xl font-bold text-dark mb-4">위치</h3>
+                        <div ref={mapContainerRef} className="w-full" style={{ height: '400px', borderRadius: '12px', overflow: 'hidden' }}></div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// 맛집 등록/수정 폼 뷰
+const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openKakaoPlacesSearch, resizeImage, uploadImageToImgBB }) => {
+    const [formData, setFormData] = useState({
+        title: restaurant?.title || '',
+        images: restaurant?.images || [],
+        location: restaurant?.location || null,
+        menuItems: restaurant?.menuItems || [{ name: '', price: '' }],
+        naverReservationUrl: restaurant?.naverReservationUrl || '',
+        smartPlaceUrl: restaurant?.smartPlaceUrl || '',
+        phone: restaurant?.phone || '',
+        businessHours: restaurant?.businessHours || '',
+        priceRange: restaurant?.priceRange || '',
+        description: restaurant?.description || ''
+    });
+    const [uploadingImages, setUploadingImages] = useState(false);
+    
+    const handleImageUpload = async (e, index) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        if (file.size > 5 * 1024 * 1024) {
+            alert('이미지 크기는 5MB 이하여야 합니다.');
+            return;
+        }
+        
+        setUploadingImages(true);
+        try {
+            // 3:2 비율로 리사이징
+            const resizedImage = await resizeImage(file, 1200, 800, 0.9);
+            const result = await uploadImageToImgBB(resizedImage, `restaurant_${Date.now()}_${index}.jpg`);
+            
+            if (result.success) {
+                const newImages = [...formData.images];
+                newImages[index] = result.url;
+                setFormData({ ...formData, images: newImages });
+            } else {
+                alert('이미지 업로드에 실패했습니다.');
+            }
+        } catch (error) {
+            console.error('Image upload error:', error);
+            alert('이미지 업로드에 실패했습니다.');
+        } finally {
+            setUploadingImages(false);
+        }
+    };
+    
+    const handleAddMenuItem = () => {
+        if (formData.menuItems.length >= 10) {
+            alert('대표메뉴는 최대 10개까지 등록할 수 있습니다.');
+            return;
+        }
+        setFormData({
+            ...formData,
+            menuItems: [...formData.menuItems, { name: '', price: '' }]
+        });
+    };
+    
+    const handleRemoveMenuItem = (index) => {
+        const newMenuItems = formData.menuItems.filter((_, i) => i !== index);
+        setFormData({ ...formData, menuItems: newMenuItems.length > 0 ? newMenuItems : [{ name: '', price: '' }] });
+    };
+    
+    const handleLocationSelect = async () => {
+        try {
+            await waitForKakaoMap();
+            openKakaoPlacesSearch((place) => {
+                setFormData({
+                    ...formData,
+                    location: {
+                        name: place.name,
+                        address: place.address,
+                        lat: place.lat,
+                        lng: place.lng
+                    }
+                });
+            });
+        } catch (error) {
+            alert('카카오맵을 불러올 수 없습니다.');
+        }
+    };
+    
+    const handleSubmit = () => {
+        if (!formData.title.trim()) {
+            alert('제목을 입력해주세요.');
+            return;
+        }
+        if (formData.images.length < 3) {
+            alert('대표사진 3장을 모두 업로드해주세요.');
+            return;
+        }
+        if (!formData.location) {
+            alert('지도 위치를 선택해주세요.');
+            return;
+        }
+        
+        const validMenuItems = formData.menuItems.filter(m => m.name.trim());
+        if (validMenuItems.length === 0) {
+            alert('대표메뉴를 최소 1개 이상 등록해주세요.');
+            return;
+        }
+        
+        onSave({
+            ...formData,
+            menuItems: validMenuItems
+        });
+    };
+    
+    return (
+        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+            <div className="container mx-auto max-w-4xl">
+                <button onClick={onBack} className="mb-6 flex items-center gap-2 text-brand font-bold hover:underline">
+                    <Icons.ArrowLeft size={20} /> 목록으로
+                </button>
+                
+                <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
+                    <h2 className="text-2xl font-bold text-dark mb-6">{restaurant ? '맛집 수정' : '맛집 등록'}</h2>
+                    
+                    <div className="space-y-6">
+                        {/* 제목 */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
+                            <input
+                                type="text"
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                placeholder="맛집 이름"
+                            />
+                        </div>
+                        
+                        {/* 대표사진 3장 */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">대표사진 (3장) *</label>
+                            <div className="grid grid-cols-3 gap-4">
+                                {[0, 1, 2].map((index) => (
+                                    <div key={index} className="relative" style={{ aspectRatio: '3/2' }}>
+                                        {formData.images[index] ? (
+                                            <div className="relative w-full h-full">
+                                                <img src={formData.images[index]} alt={`사진 ${index + 1}`} className="w-full h-full object-cover rounded-xl" />
+                                                <button
+                                                    onClick={() => {
+                                                        const newImages = [...formData.images];
+                                                        newImages[index] = '';
+                                                        setFormData({ ...formData, images: newImages });
+                                                    }}
+                                                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center"
+                                                >
+                                                    <Icons.X size={14} />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <label className="w-full h-full border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand">
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={(e) => handleImageUpload(e, index)}
+                                                    className="hidden"
+                                                    disabled={uploadingImages}
+                                                />
+                                                <div className="text-center">
+                                                    <Icons.Camera size={24} className="mx-auto mb-2 text-gray-400" />
+                                                    <span className="text-xs text-gray-500">사진 {index + 1}</span>
+                                                </div>
+                                            </label>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        {/* 지도 위치 */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">지도 위치 *</label>
+                            {formData.location ? (
+                                <div className="p-3 bg-gray-50 rounded-xl mb-2">
+                                    <p className="font-bold">{formData.location.name}</p>
+                                    <p className="text-sm text-gray-600">{formData.location.address}</p>
+                                </div>
+                            ) : null}
+                            <button
+                                onClick={handleLocationSelect}
+                                className="w-full px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700"
+                            >
+                                {formData.location ? '위치 변경' : '위치 선택'}
+                            </button>
+                        </div>
+                        
+                        {/* 대표메뉴 */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">대표메뉴 (최대 10개) *</label>
+                            {formData.menuItems.map((menu, index) => (
+                                <div key={index} className="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        value={menu.name}
+                                        onChange={(e) => {
+                                            const newMenuItems = [...formData.menuItems];
+                                            newMenuItems[index].name = e.target.value;
+                                            setFormData({ ...formData, menuItems: newMenuItems });
+                                        }}
+                                        className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                        placeholder="메뉴명"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={menu.price}
+                                        onChange={(e) => {
+                                            const newMenuItems = [...formData.menuItems];
+                                            newMenuItems[index].price = e.target.value;
+                                            setFormData({ ...formData, menuItems: newMenuItems });
+                                        }}
+                                        className="w-32 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                        placeholder="가격"
+                                    />
+                                    {formData.menuItems.length > 1 && (
+                                        <button
+                                            onClick={() => handleRemoveMenuItem(index)}
+                                            className="px-4 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600"
+                                        >
+                                            삭제
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            {formData.menuItems.length < 10 && (
+                                <button
+                                    onClick={handleAddMenuItem}
+                                    className="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300"
+                                >
+                                    메뉴 추가
+                                </button>
+                            )}
+                        </div>
+                        
+                        {/* 네이버 예약 URL */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">네이버 예약 URL</label>
+                            <input
+                                type="url"
+                                value={formData.naverReservationUrl}
+                                onChange={(e) => setFormData({ ...formData, naverReservationUrl: e.target.value })}
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                placeholder="https://booking.naver.com/..."
+                            />
+                        </div>
+                        
+                        {/* 스마트플레이스 URL */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">스마트플레이스 URL</label>
+                            <input
+                                type="url"
+                                value={formData.smartPlaceUrl}
+                                onChange={(e) => setFormData({ ...formData, smartPlaceUrl: e.target.value })}
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                placeholder="https://place.naver.com/..."
+                            />
+                        </div>
+                        
+                        {/* 전화번호 */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">전화번호</label>
+                            <input
+                                type="tel"
+                                value={formData.phone}
+                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                placeholder="051-123-4567"
+                            />
+                        </div>
+                        
+                        {/* 영업시간 */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">영업시간</label>
+                            <input
+                                type="text"
+                                value={formData.businessHours}
+                                onChange={(e) => setFormData({ ...formData, businessHours: e.target.value })}
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                placeholder="예: 11:00 - 22:00"
+                            />
+                        </div>
+                        
+                        {/* 가격대 */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">가격대</label>
+                            <input
+                                type="text"
+                                value={formData.priceRange}
+                                onChange={(e) => setFormData({ ...formData, priceRange: e.target.value })}
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                placeholder="예: 만원대, 2만원대"
+                            />
+                        </div>
+                        
+                        {/* 설명 */}
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">설명</label>
+                            <textarea
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                rows="5"
+                                placeholder="맛집 소개"
+                            />
+                        </div>
+                        
+                        {/* 저장 버튼 */}
+                        <div className="flex gap-4 pt-4">
+                            <button
+                                onClick={onBack}
+                                className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                disabled={uploadingImages}
+                                className="flex-1 px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50"
+                            >
+                                {uploadingImages ? '업로드 중...' : '저장'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const AllSeminarsView = ({ onBack, seminars, onApply, currentUser }) => {
     const [searchKeyword, setSearchKeyword] = useState('');
@@ -6766,6 +7412,8 @@ const App = () => {
     const [membersData, setMembersData] = useState([]);
     const [seminarsData, setSeminarsData] = useState([]);
     const [communityPosts, setCommunityPosts] = useState([]);
+    const [restaurantsData, setRestaurantsData] = useState([]);
+    const [selectedRestaurant, setSelectedRestaurant] = useState(null);
     const [currentView, setCurrentView] = useState('home');
     const [currentUser, setCurrentUser] = useState(null);
     const [users, setUsers] = useState([]);
@@ -7242,6 +7890,22 @@ const App = () => {
         }
     }, []);
     
+    // Load restaurants from Firebase
+    useEffect(() => {
+        if (firebaseService && firebaseService.subscribeRestaurants) {
+            const unsubscribe = firebaseService.subscribeRestaurants((restaurants) => {
+                setRestaurantsData(restaurants);
+            });
+            return () => unsubscribe();
+        } else {
+            if (firebaseService && firebaseService.getRestaurants) {
+                firebaseService.getRestaurants().then(restaurants => {
+                    setRestaurantsData(restaurants);
+                });
+            }
+        }
+    }, []);
+    
     // Firebase real-time listeners handle data synchronization automatically
     
     // 메뉴 항목 활성/비활성 상태 관리 (로컬 스토리지에서 로드)
@@ -7259,6 +7923,7 @@ const App = () => {
                     '커뮤니티': parsed['커뮤니티'] !== undefined ? parsed['커뮤니티'] : true,
                     '입찰공고': parsed['입찰공고'] !== undefined ? parsed['입찰공고'] : true,
                     '후원': parsed['후원'] !== undefined ? parsed['후원'] : true,
+                    '부산맛집': parsed['부산맛집'] !== undefined ? parsed['부산맛집'] : true,
                     ...parsed
                 };
             }
@@ -7272,7 +7937,8 @@ const App = () => {
             '부청사 회원': true,
             '커뮤니티': true,
             '입찰공고': true,
-            '후원': true
+            '후원': true,
+            '부산맛집': true
         };
     };
 
@@ -7286,7 +7952,8 @@ const App = () => {
         '부청사 회원': '부청사 회원',
         '커뮤니티': '커뮤니티',
         '입찰공고': '입찰공고',
-        '후원': '후원'
+        '후원': '후원',
+        '부산맛집': '부산맛집'
     };
 
     // 로컬 스토리지에서 메뉴 명칭 로드
@@ -7780,6 +8447,125 @@ const App = () => {
         }
     };
     
+    // 음식관련사업자 권한 체크 함수
+    const isFoodBusinessOwner = (user) => {
+        if (!user) return false;
+        const businessCategory = user.businessCategory || user.industry || '';
+        const foodCategories = [
+            '요식업 (한식)',
+            '요식업 (양식)',
+            '요식업 (중식)',
+            '요식업 (일식)',
+            '요식업 (카페)'
+        ];
+        return foodCategories.includes(businessCategory);
+    };
+    
+    // 맛집 등록 핸들러
+    const handleRestaurantCreate = async (restaurantData) => {
+        if (!currentUser) {
+            alert('로그인이 필요한 서비스입니다.');
+            return false;
+        }
+        if (!isFoodBusinessOwner(currentUser)) {
+            alert('음식관련사업자만 맛집을 등록할 수 있습니다.');
+            return false;
+        }
+        
+        try {
+            const restaurantToSave = {
+                ...restaurantData,
+                ownerId: currentUser.id || currentUser.uid,
+                ownerName: currentUser.name
+            };
+            
+            if (firebaseService && firebaseService.createRestaurant) {
+                await firebaseService.createRestaurant(restaurantToSave);
+                alert('맛집이 등록되었습니다.');
+                return true;
+            } else {
+                alert('서비스에 연결할 수 없습니다.');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error creating restaurant:', error);
+            alert('맛집 등록에 실패했습니다. 다시 시도해주세요.');
+            return false;
+        }
+    };
+    
+    // 맛집 수정 핸들러
+    const handleRestaurantUpdate = async (restaurantId, restaurantData) => {
+        if (!currentUser) {
+            alert('로그인이 필요한 서비스입니다.');
+            return false;
+        }
+        
+        const restaurant = restaurantsData.find(r => r.id === restaurantId);
+        if (!restaurant) {
+            alert('맛집을 찾을 수 없습니다.');
+            return false;
+        }
+        
+        if (restaurant.ownerId !== (currentUser.id || currentUser.uid)) {
+            alert('본인이 등록한 맛집만 수정할 수 있습니다.');
+            return false;
+        }
+        
+        try {
+            if (firebaseService && firebaseService.updateRestaurant) {
+                await firebaseService.updateRestaurant(restaurantId, restaurantData);
+                alert('맛집 정보가 수정되었습니다.');
+                return true;
+            } else {
+                alert('서비스에 연결할 수 없습니다.');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error updating restaurant:', error);
+            alert('맛집 수정에 실패했습니다. 다시 시도해주세요.');
+            return false;
+        }
+    };
+    
+    // 맛집 삭제 핸들러
+    const handleRestaurantDelete = async (restaurantId) => {
+        if (!currentUser) {
+            alert('로그인이 필요한 서비스입니다.');
+            return false;
+        }
+        
+        const restaurant = restaurantsData.find(r => r.id === restaurantId);
+        if (!restaurant) {
+            alert('맛집을 찾을 수 없습니다.');
+            return false;
+        }
+        
+        if (restaurant.ownerId !== (currentUser.id || currentUser.uid)) {
+            alert('본인이 등록한 맛집만 삭제할 수 있습니다.');
+            return false;
+        }
+        
+        if (!confirm('정말로 이 맛집을 삭제하시겠습니까?')) {
+            return false;
+        }
+        
+        try {
+            if (firebaseService && firebaseService.deleteRestaurant) {
+                await firebaseService.deleteRestaurant(restaurantId);
+                alert('맛집이 삭제되었습니다.');
+                return true;
+            } else {
+                alert('서비스에 연결할 수 없습니다.');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error deleting restaurant:', error);
+            alert('맛집 삭제에 실패했습니다. 다시 시도해주세요.');
+            return false;
+        }
+    };
+    
     const handleWithdraw = () => {
          // 세미나 후기와 사진은 유지하고, 나머지 게시글만 삭제
          const updatedPosts = communityPosts.filter(p => {
@@ -8253,7 +9039,7 @@ END:VCALENDAR`;
             <div className="fixed inset-0 z-50 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
                 <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2 text-dark hover:bg-gray-100 rounded-full"><Icons.X size={32}/></button>
                 <nav className="flex flex-col gap-6 text-center" onClick={(e) => e.stopPropagation()}>
-                    {['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '입찰공고', '후원'].filter(item => menuEnabled[item]).map((item, idx) => (
+                    {['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '입찰공고', '후원', '부산맛집'].filter(item => menuEnabled[item]).map((item, idx) => (
                         <div key={idx} className="flex flex-col items-center gap-2">
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onNavigate(item); onClose(); }} className="text-2xl font-bold text-dark hover:text-brand transition-colors">
                                 {menuNames[item] || item}
@@ -8322,6 +9108,9 @@ END:VCALENDAR`;
         } else if (item === '후원') { 
             setCurrentView('donation'); 
             setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+        } else if (item === '부산맛집') { 
+            setCurrentView('restaurants'); 
+            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
         }
     };
 
@@ -8334,6 +9123,7 @@ END:VCALENDAR`;
         else if (item === '부청사 회원' && currentView === 'allMembers') isActive = true;
         else if (item === '커뮤니티' && (currentView === 'community' || currentView === 'notice')) isActive = true;
         else if (item === '후원' && currentView === 'donation') isActive = true;
+        else if (item === '부산맛집' && (currentView === 'restaurants' || currentView === 'restaurantDetail' || currentView === 'restaurantForm')) isActive = true;
         return `${baseClass} ${isActive ? 'active' : ''}`;
     }
 
@@ -8396,6 +9186,87 @@ END:VCALENDAR`;
             return null;
         }
         if (currentView === 'donation') return <DonationView onBack={() => setCurrentView('home')} currentUser={currentUser} setCurrentUser={setCurrentUser} setMembersData={setMembersData} membersData={membersData} saveCurrentUserToStorage={saveCurrentUserToStorage} />;
+        if (currentView === 'restaurants' && !menuEnabled['부산맛집']) {
+            alert('준비중인 서비스입니다.');
+            setCurrentView('home');
+            return null;
+        }
+        if (currentView === 'restaurants') {
+            return (
+                <RestaurantsListView
+                    onBack={() => setCurrentView('home')}
+                    restaurants={restaurantsData}
+                    currentUser={currentUser}
+                    isFoodBusinessOwner={isFoodBusinessOwner}
+                    onRestaurantClick={(restaurant) => {
+                        setSelectedRestaurant(restaurant);
+                        setCurrentView('restaurantDetail');
+                    }}
+                    onCreateClick={() => {
+                        setSelectedRestaurant(null);
+                        setCurrentView('restaurantForm');
+                    }}
+                />
+            );
+        }
+        if (currentView === 'restaurantDetail' && selectedRestaurant) {
+            return (
+                <RestaurantDetailView
+                    restaurant={selectedRestaurant}
+                    onBack={() => {
+                        setSelectedRestaurant(null);
+                        setCurrentView('restaurants');
+                    }}
+                    currentUser={currentUser}
+                    onEdit={() => {
+                        setCurrentView('restaurantForm');
+                    }}
+                    onDelete={async () => {
+                        const success = await handleRestaurantDelete(selectedRestaurant.id);
+                        if (success) {
+                            setSelectedRestaurant(null);
+                            setCurrentView('restaurants');
+                        }
+                    }}
+                    waitForKakaoMap={waitForKakaoMap}
+                    openKakaoPlacesSearch={openKakaoPlacesSearch}
+                />
+            );
+        }
+        if (currentView === 'restaurantForm') {
+            return (
+                <RestaurantFormView
+                    restaurant={selectedRestaurant}
+                    onBack={() => {
+                        if (selectedRestaurant) {
+                            setCurrentView('restaurantDetail');
+                        } else {
+                            setCurrentView('restaurants');
+                        }
+                    }}
+                    onSave={async (restaurantData) => {
+                        if (selectedRestaurant) {
+                            // 수정
+                            const success = await handleRestaurantUpdate(selectedRestaurant.id, restaurantData);
+                            if (success) {
+                                setSelectedRestaurant(null);
+                                setCurrentView('restaurants');
+                            }
+                        } else {
+                            // 등록
+                            const success = await handleRestaurantCreate(restaurantData);
+                            if (success) {
+                                setCurrentView('restaurants');
+                            }
+                        }
+                    }}
+                    waitForKakaoMap={waitForKakaoMap}
+                    openKakaoPlacesSearch={openKakaoPlacesSearch}
+                    resizeImage={resizeImage}
+                    uploadImageToImgBB={uploadImageToImgBB}
+                />
+            );
+        }
         if (currentView === 'about' && !menuEnabled['소개']) {
             alert('준비중인 서비스입니다.');
             setCurrentView('home');
@@ -9104,7 +9975,7 @@ END:VCALENDAR`;
                         />
                     </div>
                     <nav className={`hidden md:flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-3 relative whitespace-nowrap ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md shadow-glass'}`}>
-                        {['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '입찰공고', '후원'].filter(item => menuEnabled[item]).map((item, idx) => (
+                        {['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '입찰공고', '후원', '부산맛집'].filter(item => menuEnabled[item]).map((item, idx) => (
                             <div key={idx} className="flex flex-col items-center gap-1 relative flex-shrink-0 min-w-fit">
                                 <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} relative`}>
                                     {menuNames[item] || item}

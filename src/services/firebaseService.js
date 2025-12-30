@@ -629,6 +629,78 @@ export const firebaseService = {
       console.error('Error checking bookmark:', error);
       return false;
     }
+  },
+
+  // ==========================================
+  // Restaurants Collection
+  // ==========================================
+  async getRestaurants() {
+    try {
+      const q = query(collection(db, 'restaurants'), orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error getting restaurants:', error);
+      throw error;
+    }
+  },
+
+  async getRestaurant(restaurantId) {
+    try {
+      const docRef = doc(db, 'restaurants', restaurantId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting restaurant:', error);
+      throw error;
+    }
+  },
+
+  async createRestaurant(restaurantData) {
+    try {
+      const docRef = await addDoc(collection(db, 'restaurants'), {
+        ...restaurantData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating restaurant:', error);
+      throw error;
+    }
+  },
+
+  async updateRestaurant(restaurantId, restaurantData) {
+    try {
+      const docRef = doc(db, 'restaurants', restaurantId);
+      await updateDoc(docRef, {
+        ...restaurantData,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error updating restaurant:', error);
+      throw error;
+    }
+  },
+
+  async deleteRestaurant(restaurantId) {
+    try {
+      await deleteDoc(doc(db, 'restaurants', restaurantId));
+    } catch (error) {
+      console.error('Error deleting restaurant:', error);
+      throw error;
+    }
+  },
+
+  subscribeRestaurants(callback) {
+    const q = query(collection(db, 'restaurants'), orderBy('createdAt', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+      const restaurants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      callback(restaurants);
+    });
   }
 };
 
