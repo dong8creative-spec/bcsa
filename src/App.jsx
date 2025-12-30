@@ -3648,26 +3648,7 @@ const BidSearchView = ({ onBack, currentUser }) => {
     // 프록시 서버 상태 확인 함수
     const checkProxyServer = async (baseUrl) => {
         try {
-            // CORS 프록시인 경우 간단한 테스트 요청
-            if (baseUrl.includes('allorigins.win') || baseUrl.includes('cors-anywhere') || baseUrl.includes('corsproxy.io') || baseUrl.includes('codetabs.com')) {
-                // CORS 프록시는 실제 API 호출로 테스트 (간단한 요청)
-                const g2bApiKey = CONFIG.G2B_API?.API_KEY || '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
-                const g2bBaseUrl = CONFIG.G2B_API?.BASE_URL || 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
-                const testUrl = `${g2bBaseUrl}/getBidPblancListInfoThngPPSSrch?ServiceKey=${g2bApiKey}&pageNo=1&numOfRows=1&inqryDiv=1&type=json`;
-                
-                const testProxyUrl = `${baseUrl}${encodeURIComponent(testUrl)}`;
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-                
-                const response = await fetch(testProxyUrl, {
-                    method: 'GET',
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-                return response.ok || response.status === 200;
-            }
-            
-            // 기타 프록시 서버 (Express, Firebase Functions)
+            // 프록시 서버 상태 확인 (로컬 서버만)
             const healthUrl = baseUrl.includes('/apiBid') 
                 ? baseUrl.replace('/apiBid/api/bid-search', '/health')
                 : baseUrl.replace('/api/bid-search', '/health');
@@ -3714,17 +3695,16 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 }
                 
                 // 3. 프로덕션 환경
-                // 모든 환경에서 Firebase Functions 우선 사용 (안정성)
-                // CORS 프록시는 fallback으로만 사용
+                // 모든 환경에서 Firebase Functions 사용
                 const hostname = window.location.hostname;
                 if (hostname === 'bcsa.co.kr' || hostname === 'www.bcsa.co.kr') {
-                    // 호스팅케이알 - Firebase Functions 우선 사용 (안정성)
+                    // 호스팅케이알 - Firebase Functions 사용
                     return 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
                 } else if (hostname.includes('web.app') || hostname.includes('firebaseapp.com')) {
                     // Firebase Hosting - Firebase Functions 사용
                     return 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
                 } else {
-                    // 기타 도메인 - Firebase Functions 우선, 없으면 CORS 프록시
+                    // 기타 도메인 - Firebase Functions 사용
                     return 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
                 }
             };
@@ -3753,16 +3733,13 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 endpointPath = 'bid-search'; // 기본값
             }
             
-            // CORS 프록시인지 확인
-            const isCorsProxy = cleanProxyUrl.includes('allorigins.win') || 
-                               cleanProxyUrl.includes('cors-anywhere') ||
-                               cleanProxyUrl.includes('corsproxy.io') ||
-                               cleanProxyUrl.includes('codetabs.com');
+            // Firebase Functions 사용 여부 확인
+            const isFirebaseFunctions = cleanProxyUrl.includes('cloudfunctions.net');
             
-            // g2bUrl을 상위 스코프에 선언 (fallback 로직에서 사용하기 위해)
-            let g2bUrl = null;
+            // 로컬 서버인지 확인
+            const isLocalServer = cleanProxyUrl.includes('localhost') || cleanProxyUrl.includes('127.0.0.1');
             
-            if (cleanProxyUrl.includes('cloudfunctions.net')) {
+            if (isFirebaseFunctions) {
                 // Firebase Functions
                 baseUrl = cleanProxyUrl;
                 apiEndpoint = `${cleanProxyUrl}/apiBid/api/${endpointPath}`;
@@ -3770,181 +3747,32 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 // Firebase Emulator
                 baseUrl = cleanProxyUrl;
                 apiEndpoint = `${cleanProxyUrl}/apiBid/api/${endpointPath}`;
-            } else if (isCorsProxy) {
-                // CORS 프록시 사용 - 조달청 API 직접 호출
-                baseUrl = cleanProxyUrl;
-                // 조달청 API URL을 직접 구성
-                const g2bApiKey = CONFIG.G2B_API?.API_KEY || '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
-                const g2bBaseUrl = CONFIG.G2B_API?.BASE_URL || 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
-                
-                // 검색 타입에 따라 API 경로 결정
-                // 업무구분에 따라 여러 API를 호출 (물품, 용역, 공사)
-                let g2bApiPaths = [];
-                if (searchType === '개찰결과') {
-                    g2bApiPaths = ['getOpengResultListInfoThngPPSSrch'];
-                } else if (searchType === '최종낙찰자') {
-                    g2bApiPaths = ['getBidPblancListInfoThngPPSSrch'];
-                } else {
-                    // 입찰공고: 업무구분에 따라 여러 API 호출
-                    const searchAll = businessTypes.includes('전체') || businessTypes.length === 0;
-                    if (searchAll || businessTypes.includes('물품')) {
-                        g2bApiPaths.push('getBidPblancListInfoThngPPSSrch'); // 물품
-                    }
-                    if (searchAll || businessTypes.includes('일반용역') || businessTypes.includes('기술용역')) {
-                        g2bApiPaths.push('getBidPblancListInfoSvcPPSSrch'); // 용역 (추정)
-                    }
-                    if (searchAll || businessTypes.includes('공사')) {
-                        g2bApiPaths.push('getBidPblancListInfoCnstwkPPSSrch'); // 공사 (추정)
-                    }
-                    // 기본값: 모든 업무구분 검색
-                    if (g2bApiPaths.length === 0) {
-                        g2bApiPaths = [
-                            'getBidPblancListInfoThngPPSSrch', // 물품
-                            'getBidPblancListInfoSvcPPSSrch', // 용역
-                            'getBidPblancListInfoCnstwkPPSSrch' // 공사
-                        ];
-                    }
-                }
-                
-                // 날짜 범위 설정 (사용자가 선택한 날짜가 있으면 사용, 없으면 최근 30일)
-                const today = new Date();
-                let startDate, endDate;
-                
-                if (filterStartDate && filterEndDate) {
-                    // 사용자가 선택한 날짜 사용
-                    startDate = new Date(filterStartDate);
-                    endDate = new Date(filterEndDate);
-                } else {
-                    // 기본값: 최근 30일
-                    startDate = new Date(today);
-                    startDate.setDate(today.getDate() - 30);
-                    endDate = today;
-                }
-                
-                const formatDate = (date) => {
-                    const y = date.getFullYear();
-                    const m = String(date.getMonth() + 1).padStart(2, '0');
-                    const d = String(date.getDate()).padStart(2, '0');
-                    return `${y}${m}${d}`;
-                };
-                
-                const inqryBgnDt = formatDate(startDate) + '0000';
-                const inqryEndDt = formatDate(endDate) + '2359';
-                
-                // 공통 파라미터 구성 함수
-                const buildApiUrl = (apiPath) => {
-                    const url = new URL(`${g2bBaseUrl}/${apiPath}`);
-                    url.searchParams.append('ServiceKey', g2bApiKey);
-                    url.searchParams.append('pageNo', page.toString());
-                    url.searchParams.append('numOfRows', itemsPerPage.toString());
-                    // inqryDiv: 조회구분 (1: 입찰공고, 2: 개찰결과 등)
-                    // 기본값은 '1' (입찰공고), 하지만 검색 타입에 따라 변경 가능
-                    const inqryDivValue = searchType === '개찰결과' ? '2' : '1';
-                    url.searchParams.append('inqryDiv', inqryDivValue);
-                    url.searchParams.append('inqryBgnDt', inqryBgnDt);
-                    url.searchParams.append('inqryEndDt', inqryEndDt);
-                    url.searchParams.append('type', 'json');
-                    return url;
-                };
-                
-                // CORS 프록시 사용 시에는 첫 번째 API만 사용 (여러 API 병렬 호출은 복잡하므로)
-                // Firebase Functions를 사용하는 경우에만 여러 API를 호출
-                const g2bApiPath = g2bApiPaths[0] || 'getBidPblancListInfoThngPPSSrch';
-                g2bUrl = buildApiUrl(g2bApiPath);
-                
-                // 검색어 추가
-                const searchKeyword = keyword.trim() || bidNoticeNo.trim();
-                if (searchKeyword) {
-                    g2bUrl.searchParams.append('bidNtceNm', searchKeyword);
-                }
-                if (bidNoticeNo.trim()) {
-                    g2bUrl.searchParams.append('bidNtceNo', bidNoticeNo.trim());
-                }
-                
-                // 기타 필터 파라미터 추가
-                if (noticeType !== '전체') {
-                    g2bUrl.searchParams.append('bidNtceDtlClsfCd', noticeType);
-                }
-                if (institutionName.trim()) {
-                    g2bUrl.searchParams.append('insttNm', institutionName.trim());
-                }
-                if (referenceNo.trim()) {
-                    g2bUrl.searchParams.append('refNo', referenceNo.trim());
-                }
-                if (restrictedArea !== '전체') {
-                    g2bUrl.searchParams.append('area', restrictedArea);
-                }
-                if (industry.trim()) {
-                    g2bUrl.searchParams.append('industry', industry.trim());
-                }
-                if (priceMin) {
-                    g2bUrl.searchParams.append('fromEstPrice', priceMin.toString());
-                }
-                if (priceMax) {
-                    g2bUrl.searchParams.append('toEstPrice', priceMax.toString());
-                }
-                if (detailItemNo.trim()) {
-                    g2bUrl.searchParams.append('detailItemNo', detailItemNo.trim());
-                }
-                if (prNo.trim()) {
-                    g2bUrl.searchParams.append('prNo', prNo.trim());
-                }
-                if (shoppingMall !== '전체') {
-                    g2bUrl.searchParams.append('shoppingMallYn', shoppingMall);
-                }
-                if (domesticInternational !== '전체') {
-                    g2bUrl.searchParams.append('domesticYn', domesticInternational === '국내' ? 'Y' : 'N');
-                }
-                if (contractType !== '전체') {
-                    g2bUrl.searchParams.append('contractType', contractType);
-                }
-                if (contractLawType !== '전체') {
-                    g2bUrl.searchParams.append('contractLawType', contractLawType);
-                }
-                if (contractMethod !== '전체') {
-                    g2bUrl.searchParams.append('contractMethod', contractMethod);
-                }
-                if (awardMethod !== '전체') {
-                    g2bUrl.searchParams.append('awardMethod', awardMethod);
-                }
-                
-                // CORS 프록시로 감싸기 (프록시 서비스별 URL 형식 차이 처리)
-                if (cleanProxyUrl.includes('corsproxy.io')) {
-                    apiEndpoint = `${cleanProxyUrl}${encodeURIComponent(g2bUrl.toString())}`;
-                } else if (cleanProxyUrl.includes('codetabs.com')) {
-                    apiEndpoint = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(g2bUrl.toString())}`;
-                } else {
-                    apiEndpoint = `${cleanProxyUrl}${encodeURIComponent(g2bUrl.toString())}`;
-                }
-            } else {
+            } else if (isLocalServer) {
                 // 로컬 Express 서버
                 baseUrl = cleanProxyUrl;
                 apiEndpoint = `${cleanProxyUrl}/api/${endpointPath}`;
+            } else {
+                throw new Error('지원하지 않는 프록시 서버입니다.');
             }
             
             // 프록시 서버 상태 확인 (로컬 개발 환경만)
-            if (baseUrl.includes('localhost')) {
+            if (isLocalServer) {
                 const isServerRunning = await checkProxyServer(baseUrl);
                 if (!isServerRunning) {
-                    throw new Error(`프록시 서버가 실행되지 않았습니다.\n\n로컬 개발 서버를 시작하려면:\n1. 터미널에서 "npm run server" 실행\n2. 서버가 포트 3001에서 실행되는지 확인\n\n또는 HTTP 서버와 함께 시작:\n- "npm run start" (http-server + proxy server)\n- 브라우저에서 "http://localhost:3000/index.html" 접속`);
+                    throw new Error(`프록시 서버가 실행되지 않았습니다.\n\n로컬 개발 서버를 시작하려면:\n1. 터미널에서 "npm run server" 실행\n2. 서버가 포트 3001에서 실행되는지 확인`);
                 }
             }
 
-            // CORS 프록시를 사용하는 경우 파라미터 구성 불필요 (이미 URL에 포함됨)
-            // 그 외의 경우에만 파라미터 구성
-            let params = new URLSearchParams();
+            // 파라미터 구성
+            const searchKeyword = keyword.trim() || bidNoticeNo.trim();
             
-            if (!isCorsProxy) {
-                // 검색어는 keyword 또는 bidNoticeNo 중 하나
-                const searchKeyword = keyword.trim() || bidNoticeNo.trim();
-                
-                params = new URLSearchParams({
-                    keyword: searchKeyword,
-                    pageNo: page.toString(),
-                    numOfRows: itemsPerPage.toString()
-                });
+            let params = new URLSearchParams({
+                keyword: searchKeyword,
+                pageNo: page.toString(),
+                numOfRows: itemsPerPage.toString()
+            });
 
-                // 필터 파라미터 추가
+            // 필터 파라미터 추가
             if (bidNoticeNo.trim()) {
                 params.append('bidNtceNo', bidNoticeNo.trim());
             }
@@ -4007,17 +3835,14 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 });
             }
 
-                if (currentUser) {
-                    params.append('userId', currentUser.uid || '');
-                    params.append('userEmail', currentUser.email || '');
-                    params.append('userName', currentUser.name || '');
-                }
+            if (currentUser) {
+                params.append('userId', currentUser.uid || '');
+                params.append('userEmail', currentUser.email || '');
+                params.append('userName', currentUser.name || '');
             }
 
-            // Ensure proper URL construction
-            const proxyRequestUrl = isCorsProxy 
-                ? apiEndpoint  // CORS 프록시는 이미 완전한 URL
-                : `${apiEndpoint}?${params.toString()}`;
+            // URL 구성
+            const proxyRequestUrl = `${apiEndpoint}?${params.toString()}`;
             
             // Validate URL format
             try {
@@ -4026,131 +3851,36 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 throw new Error(`잘못된 API URL 형식입니다: ${proxyRequestUrl}`);
             }
 
-            // CORS 프록시 fallback 목록 (여러 프록시 서비스 시도)
-            const corsProxyFallbacks = [
-                'https://corsproxy.io/?',
-                'https://api.codetabs.com/v1/proxy?quest=',
-                'https://api.allorigins.win/raw?url='
-            ];
-            
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 30000);
 
             let response;
-            let lastError = null;
-            
-            // CORS 프록시를 사용하는 경우 여러 대안 시도
-            if (isCorsProxy) {
-                // g2bUrl이 없으면 에러
-                if (!g2bUrl) {
-                    throw new Error('조달청 API URL 구성에 실패했습니다.');
-                }
-                
-                let proxyIndex = 0;
-                if (cleanProxyUrl.includes('corsproxy.io')) proxyIndex = 0;
-                else if (cleanProxyUrl.includes('codetabs.com')) proxyIndex = 1;
-                else if (cleanProxyUrl.includes('allorigins.win')) proxyIndex = 2;
-                
-                // 현재 프록시부터 시작하여 순차적으로 시도
-                for (let i = proxyIndex; i < corsProxyFallbacks.length; i++) {
-                    try {
-                        const fallbackProxy = corsProxyFallbacks[i];
-                        let fallbackUrl;
-                        
-                        if (fallbackProxy.includes('corsproxy.io')) {
-                            fallbackUrl = `${fallbackProxy}${encodeURIComponent(g2bUrl.toString())}`;
-                        } else if (fallbackProxy.includes('codetabs.com')) {
-                            fallbackUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(g2bUrl.toString())}`;
-                        } else {
-                            fallbackUrl = `${fallbackProxy}${encodeURIComponent(g2bUrl.toString())}`;
-                        }
-                        
-                        const testController = new AbortController();
-                        const testTimeout = setTimeout(() => testController.abort(), 10000);
-                        
-                        response = await fetch(fallbackUrl, {
-                            method: 'GET',
-                            signal: testController.signal,
-                            headers: {
-                                'Accept': 'application/json'
-                            }
-                        });
-                        
-                        clearTimeout(testTimeout);
-                        
-                        if (response.ok) {
-                            clearTimeout(timeoutId);
-                            break;
-                        } else {
-                            throw new Error(`HTTP ${response.status}`);
-                        }
-                    } catch (error) {
-                        lastError = error;
-                        if (i === corsProxyFallbacks.length - 1) {
-                            // 모든 CORS 프록시 실패 - Firebase Functions로 fallback 시도
-                            console.warn('[Bid Search] All CORS proxies failed, trying Firebase Functions fallback');
-                            try {
-                                const firebaseFunctionsUrl = 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
-                                const fallbackEndpoint = `${firebaseFunctionsUrl}/apiBid/api/${endpointPath}?${params.toString()}`;
-                                
-                                const fallbackController = new AbortController();
-                                const fallbackTimeout = setTimeout(() => fallbackController.abort(), 30000);
-                                
-                                response = await fetch(fallbackEndpoint, {
-                                    method: 'GET',
-                                    signal: fallbackController.signal,
-                                    headers: { 'Accept': 'application/json' }
-                                });
-                                
-                                clearTimeout(fallbackTimeout);
-                                clearTimeout(timeoutId);
-                                
-                                if (response.ok) {
-                                    console.log('[Bid Search] Firebase Functions fallback succeeded');
-                                    break;
-                                } else {
-                                    throw new Error(`Firebase Functions fallback failed: HTTP ${response.status}`);
-                                }
-                            } catch (fallbackError) {
-                                clearTimeout(timeoutId);
-                                throw new Error('모든 프록시 서버에 연결할 수 없습니다. Firebase Functions가 배포되었는지 확인하거나 네트워크 연결을 확인해주세요.');
-                            }
-                        }
-                        // 다음 프록시 시도
-                        continue;
+            try {
+                response = await fetch(proxyRequestUrl, {
+                    method: 'GET',
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'application/json'
                     }
+                });
+                clearTimeout(timeoutId);
+            } catch (fetchError) {
+                clearTimeout(timeoutId);
+                if (fetchError.name === 'AbortError') {
+                    throw new Error('요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
                 }
-            } else {
-                // CORS 프록시가 아닌 경우 기존 로직 사용
-                try {
-                    response = await fetch(proxyRequestUrl, {
-                        method: 'GET',
-                        signal: controller.signal,
-                        headers: {
-                            'Accept': 'application/json'
-                        }
-                    });
-                    clearTimeout(timeoutId);
-                } catch (fetchError) {
-                    clearTimeout(timeoutId);
-                    if (fetchError.name === 'AbortError') {
-                        throw new Error('요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
+                if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('NetworkError')) {
+                    let errorMsg;
+                    if (isFirebaseFunctions) {
+                        errorMsg = 'Firebase Functions에 연결할 수 없습니다.\n\n다음을 확인해주세요:\n1. Firebase Functions가 배포되었는지 확인\n2. 네트워크 연결 상태 확인\n3. Firebase Console에서 Functions 상태 확인\n\n배포 명령: firebase deploy --only functions';
+                    } else if (isLocalServer) {
+                        errorMsg = `프록시 서버에 연결할 수 없습니다.\n\n로컬 개발 서버를 시작하려면:\n1. 터미널에서 "npm run server" 실행\n2. 서버가 포트 3001에서 실행되는지 확인`;
+                    } else {
+                        errorMsg = '서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.';
                     }
-                    if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('NetworkError') || fetchError.message.includes('CORS')) {
-                        let errorMsg;
-                        if (PROXY_SERVER_URL.includes('cloudfunctions.net')) {
-                            errorMsg = '프록시 서버에 연결할 수 없습니다. Firebase Functions가 배포되었는지 확인해주세요.';
-                        } else if (PROXY_SERVER_URL.includes('localhost')) {
-                            errorMsg = `프록시 서버에 연결할 수 없습니다.\n\n로컬 개발 서버를 시작하려면:\n1. 터미널에서 "npm run server" 실행\n2. 서버가 포트 3001에서 실행되는지 확인\n\n또는 전체 서버 시작:\n- "npm run start" (http-server + proxy server)\n- 브라우저에서 "http://localhost:3000/index.html" 접속`;
-                        } else if (PROXY_SERVER_URL.includes('allorigins.win') || PROXY_SERVER_URL.includes('cors-anywhere') || PROXY_SERVER_URL.includes('corsproxy.io') || PROXY_SERVER_URL.includes('codetabs.com')) {
-                            errorMsg = 'CORS 프록시 서버에 연결할 수 없습니다.\n\nFirebase Functions로 자동 전환을 시도했습니다.\n\nFirebase Functions가 배포되었는지 확인하거나 잠시 후 다시 시도해주세요.';
-                        } else {
-                            errorMsg = '프록시 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.';
-                        }
-                        throw new Error(errorMsg);
-                    }
-                    throw new Error(`네트워크 오류: ${fetchError.message}`);
+                    throw new Error(errorMsg);
                 }
+                throw new Error(`네트워크 오류: ${fetchError.message}`);
             }
 
             if (!response.ok) {
@@ -4165,78 +3895,27 @@ const BidSearchView = ({ onBack, currentUser }) => {
 
             let data = await response.json();
 
-            // CORS 프록시를 사용하는 경우 조달청 API 원본 응답 형식 처리
-            if (isCorsProxy) {
-                // 조달청 API 원본 응답 형식: { response: { header: {...}, body: {...} } }
-                if (data.response && data.response.body) {
-                    const body = data.response.body;
-                    let items = body.items || [];
-                    const totalCnt = body.totalCount || 0;
-                    
-                    // items가 배열이 아닌 경우 처리
-                    if (items.item) {
-                        items = Array.isArray(items.item) ? items.item : [items.item];
-                    }
-                    
-                    // 최종낙찰자 필터링 (searchType이 '최종낙찰자'인 경우)
-                    if (searchType === '최종낙찰자') {
-                        items = items.filter(item => item.sucsfbidAmt && item.sucsfbidAmt !== '');
-                    }
-                    
-                    // 검색 결과를 항상 등록일 기준 내림차순(최신순)으로 정렬
-                    items.sort((a, b) => {
-                        const aDate = parseDate(a.bidNtceDt) || new Date(0);
-                        const bDate = parseDate(b.bidNtceDt) || new Date(0);
-                        return bDate - aDate; // 내림차순 (최신순)
-                    });
-                    
-                    setBidList(items);
-                    setTotalCount(totalCnt);
-                    setCurrentPage(page);
-                    setError(null);
-                    
-                    // 검색 후 정렬을 기본값(등록일 내림차순)으로 설정
-                    setSortField('등록일');
-                    setSortOrder('desc');
-                } else if (data.response && data.response.header) {
-                    const resultCode = data.response.header.resultCode;
-                    const resultMsg = data.response.header.resultMsg || '알 수 없는 오류';
-                    
-                    if (resultCode !== '00') {
-                        throw new Error(`API 에러 (${resultCode}): ${resultMsg}`);
-                    }
-                    
-                    // resultCode가 '00'이지만 body가 없는 경우
-                    setBidList([]);
-                    setTotalCount(0);
-                    setCurrentPage(page);
-                    setError(null);
-                } else {
-                    throw new Error('예상하지 못한 응답 구조입니다.');
-                }
+            // 프록시 서버 응답 형식 처리 (Firebase Functions, 로컬 서버 모두 동일한 형식)
+            if (data.success && data.data) {
+                let items = data.data.items || [];
+                
+                // 검색 결과를 항상 등록일 기준 내림차순(최신순)으로 정렬
+                items.sort((a, b) => {
+                    const aDate = parseDate(a.bidNtceDt) || new Date(0);
+                    const bDate = parseDate(b.bidNtceDt) || new Date(0);
+                    return bDate - aDate; // 내림차순 (최신순)
+                });
+                
+                setBidList(items);
+                setTotalCount(data.data.totalCount || 0);
+                setCurrentPage(page);
+                setError(null);
+                
+                // 검색 후 정렬을 기본값(등록일 내림차순)으로 설정
+                setSortField('등록일');
+                setSortOrder('desc');
             } else {
-                // 기존 프록시 서버 응답 형식 (Firebase Functions, Express 등)
-                if (data.success && data.data) {
-                    let items = data.data.items || [];
-                    
-                    // 검색 결과를 항상 등록일 기준 내림차순(최신순)으로 정렬
-                    items.sort((a, b) => {
-                        const aDate = parseDate(a.bidNtceDt) || new Date(0);
-                        const bDate = parseDate(b.bidNtceDt) || new Date(0);
-                        return bDate - aDate; // 내림차순 (최신순)
-                    });
-                    
-                    setBidList(items);
-                    setTotalCount(data.data.totalCount || 0);
-                    setCurrentPage(page);
-                    setError(null);
-                    
-                    // 검색 후 정렬을 기본값(등록일 내림차순)으로 설정
-                    setSortField('등록일');
-                    setSortOrder('desc');
-                } else {
-                    throw new Error(data.error || '검색 결과를 불러오는데 실패했습니다.');
-                }
+                throw new Error(data.error || '검색 결과를 불러오는데 실패했습니다.');
             }
 
         } catch (err) {
