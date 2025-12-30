@@ -7988,6 +7988,52 @@ const App = () => {
 
     const [menuNames, setMenuNames] = useState(loadMenuNamesFromStorage());
 
+    // 메뉴 순서 관리
+    const defaultMenuOrder = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '입찰공고', '후원', '부산맛집'];
+    
+    const loadMenuOrderFromStorage = () => {
+        try {
+            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                const stored = localStorage.getItem('busan_ycc_menu_order');
+                if (stored) {
+                    const parsedOrder = JSON.parse(stored);
+                    // 저장된 순서와 기본 메뉴를 병합
+                    const ordered = parsedOrder.filter(key => defaultMenuOrder.includes(key));
+                    const remaining = defaultMenuOrder.filter(key => !parsedOrder.includes(key));
+                    return [...ordered, ...remaining];
+                }
+            }
+        } catch (error) {
+            console.error('메뉴 순서 로드 실패:', error);
+        }
+        return defaultMenuOrder;
+    };
+
+    const [menuOrder, setMenuOrder] = useState(loadMenuOrderFromStorage());
+
+    // menuOrder가 변경되면 업데이트
+    useEffect(() => {
+        const handleStorageChange = () => {
+            setMenuOrder(loadMenuOrderFromStorage());
+        };
+        
+        // localStorage 변경 감지 (다른 탭에서 변경된 경우)
+        window.addEventListener('storage', handleStorageChange);
+        
+        // 주기적으로 확인 (같은 탭에서 변경된 경우)
+        const interval = setInterval(() => {
+            const newOrder = loadMenuOrderFromStorage();
+            if (JSON.stringify(newOrder) !== JSON.stringify(menuOrder)) {
+                setMenuOrder(newOrder);
+            }
+        }, 1000);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            clearInterval(interval);
+        };
+    }, [menuOrder]);
+
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', handleScroll);
@@ -9039,13 +9085,13 @@ END:VCALENDAR`;
 
     
     // 🌟 모바일 메뉴 열기/닫기 컴포넌트
-    const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames }) => {
+    const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames, menuOrder }) => {
         if (!isOpen) return null;
         return (
             <div className="fixed inset-0 z-50 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
                 <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2 text-dark hover:bg-gray-100 rounded-full"><Icons.X size={32}/></button>
                 <nav className="flex flex-col gap-6 text-center" onClick={(e) => e.stopPropagation()}>
-                    {['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '입찰공고', '후원', '부산맛집'].filter(item => menuEnabled[item]).map((item, idx) => (
+                    {menuOrder.filter(item => menuEnabled[item]).map((item, idx) => (
                         <div key={idx} className="flex flex-col items-center gap-2">
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onNavigate(item); onClose(); }} className="text-2xl font-bold text-dark hover:text-brand transition-colors">
                                 {menuNames[item] || item}
@@ -9981,7 +10027,7 @@ END:VCALENDAR`;
                         />
                     </div>
                     <nav className={`hidden md:flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-3 relative whitespace-nowrap ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md shadow-glass'}`}>
-                        {['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '입찰공고', '후원', '부산맛집'].filter(item => menuEnabled[item]).map((item, idx) => (
+                        {menuOrder.filter(item => menuEnabled[item]).map((item, idx) => (
                             <div key={idx} className="flex flex-col items-center gap-1 relative flex-shrink-0 min-w-fit">
                                 <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} relative`}>
                                     {menuNames[item] || item}
@@ -10134,7 +10180,7 @@ END:VCALENDAR`;
                 />
             )}
             {/* 🌟 모바일 메뉴 오버레이 */}
-            <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onNavigate={handleNavigation} menuEnabled={menuEnabled} menuNames={menuNames} />
+            <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onNavigate={handleNavigation} menuEnabled={menuEnabled} menuNames={menuNames} menuOrder={menuOrder} />
 
             {/* 플로팅 소셜 아이콘 (오른쪽 고정, 스크롤 따라다님) */}
             <div className="fixed right-6 bottom-6 z-50 flex flex-col gap-3">
