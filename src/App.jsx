@@ -3652,7 +3652,7 @@ const BidSearchView = ({ onBack, currentUser }) => {
             if (baseUrl.includes('allorigins.win') || baseUrl.includes('cors-anywhere') || baseUrl.includes('corsproxy.io') || baseUrl.includes('codetabs.com')) {
                 // CORS 프록시는 실제 API 호출로 테스트 (간단한 요청)
                 const g2bApiKey = CONFIG.G2B_API?.API_KEY || '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
-                const g2bBaseUrl = CONFIG.G2B_API?.BASE_URL || 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
+                const g2bBaseUrl = CONFIG.G2B_API?.BASE_URL || 'https://apis.data.gov.kr/1230000/ad/BidPublicInfoService';
                 const testUrl = `${g2bBaseUrl}/getBidPblancListInfoThngPPSSrch?ServiceKey=${g2bApiKey}&pageNo=1&numOfRows=1&inqryDiv=1&type=json`;
                 
                 const testProxyUrl = `${baseUrl}${encodeURIComponent(testUrl)}`;
@@ -3776,17 +3776,35 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 baseUrl = cleanProxyUrl;
                 // 조달청 API URL을 직접 구성
                 const g2bApiKey = CONFIG.G2B_API?.API_KEY || '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
-                const g2bBaseUrl = CONFIG.G2B_API?.BASE_URL || 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
+                const g2bBaseUrl = CONFIG.G2B_API?.BASE_URL || 'https://apis.data.gov.kr/1230000/ad/BidPublicInfoService';
                 
                 // 검색 타입에 따라 API 경로 결정
-                // 주의: 현재 조달청 API는 물품 입찰공고만 지원 (용역, 공사는 별도 API 필요)
-                let g2bApiPath;
+                // 업무구분에 따라 여러 API를 호출 (물품, 용역, 공사)
+                let g2bApiPaths = [];
                 if (searchType === '개찰결과') {
-                    g2bApiPath = 'getOpengResultListInfoThngPPSSrch';
+                    g2bApiPaths = ['getOpengResultListInfoThngPPSSrch'];
                 } else if (searchType === '최종낙찰자') {
-                    g2bApiPath = 'getBidPblancListInfoThngPPSSrch';
+                    g2bApiPaths = ['getBidPblancListInfoThngPPSSrch'];
                 } else {
-                    g2bApiPath = 'getBidPblancListInfoThngPPSSrch'; // 물품 입찰공고
+                    // 입찰공고: 업무구분에 따라 여러 API 호출
+                    const searchAll = businessTypes.includes('전체') || businessTypes.length === 0;
+                    if (searchAll || businessTypes.includes('물품')) {
+                        g2bApiPaths.push('getBidPblancListInfoThngPPSSrch'); // 물품
+                    }
+                    if (searchAll || businessTypes.includes('일반용역') || businessTypes.includes('기술용역')) {
+                        g2bApiPaths.push('getBidPblancListInfoSvcPPSSrch'); // 용역 (추정)
+                    }
+                    if (searchAll || businessTypes.includes('공사')) {
+                        g2bApiPaths.push('getBidPblancListInfoCnstwkPPSSrch'); // 공사 (추정)
+                    }
+                    // 기본값: 모든 업무구분 검색
+                    if (g2bApiPaths.length === 0) {
+                        g2bApiPaths = [
+                            'getBidPblancListInfoThngPPSSrch', // 물품
+                            'getBidPblancListInfoSvcPPSSrch', // 용역
+                            'getBidPblancListInfoCnstwkPPSSrch' // 공사
+                        ];
+                    }
                 }
                 
                 // 날짜 범위 설정 (사용자가 선택한 날짜가 있으면 사용, 없으면 최근 30일)
@@ -3814,18 +3832,26 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 const inqryBgnDt = formatDate(startDate) + '0000';
                 const inqryEndDt = formatDate(endDate) + '2359';
                 
-                // 조달청 API URL 구성
-                g2bUrl = new URL(`${g2bBaseUrl}/${g2bApiPath}`);
-                g2bUrl.searchParams.append('ServiceKey', g2bApiKey);
-                g2bUrl.searchParams.append('pageNo', page.toString());
-                g2bUrl.searchParams.append('numOfRows', itemsPerPage.toString());
-                // inqryDiv: 조회구분 (1: 입찰공고, 2: 개찰결과 등)
-                // 기본값은 '1' (입찰공고), 하지만 검색 타입에 따라 변경 가능
-                const inqryDivValue = searchType === '개찰결과' ? '2' : '1';
-                g2bUrl.searchParams.append('inqryDiv', inqryDivValue);
-                g2bUrl.searchParams.append('inqryBgnDt', inqryBgnDt);
-                g2bUrl.searchParams.append('inqryEndDt', inqryEndDt);
-                g2bUrl.searchParams.append('type', 'json');
+                // 공통 파라미터 구성 함수
+                const buildApiUrl = (apiPath) => {
+                    const url = new URL(`${g2bBaseUrl}/${apiPath}`);
+                    url.searchParams.append('ServiceKey', g2bApiKey);
+                    url.searchParams.append('pageNo', page.toString());
+                    url.searchParams.append('numOfRows', itemsPerPage.toString());
+                    // inqryDiv: 조회구분 (1: 입찰공고, 2: 개찰결과 등)
+                    // 기본값은 '1' (입찰공고), 하지만 검색 타입에 따라 변경 가능
+                    const inqryDivValue = searchType === '개찰결과' ? '2' : '1';
+                    url.searchParams.append('inqryDiv', inqryDivValue);
+                    url.searchParams.append('inqryBgnDt', inqryBgnDt);
+                    url.searchParams.append('inqryEndDt', inqryEndDt);
+                    url.searchParams.append('type', 'json');
+                    return url;
+                };
+                
+                // CORS 프록시 사용 시에는 첫 번째 API만 사용 (여러 API 병렬 호출은 복잡하므로)
+                // Firebase Functions를 사용하는 경우에만 여러 API를 호출
+                const g2bApiPath = g2bApiPaths[0] || 'getBidPblancListInfoThngPPSSrch';
+                g2bUrl = buildApiUrl(g2bApiPath);
                 
                 // 검색어 추가
                 const searchKeyword = keyword.trim() || bidNoticeNo.trim();
@@ -3973,6 +3999,13 @@ const BidSearchView = ({ onBack, currentUser }) => {
             }
             if (awardMethod !== '전체') {
                 params.append('awardMethod', awardMethod);
+            }
+            
+            // 업무구분 파라미터 추가
+            if (businessTypes && businessTypes.length > 0 && !businessTypes.includes('전체')) {
+                businessTypes.forEach(type => {
+                    params.append('businessTypes', type);
+                });
             }
 
                 if (currentUser) {

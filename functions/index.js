@@ -87,8 +87,34 @@ app.get('/api/bid-search', async (req, res) => {
     });
   }
 
-  const baseUrl = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
-  const apiPath = 'getBidPblancListInfoThngPPSSrch'; // 물품 입찰공고 조회
+  // 업무구분 파라미터 확인 (물품, 용역, 공사 등)
+  const businessTypes = req.query.businessTypes ? 
+    (Array.isArray(req.query.businessTypes) ? req.query.businessTypes : [req.query.businessTypes]) : 
+    ['전체'];
+  
+  const baseUrl = 'https://apis.data.gov.kr/1230000/ad/BidPublicInfoService';
+  
+  // 업무구분에 따라 호출할 API 경로 결정
+  // 조달청 API는 업무구분별로 별도 엔드포인트를 제공
+  const apiPaths = [];
+  const searchAll = businessTypes.includes('전체') || businessTypes.length === 0;
+  
+  if (searchAll || businessTypes.includes('물품')) {
+    apiPaths.push('getBidPblancListInfoThngPPSSrch'); // 물품
+  }
+  if (searchAll || businessTypes.includes('일반용역') || businessTypes.includes('기술용역')) {
+    apiPaths.push('getBidPblancListInfoSvcPPSSrch'); // 용역 (추정)
+  }
+  if (searchAll || businessTypes.includes('공사')) {
+    apiPaths.push('getBidPblancListInfoCnstwkPPSSrch'); // 공사 (추정)
+  }
+  
+  // 기본값: 모든 업무구분 검색
+  if (apiPaths.length === 0) {
+    apiPaths.push('getBidPblancListInfoThngPPSSrch'); // 물품 (기본값)
+    apiPaths.push('getBidPblancListInfoSvcPPSSrch'); // 용역
+    apiPaths.push('getBidPblancListInfoCnstwkPPSSrch'); // 공사
+  }
   
   // 날짜 범위 설정 (사용자가 선택한 날짜가 있으면 사용, 없으면 최근 30일)
   const today = new Date();
@@ -142,175 +168,210 @@ app.get('/api/bid-search', async (req, res) => {
   const inqryBgnDt = formatDate(startDate) + '0000';
   const inqryEndDt = formatDate(endDate) + '2359';
 
-  // API URL 구성
-  const apiUrl = new URL(`${baseUrl}/${apiPath}`);
-  apiUrl.searchParams.append('ServiceKey', serviceKey);
-  apiUrl.searchParams.append('pageNo', pageNo.toString());
-  apiUrl.searchParams.append('numOfRows', numOfRows.toString());
-  apiUrl.searchParams.append('inqryDiv', inqryDiv);
-  apiUrl.searchParams.append('inqryBgnDt', inqryBgnDt);
-  apiUrl.searchParams.append('inqryEndDt', inqryEndDt);
-  apiUrl.searchParams.append('type', 'json');
-  
-  // 검색어 파라미터
-  if (keyword.trim()) {
-    apiUrl.searchParams.append('bidNtceNm', keyword.trim());
-  }
-  if (bidNtceNo.trim()) {
-    apiUrl.searchParams.append('bidNtceNo', bidNtceNo.trim());
-  }
-  if (bidNtceDtlClsfCd.trim()) {
-    apiUrl.searchParams.append('bidNtceDtlClsfCd', bidNtceDtlClsfCd.trim());
-  }
-  if (insttNm.trim()) {
-    apiUrl.searchParams.append('insttNm', insttNm.trim());
-  }
-  if (refNo.trim()) {
-    apiUrl.searchParams.append('refNo', refNo.trim());
-  }
-  if (area.trim()) {
-    apiUrl.searchParams.append('area', area.trim());
-  }
-  if (industry.trim()) {
-    apiUrl.searchParams.append('industry', industry.trim());
-  }
-  if (fromEstPrice) {
-    apiUrl.searchParams.append('fromEstPrice', fromEstPrice.toString());
-  }
-  if (toEstPrice) {
-    apiUrl.searchParams.append('toEstPrice', toEstPrice.toString());
-  }
-  if (detailItemNo.trim()) {
-    apiUrl.searchParams.append('detailItemNo', detailItemNo.trim());
-  }
-  if (prNo.trim()) {
-    apiUrl.searchParams.append('prNo', prNo.trim());
-  }
-  if (shoppingMallYn.trim()) {
-    apiUrl.searchParams.append('shoppingMallYn', shoppingMallYn.trim());
-  }
-  if (domesticYn.trim()) {
-    apiUrl.searchParams.append('domesticYn', domesticYn.trim());
-  }
-  if (contractType.trim()) {
-    apiUrl.searchParams.append('contractType', contractType.trim());
-  }
-  if (contractLawType.trim()) {
-    apiUrl.searchParams.append('contractLawType', contractLawType.trim());
-  }
-  if (contractMethod.trim()) {
-    apiUrl.searchParams.append('contractMethod', contractMethod.trim());
-  }
-  if (awardMethod.trim()) {
-    apiUrl.searchParams.append('awardMethod', awardMethod.trim());
-  }
+  // 공통 파라미터 구성 함수
+  const buildApiUrl = (apiPath) => {
+    const apiUrl = new URL(`${baseUrl}/${apiPath}`);
+    apiUrl.searchParams.append('ServiceKey', serviceKey);
+    apiUrl.searchParams.append('pageNo', pageNo.toString());
+    apiUrl.searchParams.append('numOfRows', numOfRows.toString());
+    apiUrl.searchParams.append('inqryDiv', inqryDiv);
+    apiUrl.searchParams.append('inqryBgnDt', inqryBgnDt);
+    apiUrl.searchParams.append('inqryEndDt', inqryEndDt);
+    apiUrl.searchParams.append('type', 'json');
+    
+    // 검색어 파라미터
+    if (keyword.trim()) {
+      apiUrl.searchParams.append('bidNtceNm', keyword.trim());
+    }
+    if (bidNtceNo.trim()) {
+      apiUrl.searchParams.append('bidNtceNo', bidNtceNo.trim());
+    }
+    if (bidNtceDtlClsfCd.trim()) {
+      apiUrl.searchParams.append('bidNtceDtlClsfCd', bidNtceDtlClsfCd.trim());
+    }
+    if (insttNm.trim()) {
+      apiUrl.searchParams.append('insttNm', insttNm.trim());
+    }
+    if (refNo.trim()) {
+      apiUrl.searchParams.append('refNo', refNo.trim());
+    }
+    if (area.trim()) {
+      apiUrl.searchParams.append('area', area.trim());
+    }
+    if (industry.trim()) {
+      apiUrl.searchParams.append('industry', industry.trim());
+    }
+    if (fromEstPrice) {
+      apiUrl.searchParams.append('fromEstPrice', fromEstPrice.toString());
+    }
+    if (toEstPrice) {
+      apiUrl.searchParams.append('toEstPrice', toEstPrice.toString());
+    }
+    if (detailItemNo.trim()) {
+      apiUrl.searchParams.append('detailItemNo', detailItemNo.trim());
+    }
+    if (prNo.trim()) {
+      apiUrl.searchParams.append('prNo', prNo.trim());
+    }
+    if (shoppingMallYn.trim()) {
+      apiUrl.searchParams.append('shoppingMallYn', shoppingMallYn.trim());
+    }
+    if (domesticYn.trim()) {
+      apiUrl.searchParams.append('domesticYn', domesticYn.trim());
+    }
+    if (contractType.trim()) {
+      apiUrl.searchParams.append('contractType', contractType.trim());
+    }
+    if (contractLawType.trim()) {
+      apiUrl.searchParams.append('contractLawType', contractLawType.trim());
+    }
+    if (contractMethod.trim()) {
+      apiUrl.searchParams.append('contractMethod', contractMethod.trim());
+    }
+    if (awardMethod.trim()) {
+      apiUrl.searchParams.append('awardMethod', awardMethod.trim());
+    }
+    
+    return apiUrl;
+  };
 
-  console.log(`[Bid Search] Request: keyword="${keyword}", pageNo=${pageNo}, userId=${userId}`);
-
-  try {
-    // 조달청 API 호출
+  // 단일 API 호출 함수
+  const callBidApi = async (apiPath) => {
+    const apiUrl = buildApiUrl(apiPath);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30초 타임아웃
 
-    let apiResponse;
     try {
-      apiResponse = await fetch(apiUrl.toString(), {
+      const apiResponse = await fetch(apiUrl.toString(), {
         method: 'GET',
         signal: controller.signal,
         headers: { 'Accept': 'application/json' }
       });
       clearTimeout(timeoutId);
+
+      if (!apiResponse.ok) {
+        const errorText = await apiResponse.text();
+        console.error(`[Bid Search] API Error (${apiPath}): ${apiResponse.status} - ${errorText.substring(0, 200)}`);
+        return { success: false, items: [], totalCount: 0, error: `HTTP ${apiResponse.status}` };
+      }
+
+      const responseText = await apiResponse.text();
+      let data;
+      
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error(`[Bid Search] JSON Parse Error (${apiPath}): ${parseErr.message}`);
+        return { success: false, items: [], totalCount: 0, error: 'JSON 파싱 오류' };
+      }
+
+      // 응답 처리
+      if (data.response && data.response.body) {
+        const body = data.response.body;
+        const items = body.items || [];
+        const totalCnt = body.totalCount || 0;
+        
+        let bidItems = [];
+        if (Array.isArray(items)) {
+          bidItems = items;
+        } else if (items.item) {
+          bidItems = Array.isArray(items.item) ? items.item : [items.item];
+        }
+
+        return { success: true, items: bidItems, totalCount: totalCnt };
+      } else if (data.response && data.response.header) {
+        const resultCode = data.response.header.resultCode;
+        if (resultCode !== '00') {
+          const resultMsg = data.response.header.resultMsg || '알 수 없는 오류';
+          console.error(`[Bid Search] API Error (${apiPath}): ${resultCode} - ${resultMsg}`);
+          return { success: false, items: [], totalCount: 0, error: `${resultCode}: ${resultMsg}` };
+        }
+        return { success: true, items: [], totalCount: 0 };
+      } else {
+        return { success: false, items: [], totalCount: 0, error: '예상하지 못한 응답 구조' };
+      }
     } catch (fetchError) {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
-        return res.status(504).json({ error: 'API 요청 시간이 초과되었습니다.' });
+        return { success: false, items: [], totalCount: 0, error: '요청 시간 초과' };
       }
-      throw fetchError;
+      console.error(`[Bid Search] Fetch Error (${apiPath}):`, fetchError.message);
+      return { success: false, items: [], totalCount: 0, error: fetchError.message };
+    }
+  };
+
+  console.log(`[Bid Search] Request: keyword="${keyword}", pageNo=${pageNo}, userId=${userId}, businessTypes=${JSON.stringify(businessTypes)}, apiPaths=${JSON.stringify(apiPaths)}`);
+
+  try {
+    // 여러 API를 병렬로 호출
+    const apiResults = await Promise.all(
+      apiPaths.map(apiPath => callBidApi(apiPath))
+    );
+
+    // 결과 통합
+    let allItems = [];
+    let totalCount = 0;
+    const errors = [];
+
+    apiResults.forEach((result, index) => {
+      if (result.success) {
+        allItems = allItems.concat(result.items);
+        totalCount += result.totalCount;
+      } else {
+        errors.push(`${apiPaths[index]}: ${result.error}`);
+      }
+    });
+
+    // 에러가 있으면 로그만 남기고 계속 진행 (일부 API 실패해도 다른 결과는 반환)
+    if (errors.length > 0) {
+      console.warn(`[Bid Search] Some APIs failed:`, errors);
     }
 
-    if (!apiResponse.ok) {
-      const errorText = await apiResponse.text();
-      console.error(`[Bid Search] API Error: ${apiResponse.status} - ${errorText.substring(0, 200)}`);
-      return res.status(apiResponse.status).json({ 
-        error: `API 요청 실패: HTTP ${apiResponse.status}`,
-        details: errorText.substring(0, 200)
-      });
-    }
-
-    let responseText = await apiResponse.text();
-    let data;
+    // 중복 제거 (입찰공고번호 기준)
+    const uniqueItems = [];
+    const seenBids = new Set();
     
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseErr) {
-      console.error(`[Bid Search] JSON Parse Error: ${parseErr.message}`);
-      console.error(`[Bid Search] Response: ${responseText.substring(0, 500)}`);
-      return res.status(500).json({ 
-        error: 'API 응답을 파싱할 수 없습니다.',
-        details: responseText.substring(0, 200)
+    allItems.forEach(item => {
+      const bidKey = `${item.bidNtceNo || ''}-${item.bidNtceOrd || ''}`;
+      if (!seenBids.has(bidKey)) {
+        seenBids.add(bidKey);
+        uniqueItems.push(item);
+      }
+    });
+
+    // 정렬 (게시일시 기준 내림차순 - 최신순)
+    uniqueItems.sort((a, b) => {
+      const dateA = a.bidNtceDt ? new Date(a.bidNtceDt.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:00')) : new Date(0);
+      const dateB = b.bidNtceDt ? new Date(b.bidNtceDt.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:00')) : new Date(0);
+      return dateB - dateA;
+    });
+
+    // 페이지네이션 적용
+    const startIndex = (pageNo - 1) * numOfRows;
+    const endIndex = startIndex + numOfRows;
+    const paginatedItems = uniqueItems.slice(startIndex, endIndex);
+
+    const resultCount = paginatedItems.length;
+
+    // 검색 로그 저장 (비동기 처리, API 응답과 독립적으로 실행)
+    if (userId && keyword.trim()) {
+      saveSearchLog(userId, userEmail, userName, keyword, resultCount).catch(err => {
+        console.error('[Bid Search] Search log save error:', err);
+        // 로그 저장 실패는 API 응답에 영향을 주지 않음
       });
     }
 
-    // 응답 처리
-    if (data.response && data.response.body) {
-      const body = data.response.body;
-      const items = body.items || [];
-      const totalCnt = body.totalCount || 0;
-      
-      let bidItems = [];
-      if (Array.isArray(items)) {
-        bidItems = items;
-      } else if (items.item) {
-        bidItems = Array.isArray(items.item) ? items.item : [items.item];
+    // 성공 응답
+    res.status(200).json({
+      success: true,
+      data: {
+        items: paginatedItems,
+        totalCount: uniqueItems.length, // 중복 제거 후 실제 총 개수
+        pageNo: pageNo,
+        numOfRows: numOfRows,
+        warnings: errors.length > 0 ? errors : undefined
       }
-
-      const resultCount = bidItems.length;
-
-      // 검색 로그 저장 (비동기 처리, API 응답과 독립적으로 실행)
-      if (userId && keyword.trim()) {
-        saveSearchLog(userId, userEmail, userName, keyword, resultCount).catch(err => {
-          console.error('[Bid Search] Search log save error:', err);
-          // 로그 저장 실패는 API 응답에 영향을 주지 않음
-        });
-      }
-
-      // 성공 응답
-      res.status(200).json({
-        success: true,
-        data: {
-          items: bidItems,
-          totalCount: totalCnt,
-          pageNo: pageNo,
-          numOfRows: numOfRows
-        }
-      });
-    } else if (data.response && data.response.header) {
-      const resultCode = data.response.header.resultCode;
-      const resultMsg = data.response.header.resultMsg || '알 수 없는 오류';
-      
-      if (resultCode !== '00') {
-        console.error(`[Bid Search] API Error: ${resultCode} - ${resultMsg}`);
-        return res.status(400).json({ 
-          error: `API 에러 (${resultCode}): ${resultMsg}` 
-        });
-      }
-      
-      // resultCode가 '00'이지만 body가 없는 경우
-      res.status(200).json({
-        success: true,
-        data: {
-          items: [],
-          totalCount: 0,
-          pageNo: pageNo,
-          numOfRows: numOfRows
-        }
-      });
-    } else {
-      console.error('[Bid Search] Unexpected response structure:', data);
-      return res.status(500).json({ 
-        error: '예상하지 못한 응답 구조입니다.' 
-      });
-    }
+    });
 
   } catch (error) {
     console.error('[Bid Search] Error:', error.message);
