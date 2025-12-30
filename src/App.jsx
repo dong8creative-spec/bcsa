@@ -3779,19 +3779,30 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 const g2bBaseUrl = CONFIG.G2B_API?.BASE_URL || 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
                 
                 // 검색 타입에 따라 API 경로 결정
+                // 주의: 현재 조달청 API는 물품 입찰공고만 지원 (용역, 공사는 별도 API 필요)
                 let g2bApiPath;
                 if (searchType === '개찰결과') {
                     g2bApiPath = 'getOpengResultListInfoThngPPSSrch';
                 } else if (searchType === '최종낙찰자') {
                     g2bApiPath = 'getBidPblancListInfoThngPPSSrch';
                 } else {
-                    g2bApiPath = 'getBidPblancListInfoThngPPSSrch';
+                    g2bApiPath = 'getBidPblancListInfoThngPPSSrch'; // 물품 입찰공고
                 }
                 
-                // 날짜 범위 설정 (최근 30일)
+                // 날짜 범위 설정 (사용자가 선택한 날짜가 있으면 사용, 없으면 최근 30일)
                 const today = new Date();
-                const startDate = new Date(today);
-                startDate.setDate(today.getDate() - 30);
+                let startDate, endDate;
+                
+                if (filterStartDate && filterEndDate) {
+                    // 사용자가 선택한 날짜 사용
+                    startDate = new Date(filterStartDate);
+                    endDate = new Date(filterEndDate);
+                } else {
+                    // 기본값: 최근 30일
+                    startDate = new Date(today);
+                    startDate.setDate(today.getDate() - 30);
+                    endDate = today;
+                }
                 
                 const formatDate = (date) => {
                     const y = date.getFullYear();
@@ -3801,14 +3812,17 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 };
                 
                 const inqryBgnDt = formatDate(startDate) + '0000';
-                const inqryEndDt = formatDate(today) + '2359';
+                const inqryEndDt = formatDate(endDate) + '2359';
                 
                 // 조달청 API URL 구성
                 g2bUrl = new URL(`${g2bBaseUrl}/${g2bApiPath}`);
                 g2bUrl.searchParams.append('ServiceKey', g2bApiKey);
                 g2bUrl.searchParams.append('pageNo', page.toString());
                 g2bUrl.searchParams.append('numOfRows', itemsPerPage.toString());
-                g2bUrl.searchParams.append('inqryDiv', '1');
+                // inqryDiv: 조회구분 (1: 입찰공고, 2: 개찰결과 등)
+                // 기본값은 '1' (입찰공고), 하지만 검색 타입에 따라 변경 가능
+                const inqryDivValue = searchType === '개찰결과' ? '2' : '1';
+                g2bUrl.searchParams.append('inqryDiv', inqryDivValue);
                 g2bUrl.searchParams.append('inqryBgnDt', inqryBgnDt);
                 g2bUrl.searchParams.append('inqryEndDt', inqryEndDt);
                 g2bUrl.searchParams.append('type', 'json');
@@ -3817,6 +3831,56 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 const searchKeyword = keyword.trim() || bidNoticeNo.trim();
                 if (searchKeyword) {
                     g2bUrl.searchParams.append('bidNtceNm', searchKeyword);
+                }
+                if (bidNoticeNo.trim()) {
+                    g2bUrl.searchParams.append('bidNtceNo', bidNoticeNo.trim());
+                }
+                
+                // 기타 필터 파라미터 추가
+                if (noticeType !== '전체') {
+                    g2bUrl.searchParams.append('bidNtceDtlClsfCd', noticeType);
+                }
+                if (institutionName.trim()) {
+                    g2bUrl.searchParams.append('insttNm', institutionName.trim());
+                }
+                if (referenceNo.trim()) {
+                    g2bUrl.searchParams.append('refNo', referenceNo.trim());
+                }
+                if (restrictedArea !== '전체') {
+                    g2bUrl.searchParams.append('area', restrictedArea);
+                }
+                if (industry.trim()) {
+                    g2bUrl.searchParams.append('industry', industry.trim());
+                }
+                if (priceMin) {
+                    g2bUrl.searchParams.append('fromEstPrice', priceMin.toString());
+                }
+                if (priceMax) {
+                    g2bUrl.searchParams.append('toEstPrice', priceMax.toString());
+                }
+                if (detailItemNo.trim()) {
+                    g2bUrl.searchParams.append('detailItemNo', detailItemNo.trim());
+                }
+                if (prNo.trim()) {
+                    g2bUrl.searchParams.append('prNo', prNo.trim());
+                }
+                if (shoppingMall !== '전체') {
+                    g2bUrl.searchParams.append('shoppingMallYn', shoppingMall);
+                }
+                if (domesticInternational !== '전체') {
+                    g2bUrl.searchParams.append('domesticYn', domesticInternational === '국내' ? 'Y' : 'N');
+                }
+                if (contractType !== '전체') {
+                    g2bUrl.searchParams.append('contractType', contractType);
+                }
+                if (contractLawType !== '전체') {
+                    g2bUrl.searchParams.append('contractLawType', contractLawType);
+                }
+                if (contractMethod !== '전체') {
+                    g2bUrl.searchParams.append('contractMethod', contractMethod);
+                }
+                if (awardMethod !== '전체') {
+                    g2bUrl.searchParams.append('awardMethod', awardMethod);
                 }
                 
                 // CORS 프록시로 감싸기 (프록시 서비스별 URL 형식 차이 처리)

@@ -52,6 +52,31 @@ app.get('/api/bid-search', async (req, res) => {
   const userId = req.query.userId || '';
   const userEmail = req.query.userEmail || '';
   const userName = req.query.userName || '';
+  
+  // 날짜 범위 파라미터 (사용자 선택)
+  const fromBidDt = req.query.fromBidDt || ''; // YYYYMMDD 형식
+  const toBidDt = req.query.toBidDt || ''; // YYYYMMDD 형식
+  
+  // 기타 필터 파라미터
+  const bidNtceNo = req.query.bidNtceNo || '';
+  const bidNtceDtlClsfCd = req.query.bidNtceDtlClsfCd || '';
+  const insttNm = req.query.insttNm || '';
+  const refNo = req.query.refNo || '';
+  const area = req.query.area || '';
+  const industry = req.query.industry || '';
+  const fromEstPrice = req.query.fromEstPrice || '';
+  const toEstPrice = req.query.toEstPrice || '';
+  const detailItemNo = req.query.detailItemNo || '';
+  const prNo = req.query.prNo || '';
+  const shoppingMallYn = req.query.shoppingMallYn || '';
+  const domesticYn = req.query.domesticYn || '';
+  const contractType = req.query.contractType || '';
+  const contractLawType = req.query.contractLawType || '';
+  const contractMethod = req.query.contractMethod || '';
+  const awardMethod = req.query.awardMethod || '';
+  // inqryDiv: 조회구분 (1: 입찰공고, 2: 개찰결과, 3: 계약, 4: 변경계약 등)
+  // 기본값은 '1' (입찰공고)
+  const inqryDiv = req.query.inqryDiv || '1';
 
   // ServiceKey는 환경 변수에서 가져오기
   const serviceKey = process.env.G2B_API_KEY || '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
@@ -65,10 +90,47 @@ app.get('/api/bid-search', async (req, res) => {
   const baseUrl = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
   const apiPath = 'getBidPblancListInfoThngPPSSrch'; // 물품 입찰공고 조회
   
-  // 오늘 날짜 기준으로 검색 기간 설정 (최근 30일)
+  // 날짜 범위 설정 (사용자가 선택한 날짜가 있으면 사용, 없으면 최근 30일)
   const today = new Date();
-  const startDate = new Date(today);
-  startDate.setDate(today.getDate() - 30);
+  let startDate, endDate;
+  
+  if (fromBidDt && toBidDt) {
+    // 사용자가 선택한 날짜 사용 (YYYYMMDD 형식으로 받음)
+    const fromStr = fromBidDt.replace(/-/g, '');
+    const toStr = toBidDt.replace(/-/g, '');
+    
+    // 날짜 유효성 검사
+    if (fromStr.length === 8 && toStr.length === 8) {
+      startDate = new Date(
+        parseInt(fromStr.substring(0, 4)),
+        parseInt(fromStr.substring(4, 6)) - 1,
+        parseInt(fromStr.substring(6, 8))
+      );
+      endDate = new Date(
+        parseInt(toStr.substring(0, 4)),
+        parseInt(toStr.substring(4, 6)) - 1,
+        parseInt(toStr.substring(6, 8))
+      );
+      
+      // 날짜 유효성 검사 (Invalid Date 체크)
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        // 잘못된 날짜면 기본값 사용
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 30);
+        endDate = today;
+      }
+    } else {
+      // 형식이 맞지 않으면 기본값 사용
+      startDate = new Date(today);
+      startDate.setDate(today.getDate() - 30);
+      endDate = today;
+    }
+  } else {
+    // 기본값: 최근 30일
+    startDate = new Date(today);
+    startDate.setDate(today.getDate() - 30);
+    endDate = today;
+  }
   
   const formatDate = (date) => {
     const y = date.getFullYear();
@@ -78,20 +140,69 @@ app.get('/api/bid-search', async (req, res) => {
   };
 
   const inqryBgnDt = formatDate(startDate) + '0000';
-  const inqryEndDt = formatDate(today) + '2359';
+  const inqryEndDt = formatDate(endDate) + '2359';
 
   // API URL 구성
   const apiUrl = new URL(`${baseUrl}/${apiPath}`);
   apiUrl.searchParams.append('ServiceKey', serviceKey);
   apiUrl.searchParams.append('pageNo', pageNo.toString());
   apiUrl.searchParams.append('numOfRows', numOfRows.toString());
-  apiUrl.searchParams.append('inqryDiv', '1');
+  apiUrl.searchParams.append('inqryDiv', inqryDiv);
   apiUrl.searchParams.append('inqryBgnDt', inqryBgnDt);
   apiUrl.searchParams.append('inqryEndDt', inqryEndDt);
   apiUrl.searchParams.append('type', 'json');
   
+  // 검색어 파라미터
   if (keyword.trim()) {
     apiUrl.searchParams.append('bidNtceNm', keyword.trim());
+  }
+  if (bidNtceNo.trim()) {
+    apiUrl.searchParams.append('bidNtceNo', bidNtceNo.trim());
+  }
+  if (bidNtceDtlClsfCd.trim()) {
+    apiUrl.searchParams.append('bidNtceDtlClsfCd', bidNtceDtlClsfCd.trim());
+  }
+  if (insttNm.trim()) {
+    apiUrl.searchParams.append('insttNm', insttNm.trim());
+  }
+  if (refNo.trim()) {
+    apiUrl.searchParams.append('refNo', refNo.trim());
+  }
+  if (area.trim()) {
+    apiUrl.searchParams.append('area', area.trim());
+  }
+  if (industry.trim()) {
+    apiUrl.searchParams.append('industry', industry.trim());
+  }
+  if (fromEstPrice) {
+    apiUrl.searchParams.append('fromEstPrice', fromEstPrice.toString());
+  }
+  if (toEstPrice) {
+    apiUrl.searchParams.append('toEstPrice', toEstPrice.toString());
+  }
+  if (detailItemNo.trim()) {
+    apiUrl.searchParams.append('detailItemNo', detailItemNo.trim());
+  }
+  if (prNo.trim()) {
+    apiUrl.searchParams.append('prNo', prNo.trim());
+  }
+  if (shoppingMallYn.trim()) {
+    apiUrl.searchParams.append('shoppingMallYn', shoppingMallYn.trim());
+  }
+  if (domesticYn.trim()) {
+    apiUrl.searchParams.append('domesticYn', domesticYn.trim());
+  }
+  if (contractType.trim()) {
+    apiUrl.searchParams.append('contractType', contractType.trim());
+  }
+  if (contractLawType.trim()) {
+    apiUrl.searchParams.append('contractLawType', contractLawType.trim());
+  }
+  if (contractMethod.trim()) {
+    apiUrl.searchParams.append('contractMethod', contractMethod.trim());
+  }
+  if (awardMethod.trim()) {
+    apiUrl.searchParams.append('awardMethod', awardMethod.trim());
   }
 
   console.log(`[Bid Search] Request: keyword="${keyword}", pageNo=${pageNo}, userId=${userId}`);
