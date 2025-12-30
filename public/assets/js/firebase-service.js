@@ -597,6 +597,67 @@ const firebaseService = {
       console.error('Error checking bookmark:', error);
       return false;
     }
+  },
+
+  // ==========================================
+  // Restaurants Collection
+  // ==========================================
+  async getRestaurants() {
+    try {
+      const snapshot = await window.firebaseServices.db.collection('restaurants').get();
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error getting restaurants:', error);
+      throw error;
+    }
+  },
+
+  async getRestaurant(restaurantId) {
+    try {
+      const doc = await window.firebaseServices.db.collection('restaurants').doc(restaurantId).get();
+      if (doc.exists) {
+        return { id: doc.id, ...doc.data() };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting restaurant:', error);
+      throw error;
+    }
+  },
+
+  async createRestaurant(restaurantData) {
+    try {
+      const docRef = await window.firebaseServices.db.collection('restaurants').add({
+        ...restaurantData,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp ? firebase.firestore.FieldValue.serverTimestamp() : new Date(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating restaurant:', error);
+      throw error;
+    }
+  },
+
+  async updateRestaurant(restaurantId, restaurantData) {
+    try {
+      await window.firebaseServices.db.collection('restaurants').doc(restaurantId).update({
+        ...restaurantData,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+      });
+    } catch (error) {
+      console.error('Error updating restaurant:', error);
+      throw error;
+    }
+  },
+
+  async deleteRestaurant(restaurantId) {
+    try {
+      await window.firebaseServices.db.collection('restaurants').doc(restaurantId).delete();
+    } catch (error) {
+      console.error('Error deleting restaurant:', error);
+      throw error;
+    }
   }
 };
 

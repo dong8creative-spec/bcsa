@@ -1065,6 +1065,8 @@
             const [searchLogs, setSearchLogs] = useState([]);
             const [loadingLogs, setLoadingLogs] = useState(false);
             const refreshIntervalRef = useRef(null);
+            const [draggedIndex, setDraggedIndex] = useState(null);
+            const [dragOverIndex, setDragOverIndex] = useState(null);
 
             // 검색 로그 로드 함수
             const loadSearchLogs = async () => {
@@ -1120,6 +1122,98 @@
                 return bDate - aDate;
             }).slice(0, 5);
             const recentPosts = [...posts].slice(0, 5);
+
+            // 메뉴 순서 관리
+            const menuKeys = menuEnabled ? Object.keys(menuEnabled) : [];
+            const [orderedMenuKeys, setOrderedMenuKeys] = useState(() => {
+                try {
+                    const savedOrder = localStorage.getItem('busan_ycc_menu_order');
+                    if (savedOrder) {
+                        const parsedOrder = JSON.parse(savedOrder);
+                        const ordered = parsedOrder.filter(key => menuKeys.includes(key));
+                        const remaining = menuKeys.filter(key => !parsedOrder.includes(key));
+                        return [...ordered, ...remaining];
+                    }
+                } catch (error) {
+                    console.error('메뉴 순서 로드 실패:', error);
+                }
+                return menuKeys;
+            });
+
+            useEffect(() => {
+                const savedOrder = localStorage.getItem('busan_ycc_menu_order');
+                if (savedOrder) {
+                    try {
+                        const parsedOrder = JSON.parse(savedOrder);
+                        const ordered = parsedOrder.filter(key => menuKeys.includes(key));
+                        const remaining = menuKeys.filter(key => !parsedOrder.includes(key));
+                        setOrderedMenuKeys([...ordered, ...remaining]);
+                    } catch (error) {
+                        setOrderedMenuKeys(menuKeys);
+                    }
+                } else {
+                    setOrderedMenuKeys(menuKeys);
+                }
+            }, [menuKeys.join(',')]);
+
+            const handleDragStart = (e, index) => {
+                setDraggedIndex(index);
+                e.dataTransfer.effectAllowed = 'move';
+                e.target.style.opacity = '0.5';
+            };
+
+            const handleDragOver = (e, index) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                setDragOverIndex(index);
+            };
+
+            const handleDragLeave = () => {
+                setDragOverIndex(null);
+            };
+
+            const handleDrop = (e, dropIndex) => {
+                e.preventDefault();
+                if (draggedIndex === null || draggedIndex === dropIndex) {
+                    setDraggedIndex(null);
+                    setDragOverIndex(null);
+                    return;
+                }
+
+                const newMenuKeys = [...orderedMenuKeys];
+                const draggedKey = newMenuKeys[draggedIndex];
+                newMenuKeys.splice(draggedIndex, 1);
+                newMenuKeys.splice(dropIndex, 0, draggedKey);
+
+                // 새로운 순서로 menuEnabled와 menuNames 재구성
+                const newMenuEnabled = {};
+                const newMenuNames = {};
+                newMenuKeys.forEach(key => {
+                    newMenuEnabled[key] = menuEnabled[key];
+                    newMenuNames[key] = menuNames[key];
+                });
+
+                setMenuEnabled(newMenuEnabled);
+                setMenuNames(newMenuNames);
+                setOrderedMenuKeys(newMenuKeys);
+                
+                try {
+                    localStorage.setItem('busan_ycc_menu_enabled', JSON.stringify(newMenuEnabled));
+                    localStorage.setItem('busan_ycc_menu_names', JSON.stringify(newMenuNames));
+                    localStorage.setItem('busan_ycc_menu_order', JSON.stringify(newMenuKeys));
+                } catch (error) {
+                    console.error('메뉴 순서 저장 실패:', error);
+                }
+
+                setDraggedIndex(null);
+                setDragOverIndex(null);
+            };
+
+            const handleDragEnd = (e) => {
+                e.target.style.opacity = '1';
+                setDraggedIndex(null);
+                setDragOverIndex(null);
+            };
 
             return (
                 <div className="space-y-6">
@@ -1263,13 +1357,30 @@
                     </div>
 
                     {/* 상단 메뉴 관리 */}
-                    {menuEnabled && setMenuEnabled && menuNames && setMenuNames && (
+                    {menuEnabled && setMenuEnabled && menuNames && setMenuNames && orderedMenuKeys && (
                         <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
                             <h3 className="text-lg font-bold text-dark mb-4">상단 메뉴 관리</h3>
-                            <p className="text-sm text-gray-600 mb-6">상단 메뉴의 표시 여부와 메뉴명을 변경할 수 있습니다.</p>
-                            <div className="space-y-3">
-                                {Object.keys(menuEnabled || {}).map(menuKey => (
-                                    <div key={menuKey} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                            <p className="text-sm text-gray-600 mb-6">드래그하여 순서를 변경하고, 스위치와 메뉴명을 수정할 수 있습니다.</p>
+                            <div className="grid grid-cols-2 gap-4">
+                                {orderedMenuKeys.map((menuKey, index) => (
+                                    <div
+                                        key={menuKey}
+                                        draggable
+                                        onDragStart={(e) => handleDragStart(e, index)}
+                                        onDragOver={(e) => handleDragOver(e, index)}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={(e) => handleDrop(e, index)}
+                                        onDragEnd={handleDragEnd}
+                                        className={`flex items-center gap-3 p-4 bg-gray-50 rounded-xl border-2 transition-all cursor-move ${
+                                            dragOverIndex === index ? 'border-brand bg-brand/5' : 'border-transparent'
+                                        } ${draggedIndex === index ? 'opacity-50' : ''}`}
+                                    >
+                                        {/* 드래그 핸들 */}
+                                        <div className="flex flex-col gap-1 cursor-grab active:cursor-grabbing">
+                                            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                                            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                                            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                                        </div>
                                         {/* 스위치 */}
                                         <div className="flex items-center">
                                             <label className="relative inline-flex items-center cursor-pointer">
@@ -1291,7 +1402,7 @@
                                             </label>
                                         </div>
                                         {/* 메뉴 키 (고정) */}
-                                        <div className="w-24 text-sm font-bold text-gray-600">
+                                        <div className="w-20 text-xs font-bold text-gray-600 truncate">
                                             {menuKey}
                                         </div>
                                         {/* 메뉴명 입력 */}
@@ -1308,8 +1419,9 @@
                                                         console.error('메뉴명 저장 실패:', error);
                                                     }
                                                 }}
-                                                className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm font-medium"
+                                                className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm font-medium"
                                                 placeholder={menuKey}
+                                                onClick={(e) => e.stopPropagation()}
                                             />
                                         </div>
                                     </div>
@@ -1481,7 +1593,7 @@
                                 />
                                                                     </div>
                                                                     </div>
-                        
+                                
                         {/* 저장 버튼 및 상태 표시 */}
                         <div className="flex justify-between items-center pt-6">
                             <div className="text-sm text-gray-500">
@@ -1508,6 +1620,22 @@
             const [showEditModal, setShowEditModal] = useState(false);
             const [showAddModal, setShowAddModal] = useState(false);
             const [editFormData, setEditFormData] = useState({});
+            const [addFormData, setAddFormData] = useState({
+                title: '',
+                description: '',
+                phone: '',
+                businessHours: '',
+                priceRange: '',
+                location: {
+                    address: '',
+                    lat: null,
+                    lng: null
+                },
+                approvalStatus: 'approved',
+                isVisible: true,
+                ownerName: '관리자',
+                ownerEmail: 'admin@bcsa.com'
+            });
             
             const handleEdit = (restaurant) => {
                 setSelectedRestaurant(restaurant);
@@ -1601,17 +1729,60 @@
                     alert('노출 여부 변경에 실패했습니다.');
                 }
             };
+
+            const handleAdd = () => {
+                setAddFormData({
+                    title: '',
+                    description: '',
+                    phone: '',
+                    businessHours: '',
+                    priceRange: '',
+                    location: {
+                        address: '',
+                        lat: null,
+                        lng: null
+                    },
+                    approvalStatus: 'approved',
+                    isVisible: true,
+                    ownerName: '관리자',
+                    ownerEmail: 'admin@bcsa.com'
+                });
+                setShowAddModal(true);
+            };
+
+            const handleSaveAdd = async () => {
+                if (!addFormData.title || !addFormData.location.address) {
+                    alert('제목과 주소는 필수 입력 항목입니다.');
+                    return;
+                }
+                try {
+                    const restaurantId = await window.firebaseService.createRestaurant(addFormData);
+                    const newRestaurant = {
+                        id: restaurantId,
+                        ...addFormData,
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    };
+                    setRestaurants([...restaurants, newRestaurant]);
+                    setShowAddModal(false);
+                    alert('맛집이 추가되었습니다.');
+                } catch (error) {
+                    console.error('맛집 추가 오류:', error);
+                    const errorMessage = translateFirebaseError ? translateFirebaseError(error) : '맛집 추가 중 오류가 발생했습니다.';
+                    alert(`맛집 추가에 실패했습니다.\n${errorMessage}`);
+                }
+            };
             
             return (
                 <div className="bg-white rounded-2xl shadow-lg p-6">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-xl font-bold text-dark">맛집 관리</h3>
                         <button
-                            onClick={() => setShowAddModal(true)}
+                            onClick={handleAdd}
                             className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
                         >
                             <Icons.Plus size={20} />
-                            관리자 추가
+                            맛집 추가
                         </button>
                     </div>
                     <div className="overflow-x-auto">
@@ -1758,18 +1929,90 @@
                         </div>
                     )}
                     
-                    {/* 관리자 추가 모달 (간단한 버전 - 필요한 경우 확장) */}
+                    {/* 관리자 추가 모달 */}
                     {showAddModal && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowAddModal(false)}>
-                            <div className="bg-white rounded-2xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-                                <h4 className="text-xl font-bold text-dark mb-4">맛집 관리자 추가</h4>
-                                <p className="text-gray-600 mb-4">맛집은 메인 페이지에서 음식관련사업자 회원이 직접 등록할 수 있습니다. 관리자는 승인/거절 및 노출 여부를 관리할 수 있습니다.</p>
+                            <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                                <h4 className="text-xl font-bold text-dark mb-4">맛집 추가</h4>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
+                                        <input
+                                            type="text"
+                                            value={addFormData.title}
+                                            onChange={(e) => setAddFormData({...addFormData, title: e.target.value})}
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            placeholder="맛집 이름"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">설명</label>
+                                        <textarea
+                                            value={addFormData.description}
+                                            onChange={(e) => setAddFormData({...addFormData, description: e.target.value})}
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            rows="3"
+                                            placeholder="맛집 설명"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">전화번호</label>
+                                        <input
+                                            type="text"
+                                            value={addFormData.phone}
+                                            onChange={(e) => setAddFormData({...addFormData, phone: e.target.value})}
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            placeholder="010-1234-5678"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">영업시간</label>
+                                        <input
+                                            type="text"
+                                            value={addFormData.businessHours}
+                                            onChange={(e) => setAddFormData({...addFormData, businessHours: e.target.value})}
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            placeholder="09:00 - 22:00"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">가격대</label>
+                                        <input
+                                            type="text"
+                                            value={addFormData.priceRange}
+                                            onChange={(e) => setAddFormData({...addFormData, priceRange: e.target.value})}
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            placeholder="1만원 - 3만원"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">주소 *</label>
+                                        <input
+                                            type="text"
+                                            value={addFormData.location.address}
+                                            onChange={(e) => setAddFormData({
+                                                ...addFormData, 
+                                                location: {...addFormData.location, address: e.target.value}
+                                            })}
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            placeholder="부산광역시 해운대구..."
+                                        />
+                                    </div>
+                                    <div className="flex gap-4">
                                 <button
                                     onClick={() => setShowAddModal(false)}
-                                    className="w-full py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
-                                >
-                                    확인
+                                            className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                                        >
+                                            취소
+                                        </button>
+                                        <button
+                                            onClick={handleSaveAdd}
+                                            className="flex-1 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
+                                        >
+                                            추가
                                 </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
