@@ -1061,7 +1061,7 @@
         // ==========================================
         // 대시보드 홈 컴포넌트
         // ==========================================
-        const DashboardHome = ({ users, posts, seminars }) => {
+        const DashboardHome = ({ users, posts, seminars, menuEnabled, setMenuEnabled, menuNames, setMenuNames }) => {
             const [searchLogs, setSearchLogs] = useState([]);
             const [loadingLogs, setLoadingLogs] = useState(false);
             const refreshIntervalRef = useRef(null);
@@ -1261,6 +1261,62 @@
                             </div>
                         )}
                     </div>
+
+                    {/* 상단 메뉴 관리 */}
+                    {menuEnabled && setMenuEnabled && menuNames && setMenuNames && (
+                        <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
+                            <h3 className="text-lg font-bold text-dark mb-4">상단 메뉴 관리</h3>
+                            <p className="text-sm text-gray-600 mb-6">상단 메뉴의 표시 여부와 메뉴명을 변경할 수 있습니다.</p>
+                            <div className="space-y-3">
+                                {Object.keys(menuEnabled || {}).map(menuKey => (
+                                    <div key={menuKey} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                                        {/* 스위치 */}
+                                        <div className="flex items-center">
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={menuEnabled[menuKey] || false}
+                                                    onChange={() => {
+                                                        const newMenuEnabled = { ...menuEnabled, [menuKey]: !menuEnabled[menuKey] };
+                                                        setMenuEnabled(newMenuEnabled);
+                                                        try {
+                                                            localStorage.setItem('busan_ycc_menu_enabled', JSON.stringify(newMenuEnabled));
+                                                        } catch (error) {
+                                                            console.error('메뉴 설정 저장 실패:', error);
+                                                        }
+                                                    }}
+                                                    className="sr-only peer"
+                                                />
+                                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
+                                            </label>
+                                        </div>
+                                        {/* 메뉴 키 (고정) */}
+                                        <div className="w-24 text-sm font-bold text-gray-600">
+                                            {menuKey}
+                                        </div>
+                                        {/* 메뉴명 입력 */}
+                                        <div className="flex-1">
+                                            <input
+                                                type="text"
+                                                value={menuNames[menuKey] || menuKey}
+                                                onChange={(e) => {
+                                                    const newMenuNames = { ...menuNames, [menuKey]: e.target.value };
+                                                    setMenuNames(newMenuNames);
+                                                    try {
+                                                        localStorage.setItem('busan_ycc_menu_names', JSON.stringify(newMenuNames));
+                                                    } catch (error) {
+                                                        console.error('메뉴명 저장 실패:', error);
+                                                    }
+                                                }}
+                                                className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm font-medium"
+                                                placeholder={menuKey}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
@@ -1268,7 +1324,7 @@
         // ==========================================
         // 메인 관리 컴포넌트
         // ==========================================
-        const MainContentManagement = ({ settings, setSettings, menuEnabled, setMenuEnabled }) => {
+        const MainContentManagement = ({ settings, setSettings, menuEnabled, setMenuEnabled, menuNames, setMenuNames }) => {
             const [formData, setFormData] = useState(settings);
             const [saving, setSaving] = useState(false);
             const saveTimeoutRef = React.useRef(null);
@@ -1426,36 +1482,6 @@
                                                                     </div>
                                                                     </div>
                         
-                        {/* 메뉴 표시/비표시 설정 */}
-                        {menuEnabled && setMenuEnabled && (
-                            <div className="border-t border-gray-200 pt-6 mt-6">
-                                <h4 className="font-bold text-dark mb-4">메뉴 표시 설정</h4>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {Object.keys(menuEnabled || {}).map(menuKey => (
-                                        <div key={menuKey} className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl">
-                                            <input
-                                                type="checkbox"
-                                                checked={menuEnabled[menuKey] || false}
-                                                onChange={() => {
-                                                    const newMenuEnabled = { ...menuEnabled, [menuKey]: !menuEnabled[menuKey] };
-                                                    setMenuEnabled(newMenuEnabled);
-                                                    try {
-                                                        localStorage.setItem('busan_ycc_menu_enabled', JSON.stringify(newMenuEnabled));
-                                                    } catch (error) {
-                                                        console.error('메뉴 설정 저장 실패:', error);
-                                                    }
-                                                }}
-                                                className="w-5 h-5 text-brand rounded focus:ring-brand"
-                                            />
-                                            <label className="text-sm font-bold text-gray-700 cursor-pointer">
-                                                {menuKey}
-                                            </label>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                                
                         {/* 저장 버튼 및 상태 표시 */}
                         <div className="flex justify-between items-center pt-6">
                             <div className="text-sm text-gray-500">
@@ -2535,6 +2561,12 @@
                                         const parsed = JSON.parse(stored);
                                         setMenuEnabled(prev => ({ ...prev, ...parsed }));
                                     }
+                                    // menuNames 로드
+                                    const storedNames = localStorage.getItem('busan_ycc_menu_names');
+                                    if (storedNames) {
+                                        const parsedNames = JSON.parse(storedNames);
+                                        setMenuNames(prev => ({ ...prev, ...parsedNames }));
+                                    }
                                 } catch (error) {
                                     console.error('메뉴 설정 로드 실패:', error);
                                 }
@@ -2987,7 +3019,15 @@
                             </div>
                         )}
                             {!loading && activeMenu === 'dashboard' && (
-                                <DashboardHome users={users} posts={posts} seminars={seminars} />
+                                <DashboardHome 
+                                    users={users} 
+                                    posts={posts} 
+                                    seminars={seminars}
+                                    menuEnabled={menuEnabled}
+                                    setMenuEnabled={setMenuEnabled}
+                                    menuNames={menuNames}
+                                    setMenuNames={setMenuNames}
+                                />
                             )}
                             {!loading && activeMenu === 'main' && (
                                 <MainContentManagement 
@@ -2995,6 +3035,8 @@
                                     setSettings={setSettings}
                                     menuEnabled={menuEnabled}
                                     setMenuEnabled={setMenuEnabled}
+                                    menuNames={menuNames}
+                                    setMenuNames={setMenuNames}
                                 />
                             )}
                             {!loading && activeMenu === 'users' && (
