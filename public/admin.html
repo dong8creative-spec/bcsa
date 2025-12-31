@@ -943,6 +943,7 @@
         // ImgBB 이미지 업로드
         const uploadImageToImgBB = async (base64Image, fileName) => {
             try {
+                const IMGBB_API_KEY = window.CONFIG?.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
                 const base64Data = base64Image.split(',')[1] || base64Image;
                 const formData = new FormData();
                 formData.append('key', IMGBB_API_KEY);
@@ -1624,8 +1625,10 @@
                 title: '',
                 description: '',
                 phone: '',
-                businessHours: '',
+                openTime: '09:00',
+                closeTime: '22:00',
                 priceRange: '',
+                images: [],
                 location: {
                     address: '',
                     lat: null,
@@ -1636,6 +1639,7 @@
                 ownerName: '관리자',
                 ownerEmail: 'admin@bcsa.com'
             });
+            const [uploadingImages, setUploadingImages] = useState(false);
             
             const handleEdit = (restaurant) => {
                 setSelectedRestaurant(restaurant);
@@ -1735,8 +1739,10 @@
                     title: '',
                     description: '',
                     phone: '',
-                    businessHours: '',
+                    openTime: '09:00',
+                    closeTime: '22:00',
                     priceRange: '',
+                    images: [],
                     location: {
                         address: '',
                         lat: null,
@@ -1750,16 +1756,78 @@
                 setShowAddModal(true);
             };
 
+            // 이미지 업로드 핸들러
+            const handleImageUpload = async (e) => {
+                const files = Array.from(e.target.files || []);
+                if (addFormData.images.length + files.length > 10) {
+                    alert('이미지는 최대 10장까지 업로드할 수 있습니다.');
+                    return;
+                }
+
+                setUploadingImages(true);
+                try {
+                    const uploadPromises = files.map(async (file) => {
+                        const resized = await resizeImage(file, 1920, 1920);
+                        const uploaded = await uploadImageToImgBB(resized, file.name);
+                        return uploaded.url;
+                    });
+                    
+                    const uploadedUrls = await Promise.all(uploadPromises);
+                    setAddFormData({
+                        ...addFormData,
+                        images: [...addFormData.images, ...uploadedUrls]
+                    });
+                } catch (error) {
+                    console.error('이미지 업로드 오류:', error);
+                    alert('이미지 업로드에 실패했습니다.');
+                } finally {
+                    setUploadingImages(false);
+                }
+            };
+
+            // 이미지 삭제 핸들러
+            const handleImageRemove = (index) => {
+                const newImages = addFormData.images.filter((_, i) => i !== index);
+                setAddFormData({ ...addFormData, images: newImages });
+            };
+
+            // 카카오맵 주소 검색 핸들러
+            const handleAddressSearch = () => {
+                if (!window.kakao || !window.kakao.maps) {
+                    alert('카카오맵 API가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
+                    return;
+                }
+                
+                openKakaoPlacesSearch((place) => {
+                    setAddFormData({
+                        ...addFormData,
+                        location: {
+                            address: place.address,
+                            lat: place.lat,
+                            lng: place.lng
+                        },
+                        phone: place.phone || addFormData.phone
+                    });
+                });
+            };
+
             const handleSaveAdd = async () => {
                 if (!addFormData.title || !addFormData.location.address) {
                     alert('제목과 주소는 필수 입력 항목입니다.');
                     return;
                 }
                 try {
-                    const restaurantId = await window.firebaseService.createRestaurant(addFormData);
+                    // businessHours를 openTime과 closeTime으로 구성
+                    const businessHours = `${addFormData.openTime} - ${addFormData.closeTime}`;
+                    const restaurantData = {
+                        ...addFormData,
+                        businessHours: businessHours
+                    };
+                    
+                    const restaurantId = await window.firebaseService.createRestaurant(restaurantData);
                     const newRestaurant = {
                         id: restaurantId,
-                        ...addFormData,
+                        ...restaurantData,
                         createdAt: new Date(),
                         updatedAt: new Date()
                     };
@@ -1967,13 +2035,21 @@
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">영업시간</label>
-                                        <input
-                                            type="text"
-                                            value={addFormData.businessHours}
-                                            onChange={(e) => setAddFormData({...addFormData, businessHours: e.target.value})}
-                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
-                                            placeholder="09:00 - 22:00"
-                                        />
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="time"
+                                                value={addFormData.openTime}
+                                                onChange={(e) => setAddFormData({...addFormData, openTime: e.target.value})}
+                                                className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            />
+                                            <span className="text-gray-600 font-bold">~</span>
+                                            <input
+                                                type="time"
+                                                value={addFormData.closeTime}
+                                                onChange={(e) => setAddFormData({...addFormData, closeTime: e.target.value})}
+                                                className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            />
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">가격대</label>
@@ -1987,16 +2063,68 @@
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">주소 *</label>
-                                        <input
-                                            type="text"
-                                            value={addFormData.location.address}
-                                            onChange={(e) => setAddFormData({
-                                                ...addFormData, 
-                                                location: {...addFormData.location, address: e.target.value}
-                                            })}
-                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
-                                            placeholder="부산광역시 해운대구..."
-                                        />
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={addFormData.location.address}
+                                                onChange={(e) => setAddFormData({
+                                                    ...addFormData, 
+                                                    location: {...addFormData.location, address: e.target.value}
+                                                })}
+                                                className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                placeholder="부산광역시 해운대구..."
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleAddressSearch}
+                                                className="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors whitespace-nowrap"
+                                            >
+                                                주소 검색
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">이미지 (최대 10장)</label>
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <label className="flex-1 p-3 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-brand transition-colors text-center">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        multiple
+                                                        onChange={handleImageUpload}
+                                                        disabled={uploadingImages || addFormData.images.length >= 10}
+                                                        className="hidden"
+                                                    />
+                                                    <span className="text-sm font-bold text-gray-600">
+                                                        {uploadingImages ? '업로드 중...' : '이미지 선택'}
+                                                    </span>
+                                                </label>
+                                                <span className="text-sm text-gray-500">
+                                                    {addFormData.images.length}/10
+                                                </span>
+                                            </div>
+                                            {addFormData.images.length > 0 && (
+                                                <div className="grid grid-cols-5 gap-2">
+                                                    {addFormData.images.map((imageUrl, index) => (
+                                                        <div key={index} className="relative group">
+                                                            <img
+                                                                src={imageUrl}
+                                                                alt={`맛집 이미지 ${index + 1}`}
+                                                                className="w-full h-24 object-cover rounded-xl border-2 border-gray-200"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleImageRemove(index)}
+                                                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <Icons.X size={14} />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="flex gap-4">
                                 <button
