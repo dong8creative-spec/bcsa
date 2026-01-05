@@ -1044,6 +1044,15 @@
             about_future_6_desc: "교육 콘텐츠, 굿즈 등 지속가능한 운영 기반 마련",
             about_contact_phone: "010-5323-9310",
             about_contact_email: "pujar@naver.com",
+            // 이미지 URL 필드
+            hero_image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
+            features_image_1: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+            features_image_2: "https://images.unsplash.com/photo-1559223607-a43c990c364c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+            activity_seminar_image: "https://images.unsplash.com/photo-1544531586-fde5298cdd40?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+            activity_investment_image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+            activity_networking_image: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+            donation_image: "https://images.unsplash.com/photo-1556761175-4b46a572b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
+            cta_image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
         };
 
         const defaultMembersData = [];
@@ -1594,6 +1603,370 @@
                                 />
                                                                     </div>
                                                                     </div>
+                        
+                        {/* 이미지 관리 섹션 */}
+                        <div className="border-t border-gray-200 pt-6">
+                            <h4 className="font-bold text-dark mb-4">이미지 관리</h4>
+                            <div className="space-y-6">
+                                {/* Hero 섹션 이미지 */}
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Hero 섹션 배경 이미지</label>
+                                    <div className="flex gap-4 items-start">
+                                        {formData.hero_image && (
+                                            <div className="w-32 h-20 rounded-xl overflow-hidden border-2 border-gray-200">
+                                                <img src={formData.hero_image} alt="Hero" className="w-full h-full object-cover" />
+                                            </div>
+                                        )}
+                                        <div className="flex-1">
+                                            <input
+                                                type="text"
+                                                value={formData.hero_image || ''}
+                                                onChange={(e) => handleChange('hero_image', e.target.value)}
+                                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none mb-2"
+                                                placeholder="이미지 URL을 입력하거나 업로드하세요"
+                                            />
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files[0];
+                                                    if (file) {
+                                                        try {
+                                                            const resized = await resizeImage(file, 1920, 1920);
+                                                            const uploaded = await uploadImageToImgBB(resized, file.name);
+                                                            handleChange('hero_image', uploaded.url);
+                                                        } catch (error) {
+                                                            alert('이미지 업로드에 실패했습니다.');
+                                                        }
+                                                    }
+                                                }}
+                                                className="hidden"
+                                                id="hero-image-upload"
+                                            />
+                                            <label
+                                                htmlFor="hero-image-upload"
+                                                className="inline-block px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
+                                            >
+                                                이미지 업로드
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Features 섹션 이미지 */}
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Features 섹션 이미지</label>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-2">이미지 1</label>
+                                            <div className="flex gap-2 items-start">
+                                                {formData.features_image_1 && (
+                                                    <div className="w-24 h-16 rounded-lg overflow-hidden border-2 border-gray-200">
+                                                        <img src={formData.features_image_1} alt="Features 1" className="w-full h-full object-cover" />
+                                                    </div>
+                                                )}
+                                                <div className="flex-1">
+                                                    <input
+                                                        type="text"
+                                                        value={formData.features_image_1 || ''}
+                                                        onChange={(e) => handleChange('features_image_1', e.target.value)}
+                                                        className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none mb-2 text-sm"
+                                                        placeholder="이미지 URL"
+                                                    />
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={async (e) => {
+                                                            const file = e.target.files[0];
+                                                            if (file) {
+                                                                try {
+                                                                    const resized = await resizeImage(file, 1200, 1200);
+                                                                    const uploaded = await uploadImageToImgBB(resized, file.name);
+                                                                    handleChange('features_image_1', uploaded.url);
+                                                                } catch (error) {
+                                                                    alert('이미지 업로드에 실패했습니다.');
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="hidden"
+                                                        id="features-image-1-upload"
+                                                    />
+                                                    <label
+                                                        htmlFor="features-image-1-upload"
+                                                        className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
+                                                    >
+                                                        업로드
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-2">이미지 2</label>
+                                            <div className="flex gap-2 items-start">
+                                                {formData.features_image_2 && (
+                                                    <div className="w-24 h-16 rounded-lg overflow-hidden border-2 border-gray-200">
+                                                        <img src={formData.features_image_2} alt="Features 2" className="w-full h-full object-cover" />
+                                                    </div>
+                                                )}
+                                                <div className="flex-1">
+                                                    <input
+                                                        type="text"
+                                                        value={formData.features_image_2 || ''}
+                                                        onChange={(e) => handleChange('features_image_2', e.target.value)}
+                                                        className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none mb-2 text-sm"
+                                                        placeholder="이미지 URL"
+                                                    />
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={async (e) => {
+                                                            const file = e.target.files[0];
+                                                            if (file) {
+                                                                try {
+                                                                    const resized = await resizeImage(file, 1200, 1200);
+                                                                    const uploaded = await uploadImageToImgBB(resized, file.name);
+                                                                    handleChange('features_image_2', uploaded.url);
+                                                                } catch (error) {
+                                                                    alert('이미지 업로드에 실패했습니다.');
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="hidden"
+                                                        id="features-image-2-upload"
+                                                    />
+                                                    <label
+                                                        htmlFor="features-image-2-upload"
+                                                        className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
+                                                    >
+                                                        업로드
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Activities 섹션 이미지 */}
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Activities 섹션 이미지</label>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-2">세미나 카드</label>
+                                            <div className="flex flex-col gap-2">
+                                                {formData.activity_seminar_image && (
+                                                    <div className="w-full h-20 rounded-lg overflow-hidden border-2 border-gray-200">
+                                                        <img src={formData.activity_seminar_image} alt="Seminar" className="w-full h-full object-cover" />
+                                                    </div>
+                                                )}
+                                                <input
+                                                    type="text"
+                                                    value={formData.activity_seminar_image || ''}
+                                                    onChange={(e) => handleChange('activity_seminar_image', e.target.value)}
+                                                    className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm"
+                                                    placeholder="이미지 URL"
+                                                />
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files[0];
+                                                        if (file) {
+                                                            try {
+                                                                const resized = await resizeImage(file, 1200, 1200);
+                                                                const uploaded = await uploadImageToImgBB(resized, file.name);
+                                                                handleChange('activity_seminar_image', uploaded.url);
+                                                            } catch (error) {
+                                                                alert('이미지 업로드에 실패했습니다.');
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="hidden"
+                                                    id="activity-seminar-upload"
+                                                />
+                                                <label
+                                                    htmlFor="activity-seminar-upload"
+                                                    className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs text-center"
+                                                >
+                                                    업로드
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-2">투자 카드</label>
+                                            <div className="flex flex-col gap-2">
+                                                {formData.activity_investment_image && (
+                                                    <div className="w-full h-20 rounded-lg overflow-hidden border-2 border-gray-200">
+                                                        <img src={formData.activity_investment_image} alt="Investment" className="w-full h-full object-cover" />
+                                                    </div>
+                                                )}
+                                                <input
+                                                    type="text"
+                                                    value={formData.activity_investment_image || ''}
+                                                    onChange={(e) => handleChange('activity_investment_image', e.target.value)}
+                                                    className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm"
+                                                    placeholder="이미지 URL"
+                                                />
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files[0];
+                                                        if (file) {
+                                                            try {
+                                                                const resized = await resizeImage(file, 1200, 1200);
+                                                                const uploaded = await uploadImageToImgBB(resized, file.name);
+                                                                handleChange('activity_investment_image', uploaded.url);
+                                                            } catch (error) {
+                                                                alert('이미지 업로드에 실패했습니다.');
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="hidden"
+                                                    id="activity-investment-upload"
+                                                />
+                                                <label
+                                                    htmlFor="activity-investment-upload"
+                                                    className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs text-center"
+                                                >
+                                                    업로드
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-600 mb-2">네트워킹 카드</label>
+                                            <div className="flex flex-col gap-2">
+                                                {formData.activity_networking_image && (
+                                                    <div className="w-full h-20 rounded-lg overflow-hidden border-2 border-gray-200">
+                                                        <img src={formData.activity_networking_image} alt="Networking" className="w-full h-full object-cover" />
+                                                    </div>
+                                                )}
+                                                <input
+                                                    type="text"
+                                                    value={formData.activity_networking_image || ''}
+                                                    onChange={(e) => handleChange('activity_networking_image', e.target.value)}
+                                                    className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm"
+                                                    placeholder="이미지 URL"
+                                                />
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files[0];
+                                                        if (file) {
+                                                            try {
+                                                                const resized = await resizeImage(file, 1200, 1200);
+                                                                const uploaded = await uploadImageToImgBB(resized, file.name);
+                                                                handleChange('activity_networking_image', uploaded.url);
+                                                            } catch (error) {
+                                                                alert('이미지 업로드에 실패했습니다.');
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="hidden"
+                                                    id="activity-networking-upload"
+                                                />
+                                                <label
+                                                    htmlFor="activity-networking-upload"
+                                                    className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs text-center"
+                                                >
+                                                    업로드
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* 후원 섹션 이미지 */}
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">후원 섹션 배경 이미지</label>
+                                    <div className="flex gap-4 items-start">
+                                        {formData.donation_image && (
+                                            <div className="w-32 h-20 rounded-xl overflow-hidden border-2 border-gray-200">
+                                                <img src={formData.donation_image} alt="Donation" className="w-full h-full object-cover" />
+                                            </div>
+                                        )}
+                                        <div className="flex-1">
+                                            <input
+                                                type="text"
+                                                value={formData.donation_image || ''}
+                                                onChange={(e) => handleChange('donation_image', e.target.value)}
+                                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none mb-2"
+                                                placeholder="이미지 URL을 입력하거나 업로드하세요"
+                                            />
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files[0];
+                                                    if (file) {
+                                                        try {
+                                                            const resized = await resizeImage(file, 1920, 1920);
+                                                            const uploaded = await uploadImageToImgBB(resized, file.name);
+                                                            handleChange('donation_image', uploaded.url);
+                                                        } catch (error) {
+                                                            alert('이미지 업로드에 실패했습니다.');
+                                                        }
+                                                    }
+                                                }}
+                                                className="hidden"
+                                                id="donation-image-upload"
+                                            />
+                                            <label
+                                                htmlFor="donation-image-upload"
+                                                className="inline-block px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
+                                            >
+                                                이미지 업로드
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* CTA 섹션 이미지 */}
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">CTA 섹션 배경 이미지</label>
+                                    <div className="flex gap-4 items-start">
+                                        {formData.cta_image && (
+                                            <div className="w-32 h-20 rounded-xl overflow-hidden border-2 border-gray-200">
+                                                <img src={formData.cta_image} alt="CTA" className="w-full h-full object-cover" />
+                                            </div>
+                                        )}
+                                        <div className="flex-1">
+                                            <input
+                                                type="text"
+                                                value={formData.cta_image || ''}
+                                                onChange={(e) => handleChange('cta_image', e.target.value)}
+                                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none mb-2"
+                                                placeholder="이미지 URL을 입력하거나 업로드하세요"
+                                            />
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files[0];
+                                                    if (file) {
+                                                        try {
+                                                            const resized = await resizeImage(file, 1920, 1920);
+                                                            const uploaded = await uploadImageToImgBB(resized, file.name);
+                                                            handleChange('cta_image', uploaded.url);
+                                                        } catch (error) {
+                                                            alert('이미지 업로드에 실패했습니다.');
+                                                        }
+                                                    }
+                                                }}
+                                                className="hidden"
+                                                id="cta-image-upload"
+                                            />
+                                            <label
+                                                htmlFor="cta-image-upload"
+                                                className="inline-block px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
+                                            >
+                                                이미지 업로드
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                                 
                         {/* 저장 버튼 및 상태 표시 */}
                         <div className="flex justify-between items-center pt-6">

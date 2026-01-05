@@ -19,6 +19,15 @@ const defaultContent = {
     category_area_options: ["부산 전체", "해운대구 / IT", "부산진구 / 유통", "남구 / 금융"],
     category_activity_options: ["비즈니스 세미나", "투자 설명회", "네트워킹 파티", "멘토링"],
     category_target_options: ["예비/초기 창업가", "시리즈A 단계", "대학생", "일반인"],
+    // 이미지 URL 필드
+    hero_image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
+    features_image_1: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    features_image_2: "https://images.unsplash.com/photo-1559223607-a43c990c364c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    activity_seminar_image: "https://images.unsplash.com/photo-1544531586-fde5298cdd40?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    activity_investment_image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    activity_networking_image: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    donation_image: "https://images.unsplash.com/photo-1556761175-4b46a572b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
+    cta_image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
 };
 
 // 기본 회원 데이터 (테스트 데이터 제거됨 - CSV 또는 localStorage에서 로드)
