@@ -3877,12 +3877,24 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
     // 정렬 로직
     const sortedSeminars = React.useMemo(() => {
         const sorted = [...filteredSeminars];
+        // 날짜 파싱 함수 (공통 사용)
+        const parseDate = (dateStr) => {
+            if (!dateStr) return new Date(0);
+            // "2024.01.15" 또는 "2024-01-15" 형식 파싱
+            const match = dateStr.match(/(\d{4})[.-](\d{1,2})[.-](\d{1,2})/);
+            if (match) {
+                return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+            }
+            return new Date(dateStr) || new Date(0);
+        };
+        
         switch(sortBy) {
             case 'latest':
+                // 운영일자 기준 최신순 정렬
                 return sorted.sort((a, b) => {
-                    const aDate = a.createdAt?.toDate?.() || a.createdAt || new Date(0);
-                    const bDate = b.createdAt?.toDate?.() || b.createdAt || new Date(0);
-                    return bDate - aDate;
+                    const aDate = parseDate(a.date);
+                    const bDate = parseDate(b.date);
+                    return bDate - aDate; // 내림차순 (최신순)
                 });
             case 'popular':
                 return sorted.sort((a, b) => 
@@ -3890,15 +3902,6 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                 );
             case 'date':
                 return sorted.sort((a, b) => {
-                    const parseDate = (dateStr) => {
-                        if (!dateStr) return new Date(0);
-                        // "2024.01.15" 또는 "2024-01-15" 형식 파싱
-                        const match = dateStr.match(/(\d{4})[.-](\d{1,2})[.-](\d{1,2})/);
-                        if (match) {
-                            return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
-                        }
-                        return new Date(dateStr) || new Date(0);
-                    };
                     return parseDate(a.date) - parseDate(b.date);
                 });
             default:
