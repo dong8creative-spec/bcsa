@@ -1425,6 +1425,8 @@
                                                     setMenuNames(newMenuNames);
                                                     try {
                                                         localStorage.setItem('busan_ycc_menu_names', JSON.stringify(newMenuNames));
+                                                        // 같은 탭에서의 변경을 감지하기 위한 커스텀 이벤트 발생
+                                                        window.dispatchEvent(new Event('menuNamesUpdated'));
                                                     } catch (error) {
                                                         console.error('메뉴명 저장 실패:', error);
                                                     }

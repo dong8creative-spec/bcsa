@@ -877,7 +877,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
 // 공지사항 전용 페이지 컴포넌트
 
 
-const NoticeView = ({ onBack, posts }) => {
+const NoticeView = ({ onBack, posts, menuNames }) => {
     const [selectedCategory, setSelectedCategory] = useState('전체');
     const [selectedPost, setSelectedPost] = useState(null);
     
@@ -891,7 +891,7 @@ const NoticeView = ({ onBack, posts }) => {
             <div className="container mx-auto max-w-7xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
                     <div>
-                        <h2 className="text-3xl font-bold text-dark mb-2">공지사항</h2>
+                        <h2 className="text-3xl font-bold text-dark mb-2">{menuNames?.['커뮤니티'] || '커뮤니티'}</h2>
                         <p className="text-gray-500 text-sm">단체 소식 안내</p>
                     </div>
                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
@@ -2799,7 +2799,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
 
 
 // 맛집 리스트 뷰
-const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessOwner, onRestaurantClick, onCreateClick }) => {
+const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessOwner, onRestaurantClick, onCreateClick, menuNames }) => {
     const [searchKeyword, setSearchKeyword] = useState('');
     
     const filteredRestaurants = restaurants.filter(restaurant => {
@@ -2821,7 +2821,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
             <div className="container mx-auto max-w-7xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
                     <div>
-                        <h2 className="text-3xl font-bold text-dark mb-2">부산맛집</h2>
+                        <h2 className="text-3xl font-bold text-dark mb-2">{menuNames?.['부산맛집'] || '부산맛집'}</h2>
                         <p className="text-gray-500 text-sm">부산 지역 맛집 정보</p>
                     </div>
                     <div className="flex items-center gap-4">
@@ -3505,7 +3505,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
     );
 };
 
-const AllSeminarsView = ({ onBack, seminars, onApply, currentUser }) => {
+const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames }) => {
     const [searchKeyword, setSearchKeyword] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('전체');
     const [selectedStatus, setSelectedStatus] = useState('전체');
@@ -3618,7 +3618,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser }) => {
             <div className="container mx-auto max-w-7xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
                     <div>
-                        <h2 className="text-3xl font-bold text-dark mb-2">프로그램</h2>
+                        <h2 className="text-3xl font-bold text-dark mb-2">{menuNames?.['프로그램'] || '프로그램'}</h2>
                         <p className="text-gray-500 text-sm">비즈니스 세미나 및 네트워킹</p>
                                 </div>
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
@@ -8096,6 +8096,44 @@ const App = () => {
     };
 
     const [menuNames, setMenuNames] = useState(loadMenuNamesFromStorage());
+    
+    // menuNames 변경 감지 (localStorage 변경 시 자동 업데이트)
+    useEffect(() => {
+        const handleStorageChange = (e) => {
+            if (e.key === 'busan_ycc_menu_names') {
+                try {
+                    const newMenuNames = e.newValue ? JSON.parse(e.newValue) : defaultMenuNames;
+                    setMenuNames(newMenuNames);
+                } catch (error) {
+                    console.error('메뉴명 파싱 오류:', error);
+                }
+            }
+        };
+        
+        // localStorage 변경 이벤트 리스너 (다른 탭에서 변경 시)
+        window.addEventListener('storage', handleStorageChange);
+        
+        // 같은 탭에서의 변경 감지를 위한 커스텀 이벤트
+        const handleCustomStorageChange = () => {
+            const newMenuNames = loadMenuNamesFromStorage();
+            setMenuNames(newMenuNames);
+        };
+        window.addEventListener('menuNamesUpdated', handleCustomStorageChange);
+        
+        // 주기적으로 확인 (같은 탭에서의 변경 감지)
+        const intervalId = setInterval(() => {
+            const currentMenuNames = loadMenuNamesFromStorage();
+            if (JSON.stringify(currentMenuNames) !== JSON.stringify(menuNames)) {
+                setMenuNames(currentMenuNames);
+            }
+        }, 1000);
+        
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('menuNamesUpdated', handleCustomStorageChange);
+            clearInterval(intervalId);
+        };
+    }, [menuNames]);
 
     // 메뉴 순서 관리
     const defaultMenuOrder = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '입찰공고', '후원', '부산맛집'];
@@ -9368,7 +9406,7 @@ END:VCALENDAR`;
             setCurrentView('home');
             return null;
         }
-        if (currentView === 'allSeminars') return <AllSeminarsView onBack={() => setCurrentView('home')} seminars={seminarsData} onApply={(seminar, applicationData) => {
+        if (currentView === 'allSeminars') return <AllSeminarsView onBack={() => setCurrentView('home')} seminars={seminarsData} menuNames={menuNames} onApply={(seminar, applicationData) => {
             const success = handleSeminarApply(seminar, applicationData);
             if (success) {
                 generateAndDownloadCalendar(seminar);
@@ -9388,7 +9426,7 @@ END:VCALENDAR`;
             return null;
         }
         if (currentView === 'community') return <CommunityView onBack={() => setCurrentView('home')} posts={communityPosts} onCreate={handleCommunityCreate} onDelete={handleCommunityDelete} currentUser={currentUser} onNotifyAdmin={handleNotifyAdmin} seminars={seminarsData} setShowLoginModal={setShowLoginModal} />;
-        if (currentView === 'notice') return <NoticeView onBack={() => setCurrentView('home')} posts={communityPosts} />;
+        if (currentView === 'notice') return <NoticeView onBack={() => setCurrentView('home')} posts={communityPosts} menuNames={menuNames} />;
         if (currentView === 'bidSearch' && !menuEnabled['입찰공고']) {
             alert('준비중인 서비스입니다.');
             setCurrentView('home');
@@ -9419,6 +9457,7 @@ END:VCALENDAR`;
                     restaurants={restaurantsData}
                     currentUser={currentUser}
                     isFoodBusinessOwner={isFoodBusinessOwner}
+                    menuNames={menuNames}
                     onRestaurantClick={(restaurant) => {
                         setSelectedRestaurant(restaurant);
                         setCurrentView('restaurantDetail');
