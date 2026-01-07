@@ -1513,7 +1513,7 @@
                         <div className="border-b border-gray-200 pb-8">
                             <h4 className="font-bold text-dark mb-6 text-lg">Hero 섹션</h4>
                             <div className="space-y-6">
-                                <div>
+                <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
                                     <textarea
                                         value={formData.hero_title || ''}
@@ -1522,7 +1522,7 @@
                                         rows="3"
                                         placeholder="함께 성장하는\n청년 사업가 커뮤니티\n부산청년사업가들"
                                     />
-                                </div>
+                                                                        </div>
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">설명</label>
                                     <textarea
@@ -1532,7 +1532,7 @@
                                         rows="2"
                                         placeholder="부산 지역 청년 사업가들이 모여 아이디어를 공유하고, 네트워킹하며 함께 성장해나가는 공간입니다."
                                     />
-                                </div>
+                                                </div>
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">배경 이미지</label>
                                     <div className="flex gap-4 items-start">
@@ -1575,9 +1575,9 @@
                                             </label>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
+                                                </div>
+                                                                </div>
+                                            </div>
                     
                         {/* 통계 섹션 */}
                         <div className="border-b border-gray-200 pb-6">
@@ -1636,15 +1636,15 @@
                         <div className="border-b border-gray-200 pb-8">
                             <h4 className="font-bold text-dark mb-6 text-lg">Features 섹션</h4>
                             <div className="space-y-6">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
-                                    <input
-                                        type="text"
-                                        value={formData.features_title || ''}
-                                        onChange={(e) => handleChange('features_title', e.target.value)}
-                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
-                                        placeholder="함께할 때 더 멀리 갈 수 있습니다"
-                                    />
+                                                <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
+                                <input
+                                    type="text"
+                                    value={formData.features_title || ''}
+                                    onChange={(e) => handleChange('features_title', e.target.value)}
+                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                    placeholder="함께할 때 더 멀리 갈 수 있습니다"
+                                />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">이미지</label>
@@ -2147,8 +2147,8 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
+                                                                    </div>
+                                                                    </div>
                                 
                         {/* 저장 버튼 및 상태 표시 */}
                         <div className="flex justify-between items-center pt-6">
@@ -2895,28 +2895,28 @@
                                     
                                     {/* 승인 상태 및 노출 여부 */}
                                     <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">승인 상태</label>
-                                            <select
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">승인 상태</label>
+                                        <select
                                                 value={editFormData.approvalStatus || 'pending'}
-                                                onChange={(e) => setEditFormData({...editFormData, approvalStatus: e.target.value})}
-                                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
-                                            >
-                                                <option value="pending">대기</option>
-                                                <option value="approved">승인</option>
-                                                <option value="rejected">거절</option>
-                                            </select>
-                                        </div>
+                                            onChange={(e) => setEditFormData({...editFormData, approvalStatus: e.target.value})}
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                        >
+                                            <option value="pending">대기</option>
+                                            <option value="approved">승인</option>
+                                            <option value="rejected">거절</option>
+                                        </select>
+                                    </div>
                                         <div className="flex items-end">
                                             <div className="flex items-center gap-2 w-full">
-                                                <input
-                                                    type="checkbox"
+                                        <input
+                                            type="checkbox"
                                                     checked={editFormData.isVisible !== false}
-                                                    onChange={(e) => setEditFormData({...editFormData, isVisible: e.target.checked})}
+                                            onChange={(e) => setEditFormData({...editFormData, isVisible: e.target.checked})}
                                                     className="w-5 h-5"
-                                                />
-                                                <label className="text-sm font-bold text-gray-700">노출 여부</label>
-                                            </div>
+                                        />
+                                        <label className="text-sm font-bold text-gray-700">노출 여부</label>
+                                    </div>
                                         </div>
                                     </div>
                                     
@@ -3425,9 +3425,18 @@
                 setSelectedSeminar(seminar);
                 setEditFormData({
                     title: seminar.title || '',
-                    description: seminar.description || '',
+                    desc: seminar.desc || seminar.description || '',
+                    description: seminar.description || seminar.desc || '',
                     date: seminar.date || '',
-                    location: seminar.location || ''
+                    location: seminar.location || '',
+                    img: seminar.img || '',
+                    category: seminar.category || '',
+                    status: seminar.status || '모집중',
+                    price: seminar.price || 0,
+                    requiresPayment: seminar.requiresPayment || false,
+                    maxParticipants: seminar.maxParticipants || 0,
+                    currentParticipants: seminar.currentParticipants || 0,
+                    deadline: seminar.deadline || ''
                 });
                 setShowEditModal(true);
             };
@@ -3436,39 +3445,83 @@
                 setSelectedSeminar(null);
                 setEditFormData({
                     title: '',
+                    desc: '',
                     description: '',
                     date: '',
-                    location: ''
+                    location: '',
+                    img: '',
+                    category: '',
+                    status: '모집중',
+                    price: 0,
+                    requiresPayment: false,
+                    maxParticipants: 0,
+                    currentParticipants: 0,
+                    deadline: ''
                 });
                 setShowAddModal(true);
             };
             
             const handleSaveEdit = async () => {
                 if (!selectedSeminar) return;
+                
+                // 필수 필드 검증
+                if (!editFormData.title || !editFormData.title.trim()) {
+                    alert('제목을 입력해주세요.');
+                    return;
+                }
+                
+                if (!editFormData.date || !editFormData.date.trim()) {
+                    alert('날짜를 입력해주세요.');
+                    return;
+                }
+                
                 try {
-                    await window.firebaseService.updateSeminar(selectedSeminar.id, editFormData);
+                    // desc와 description 통합 (desc 우선)
+                    const saveData = {
+                        ...editFormData,
+                        desc: editFormData.desc || editFormData.description || '',
+                        description: editFormData.desc || editFormData.description || ''
+                    };
+                    
+                    await window.firebaseService.updateSeminar(selectedSeminar.id, saveData);
                     const updatedSeminars = seminars.map(s => 
-                        s.id === selectedSeminar.id ? {...s, ...editFormData} : s
+                        s.id === selectedSeminar.id ? {...s, ...saveData} : s
                     );
                     setSeminars(updatedSeminars);
                     setShowEditModal(false);
                     alert('수정되었습니다.');
                                                             } catch (error) {
-                    
                     const errorMessage = translateFirebaseError ? translateFirebaseError(error) : '수정 중 오류가 발생했습니다.';
                     alert(`수정에 실패했습니다.\n${errorMessage}`);
                 }
             };
             
             const handleSaveAdd = async () => {
+                // 필수 필드 검증
+                if (!editFormData.title || !editFormData.title.trim()) {
+                    alert('제목을 입력해주세요.');
+                    return;
+                }
+                
+                if (!editFormData.date || !editFormData.date.trim()) {
+                    alert('날짜를 입력해주세요.');
+                    return;
+                }
+                
                 try {
-                    await window.firebaseService.createSeminar(editFormData);
+                    // desc와 description 통합 (desc 우선)
+                    const saveData = {
+                        ...editFormData,
+                        desc: editFormData.desc || editFormData.description || '',
+                        description: editFormData.desc || editFormData.description || ''
+                    };
+                    
+                    await window.firebaseService.createSeminar(saveData);
                     const newSeminars = await window.firebaseService.getSeminars();
                     setSeminars(newSeminars);
                     setShowAddModal(false);
                     alert('추가되었습니다.');
                                                             } catch (error) {
-                    
                     const errorMessage = translateFirebaseError ? translateFirebaseError(error) : '추가 중 오류가 발생했습니다.';
                     alert(`추가에 실패했습니다.\n${errorMessage}`);
                 }
@@ -3533,43 +3586,159 @@
                     
                     {/* 수정 모달 */}
                     {showEditModal && selectedSeminar && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowEditModal(false)}>
-                            <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                                <h4 className="text-xl font-bold text-dark mb-4">프로그램 수정</h4>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowEditModal(false)}>
+                            <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-scroll" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center justify-between mb-6">
+                                    <h4 className="text-xl font-bold text-dark">프로그램 수정</h4>
+                                    <button
+                                        onClick={() => setShowEditModal(false)}
+                                        className="p-2 hover:bg-gray-100 rounded-lg"
+                                    >
+                                        <Icons.X size={24} />
+                                    </button>
+                                </div>
+                                <div className="space-y-6">
+                                    {/* 기본 정보 */}
+                                    <div className="border-b border-gray-200 pb-4">
+                                        <h5 className="font-bold text-gray-700 mb-4">기본 정보</h5>
                                 <div className="space-y-4">
                         <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
                                         <input
                                             type="text"
-                                            value={editFormData.title}
+                                                    value={editFormData.title || ''}
                                             onChange={(e) => setEditFormData({...editFormData, title: e.target.value})}
                                             className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    placeholder="프로그램 제목"
                                 />
                             </div>
                         <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">설명</label>
                             <textarea 
-                                            value={editFormData.description}
-                                            onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
+                                                    value={editFormData.desc || editFormData.description || ''}
+                                                    onChange={(e) => setEditFormData({...editFormData, desc: e.target.value, description: e.target.value})}
                                             className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
-                                            rows="5"
+                                                    rows="4"
+                                                    placeholder="프로그램 설명"
                             />
                             </div>
                                 <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">날짜</label>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">이미지 URL</label>
+                                                <div className="flex gap-3 items-start">
+                                                    {editFormData.img && (
+                                                        <div className="w-32 h-24 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
+                                                            <img src={editFormData.img} alt="프로그램 이미지" className="w-full h-full object-cover" />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-1">
                                             <input 
                                             type="text"
-                                            value={editFormData.date}
-                                            onChange={(e) => setEditFormData({...editFormData, date: e.target.value})}
+                                                            value={editFormData.img || ''}
+                                                            onChange={(e) => setEditFormData({...editFormData, img: e.target.value})}
+                                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none mb-2"
+                                                            placeholder="이미지 URL"
+                                                        />
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files[0];
+                                                                if (file) {
+                                                                    try {
+                                                                        const resized = await resizeImage(file, 1200, 1200);
+                                                                        const uploaded = await uploadImageToImgBB(resized, file.name);
+                                                                        setEditFormData({...editFormData, img: uploaded.url});
+                                                                    } catch (error) {
+                                                                        alert('이미지 업로드에 실패했습니다.');
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className="hidden"
+                                                            id="edit-seminar-image-upload"
+                                                        />
+                                                        <label
+                                                            htmlFor="edit-seminar-image-upload"
+                                                            className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
+                                                        >
+                                                            업로드
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
+                                                    <select
+                                                        value={editFormData.category || ''}
+                                                        onChange={(e) => setEditFormData({...editFormData, category: e.target.value})}
                                             className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
-                                        />
+                                                    >
+                                                        <option value="">선택 안함</option>
+                                                        <option value="교육/세미나">교육/세미나</option>
+                                                        <option value="네트워킹/모임">네트워킹/모임</option>
+                                                        <option value="투자/IR">투자/IR</option>
+                                                        <option value="멘토링/상담">멘토링/상담</option>
+                                                        <option value="기타">기타</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2">상태</label>
+                                                    <select
+                                                        value={editFormData.status || '모집중'}
+                                                        onChange={(e) => setEditFormData({...editFormData, status: e.target.value})}
+                                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    >
+                                                        <option value="모집중">모집중</option>
+                                                        <option value="마감임박">마감임박</option>
+                                                        <option value="종료">종료</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 일정 및 장소 */}
+                                    <div className="border-b border-gray-200 pb-4">
+                                        <h5 className="font-bold text-gray-700 mb-4">일정 및 장소</h5>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">날짜 *</label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="date"
+                                                        value={editFormData.date ? (() => {
+                                                            const match = editFormData.date.match(/(\d{4})[.-](\d{1,2})[.-](\d{1,2})/);
+                                                            if (match) {
+                                                                return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+                                                            }
+                                                            return '';
+                                                        })() : ''}
+                                                        onChange={(e) => {
+                                                            const dateValue = e.target.value;
+                                                            if (dateValue) {
+                                                                const [year, month, day] = dateValue.split('-');
+                                                                setEditFormData({...editFormData, date: `${year}.${month}.${day}`});
+                                                            } else {
+                                                                setEditFormData({...editFormData, date: ''});
+                                                            }
+                                                        }}
+                                                        className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={editFormData.date || ''}
+                                                        onChange={(e) => setEditFormData({...editFormData, date: e.target.value})}
+                                                        className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                        placeholder="또는 직접 입력 (예: 2024.01.15)"
+                                                    />
+                                                </div>
                                 </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">장소</label>
                                         <div className="flex gap-2">
                                             <input 
                                                 type="text"
-                                                value={editFormData.location}
+                                                        value={editFormData.location || ''}
                                                 onChange={(e) => setEditFormData({...editFormData, location: e.target.value})}
                                                 className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
                                                 placeholder="장소를 검색하거나 직접 입력하세요"
@@ -3595,7 +3764,76 @@
                                             </button>
                                         </div>
                 </div>
-                        <div className="flex gap-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">신청 마감일</label>
+                                                <input
+                                                    type="text"
+                                                    value={editFormData.deadline || ''}
+                                                    onChange={(e) => setEditFormData({...editFormData, deadline: e.target.value})}
+                                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    placeholder="예: 2024.01.10"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 참가 정보 */}
+                                    <div className="border-b border-gray-200 pb-4">
+                                        <h5 className="font-bold text-gray-700 mb-4">참가 정보</h5>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">최대 인원수</label>
+                                                <input
+                                                    type="number"
+                                                    value={editFormData.maxParticipants || 0}
+                                                    onChange={(e) => setEditFormData({...editFormData, maxParticipants: parseInt(e.target.value) || 0})}
+                                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    min="0"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">현재 인원수</label>
+                                                <input
+                                                    type="number"
+                                                    value={editFormData.currentParticipants || 0}
+                                                    onChange={(e) => setEditFormData({...editFormData, currentParticipants: parseInt(e.target.value) || 0})}
+                                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    min="0"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 가격 정보 */}
+                                    <div>
+                                        <h5 className="font-bold text-gray-700 mb-4">가격 정보</h5>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={editFormData.requiresPayment || false}
+                                                    onChange={(e) => setEditFormData({...editFormData, requiresPayment: e.target.checked})}
+                                                    className="w-5 h-5"
+                                                />
+                                                <label className="text-sm font-bold text-gray-700">유료 프로그램</label>
+                                            </div>
+                                            {editFormData.requiresPayment && (
+                                                <div>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2">가격 (원)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={editFormData.price || 0}
+                                                        onChange={(e) => setEditFormData({...editFormData, price: parseInt(e.target.value) || 0})}
+                                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                        min="0"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 저장 버튼 */}
+                                    <div className="flex gap-4 pt-4">
                                     <button
                                             onClick={() => setShowEditModal(false)}
                                             className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
@@ -3616,43 +3854,159 @@
                     
                     {/* 추가 모달 */}
                     {showAddModal && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowAddModal(false)}>
-                            <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                                <h4 className="text-xl font-bold text-dark mb-4">프로그램 추가</h4>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowAddModal(false)}>
+                            <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-scroll" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center justify-between mb-6">
+                                    <h4 className="text-xl font-bold text-dark">프로그램 추가</h4>
+                                    <button
+                                        onClick={() => setShowAddModal(false)}
+                                        className="p-2 hover:bg-gray-100 rounded-lg"
+                                    >
+                                        <Icons.X size={24} />
+                                    </button>
+                                </div>
+                                <div className="space-y-6">
+                                    {/* 기본 정보 */}
+                                    <div className="border-b border-gray-200 pb-4">
+                                        <h5 className="font-bold text-gray-700 mb-4">기본 정보</h5>
                     <div className="space-y-4">
                             <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
                                     <input
                                 type="text"
-                                            value={editFormData.title}
+                                                    value={editFormData.title || ''}
                                             onChange={(e) => setEditFormData({...editFormData, title: e.target.value})}
                                 className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    placeholder="프로그램 제목"
                             />
                                 </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">설명</label>
                                         <textarea
-                                            value={editFormData.description}
-                                            onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
+                                                    value={editFormData.desc || editFormData.description || ''}
+                                                    onChange={(e) => setEditFormData({...editFormData, desc: e.target.value, description: e.target.value})}
                                             className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
-                                            rows="5"
+                                                    rows="4"
+                                                    placeholder="프로그램 설명"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">날짜</label>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">이미지 URL</label>
+                                                <div className="flex gap-3 items-start">
+                                                    {editFormData.img && (
+                                                        <div className="w-32 h-24 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
+                                                            <img src={editFormData.img} alt="프로그램 이미지" className="w-full h-full object-cover" />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-1">
                                         <input
                                             type="text"
-                                            value={editFormData.date}
-                                            onChange={(e) => setEditFormData({...editFormData, date: e.target.value})}
+                                                            value={editFormData.img || ''}
+                                                            onChange={(e) => setEditFormData({...editFormData, img: e.target.value})}
+                                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none mb-2"
+                                                            placeholder="이미지 URL"
+                                                        />
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files[0];
+                                                                if (file) {
+                                                                    try {
+                                                                        const resized = await resizeImage(file, 1200, 1200);
+                                                                        const uploaded = await uploadImageToImgBB(resized, file.name);
+                                                                        setEditFormData({...editFormData, img: uploaded.url});
+                                                                    } catch (error) {
+                                                                        alert('이미지 업로드에 실패했습니다.');
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className="hidden"
+                                                            id="add-seminar-image-upload"
+                                                        />
+                                                        <label
+                                                            htmlFor="add-seminar-image-upload"
+                                                            className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
+                                                        >
+                                                            업로드
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
+                                                    <select
+                                                        value={editFormData.category || ''}
+                                                        onChange={(e) => setEditFormData({...editFormData, category: e.target.value})}
                                 className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
-                                        />
+                                                    >
+                                                        <option value="">선택 안함</option>
+                                                        <option value="교육/세미나">교육/세미나</option>
+                                                        <option value="네트워킹/모임">네트워킹/모임</option>
+                                                        <option value="투자/IR">투자/IR</option>
+                                                        <option value="멘토링/상담">멘토링/상담</option>
+                                                        <option value="기타">기타</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2">상태</label>
+                                                    <select
+                                                        value={editFormData.status || '모집중'}
+                                                        onChange={(e) => setEditFormData({...editFormData, status: e.target.value})}
+                                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    >
+                                                        <option value="모집중">모집중</option>
+                                                        <option value="마감임박">마감임박</option>
+                                                        <option value="종료">종료</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 일정 및 장소 */}
+                                    <div className="border-b border-gray-200 pb-4">
+                                        <h5 className="font-bold text-gray-700 mb-4">일정 및 장소</h5>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">날짜 *</label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="date"
+                                                        value={editFormData.date ? (() => {
+                                                            const match = editFormData.date.match(/(\d{4})[.-](\d{1,2})[.-](\d{1,2})/);
+                                                            if (match) {
+                                                                return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+                                                            }
+                                                            return '';
+                                                        })() : ''}
+                                                        onChange={(e) => {
+                                                            const dateValue = e.target.value;
+                                                            if (dateValue) {
+                                                                const [year, month, day] = dateValue.split('-');
+                                                                setEditFormData({...editFormData, date: `${year}.${month}.${day}`});
+                                                            } else {
+                                                                setEditFormData({...editFormData, date: ''});
+                                                            }
+                                                        }}
+                                                        className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={editFormData.date || ''}
+                                                        onChange={(e) => setEditFormData({...editFormData, date: e.target.value})}
+                                                        className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                        placeholder="또는 직접 입력 (예: 2024.01.15)"
+                                                    />
+                                                </div>
                                     </div>
                         <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">장소</label>
                                         <div className="flex gap-2">
                                             <input
                                                 type="text"
-                                                value={editFormData.location}
+                                                        value={editFormData.location || ''}
                                                 onChange={(e) => setEditFormData({...editFormData, location: e.target.value})}
                                                 className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
                                                 placeholder="장소를 검색하거나 직접 입력하세요"
@@ -3678,7 +4032,76 @@
                                             </button>
                                         </div>
                             </div>
-                                    <div className="flex gap-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">신청 마감일</label>
+                                                <input
+                                                    type="text"
+                                                    value={editFormData.deadline || ''}
+                                                    onChange={(e) => setEditFormData({...editFormData, deadline: e.target.value})}
+                                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    placeholder="예: 2024.01.10"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 참가 정보 */}
+                                    <div className="border-b border-gray-200 pb-4">
+                                        <h5 className="font-bold text-gray-700 mb-4">참가 정보</h5>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">최대 인원수</label>
+                                                <input
+                                                    type="number"
+                                                    value={editFormData.maxParticipants || 0}
+                                                    onChange={(e) => setEditFormData({...editFormData, maxParticipants: parseInt(e.target.value) || 0})}
+                                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    min="0"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">현재 인원수</label>
+                                                <input
+                                                    type="number"
+                                                    value={editFormData.currentParticipants || 0}
+                                                    onChange={(e) => setEditFormData({...editFormData, currentParticipants: parseInt(e.target.value) || 0})}
+                                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    min="0"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 가격 정보 */}
+                                    <div>
+                                        <h5 className="font-bold text-gray-700 mb-4">가격 정보</h5>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={editFormData.requiresPayment || false}
+                                                    onChange={(e) => setEditFormData({...editFormData, requiresPayment: e.target.checked})}
+                                                    className="w-5 h-5"
+                                                />
+                                                <label className="text-sm font-bold text-gray-700">유료 프로그램</label>
+                                            </div>
+                                            {editFormData.requiresPayment && (
+                                                <div>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2">가격 (원)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={editFormData.price || 0}
+                                                        onChange={(e) => setEditFormData({...editFormData, price: parseInt(e.target.value) || 0})}
+                                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                        min="0"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 저장 버튼 */}
+                                    <div className="flex gap-4 pt-4">
                                 <button
                                             onClick={() => setShowAddModal(false)}
                                             className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"

@@ -3509,6 +3509,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser }) => {
     const [searchKeyword, setSearchKeyword] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('전체');
     const [selectedStatus, setSelectedStatus] = useState('전체');
+    const [sortBy, setSortBy] = useState('latest');
     const [selectedSeminar, setSelectedSeminar] = useState(null);
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
     const [applySeminar, setApplySeminar] = useState(null);
@@ -3523,6 +3524,38 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser }) => {
         const matchStatus = selectedStatus === '전체' || seminar.status === selectedStatus;
         return matchKeyword && matchCategory && matchStatus;
     });
+    
+    // 정렬 로직
+    const sortedSeminars = React.useMemo(() => {
+        const sorted = [...filteredSeminars];
+        switch(sortBy) {
+            case 'latest':
+                return sorted.sort((a, b) => {
+                    const aDate = a.createdAt?.toDate?.() || a.createdAt || new Date(0);
+                    const bDate = b.createdAt?.toDate?.() || b.createdAt || new Date(0);
+                    return bDate - aDate;
+                });
+            case 'popular':
+                return sorted.sort((a, b) => 
+                    (b.currentParticipants || 0) - (a.currentParticipants || 0)
+                );
+            case 'date':
+                return sorted.sort((a, b) => {
+                    const parseDate = (dateStr) => {
+                        if (!dateStr) return new Date(0);
+                        // "2024.01.15" 또는 "2024-01-15" 형식 파싱
+                        const match = dateStr.match(/(\d{4})[.-](\d{1,2})[.-](\d{1,2})/);
+                        if (match) {
+                            return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+                        }
+                        return new Date(dateStr) || new Date(0);
+                    };
+                    return parseDate(a.date) - parseDate(b.date);
+                });
+            default:
+                return sorted;
+        }
+    }, [filteredSeminars, sortBy]);
 
     const getStatusColor = (status) => {
         switch(status) {
@@ -3595,7 +3628,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser }) => {
 
                 {/* 검색 및 필터 */}
                 <div className="bg-white rounded-3xl shadow-card p-6 mb-8">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div className="md:col-span-2">
                             <label className="block text-xs font-bold text-gray-600 mb-2">검색</label>
                             <div className="relative">
@@ -3615,16 +3648,24 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser }) => {
                                 {statuses.map(status => <option key={status} value={status}>{status}</option>)}
                                         </select>
                                     </div>
+                                    <div>
+                            <label className="block text-xs font-bold text-gray-600 mb-2">정렬</label>
+                            <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm bg-white" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                                <option value="latest">최신순</option>
+                                <option value="popular">인기순</option>
+                                <option value="date">날짜순</option>
+                                        </select>
+                                    </div>
                                     </div>
                     <div className="text-xs text-gray-500 mt-4">
-                        검색 결과: <span className="font-bold text-brand">{filteredSeminars.length}</span>개
+                        검색 결과: <span className="font-bold text-brand">{sortedSeminars.length}</span>개
                                     </div>
                                     </div>
 
                 {/* 세미나 리스트 */}
-                {filteredSeminars.length > 0 ? (
+                {sortedSeminars.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredSeminars.map((seminar) => (
+                        {sortedSeminars.map((seminar) => (
                             <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-3xl shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 cursor-pointer overflow-hidden" onClick={() => setSelectedSeminar(seminar)}>
                                 {seminar.img && (
                                     <div className="w-full overflow-hidden" style={{ aspectRatio: '3/4' }}>
@@ -8334,6 +8375,35 @@ const App = () => {
         return () => clearInterval(intervalId);
     }, []);
     
+    // Firebase 세미나 구독 및 Google Sheets 세미나와 병합
+    useEffect(() => {
+        let firebaseUnsubscribe = null;
+        
+        // Firebase 세미나 구독
+        if (firebaseService && firebaseService.subscribeSeminars) {
+            firebaseUnsubscribe = firebaseService.subscribeSeminars((firebaseSeminars) => {
+                setSeminarsData(prev => {
+                    // Google Sheets 세미나와 병합
+                    const merged = [...prev, ...firebaseSeminars];
+                    // 중복 제거 (id 또는 title + date 기준)
+                    const unique = merged.filter((seminar, index, self) =>
+                        index === self.findIndex(s => 
+                            (s.id && seminar.id && s.id === seminar.id) || 
+                            (s.title === seminar.title && s.date === seminar.date)
+                        )
+                    );
+                    return unique;
+                });
+            });
+        }
+        
+        return () => {
+            if (firebaseUnsubscribe) {
+                firebaseUnsubscribe();
+            }
+        };
+    }, []);
+    
     useEffect(() => {
         const loadCSVData = async () => {
             const csvUrl = CONFIG.SHEET_URLS?.SEMINAR || SEMINAR_SHEET_URL;
@@ -8341,7 +8411,18 @@ const App = () => {
             if (csvUrl) {
                 const csvSeminars = await loadSeminarsFromCSV();
                 if (csvSeminars && csvSeminars.length > 0) {
-                    setSeminarsData(csvSeminars);
+                    setSeminarsData(prev => {
+                        // Firebase 세미나와 병합
+                        const merged = [...csvSeminars, ...prev];
+                        // 중복 제거
+                        const unique = merged.filter((seminar, index, self) =>
+                            index === self.findIndex(s => 
+                                (s.id && seminar.id && s.id === seminar.id) || 
+                                (s.title === seminar.title && s.date === seminar.date)
+                            )
+                        );
+                        return unique;
+                    });
                     // localStorage에도 저장 (캐시용)
                     try {
                         localStorage.setItem('busan_ycc_seminars', JSON.stringify(csvSeminars));
@@ -8373,7 +8454,17 @@ const App = () => {
                             }
                             
                             if (filtered && filtered.length > 0) {
-                                setSeminarsData(filtered);
+                                setSeminarsData(prev => {
+                                    // Firebase 세미나와 병합
+                                    const merged = [...filtered, ...prev];
+                                    const unique = merged.filter((seminar, index, self) =>
+                                        index === self.findIndex(s => 
+                                            (s.id && seminar.id && s.id === seminar.id) || 
+                                            (s.title === seminar.title && s.date === seminar.date)
+                                        )
+                                    );
+                                    return unique;
+                                });
                                 
                             }
                         }
@@ -8405,7 +8496,17 @@ const App = () => {
                         }
                         
                         if (filtered && filtered.length > 0) {
-                            setSeminarsData(filtered);
+                            setSeminarsData(prev => {
+                                // Firebase 세미나와 병합
+                                const merged = [...filtered, ...prev];
+                                const unique = merged.filter((seminar, index, self) =>
+                                    index === self.findIndex(s => 
+                                        (s.id && seminar.id && s.id === seminar.id) || 
+                                        (s.title === seminar.title && s.date === seminar.date)
+                                    )
+                                );
+                                return unique;
+                            });
                         }
                     }
                 } catch (e) {
