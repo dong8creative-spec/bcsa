@@ -1584,6 +1584,338 @@ const AllMembersView = ({ onBack, members, currentUser }) => {
                         </div>
                     </div>
                 )}
+                
+                {/* 프로그램 등록 모달 */}
+                {isAddModalOpen && onAddProgram && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setIsAddModalOpen(false); }}>
+                        <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-2xl font-bold text-dark">프로그램 등록</h3>
+                                <button type="button" onClick={() => setIsAddModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                                    <Icons.X size={24} />
+                                </button>
+                            </div>
+                            <div className="space-y-6">
+                                {/* 기본 정보 */}
+                                <div>
+                                    <h4 className="font-bold text-gray-700 mb-4">기본 정보</h4>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
+                                            <input
+                                                type="text"
+                                                value={addFormData.title}
+                                                onChange={(e) => setAddFormData({...addFormData, title: e.target.value})}
+                                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                placeholder="프로그램 제목"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">설명</label>
+                                            <textarea
+                                                value={addFormData.desc || addFormData.description}
+                                                onChange={(e) => setAddFormData({...addFormData, desc: e.target.value, description: e.target.value})}
+                                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                rows="4"
+                                                placeholder="프로그램 설명"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">이미지</label>
+                                            <div className="space-y-3">
+                                                {addFormData.img && (
+                                                    <div className="relative group">
+                                                        <div className="w-full h-48 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
+                                                            <img src={addFormData.img} alt="프로그램 이미지" className="w-full h-full object-cover" />
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setAddFormData({...addFormData, img: ''})}
+                                                            className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                                        >
+                                                            <Icons.X size={16} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                <label
+                                                    htmlFor="add-program-image-upload"
+                                                    className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-brand hover:bg-brand/5 transition-colors"
+                                                >
+                                                    <Icons.Camera size={32} className="text-gray-400 mb-2" />
+                                                    <span className="text-sm font-bold text-gray-600">이미지 업로드</span>
+                                                    <span className="text-xs text-gray-500 mt-1">클릭하여 이미지 선택</span>
+                                                </label>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    id="add-program-image-upload"
+                                                    className="hidden"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files[0];
+                                                        if (file) {
+                                                            if (file.size > 10 * 1024 * 1024) {
+                                                                alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                                return;
+                                                            }
+                                                            setUploadingImage(true);
+                                                            try {
+                                                                const resized = await resizeImage(file, 1200, 1200);
+                                                                const uploaded = await uploadImageToImgBB(resized, file.name);
+                                                                setAddFormData({...addFormData, img: uploaded.url});
+                                                            } catch (error) {
+                                                                alert('이미지 업로드에 실패했습니다.');
+                                                            } finally {
+                                                                setUploadingImage(false);
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                                <div>
+                                                    <label className="block text-xs text-gray-500 mb-1">또는 이미지 URL 직접 입력</label>
+                                                    <input
+                                                        type="text"
+                                                        value={addFormData.img || ''}
+                                                        onChange={(e) => setAddFormData({...addFormData, img: e.target.value})}
+                                                        className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm"
+                                                        placeholder="https://..."
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
+                                                <select
+                                                    value={addFormData.category}
+                                                    onChange={(e) => setAddFormData({...addFormData, category: e.target.value})}
+                                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                >
+                                                    <option value="">선택 안함</option>
+                                                    <option value="교육/세미나">교육/세미나</option>
+                                                    <option value="네트워킹/모임">네트워킹/모임</option>
+                                                    <option value="투자/IR">투자/IR</option>
+                                                    <option value="멘토링/상담">멘토링/상담</option>
+                                                    <option value="기타">기타</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">상태</label>
+                                                <select
+                                                    value={addFormData.status}
+                                                    onChange={(e) => setAddFormData({...addFormData, status: e.target.value})}
+                                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                >
+                                                    <option value="모집중">모집중</option>
+                                                    <option value="마감임박">마감임박</option>
+                                                    <option value="종료">종료</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* 일정 및 장소 */}
+                                <div>
+                                    <h4 className="font-bold text-gray-700 mb-4">일정 및 장소</h4>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">날짜 *</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="date"
+                                                    value={addFormData.date ? (() => {
+                                                        const match = addFormData.date.match(/(\d{4})[.-](\d{1,2})[.-](\d{1,2})/);
+                                                        if (match) {
+                                                            return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+                                                        }
+                                                        return '';
+                                                    })() : ''}
+                                                    onChange={(e) => {
+                                                        const dateValue = e.target.value;
+                                                        if (dateValue) {
+                                                            const [year, month, day] = dateValue.split('-');
+                                                            setAddFormData({...addFormData, date: `${year}.${month}.${day}`});
+                                                        } else {
+                                                            setAddFormData({...addFormData, date: ''});
+                                                        }
+                                                    }}
+                                                    className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={addFormData.date}
+                                                    onChange={(e) => setAddFormData({...addFormData, date: e.target.value})}
+                                                    className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    placeholder="또는 직접 입력 (예: 2024.01.15)"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">장소</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={addFormData.location}
+                                                    onChange={(e) => setAddFormData({...addFormData, location: e.target.value})}
+                                                    className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    placeholder="장소를 검색하거나 직접 입력하세요"
+                                                />
+                                                {openKakaoPlacesSearch && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openKakaoPlacesSearch((place) => {
+                                                            setAddFormData({
+                                                                ...addFormData,
+                                                                location: `${place.name} (${place.address})`
+                                                            });
+                                                        })}
+                                                        className="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors whitespace-nowrap"
+                                                    >
+                                                        장소 검색
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">신청 마감일</label>
+                                            <input
+                                                type="text"
+                                                value={addFormData.deadline}
+                                                onChange={(e) => setAddFormData({...addFormData, deadline: e.target.value})}
+                                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                placeholder="예: 2024.01.10"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* 참가 정보 */}
+                                <div>
+                                    <h4 className="font-bold text-gray-700 mb-4">참가 정보</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">최대 인원수</label>
+                                            <input
+                                                type="number"
+                                                value={addFormData.maxParticipants || 0}
+                                                onChange={(e) => setAddFormData({...addFormData, maxParticipants: parseInt(e.target.value) || 0})}
+                                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                min="0"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">현재 인원수</label>
+                                            <input
+                                                type="number"
+                                                value={addFormData.currentParticipants || 0}
+                                                onChange={(e) => setAddFormData({...addFormData, currentParticipants: parseInt(e.target.value) || 0})}
+                                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                min="0"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* 가격 정보 */}
+                                <div>
+                                    <h4 className="font-bold text-gray-700 mb-4">가격 정보</h4>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={addFormData.requiresPayment}
+                                                onChange={(e) => setAddFormData({...addFormData, requiresPayment: e.target.checked})}
+                                                className="w-5 h-5"
+                                            />
+                                            <label className="text-sm font-bold text-gray-700">유료 프로그램</label>
+                                        </div>
+                                        {addFormData.requiresPayment && (
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">가격 (원)</label>
+                                                <input
+                                                    type="number"
+                                                    value={addFormData.price || 0}
+                                                    onChange={(e) => setAddFormData({...addFormData, price: parseInt(e.target.value) || 0})}
+                                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                    min="0"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                {/* 저장 버튼 */}
+                                <div className="flex gap-4 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsAddModalOpen(false);
+                                            setAddFormData({
+                                                title: '',
+                                                desc: '',
+                                                description: '',
+                                                date: '',
+                                                location: '',
+                                                img: '',
+                                                category: '',
+                                                status: '모집중',
+                                                price: 0,
+                                                requiresPayment: false,
+                                                maxParticipants: 0,
+                                                currentParticipants: 0,
+                                                deadline: ''
+                                            });
+                                        }}
+                                        className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                                    >
+                                        취소
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            if (!addFormData.title || !addFormData.title.trim()) {
+                                                alert('제목을 입력해주세요.');
+                                                return;
+                                            }
+                                            if (!addFormData.date || !addFormData.date.trim()) {
+                                                alert('날짜를 입력해주세요.');
+                                                return;
+                                            }
+                                            const saveData = {
+                                                ...addFormData,
+                                                desc: addFormData.desc || addFormData.description || '',
+                                                description: addFormData.desc || addFormData.description || ''
+                                            };
+                                            const success = await onAddProgram(saveData);
+                                            if (success) {
+                                                setIsAddModalOpen(false);
+                                                setAddFormData({
+                                                    title: '',
+                                                    desc: '',
+                                                    description: '',
+                                                    date: '',
+                                                    location: '',
+                                                    img: '',
+                                                    category: '',
+                                                    status: '모집중',
+                                                    price: 0,
+                                                    requiresPayment: false,
+                                                    maxParticipants: 0,
+                                                    currentParticipants: 0,
+                                                    deadline: ''
+                                                });
+                                            }
+                                        }}
+                                        disabled={uploadingImage}
+                                        className="flex-1 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {uploadingImage ? '업로드 중...' : '등록하기'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -3505,7 +3837,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
     );
 };
 
-const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames }) => {
+const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, onAddProgram, waitForKakaoMap, openKakaoPlacesSearch }) => {
     const [searchKeyword, setSearchKeyword] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('전체');
     const [selectedStatus, setSelectedStatus] = useState('전체');
@@ -3514,6 +3846,23 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames }) 
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
     const [applySeminar, setApplySeminar] = useState(null);
     const [applicationData, setApplicationData] = useState({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [addFormData, setAddFormData] = useState({
+        title: '',
+        desc: '',
+        description: '',
+        date: '',
+        location: '',
+        img: '',
+        category: '',
+        status: '모집중',
+        price: 0,
+        requiresPayment: false,
+        maxParticipants: 0,
+        currentParticipants: 0,
+        deadline: ''
+    });
+    const [uploadingImage, setUploadingImage] = useState(false);
     
     const categories = ['전체', ...new Set(seminars.map(s => s.category).filter(Boolean))];
     const statuses = ['전체', '모집중', '마감임박', '종료'];
@@ -3621,9 +3970,20 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames }) 
                         <h2 className="text-3xl font-bold text-dark mb-2">{menuNames?.['프로그램'] || '프로그램'}</h2>
                         <p className="text-gray-500 text-sm">비즈니스 세미나 및 네트워킹</p>
                                 </div>
+                    <div className="flex items-center gap-3">
+                        {currentUser && onAddProgram && (
+                            <button 
+                                type="button" 
+                                onClick={() => setIsAddModalOpen(true)} 
+                                className="flex items-center gap-2 px-4 py-2 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                            >
+                                <Icons.Plus size={20} /> 프로그램 등록
+                            </button>
+                        )}
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
                             <Icons.ArrowLeft size={20} /> 메인으로
                         </button>
+                    </div>
                     </div>
 
                 {/* 검색 및 필터 */}
@@ -9406,13 +9766,41 @@ END:VCALENDAR`;
             setCurrentView('home');
             return null;
         }
-        if (currentView === 'allSeminars') return <AllSeminarsView onBack={() => setCurrentView('home')} seminars={seminarsData} menuNames={menuNames} onApply={(seminar, applicationData) => {
-            const success = handleSeminarApply(seminar, applicationData);
-            if (success) {
-                generateAndDownloadCalendar(seminar);
-            }
-            return success;
-        }} currentUser={currentUser} />; 
+        if (currentView === 'allSeminars') return <AllSeminarsView 
+            onBack={() => setCurrentView('home')} 
+            seminars={seminarsData} 
+            menuNames={menuNames} 
+            onApply={(seminar, applicationData) => {
+                const success = handleSeminarApply(seminar, applicationData);
+                if (success) {
+                    generateAndDownloadCalendar(seminar);
+                }
+                return success;
+            }} 
+            currentUser={currentUser}
+            onAddProgram={async (programData) => {
+                if (!currentUser) {
+                    alert('로그인이 필요한 서비스입니다.');
+                    return false;
+                }
+                try {
+                    if (firebaseService && firebaseService.createSeminar) {
+                        await firebaseService.createSeminar(programData);
+                        alert('프로그램이 등록되었습니다.');
+                        return true;
+                    } else {
+                        alert('서비스에 연결할 수 없습니다.');
+                        return false;
+                    }
+                } catch (error) {
+                    console.error('프로그램 등록 오류:', error);
+                    alert('프로그램 등록에 실패했습니다.');
+                    return false;
+                }
+            }}
+            waitForKakaoMap={waitForKakaoMap}
+            openKakaoPlacesSearch={openKakaoPlacesSearch}
+        />; 
         if (currentView === 'community' && !menuEnabled['커뮤니티']) {
             alert('준비중인 서비스입니다.');
             setCurrentView('home');

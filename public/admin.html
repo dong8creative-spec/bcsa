@@ -370,6 +370,7 @@
             Download: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
             MapPin: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
             CheckCircle: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+            Camera: (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>,
         };
         
         // ==========================================
@@ -3625,27 +3626,41 @@
                             />
                             </div>
                                 <div>
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">이미지 URL</label>
-                                                <div className="flex gap-3 items-start">
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">이미지</label>
+                                                <div className="space-y-3">
                                                     {editFormData.img && (
-                                                        <div className="w-32 h-24 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
-                                                            <img src={editFormData.img} alt="프로그램 이미지" className="w-full h-full object-cover" />
+                                                        <div className="relative group">
+                                                            <div className="w-full h-48 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
+                                                                <img src={editFormData.img} alt="프로그램 이미지" className="w-full h-full object-cover" />
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditFormData({...editFormData, img: ''})}
+                                                                className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                                            >
+                                                                <Icons.X size={16} />
+                                                            </button>
                                                         </div>
                                                     )}
-                                                    <div className="flex-1">
-                                            <input 
-                                            type="text"
-                                                            value={editFormData.img || ''}
-                                                            onChange={(e) => setEditFormData({...editFormData, img: e.target.value})}
-                                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none mb-2"
-                                                            placeholder="이미지 URL"
-                                                        />
+                                                    <div className="flex gap-3">
+                                                        <label
+                                                            htmlFor="edit-seminar-image-upload"
+                                                            className="flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-brand hover:bg-brand/5 transition-colors"
+                                                        >
+                                                            <Icons.Camera size={32} className="text-gray-400 mb-2" />
+                                                            <span className="text-sm font-bold text-gray-600">이미지 업로드</span>
+                                                            <span className="text-xs text-gray-500 mt-1">클릭하거나 드래그하여 업로드</span>
+                                                        </label>
                                                         <input
                                                             type="file"
                                                             accept="image/*"
                                                             onChange={async (e) => {
                                                                 const file = e.target.files[0];
                                                                 if (file) {
+                                                                    if (file.size > 10 * 1024 * 1024) {
+                                                                        alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                                        return;
+                                                                    }
                                                                     try {
                                                                         const resized = await resizeImage(file, 1200, 1200);
                                                                         const uploaded = await uploadImageToImgBB(resized, file.name);
@@ -3658,12 +3673,16 @@
                                                             className="hidden"
                                                             id="edit-seminar-image-upload"
                                                         />
-                                                        <label
-                                                            htmlFor="edit-seminar-image-upload"
-                                                            className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
-                                                        >
-                                                            업로드
-                                                        </label>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs text-gray-500 mb-1">또는 이미지 URL 직접 입력</label>
+                                                        <input 
+                                                            type="text"
+                                                            value={editFormData.img || ''}
+                                                            onChange={(e) => setEditFormData({...editFormData, img: e.target.value})}
+                                                            className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm"
+                                                            placeholder="https://..."
+                                                        />
                                                     </div>
                                                 </div>
                                             </div>
@@ -3893,27 +3912,41 @@
                                         />
                                     </div>
                                     <div>
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">이미지 URL</label>
-                                                <div className="flex gap-3 items-start">
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">이미지</label>
+                                                <div className="space-y-3">
                                                     {editFormData.img && (
-                                                        <div className="w-32 h-24 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
-                                                            <img src={editFormData.img} alt="프로그램 이미지" className="w-full h-full object-cover" />
+                                                        <div className="relative group">
+                                                            <div className="w-full h-48 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
+                                                                <img src={editFormData.img} alt="프로그램 이미지" className="w-full h-full object-cover" />
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditFormData({...editFormData, img: ''})}
+                                                                className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                                            >
+                                                                <Icons.X size={16} />
+                                                            </button>
                                                         </div>
                                                     )}
-                                                    <div className="flex-1">
-                                        <input
-                                            type="text"
-                                                            value={editFormData.img || ''}
-                                                            onChange={(e) => setEditFormData({...editFormData, img: e.target.value})}
-                                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none mb-2"
-                                                            placeholder="이미지 URL"
-                                                        />
+                                                    <div className="flex gap-3">
+                                                        <label
+                                                            htmlFor="add-seminar-image-upload"
+                                                            className="flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-brand hover:bg-brand/5 transition-colors"
+                                                        >
+                                                            <Icons.Camera size={32} className="text-gray-400 mb-2" />
+                                                            <span className="text-sm font-bold text-gray-600">이미지 업로드</span>
+                                                            <span className="text-xs text-gray-500 mt-1">클릭하거나 드래그하여 업로드</span>
+                                                        </label>
                                                         <input
                                                             type="file"
                                                             accept="image/*"
                                                             onChange={async (e) => {
                                                                 const file = e.target.files[0];
                                                                 if (file) {
+                                                                    if (file.size > 10 * 1024 * 1024) {
+                                                                        alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                                        return;
+                                                                    }
                                                                     try {
                                                                         const resized = await resizeImage(file, 1200, 1200);
                                                                         const uploaded = await uploadImageToImgBB(resized, file.name);
@@ -3926,12 +3959,16 @@
                                                             className="hidden"
                                                             id="add-seminar-image-upload"
                                                         />
-                                                        <label
-                                                            htmlFor="add-seminar-image-upload"
-                                                            className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
-                                                        >
-                                                            업로드
-                                                        </label>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs text-gray-500 mb-1">또는 이미지 URL 직접 입력</label>
+                                                        <input
+                                                            type="text"
+                                                            value={editFormData.img || ''}
+                                                            onChange={(e) => setEditFormData({...editFormData, img: e.target.value})}
+                                                            className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm"
+                                                            placeholder="https://..."
+                                                        />
                                                     </div>
                                                 </div>
                                             </div>
