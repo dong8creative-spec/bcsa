@@ -2198,12 +2198,30 @@
             
             const handleEdit = (restaurant) => {
                 setSelectedRestaurant(restaurant);
+                // businessHours를 openTime과 closeTime으로 분리
+                let openTime = '09:00';
+                let closeTime = '22:00';
+                if (restaurant.businessHours) {
+                    const timeMatch = restaurant.businessHours.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+                    if (timeMatch) {
+                        openTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+                        closeTime = `${timeMatch[3].padStart(2, '0')}:${timeMatch[4]}`;
+                    }
+                }
+                
                 setEditFormData({
                     title: restaurant.title || '',
                     description: restaurant.description || '',
                     phone: restaurant.phone || '',
+                    openTime: openTime,
+                    closeTime: closeTime,
                     businessHours: restaurant.businessHours || '',
                     priceRange: restaurant.priceRange || '',
+                    images: restaurant.images || [],
+                    location: restaurant.location || { address: '', lat: null, lng: null },
+                    menuItems: restaurant.menuItems || [],
+                    naverReservationUrl: restaurant.naverReservationUrl || '',
+                    smartPlaceUrl: restaurant.smartPlaceUrl || '',
                     approvalStatus: restaurant.approvalStatus || 'pending',
                     isVisible: restaurant.isVisible !== false, // 기본값 true
                 });
@@ -2212,10 +2230,38 @@
             
             const handleSaveEdit = async () => {
                 if (!selectedRestaurant) return;
+                
+                // 필수 필드 검증
+                if (!editFormData.title || !editFormData.title.trim()) {
+                    alert('제목을 입력해주세요.');
+                    return;
+                }
+                
+                if (!editFormData.location || !editFormData.location.address) {
+                    alert('주소를 입력해주세요.');
+                    return;
+                }
+                
+                // businessHours 업데이트 (openTime과 closeTime이 있으면 사용)
+                const updateData = { ...editFormData };
+                if (updateData.openTime && updateData.closeTime) {
+                    updateData.businessHours = `${updateData.openTime} - ${updateData.closeTime}`;
+                }
+                
+                // menuItems 필터링 (빈 항목 제거)
+                if (updateData.menuItems) {
+                    updateData.menuItems = updateData.menuItems.filter(m => m.name && m.name.trim());
+                }
+                
+                // images 필터링 (빈 항목 제거)
+                if (updateData.images) {
+                    updateData.images = updateData.images.filter(img => img && img.trim());
+                }
+                
                 try {
-                    await window.firebaseService.updateRestaurant(selectedRestaurant.id, editFormData);
+                    await window.firebaseService.updateRestaurant(selectedRestaurant.id, updateData);
                     const updatedRestaurants = restaurants.map(r => 
-                        r.id === selectedRestaurant.id ? {...r, ...editFormData} : r
+                        r.id === selectedRestaurant.id ? {...r, ...updateData} : r
                     );
                     setRestaurants(updatedRestaurants);
                     setShowEditModal(false);
@@ -2311,7 +2357,7 @@
                 setShowAddModal(true);
             };
 
-            // 이미지 업로드 핸들러
+            // 이미지 업로드 핸들러 (추가용)
             const handleImageUpload = async (e) => {
                 const files = Array.from(e.target.files || []);
                 if (addFormData.images.length + files.length > 10) {
@@ -2340,10 +2386,106 @@
                 }
             };
 
-            // 이미지 삭제 핸들러
+            // 이미지 삭제 핸들러 (추가용)
             const handleImageRemove = (index) => {
                 const newImages = addFormData.images.filter((_, i) => i !== index);
                 setAddFormData({ ...addFormData, images: newImages });
+            };
+            
+            // 수정용 이미지 업로드 핸들러
+            const handleEditImageUpload = async (e, index = null) => {
+                const files = Array.from(e.target.files || []);
+                const currentImages = editFormData.images || [];
+                
+                if (index !== null) {
+                    // 특정 인덱스 교체
+                    if (files.length === 0) return;
+                    setUploadingImages(true);
+                    try {
+                        const file = files[0];
+                        const resized = await resizeImage(file, 1920, 1920);
+                        const uploaded = await uploadImageToImgBB(resized, file.name);
+                        const newImages = [...currentImages];
+                        newImages[index] = uploaded.url;
+                        setEditFormData({ ...editFormData, images: newImages });
+                    } catch (error) {
+                        console.error('이미지 업로드 오류:', error);
+                        alert('이미지 업로드에 실패했습니다.');
+                    } finally {
+                        setUploadingImages(false);
+                    }
+                } else {
+                    // 새 이미지 추가
+                    if (currentImages.length + files.length > 10) {
+                        alert('이미지는 최대 10장까지 업로드할 수 있습니다.');
+                        return;
+                    }
+                    setUploadingImages(true);
+                    try {
+                        const uploadPromises = files.map(async (file) => {
+                            const resized = await resizeImage(file, 1920, 1920);
+                            const uploaded = await uploadImageToImgBB(resized, file.name);
+                            return uploaded.url;
+                        });
+                        
+                        const uploadedUrls = await Promise.all(uploadPromises);
+                        setEditFormData({
+                            ...editFormData,
+                            images: [...currentImages, ...uploadedUrls]
+                        });
+                    } catch (error) {
+                        console.error('이미지 업로드 오류:', error);
+                        alert('이미지 업로드에 실패했습니다.');
+                    } finally {
+                        setUploadingImages(false);
+                    }
+                }
+            };
+
+            // 수정용 이미지 삭제 핸들러
+            const handleEditImageRemove = (index) => {
+                const newImages = (editFormData.images || []).filter((_, i) => i !== index);
+                setEditFormData({ ...editFormData, images: newImages });
+            };
+            
+            // 수정용 메뉴 추가/삭제 핸들러
+            const handleEditAddMenuItem = () => {
+                const currentMenuItems = editFormData.menuItems || [];
+                if (currentMenuItems.length >= 10) {
+                    alert('대표메뉴는 최대 10개까지 등록할 수 있습니다.');
+                    return;
+                }
+                setEditFormData({
+                    ...editFormData,
+                    menuItems: [...currentMenuItems, { name: '', price: '' }]
+                });
+            };
+            
+            const handleEditRemoveMenuItem = (index) => {
+                const currentMenuItems = editFormData.menuItems || [];
+                const newMenuItems = currentMenuItems.filter((_, i) => i !== index);
+                setEditFormData({ ...editFormData, menuItems: newMenuItems.length > 0 ? newMenuItems : [] });
+            };
+            
+            // 수정용 주소 검색 핸들러
+            const handleEditAddressSearch = () => {
+                if (!window.kakao || !window.kakao.maps) {
+                    alert('카카오맵 API가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
+                    return;
+                }
+                
+                openKakaoPlacesSearch((place) => {
+                    setEditFormData({
+                        ...editFormData,
+                        location: {
+                            name: place.name || editFormData.location?.name || '',
+                            address: place.address,
+                            lat: place.lat,
+                            lng: place.lng
+                        },
+                        phone: place.phone || editFormData.phone || ''
+                    });
+                });
             };
 
             // 카카오맵 주소 검색 핸들러
@@ -2500,40 +2642,286 @@
                     
                     {/* 수정 모달 */}
                     {showEditModal && selectedRestaurant && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowEditModal(false)}>
-                            <div className="bg-white rounded-2xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-                                <h4 className="text-xl font-bold text-dark mb-4">맛집 수정</h4>
-                                <div className="space-y-4">
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowEditModal(false)}>
+                            <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-scroll" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center justify-between mb-6">
+                                    <h4 className="text-xl font-bold text-dark">맛집 수정</h4>
+                                    <button
+                                        onClick={() => setShowEditModal(false)}
+                                        className="p-2 hover:bg-gray-100 rounded-lg"
+                                    >
+                                        <Icons.X size={24} />
+                                    </button>
+                                </div>
+                                <div className="space-y-6">
+                                    {/* 제목 */}
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
                                         <input
                                             type="text"
-                                            value={editFormData.title}
+                                            value={editFormData.title || ''}
                                             onChange={(e) => setEditFormData({...editFormData, title: e.target.value})}
                                             className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            placeholder="맛집 이름"
                                         />
                                     </div>
+                                    
+                                    {/* 설명 */}
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">승인 상태</label>
-                                        <select
-                                            value={editFormData.approvalStatus}
-                                            onChange={(e) => setEditFormData({...editFormData, approvalStatus: e.target.value})}
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">설명</label>
+                                        <textarea
+                                            value={editFormData.description || ''}
+                                            onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
                                             className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
-                                        >
-                                            <option value="pending">대기</option>
-                                            <option value="approved">승인</option>
-                                            <option value="rejected">거절</option>
-                                        </select>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={editFormData.isVisible}
-                                            onChange={(e) => setEditFormData({...editFormData, isVisible: e.target.checked})}
+                                            rows="3"
+                                            placeholder="맛집 설명"
                                         />
-                                        <label className="text-sm font-bold text-gray-700">노출 여부</label>
                                     </div>
-                                    <div className="flex gap-4">
+                                    
+                                    {/* 이미지 */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">이미지 (최대 10장)</label>
+                                        <div className="space-y-3">
+                                            {/* 기존 이미지 표시 */}
+                                            {(editFormData.images || []).length > 0 && (
+                                                <div className="grid grid-cols-5 gap-2">
+                                                    {editFormData.images.map((imageUrl, index) => (
+                                                        <div key={index} className="relative group">
+                                                            <img
+                                                                src={imageUrl}
+                                                                alt={`맛집 이미지 ${index + 1}`}
+                                                                className="w-full h-24 object-cover rounded-xl border-2 border-gray-200"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleEditImageRemove(index)}
+                                                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <Icons.X size={14} />
+                                                            </button>
+                                                            <label className="absolute inset-0 cursor-pointer">
+                                                                <input
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    onChange={(e) => handleEditImageUpload(e, index)}
+                                                                    className="hidden"
+                                                                    disabled={uploadingImages}
+                                                                />
+                                                            </label>
+                                                            <div className="absolute bottom-1 left-1 px-2 py-0.5 bg-black/50 text-white text-xs rounded opacity-0 group-hover:opacity-100">
+                                                                클릭하여 교체
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {/* 새 이미지 추가 */}
+                                            {(editFormData.images || []).length < 10 && (
+                                                <div className="flex items-center gap-2">
+                                                    <label className="flex-1 p-3 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-brand transition-colors text-center">
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            multiple
+                                                            onChange={(e) => handleEditImageUpload(e)}
+                                                            disabled={uploadingImages || (editFormData.images || []).length >= 10}
+                                                            className="hidden"
+                                                        />
+                                                        <span className="text-sm font-bold text-gray-600">
+                                                            {uploadingImages ? '업로드 중...' : '이미지 추가'}
+                                                        </span>
+                                                    </label>
+                                                    <span className="text-sm text-gray-500">
+                                                        {(editFormData.images || []).length}/10
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 위치 */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">주소 *</label>
+                                        {editFormData.location?.address && (
+                                            <div className="p-3 bg-gray-50 rounded-xl mb-2">
+                                                <p className="font-bold text-sm">{editFormData.location.name || '위치'}</p>
+                                                <p className="text-xs text-gray-600">{editFormData.location.address}</p>
+                                            </div>
+                                        )}
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={editFormData.location?.address || ''}
+                                                onChange={(e) => setEditFormData({
+                                                    ...editFormData,
+                                                    location: {...(editFormData.location || {}), address: e.target.value}
+                                                })}
+                                                className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                placeholder="부산광역시 해운대구..."
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleEditAddressSearch}
+                                                className="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors whitespace-nowrap"
+                                            >
+                                                주소 검색
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 대표메뉴 */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">대표메뉴 (최대 10개)</label>
+                                        <div className="space-y-2">
+                                            {(editFormData.menuItems || []).map((menu, index) => (
+                                                <div key={index} className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={menu.name || ''}
+                                                        onChange={(e) => {
+                                                            const newMenuItems = [...(editFormData.menuItems || [])];
+                                                            newMenuItems[index] = {...newMenuItems[index], name: e.target.value};
+                                                            setEditFormData({...editFormData, menuItems: newMenuItems});
+                                                        }}
+                                                        className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                        placeholder="메뉴명"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={menu.price || ''}
+                                                        onChange={(e) => {
+                                                            const newMenuItems = [...(editFormData.menuItems || [])];
+                                                            newMenuItems[index] = {...newMenuItems[index], price: e.target.value};
+                                                            setEditFormData({...editFormData, menuItems: newMenuItems});
+                                                        }}
+                                                        className="w-32 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                        placeholder="가격"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleEditRemoveMenuItem(index)}
+                                                        className="px-4 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600"
+                                                    >
+                                                        삭제
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {(editFormData.menuItems || []).length < 10 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleEditAddMenuItem}
+                                                    className="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300"
+                                                >
+                                                    메뉴 추가
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 전화번호 */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">전화번호</label>
+                                        <input
+                                            type="text"
+                                            value={editFormData.phone || ''}
+                                            onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})}
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            placeholder="051-123-4567"
+                                        />
+                                    </div>
+                                    
+                                    {/* 영업시간 */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">영업시간</label>
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="time"
+                                                value={editFormData.openTime || '09:00'}
+                                                onChange={(e) => setEditFormData({...editFormData, openTime: e.target.value})}
+                                                className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            />
+                                            <span className="text-gray-600 font-bold">~</span>
+                                            <input
+                                                type="time"
+                                                value={editFormData.closeTime || '22:00'}
+                                                onChange={(e) => setEditFormData({...editFormData, closeTime: e.target.value})}
+                                                className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={editFormData.businessHours || ''}
+                                            onChange={(e) => setEditFormData({...editFormData, businessHours: e.target.value})}
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none mt-2"
+                                            placeholder="또는 직접 입력 (예: 11:00 - 22:00)"
+                                        />
+                                    </div>
+                                    
+                                    {/* 가격대 */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">가격대</label>
+                                        <input
+                                            type="text"
+                                            value={editFormData.priceRange || ''}
+                                            onChange={(e) => setEditFormData({...editFormData, priceRange: e.target.value})}
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            placeholder="1만원 - 3만원"
+                                        />
+                                    </div>
+                                    
+                                    {/* 네이버 예약 URL */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">네이버 예약 URL</label>
+                                        <input
+                                            type="url"
+                                            value={editFormData.naverReservationUrl || ''}
+                                            onChange={(e) => setEditFormData({...editFormData, naverReservationUrl: e.target.value})}
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            placeholder="https://booking.naver.com/..."
+                                        />
+                                    </div>
+                                    
+                                    {/* 스마트플레이스 URL */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">스마트플레이스 URL</label>
+                                        <input
+                                            type="url"
+                                            value={editFormData.smartPlaceUrl || ''}
+                                            onChange={(e) => setEditFormData({...editFormData, smartPlaceUrl: e.target.value})}
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            placeholder="https://place.naver.com/..."
+                                        />
+                                    </div>
+                                    
+                                    {/* 승인 상태 및 노출 여부 */}
+                                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">승인 상태</label>
+                                            <select
+                                                value={editFormData.approvalStatus || 'pending'}
+                                                onChange={(e) => setEditFormData({...editFormData, approvalStatus: e.target.value})}
+                                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            >
+                                                <option value="pending">대기</option>
+                                                <option value="approved">승인</option>
+                                                <option value="rejected">거절</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex items-end">
+                                            <div className="flex items-center gap-2 w-full">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={editFormData.isVisible !== false}
+                                                    onChange={(e) => setEditFormData({...editFormData, isVisible: e.target.checked})}
+                                                    className="w-5 h-5"
+                                                />
+                                                <label className="text-sm font-bold text-gray-700">노출 여부</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 저장 버튼 */}
+                                    <div className="flex gap-4 pt-4">
                                         <button
                                             onClick={() => setShowEditModal(false)}
                                             className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
