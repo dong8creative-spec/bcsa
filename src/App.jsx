@@ -3124,19 +3124,40 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
 
 // 맛집 등록/수정 폼 뷰
 const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openKakaoPlacesSearch, resizeImage, uploadImageToImgBB }) => {
-    const [formData, setFormData] = useState({
-        title: restaurant?.title || '',
-        images: restaurant?.images || [],
-        location: restaurant?.location || null,
-        menuItems: restaurant?.menuItems || [{ name: '', price: '' }],
-        naverReservationUrl: restaurant?.naverReservationUrl || '',
-        smartPlaceUrl: restaurant?.smartPlaceUrl || '',
-        phone: restaurant?.phone || '',
-        businessHours: restaurant?.businessHours || '',
-        priceRange: restaurant?.priceRange || '',
-        description: restaurant?.description || ''
-    });
+    // 초기 데이터 설정 (이미지 배열을 최소 3개 슬롯으로 확장)
+    const initializeFormData = (restaurantData) => {
+        const existingImages = restaurantData?.images || [];
+        // 이미지 배열을 최소 3개 슬롯으로 확장
+        const images = [...existingImages];
+        while (images.length < 3) {
+            images.push('');
+        }
+        
+        return {
+            title: restaurantData?.title || '',
+            images: images,
+            location: restaurantData?.location || null,
+            menuItems: restaurantData?.menuItems && restaurantData.menuItems.length > 0 
+                ? restaurantData.menuItems 
+                : [{ name: '', price: '' }],
+            naverReservationUrl: restaurantData?.naverReservationUrl || '',
+            smartPlaceUrl: restaurantData?.smartPlaceUrl || '',
+            phone: restaurantData?.phone || '',
+            businessHours: restaurantData?.businessHours || '',
+            priceRange: restaurantData?.priceRange || '',
+            description: restaurantData?.description || ''
+        };
+    };
+    
+    const [formData, setFormData] = useState(initializeFormData(restaurant));
     const [uploadingImages, setUploadingImages] = useState(false);
+    
+    // restaurant prop이 변경될 때 formData 업데이트
+    useEffect(() => {
+        if (restaurant) {
+            setFormData(initializeFormData(restaurant));
+        }
+    }, [restaurant]);
     
     const handleImageUpload = async (e, index) => {
         const file = e.target.files[0];
@@ -3208,10 +3229,20 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
             alert('제목을 입력해주세요.');
             return;
         }
-        if (formData.images.length < 3) {
-            alert('대표사진 3장을 모두 업로드해주세요.');
+        
+        // 이미지 검증: 빈 문자열 제거 후 검증
+        const validImages = formData.images.filter(img => img && img.trim());
+        if (validImages.length === 0) {
+            alert('대표사진을 최소 1장 이상 업로드해주세요.');
             return;
         }
+        
+        // 등록 시에는 3장 필수, 수정 시에는 기존 이미지가 있으면 허용
+        if (!restaurant && validImages.length < 3) {
+            alert('맛집 등록 시 대표사진 3장을 모두 업로드해주세요.');
+            return;
+        }
+        
         if (!formData.location) {
             alert('지도 위치를 선택해주세요.');
             return;
@@ -3225,6 +3256,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
         
         onSave({
             ...formData,
+            images: validImages, // 빈 이미지 제거
             menuItems: validMenuItems
         });
     };
@@ -3254,26 +3286,41 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                         
                         {/* 대표사진 3장 */}
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">대표사진 (3장) *</label>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                                대표사진 {restaurant ? '(수정 가능)' : '(3장 필수)'} *
+                            </label>
                             <div className="grid grid-cols-3 gap-4">
                                 {[0, 1, 2].map((index) => (
                                     <div key={index} className="relative" style={{ aspectRatio: '3/2' }}>
                                         {formData.images[index] ? (
-                                            <div className="relative w-full h-full">
+                                            <div className="relative w-full h-full group">
                                                 <img src={formData.images[index]} alt={`사진 ${index + 1}`} className="w-full h-full object-cover rounded-xl" />
                                                 <button
+                                                    type="button"
                                                     onClick={() => {
                                                         const newImages = [...formData.images];
                                                         newImages[index] = '';
                                                         setFormData({ ...formData, images: newImages });
                                                     }}
-                                                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center"
-                                                >
-                                                    <Icons.X size={14} />
-                                                </button>
-                                            </div>
+                                                    className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                                                    >
+                                                        <Icons.X size={16} />
+                                                    </button>
+                                                    <label className="absolute inset-0 cursor-pointer">
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            onChange={(e) => handleImageUpload(e, index)}
+                                                            className="hidden"
+                                                            disabled={uploadingImages}
+                                                        />
+                                                    </label>
+                                                    <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs rounded">
+                                                        클릭하여 교체
+                                                    </div>
+                                                </div>
                                         ) : (
-                                            <label className="w-full h-full border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand">
+                                            <label className="w-full h-full border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                 <input
                                                     type="file"
                                                     accept="image/*"
@@ -3283,13 +3330,20 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                                                 />
                                                 <div className="text-center">
                                                     <Icons.Camera size={24} className="mx-auto mb-2 text-gray-400" />
-                                                    <span className="text-xs text-gray-500">사진 {index + 1}</span>
+                                                    <span className="text-xs text-gray-500">
+                                                        {uploadingImages ? '업로드 중...' : `사진 ${index + 1} ${restaurant ? '(교체)' : '(필수)'}`}
+                                                    </span>
                                                 </div>
                                             </label>
                                         )}
                                     </div>
                                 ))}
                             </div>
+                            {restaurant && (
+                                <p className="text-xs text-gray-500 mt-2">
+                                    * 수정 시 기존 이미지를 유지하거나 교체할 수 있습니다. 최소 1장 이상 필요합니다.
+                                </p>
+                            )}
                         </div>
                         
                         {/* 지도 위치 */}
@@ -9315,13 +9369,23 @@ END:VCALENDAR`;
                             // 수정
                             const success = await handleRestaurantUpdate(selectedRestaurant.id, restaurantData);
                             if (success) {
-                                setSelectedRestaurant(null);
-                                setCurrentView('restaurants');
+                                // 수정 후 최신 데이터로 selectedRestaurant 업데이트
+                                setTimeout(() => {
+                                    const updatedRestaurant = restaurantsData.find(r => r.id === selectedRestaurant.id);
+                                    if (updatedRestaurant) {
+                                        setSelectedRestaurant(updatedRestaurant);
+                                        setCurrentView('restaurantDetail');
+                                    } else {
+                                        setSelectedRestaurant(null);
+                                        setCurrentView('restaurants');
+                                    }
+                                }, 500); // Firebase 업데이트 반영 대기
                             }
                         } else {
                             // 등록
                             const success = await handleRestaurantCreate(restaurantData);
                             if (success) {
+                                setSelectedRestaurant(null);
                                 setCurrentView('restaurants');
                             }
                         }
