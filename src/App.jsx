@@ -455,10 +455,43 @@ const defaultContent = {
     about_future_6_desc: "교육 콘텐츠, 굿즈 등 지속가능한 운영 기반 마련",
     about_contact_phone: "010-5323-9310",
     about_contact_email: "pujar@naver.com",
+    // 페이지 제목 설정
+    pageTitles: {
+        home: { text: "함께 성장하는\n청년 사업가 커뮤니티\n부산청년사업가들", fontSize: "text-4xl", fontWeight: "font-black" },
+        about: { text: "함께 성장하는 사업가 네트워크", fontSize: "text-3xl", fontWeight: "font-bold" },
+        programs: { text: "프로그램", fontSize: "text-3xl", fontWeight: "font-bold" },
+        members: { text: "부청사 회원", fontSize: "text-3xl", fontWeight: "font-bold" },
+        community: { text: "커뮤니티", fontSize: "text-3xl", fontWeight: "font-bold" },
+        restaurants: { text: "부산맛집", fontSize: "text-3xl", fontWeight: "font-bold" },
+        donation: { text: "후원", fontSize: "text-3xl", fontWeight: "font-bold" },
+        bidSearch: { text: "조달청 입찰공고 검색", fontSize: "text-3xl", fontWeight: "font-bold" },
+        myPage: { text: "마이페이지", fontSize: "text-3xl", fontWeight: "font-bold" }
+    }
+};
+
+// PageTitle 공통 컴포넌트
+const PageTitle = ({ pageKey, pageTitles, defaultText = '', defaultSize = 'text-3xl', defaultWeight = 'font-bold', className = '' }) => {
+    // pageTitles가 없거나 해당 키가 없으면 기본값 사용
+    const pageTitle = pageTitles && pageTitles[pageKey] ? pageTitles[pageKey] : null;
+    const text = pageTitle?.text || defaultText;
+    const fontSize = pageTitle?.fontSize || defaultSize;
+    const fontWeight = pageTitle?.fontWeight || defaultWeight;
+    
+    // 기본값이 없으면 빈 문자열 반환
+    if (!text) return null;
+    
+    return (
+        <h2 
+            className={`${fontSize} ${fontWeight} text-dark mb-2 ${className}`}
+            style={{ whiteSpace: 'pre-line' }}
+        >
+            {text}
+        </h2>
+    );
 };
 
 // View Components
-const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar }) => {
+const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, pageTitles }) => {
     const [activeTab, setActiveTab] = useState('seminars');
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [companyIntro, setCompanyIntro] = useState({
@@ -512,7 +545,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
         <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
             <div className="container mx-auto max-w-4xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-                    <h2 className="text-3xl font-bold text-dark">마이페이지</h2>
+                    <PageTitle pageKey="myPage" pageTitles={pageTitles} defaultText="마이페이지" />
                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
                         <Icons.ArrowLeft size={20} /> 메인으로
                     </button>
@@ -891,7 +924,7 @@ const NoticeView = ({ onBack, posts, menuNames }) => {
             <div className="container mx-auto max-w-7xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
                     <div>
-                        <h2 className="text-3xl font-bold text-dark mb-2">{menuNames?.['커뮤니티'] || '커뮤니티'}</h2>
+                        <PageTitle pageKey="community" pageTitles={pageTitles} defaultText={menuNames?.['커뮤니티'] || '커뮤니티'} />
                         <p className="text-gray-500 text-sm">단체 소식 안내</p>
                     </div>
                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
@@ -972,7 +1005,7 @@ const NoticeView = ({ onBack, posts, menuNames }) => {
 
 
 
-const AllMembersView = ({ onBack, members, currentUser }) => {
+const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
     const [searchName, setSearchName] = useState('');
     const [searchIndustry, setSearchIndustry] = useState('');
     const [searchRegion, setSearchRegion] = useState('');
@@ -1049,7 +1082,7 @@ const AllMembersView = ({ onBack, members, currentUser }) => {
             <div className="container mx-auto max-w-7xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
                     <div>
-                        <h2 className="text-3xl font-bold text-dark mb-2">회원 검색</h2>
+                        <PageTitle pageKey="members" pageTitles={pageTitles} defaultText="부청사 회원" />
                         <p className="text-gray-500 text-sm">신뢰 기반의 인맥 네트워킹</p>
                     </div>
                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
@@ -2111,7 +2144,7 @@ const CalendarSection = ({ seminars, onSelectSeminar, currentUser }) => {
 
 
 
-const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotifyAdmin, seminars, setShowLoginModal }) => {
+const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotifyAdmin, seminars, setShowLoginModal, pageTitles, menuNames }) => {
     const [selectedCategory, setSelectedCategory] = useState('전체');
     const [selectedPost, setSelectedPost] = useState(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -3228,7 +3261,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
 
 
 // 맛집 리스트 뷰
-const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessOwner, onRestaurantClick, onCreateClick, menuNames }) => {
+const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessOwner, onRestaurantClick, onCreateClick, menuNames, pageTitles }) => {
     const [searchKeyword, setSearchKeyword] = useState('');
     
     const filteredRestaurants = restaurants.filter(restaurant => {
@@ -3250,7 +3283,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
             <div className="container mx-auto max-w-7xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
                     <div>
-                        <h2 className="text-3xl font-bold text-dark mb-2">{menuNames?.['부산맛집'] || '부산맛집'}</h2>
+                        <PageTitle pageKey="restaurants" pageTitles={pageTitles} defaultText={menuNames?.['부산맛집'] || '부산맛집'} />
                         <p className="text-gray-500 text-sm">부산 지역 맛집 정보</p>
                     </div>
                     <div className="flex items-center gap-4">
@@ -3934,7 +3967,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
     );
 };
 
-const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, onAddProgram, waitForKakaoMap, openKakaoPlacesSearch }) => {
+const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, onAddProgram, waitForKakaoMap, openKakaoPlacesSearch, pageTitles }) => {
     const [searchKeyword, setSearchKeyword] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('전체');
     const [selectedStatus, setSelectedStatus] = useState('전체');
@@ -4075,7 +4108,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
             <div className="container mx-auto max-w-7xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
                     <div>
-                        <h2 className="text-3xl font-bold text-dark mb-2">{menuNames?.['프로그램'] || '프로그램'}</h2>
+                        <PageTitle pageKey="programs" pageTitles={pageTitles} defaultText={menuNames?.['프로그램'] || '프로그램'} />
                         <p className="text-gray-500 text-sm">비즈니스 세미나 및 네트워킹</p>
                                 </div>
                     <div className="flex items-center gap-3">
@@ -4422,7 +4455,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
 
 
 
-const BidSearchView = ({ onBack, currentUser }) => {
+const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
     const [bidList, setBidList] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -5480,7 +5513,7 @@ const BidSearchView = ({ onBack, currentUser }) => {
                 {/* 헤더 */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                     <div>
-                        <h2 className="text-3xl font-bold text-dark mb-2">조달청 입찰공고 검색</h2>
+                        <PageTitle pageKey="bidSearch" pageTitles={pageTitles} defaultText="조달청 입찰공고 검색" />
                         <p className="text-gray-500 text-sm">나라장터 입찰공고를 검색하고 확인하세요.</p>
                     </div>
                     <button type="button" onClick={onBack} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
@@ -6552,7 +6585,7 @@ const BidSearchView = ({ onBack, currentUser }) => {
 
 
 
-const AboutView = ({ onBack, content }) => {
+const AboutView = ({ onBack, content, pageTitles }) => {
     const historyData = [
         { year: "2014", title: content.about_history_2014_title || "지주회사 설립 기획", desc: content.about_history_2014_desc || "부산청년사업가들 필요성 검토 및 기획" },
         { year: "2017", title: content.about_history_2017_title || "커뮤니티 구축", desc: content.about_history_2017_desc || "회원간 소통 내부망 구축 및 카카오 오픈채팅방 개설" },
@@ -7791,7 +7824,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
     );
 };
 
-const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, membersData, saveCurrentUserToStorage }) => {
+const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, membersData, saveCurrentUserToStorage, pageTitles }) => {
     const [donationAmount, setDonationAmount] = useState(10000);
     const [customAmount, setCustomAmount] = useState('');
     const [guestName, setGuestName] = useState('');
@@ -7902,7 +7935,7 @@ const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, mem
             <div className="container mx-auto max-w-4xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
                     <div>
-                        <h2 className="text-3xl font-bold text-dark mb-2">후원</h2>
+                        <PageTitle pageKey="donation" pageTitles={pageTitles} defaultText="후원" />
                         <p className="text-gray-500 text-sm">부청사와 함께 성장하세요</p>
                     </div>
                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
@@ -8154,6 +8187,22 @@ const App = () => {
             loadSettings();
         }
     }, []);
+    
+    // pageTitles 상태 관리 (content에서 분리)
+    const [pageTitles, setPageTitles] = useState(() => {
+        // 기본값과 content에서 병합
+        return { ...defaultContent.pageTitles, ...(content.pageTitles || {}) };
+    });
+    
+    // pageTitles를 content에서 동기화 (기본값과 병합)
+    useEffect(() => {
+        if (content.pageTitles) {
+            setPageTitles(prev => ({ ...defaultContent.pageTitles, ...prev, ...content.pageTitles }));
+        } else {
+            // content에 pageTitles가 없으면 기본값 사용
+            setPageTitles(defaultContent.pageTitles || {});
+        }
+    }, [content.pageTitles]);
     const [showSignUpModal, setShowSignUpModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [pendingView, setPendingView] = useState(null); // 로그인 후 이동할 뷰
@@ -9971,7 +10020,7 @@ END:VCALENDAR`;
     }
 
     const renderView = () => {
-        if (currentView === 'myPage') return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} />;
+        if (currentView === 'myPage') return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} pageTitles={pageTitles} />;
         if (currentView === 'allMembers' && !menuEnabled['부청사 회원']) {
             alert('준비중인 서비스입니다.');
             setCurrentView('home');
@@ -9983,7 +10032,7 @@ END:VCALENDAR`;
                 const isApproved = !m.approvalStatus || m.approvalStatus === 'approved';
                 return isApproved;
             });
-            return <AllMembersView onBack={() => setCurrentView('home')} members={displayMembers} currentUser={currentUser} />;
+            return <AllMembersView onBack={() => setCurrentView('home')} members={displayMembers} currentUser={currentUser} pageTitles={pageTitles} />;
         }
         if (currentView === 'allSeminars' && !menuEnabled['프로그램']) {
             alert('준비중인 서비스입니다.');
@@ -10024,6 +10073,7 @@ END:VCALENDAR`;
             }}
             waitForKakaoMap={waitForKakaoMap}
             openKakaoPlacesSearch={openKakaoPlacesSearch}
+            pageTitles={pageTitles}
         />; 
         if (currentView === 'community' && !menuEnabled['커뮤니티']) {
             alert('준비중인 서비스입니다.');
@@ -10037,7 +10087,7 @@ END:VCALENDAR`;
             setCurrentView('home');
             return null;
         }
-        if (currentView === 'community') return <CommunityView onBack={() => setCurrentView('home')} posts={communityPosts} onCreate={handleCommunityCreate} onDelete={handleCommunityDelete} currentUser={currentUser} onNotifyAdmin={handleNotifyAdmin} seminars={seminarsData} setShowLoginModal={setShowLoginModal} />;
+        if (currentView === 'community') return <CommunityView onBack={() => setCurrentView('home')} posts={communityPosts} onCreate={handleCommunityCreate} onDelete={handleCommunityDelete} currentUser={currentUser} onNotifyAdmin={handleNotifyAdmin} seminars={seminarsData} setShowLoginModal={setShowLoginModal} pageTitles={pageTitles} menuNames={menuNames} />;
         if (currentView === 'notice') return <NoticeView onBack={() => setCurrentView('home')} posts={communityPosts} menuNames={menuNames} />;
         if (currentView === 'bidSearch' && !menuEnabled['입찰공고']) {
             alert('준비중인 서비스입니다.');
@@ -10050,13 +10100,13 @@ END:VCALENDAR`;
                 setCurrentView('home');
                 return null;
             }
-        if (currentView === 'bidSearch') return <BidSearchView onBack={() => setCurrentView('home')} currentUser={currentUser} />;
+        if (currentView === 'bidSearch') return <BidSearchView onBack={() => setCurrentView('home')} currentUser={currentUser} pageTitles={pageTitles} />;
         if (currentView === 'donation' && !menuEnabled['후원']) {
             alert('준비중인 서비스입니다.');
             setCurrentView('home');
             return null;
         }
-        if (currentView === 'donation') return <DonationView onBack={() => setCurrentView('home')} currentUser={currentUser} setCurrentUser={setCurrentUser} setMembersData={setMembersData} membersData={membersData} saveCurrentUserToStorage={saveCurrentUserToStorage} />;
+        if (currentView === 'donation') return <DonationView onBack={() => setCurrentView('home')} currentUser={currentUser} setCurrentUser={setCurrentUser} setMembersData={setMembersData} membersData={membersData} saveCurrentUserToStorage={saveCurrentUserToStorage} pageTitles={pageTitles} />;
         if (currentView === 'restaurants' && !menuEnabled['부산맛집']) {
             alert('준비중인 서비스입니다.');
             setCurrentView('home');
@@ -10070,6 +10120,7 @@ END:VCALENDAR`;
                     currentUser={currentUser}
                     isFoodBusinessOwner={isFoodBusinessOwner}
                     menuNames={menuNames}
+                    pageTitles={pageTitles}
                     onRestaurantClick={(restaurant) => {
                         setSelectedRestaurant(restaurant);
                         setCurrentView('restaurantDetail');
@@ -10154,7 +10205,7 @@ END:VCALENDAR`;
             setCurrentView('home');
             return null;
         }
-        if (currentView === 'about') return <AboutView onBack={() => setCurrentView('home')} content={content} />;
+        if (currentView === 'about') return <AboutView onBack={() => setCurrentView('home')} content={content} pageTitles={pageTitles} />;
         
         return (
             <React.Fragment>

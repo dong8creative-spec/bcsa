@@ -1045,6 +1045,18 @@
             about_future_6_desc: "교육 콘텐츠, 굿즈 등 지속가능한 운영 기반 마련",
             about_contact_phone: "010-5323-9310",
             about_contact_email: "pujar@naver.com",
+            // 페이지 제목 설정
+            pageTitles: {
+                home: { text: "함께 성장하는\n청년 사업가 커뮤니티\n부산청년사업가들", fontSize: "text-4xl", fontWeight: "font-black" },
+                about: { text: "함께 성장하는 사업가 네트워크", fontSize: "text-3xl", fontWeight: "font-bold" },
+                programs: { text: "프로그램", fontSize: "text-3xl", fontWeight: "font-bold" },
+                members: { text: "부청사 회원", fontSize: "text-3xl", fontWeight: "font-bold" },
+                community: { text: "커뮤니티", fontSize: "text-3xl", fontWeight: "font-bold" },
+                restaurants: { text: "부산맛집", fontSize: "text-3xl", fontWeight: "font-bold" },
+                donation: { text: "후원", fontSize: "text-3xl", fontWeight: "font-bold" },
+                bidSearch: { text: "조달청 입찰공고 검색", fontSize: "text-3xl", fontWeight: "font-bold" },
+                myPage: { text: "마이페이지", fontSize: "text-3xl", fontWeight: "font-bold" }
+            },
             // 이미지 URL 필드
             hero_image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
             features_image_1: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
@@ -2152,6 +2164,112 @@
                                 </div>
                                                                     </div>
                                                                     </div>
+                        
+                        {/* 페이지 제목 관리 섹션 */}
+                        <div className="border-b border-gray-200 pb-8">
+                            <h4 className="font-bold text-dark mb-6 text-lg">페이지 제목 관리</h4>
+                            <p className="text-sm text-gray-600 mb-6">각 페이지의 메인 제목 텍스트, 크기, 굵기를 설정할 수 있습니다.</p>
+                            
+                            {(() => {
+                                const pageTitles = formData.pageTitles || {};
+                                const pageConfigs = [
+                                    { key: 'home', label: '홈', defaultText: '함께 성장하는\n청년 사업가 커뮤니티\n부산청년사업가들' },
+                                    { key: 'about', label: '소개', defaultText: '함께 성장하는 사업가 네트워크' },
+                                    { key: 'programs', label: '프로그램', defaultText: '프로그램' },
+                                    { key: 'members', label: '부청사 회원', defaultText: '부청사 회원' },
+                                    { key: 'community', label: '커뮤니티', defaultText: '커뮤니티' },
+                                    { key: 'restaurants', label: '부산맛집', defaultText: '부산맛집' },
+                                    { key: 'donation', label: '후원', defaultText: '후원' },
+                                    { key: 'bidSearch', label: '조달청 검색', defaultText: '조달청 입찰공고 검색' },
+                                    { key: 'myPage', label: '마이페이지', defaultText: '마이페이지' }
+                                ];
+                                
+                                return (
+                                    <div className="space-y-6">
+                                        {pageConfigs.map(({ key, label, defaultText }) => {
+                                            const pageTitle = pageTitles[key] || { text: defaultText, fontSize: 'text-3xl', fontWeight: 'font-bold' };
+                                            
+                                            return (
+                                                <div key={key} className="bg-gray-50 p-6 rounded-xl border-2 border-gray-200">
+                                                    <h5 className="font-bold text-dark mb-4 text-base">{label} 페이지</h5>
+                                                    <div className="space-y-4">
+                                                        {/* 제목 텍스트 */}
+                                                        <div>
+                                                            <label className="block text-sm font-bold text-gray-700 mb-2">제목 텍스트</label>
+                                                            <textarea
+                                                                value={pageTitle.text || defaultText}
+                                                                onChange={(e) => {
+                                                                    const newPageTitles = {
+                                                                        ...pageTitles,
+                                                                        [key]: { ...pageTitle, text: e.target.value }
+                                                                    };
+                                                                    handleChange('pageTitles', newPageTitles);
+                                                                }}
+                                                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                                rows={key === 'home' ? 3 : 2}
+                                                                placeholder={defaultText}
+                                                            />
+                                                        </div>
+                                                        
+                                                        {/* 텍스트 크기 및 굵기 */}
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div>
+                                                                <label className="block text-sm font-bold text-gray-700 mb-2">텍스트 크기</label>
+                                                                <select
+                                                                    value={pageTitle.fontSize || 'text-3xl'}
+                                                                    onChange={(e) => {
+                                                                        const newPageTitles = {
+                                                                            ...pageTitles,
+                                                                            [key]: { ...pageTitle, fontSize: e.target.value }
+                                                                        };
+                                                                        handleChange('pageTitles', newPageTitles);
+                                                                    }}
+                                                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                                >
+                                                                    <option value="text-2xl">2xl (작음)</option>
+                                                                    <option value="text-3xl">3xl (보통)</option>
+                                                                    <option value="text-4xl">4xl (큼)</option>
+                                                                    <option value="text-5xl">5xl (매우 큼)</option>
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-sm font-bold text-gray-700 mb-2">텍스트 굵기</label>
+                                                                <select
+                                                                    value={pageTitle.fontWeight || 'font-bold'}
+                                                                    onChange={(e) => {
+                                                                        const newPageTitles = {
+                                                                            ...pageTitles,
+                                                                            [key]: { ...pageTitle, fontWeight: e.target.value }
+                                                                        };
+                                                                        handleChange('pageTitles', newPageTitles);
+                                                                    }}
+                                                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                                                >
+                                                                    <option value="font-normal">일반</option>
+                                                                    <option value="font-bold">굵게</option>
+                                                                    <option value="font-black">매우 굵게</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* 미리보기 */}
+                                                        <div className="bg-white p-4 rounded-lg border border-gray-300">
+                                                            <p className="text-xs text-gray-500 mb-2">미리보기:</p>
+                                                            <h2 
+                                                                className={`${pageTitle.fontSize || 'text-3xl'} ${pageTitle.fontWeight || 'font-bold'} text-dark mb-2`}
+                                                                style={{ whiteSpace: 'pre-line' }}
+                                                            >
+                                                                {pageTitle.text || defaultText}
+                                                            </h2>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })()}
+                        </div>
                                 
                         {/* 저장 버튼 및 상태 표시 */}
                         <div className="flex justify-between items-center pt-6">
