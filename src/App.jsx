@@ -1621,64 +1621,151 @@ const AllMembersView = ({ onBack, members, currentUser }) => {
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">이미지</label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                                                이미지 {addFormData.images.length > 0 && `(${addFormData.images.length}/5)`}
+                                            </label>
                                             <div className="space-y-3">
-                                                {addFormData.img && (
-                                                    <div className="relative group">
-                                                        <div className="w-full h-48 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
-                                                            <img src={addFormData.img} alt="프로그램 이미지" className="w-full h-full object-cover" />
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setAddFormData({...addFormData, img: ''})}
-                                                            className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                                                        >
-                                                            <Icons.X size={16} />
-                                                        </button>
+                                                {/* 업로드된 이미지 목록 */}
+                                                {addFormData.images.length > 0 && (
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                                        {addFormData.images.map((imgUrl, idx) => (
+                                                            <div key={idx} className="relative group">
+                                                                <div className="w-full h-32 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
+                                                                    <img src={imgUrl} alt={`프로그램 이미지 ${idx + 1}`} className="w-full h-full object-cover" />
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const newImages = addFormData.images.filter((_, i) => i !== idx);
+                                                                        setAddFormData({...addFormData, images: newImages});
+                                                                    }}
+                                                                    className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                                                >
+                                                                    <Icons.X size={16} />
+                                                                </button>
+                                                                <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                                                                    {idx + 1}
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 )}
-                                                <label
-                                                    htmlFor="add-program-image-upload"
-                                                    className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-brand hover:bg-brand/5 transition-colors"
-                                                >
-                                                    <Icons.Camera size={32} className="text-gray-400 mb-2" />
-                                                    <span className="text-sm font-bold text-gray-600">이미지 업로드</span>
-                                                    <span className="text-xs text-gray-500 mt-1">클릭하여 이미지 선택</span>
-                                                </label>
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    id="add-program-image-upload"
-                                                    className="hidden"
-                                                    onChange={async (e) => {
-                                                        const file = e.target.files[0];
-                                                        if (file) {
-                                                            if (file.size > 10 * 1024 * 1024) {
-                                                                alert('이미지 크기는 10MB 이하여야 합니다.');
-                                                                return;
-                                                            }
-                                                            setUploadingImage(true);
-                                                            try {
-                                                                const resized = await resizeImage(file, 1200, 1200);
-                                                                const uploaded = await uploadImageToImgBB(resized, file.name);
-                                                                setAddFormData({...addFormData, img: uploaded.url});
-                                                            } catch (error) {
-                                                                alert('이미지 업로드에 실패했습니다.');
-                                                            } finally {
-                                                                setUploadingImage(false);
-                                                            }
-                                                        }
-                                                    }}
-                                                />
+                                                
+                                                {/* 이미지 업로드 버튼 (최대 5장) */}
+                                                {addFormData.images.length < 5 && (
+                                                    <>
+                                                        <label
+                                                            htmlFor="add-program-image-upload"
+                                                            className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-brand hover:bg-brand/5 transition-colors"
+                                                        >
+                                                            <Icons.Camera size={32} className="text-gray-400 mb-2" />
+                                                            <span className="text-sm font-bold text-gray-600">이미지 업로드</span>
+                                                            <span className="text-xs text-gray-500 mt-1">
+                                                                클릭하여 이미지 선택 ({addFormData.images.length}/5)
+                                                            </span>
+                                                        </label>
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            id="add-program-image-upload"
+                                                            className="hidden"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files[0];
+                                                                if (!file) return;
+                                                                
+                                                                if (addFormData.images.length >= 5) {
+                                                                    alert('이미지는 최대 5장까지 업로드할 수 있습니다.');
+                                                                    e.target.value = '';
+                                                                    return;
+                                                                }
+                                                                
+                                                                if (file.size > 10 * 1024 * 1024) {
+                                                                    alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                                    e.target.value = '';
+                                                                    return;
+                                                                }
+                                                                
+                                                                setUploadingImage(true);
+                                                                try {
+                                                                    const resized = await resizeImage(file, 1200, 1200);
+                                                                    const uploaded = await uploadImageToImgBB(resized, file.name);
+                                                                    setAddFormData({
+                                                                        ...addFormData,
+                                                                        images: [...addFormData.images, uploaded.url]
+                                                                    });
+                                                                } catch (error) {
+                                                                    console.error('이미지 업로드 오류:', error);
+                                                                    alert('이미지 업로드에 실패했습니다.');
+                                                                } finally {
+                                                                    setUploadingImage(false);
+                                                                    e.target.value = '';
+                                                                }
+                                                            }}
+                                                        />
+                                                    </>
+                                                )}
+                                                
+                                                {/* 이미지 URL 직접 입력 */}
                                                 <div>
-                                                    <label className="block text-xs text-gray-500 mb-1">또는 이미지 URL 직접 입력</label>
-                                                    <input
-                                                        type="text"
-                                                        value={addFormData.img || ''}
-                                                        onChange={(e) => setAddFormData({...addFormData, img: e.target.value})}
-                                                        className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm"
-                                                        placeholder="https://..."
-                                                    />
+                                                    <label className="block text-xs text-gray-500 mb-1">
+                                                        또는 이미지 URL 직접 입력 (최대 5장)
+                                                    </label>
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            id="image-url-input"
+                                                            className="flex-1 p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm"
+                                                            placeholder="https://..."
+                                                            onKeyPress={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    const url = e.target.value.trim();
+                                                                    if (url) {
+                                                                        if (addFormData.images.length >= 5) {
+                                                                            alert('이미지는 최대 5장까지 업로드할 수 있습니다.');
+                                                                            e.target.value = '';
+                                                                            return;
+                                                                        }
+                                                                        if (addFormData.images.includes(url)) {
+                                                                            alert('이미 추가된 이미지입니다.');
+                                                                            e.target.value = '';
+                                                                            return;
+                                                                        }
+                                                                        setAddFormData({
+                                                                            ...addFormData,
+                                                                            images: [...addFormData.images, url]
+                                                                        });
+                                                                        e.target.value = '';
+                                                                    }
+                                                                }
+                                                            }}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const input = document.getElementById('image-url-input');
+                                                                const url = input?.value.trim();
+                                                                if (url) {
+                                                                    if (addFormData.images.length >= 5) {
+                                                                        alert('이미지는 최대 5장까지 업로드할 수 있습니다.');
+                                                                        return;
+                                                                    }
+                                                                    if (addFormData.images.includes(url)) {
+                                                                        alert('이미 추가된 이미지입니다.');
+                                                                        return;
+                                                                    }
+                                                                    setAddFormData({
+                                                                        ...addFormData,
+                                                                        images: [...addFormData.images, url]
+                                                                    });
+                                                                    if (input) input.value = '';
+                                                                }
+                                                            }}
+                                                            className="px-4 py-2 bg-brand text-white rounded-lg font-bold hover:bg-blue-700 transition-colors whitespace-nowrap"
+                                                        >
+                                                            추가
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1856,6 +1943,7 @@ const AllMembersView = ({ onBack, members, currentUser }) => {
                                                 description: '',
                                                 date: '',
                                                 location: '',
+                                                images: [],
                                                 img: '',
                                                 category: '',
                                                 status: '모집중',
@@ -1884,7 +1972,15 @@ const AllMembersView = ({ onBack, members, currentUser }) => {
                                             const saveData = {
                                                 ...addFormData,
                                                 desc: addFormData.desc || addFormData.description || '',
-                                                description: addFormData.desc || addFormData.description || ''
+                                                description: addFormData.desc || addFormData.description || '',
+                                                // images 배열이 있으면 사용, 없으면 img 필드를 배열로 변환
+                                                images: addFormData.images && addFormData.images.length > 0 
+                                                    ? addFormData.images.filter(img => img && img.trim())
+                                                    : (addFormData.img ? [addFormData.img] : []),
+                                                // 호환성을 위해 첫 번째 이미지를 img 필드에도 저장
+                                                img: (addFormData.images && addFormData.images.length > 0) 
+                                                    ? addFormData.images[0] 
+                                                    : (addFormData.img || '')
                                             };
                                             const success = await onAddProgram(saveData);
                                             if (success) {
@@ -1895,6 +1991,7 @@ const AllMembersView = ({ onBack, members, currentUser }) => {
                                                     description: '',
                                                     date: '',
                                                     location: '',
+                                                    images: [],
                                                     img: '',
                                                     category: '',
                                                     status: '모집중',
@@ -3843,17 +3940,25 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
     const [selectedStatus, setSelectedStatus] = useState('전체');
     const [sortBy, setSortBy] = useState('latest');
     const [selectedSeminar, setSelectedSeminar] = useState(null);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0); // 이미지 갤러리 현재 인덱스
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
     const [applySeminar, setApplySeminar] = useState(null);
     const [applicationData, setApplicationData] = useState({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    
+    // selectedSeminar가 변경될 때 이미지 인덱스 초기화
+    useEffect(() => {
+        setCurrentImageIndex(0);
+    }, [selectedSeminar?.id]);
+    
     const [addFormData, setAddFormData] = useState({
         title: '',
         desc: '',
         description: '',
         date: '',
         location: '',
-        img: '',
+        images: [], // 이미지 배열 (최대 5장)
+        img: '', // 호환성을 위해 유지 (기존 데이터 대응)
         category: '',
         status: '모집중',
         price: 0,
@@ -4028,11 +4133,24 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                 {/* 세미나 리스트 */}
                 {sortedSeminars.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {sortedSeminars.map((seminar) => (
+                        {sortedSeminars.map((seminar) => {
+                            // images 배열이 있으면 첫 번째 이미지 사용, 없으면 img 필드 사용
+                            const displayImage = (seminar.images && seminar.images.length > 0) 
+                                ? seminar.images[0] 
+                                : seminar.img;
+                            
+                            return (
                             <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-3xl shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 cursor-pointer overflow-hidden" onClick={() => setSelectedSeminar(seminar)}>
-                                {seminar.img && (
-                                    <div className="w-full overflow-hidden" style={{ aspectRatio: '3/4' }}>
-                                        <img src={seminar.img} alt={seminar.title} className="w-full h-full object-cover" />
+                                {displayImage && (
+                                    <div className="w-full overflow-hidden relative" style={{ aspectRatio: '3/4' }}>
+                                        <img src={displayImage} alt={seminar.title} className="w-full h-full object-cover" />
+                                        {/* 이미지가 여러 장일 경우 표시 */}
+                                        {(seminar.images && seminar.images.length > 1) && (
+                                            <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+                                                <Icons.Camera size={12} className="inline mr-1" />
+                                                {seminar.images.length}
+                                            </div>
+                                        )}
                                         </div>
                                 )}
                                 <div className="p-6">
@@ -4072,7 +4190,8 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                                     </div>
                                     </div>
                                     </div>
-                                            ))}
+                            )}
+                        ))}
                                         </div>
                 ) : (
                     <div className="text-center py-20 text-gray-500">
@@ -4089,18 +4208,100 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                 />
 
                 {/* 세미나 상세 모달 */}
-                {selectedSeminar && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setSelectedSeminar(null); }}>
+                {selectedSeminar && (() => {
+                    // images 배열이 있으면 사용, 없으면 img 필드를 배열로 변환
+                    const images = (selectedSeminar.images && selectedSeminar.images.length > 0)
+                        ? selectedSeminar.images
+                        : (selectedSeminar.img ? [selectedSeminar.img] : []);
+                    
+                    const currentImage = images[currentImageIndex] || images[0] || null;
+                    
+                    return (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { 
+                        if (e.target === e.currentTarget) {
+                            setSelectedSeminar(null);
+                            setCurrentImageIndex(0);
+                        }
+                    }}>
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
                         <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl z-10 max-h-[90vh] flex flex-col md:flex-row overflow-hidden relative">
-                            <button type="button" onClick={() => setSelectedSeminar(null)} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 z-20">
+                            <button type="button" onClick={() => {
+                                setSelectedSeminar(null);
+                                setCurrentImageIndex(0);
+                            }} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 z-20">
                             <Icons.X size={18}/>
                         </button>
-                            {/* 이미지 영역 (왼쪽) */}
-                            {selectedSeminar.img && (
+                            {/* 이미지 갤러리 영역 (왼쪽) */}
+                            {currentImage && (
                                 <div className="flex-[0_0_100%] md:flex-[0_0_400px] lg:flex-[0_0_450px] relative bg-gray-50" style={{ minHeight: '400px' }}>
-                                    <img src={selectedSeminar.img} alt={selectedSeminar.title} className="w-full h-full object-contain" style={{ maxHeight: '90vh' }} />
-                                    <div className="absolute top-3 left-3 flex items-center gap-2">
+                                    <img 
+                                        src={currentImage} 
+                                        alt={selectedSeminar.title} 
+                                        className="w-full h-full object-contain cursor-pointer" 
+                                        style={{ maxHeight: '90vh' }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (images.length > 1) {
+                                                setCurrentImageIndex((prev) => (prev + 1) % images.length);
+                                            }
+                                        }}
+                                    />
+                                    
+                                    {/* 이미지가 여러 장일 경우 네비게이션 */}
+                                    {images.length > 1 && (
+                                        <>
+                                            {/* 이전 버튼 */}
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+                                                }}
+                                                className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors z-10"
+                                            >
+                                                <Icons.ChevronLeft size={20} />
+                                            </button>
+                                            {/* 다음 버튼 */}
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+                                                }}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors z-10"
+                                            >
+                                                <Icons.ChevronRight size={20} />
+                                            </button>
+                                            {/* 이미지 인덱스 표시 */}
+                                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-3 py-1 rounded-full z-10">
+                                                {currentImageIndex + 1} / {images.length}
+                                            </div>
+                                            {/* 썸네일 목록 (하단) */}
+                                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-3 z-10">
+                                                <div className="flex gap-2 justify-center overflow-x-auto">
+                                                    {images.map((img, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setCurrentImageIndex(idx);
+                                                            }}
+                                                            className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                                                                idx === currentImageIndex 
+                                                                    ? 'border-white scale-110' 
+                                                                    : 'border-white/50 opacity-60 hover:opacity-100'
+                                                            }`}
+                                                        >
+                                                            <img src={img} alt={`${idx + 1}`} className="w-full h-full object-cover" />
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                    
+                                    <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
                                             {selectedSeminar.category && (
                                             <span className={`text-xs font-bold px-2 py-1 rounded-full shadow-sm ${getCategoryColor(selectedSeminar.category)}`} style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
                                                     {selectedSeminar.category}
@@ -4145,7 +4346,8 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                                     </div>
                         </div>
                     </div>
-                )}
+                    );
+                })()}
 
                 {/* 신청 모달 */}
                 {isApplyModalOpen && applySeminar && (
@@ -8338,15 +8540,34 @@ const App = () => {
     
     // Load seminars from Firebase
     useEffect(() => {
+        // 기존 데이터 호환성: img 필드를 images 배열로 변환하는 함수
+        const normalizeSeminarImages = (seminar) => {
+            // images 배열이 있으면 사용, 없으면 img 필드를 배열로 변환
+            const images = (seminar.images && seminar.images.length > 0)
+                ? seminar.images
+                : (seminar.img ? [seminar.img] : []);
+            
+            return {
+                ...seminar,
+                images: images,
+                // 호환성을 위해 img 필드도 유지 (첫 번째 이미지)
+                img: images.length > 0 ? images[0] : (seminar.img || ''),
+                date: seminar.date || '',
+                status: seminar.status || calculateStatus(seminar.date || '')
+            };
+        };
+        
         if (firebaseService && firebaseService.subscribeSeminars) {
             const unsubscribe = firebaseService.subscribeSeminars((seminars) => {
-                setSeminarsData(seminars);
+                const normalizedSeminars = seminars.map(normalizeSeminarImages);
+                setSeminarsData(normalizedSeminars);
             });
             return () => unsubscribe();
         } else {
             if (firebaseService && firebaseService.getSeminars) {
                 firebaseService.getSeminars().then(seminars => {
-                    setSeminarsData(seminars);
+                    const normalizedSeminars = seminars.map(normalizeSeminarImages);
+                    setSeminarsData(normalizedSeminars);
                 });
             }
         }
