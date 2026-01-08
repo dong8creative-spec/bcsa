@@ -29,11 +29,21 @@ const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d
 
 const uploadImageToImgBB = async (base64Image, fileName) => {
     try {
-        const base64Data = base64Image.split(',')[1] || base64Image;
+        // base64 데이터 추출
+        const base64Data = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
+        
+        // Blob으로 변환하여 FormData에 추가
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'image/jpeg' });
+        
         const formData = new FormData();
         formData.append('key', IMGBB_API_KEY);
-        formData.append('image', base64Data);
-        formData.append('name', fileName || 'image');
+        formData.append('image', blob, fileName || 'image.jpg');
 
         const response = await fetch('https://api.imgbb.com/1/upload', {
             method: 'POST',
@@ -53,6 +63,7 @@ const uploadImageToImgBB = async (base64Image, fileName) => {
             throw new Error(data.error?.message || data.error || '이미지 업로드 실패');
         }
     } catch (error) {
+        console.error('이미지 업로드 오류:', error);
         throw error;
     }
 };
@@ -4223,9 +4234,9 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                                     </div>
                                     </div>
                                     </div>
-                            )}
-                        ))}
-                                        </div>
+                            );
+                        })}
+                    </div>
                 ) : (
                     <div className="text-center py-20 text-gray-500">
                         <Icons.Info className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -8166,6 +8177,15 @@ const App = () => {
                 if (settings && Object.keys(settings).length > 0) {
                     // 기본값과 Firebase Settings 병합
                     setContent(prevContent => ({ ...defaultContent, ...prevContent, ...settings }));
+                    
+                    // menuNames도 Firebase에서 가져오기 (우선 사용)
+                    if (settings.menuNames) {
+                        setMenuNames(prev => ({ ...defaultMenuNames, ...prev, ...settings.menuNames }));
+                    } else {
+                        // Firebase에 menuNames가 없으면 localStorage 사용 (폴백)
+                        const localMenuNames = loadMenuNamesFromStorage();
+                        setMenuNames(localMenuNames);
+                    }
                 }
             });
             
@@ -8178,6 +8198,15 @@ const App = () => {
                                 const settings = await firebaseService.getSettings();
                         if (settings && Object.keys(settings).length > 0) {
                             setContent(prevContent => ({ ...defaultContent, ...prevContent, ...settings }));
+                            
+                            // menuNames도 Firebase에서 가져오기
+                            if (settings.menuNames) {
+                                setMenuNames(prev => ({ ...defaultMenuNames, ...prev, ...settings.menuNames }));
+                            } else {
+                                // Firebase에 없으면 localStorage 사용
+                                const localMenuNames = loadMenuNamesFromStorage();
+                                setMenuNames(localMenuNames);
+                            }
                         }
                     } catch (error) {
                         
@@ -8728,10 +8757,21 @@ const App = () => {
         }
     };
 
-    const [menuNames, setMenuNames] = useState(loadMenuNamesFromStorage());
+    // menuNames 상태 관리 (Firebase 우선, localStorage 폴백)
+    const [menuNames, setMenuNames] = useState(() => {
+        // 초기값: localStorage에서 로드 (Firebase 구독 전까지 사용)
+        return loadMenuNamesFromStorage();
+    });
     
-    // menuNames 변경 감지 (localStorage 변경 시 자동 업데이트)
+    // menuNames는 Settings 구독에서 함께 처리 (중복 방지)
+    
+    // menuNames 변경 감지 (localStorage 변경 시 자동 업데이트 - Firebase에 없을 때만)
     useEffect(() => {
+        // Firebase 구독이 있으면 localStorage 변경은 무시 (Firebase가 우선)
+        if (firebaseService && firebaseService.subscribeSettings) {
+            return; // Firebase 구독이 있으면 localStorage 이벤트 무시
+        }
+        
         const handleStorageChange = (e) => {
             if (e.key === 'busan_ycc_menu_names') {
                 try {
@@ -8753,20 +8793,11 @@ const App = () => {
         };
         window.addEventListener('menuNamesUpdated', handleCustomStorageChange);
         
-        // 주기적으로 확인 (같은 탭에서의 변경 감지)
-        const intervalId = setInterval(() => {
-            const currentMenuNames = loadMenuNamesFromStorage();
-            if (JSON.stringify(currentMenuNames) !== JSON.stringify(menuNames)) {
-                setMenuNames(currentMenuNames);
-            }
-        }, 1000);
-        
         return () => {
             window.removeEventListener('storage', handleStorageChange);
             window.removeEventListener('menuNamesUpdated', handleCustomStorageChange);
-            clearInterval(intervalId);
         };
-    }, [menuNames]);
+    }, []);
 
     // 메뉴 순서 관리
     const defaultMenuOrder = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '입찰공고', '후원', '부산맛집'];
