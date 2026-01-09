@@ -104,26 +104,92 @@ const firebaseService = {
 
   async createSeminar(seminarData) {
     try {
-      const docRef = await window.firebaseServices.db.collection('seminars').add({
+      console.log('🔥 Firebase createSeminar 호출:', {
+        seminarData: {
+          ...seminarData,
+          images: seminarData.images,
+          imagesLength: Array.isArray(seminarData.images) ? seminarData.images.length : 'not array',
+          img: seminarData.img
+        }
+      });
+      
+      // Firestore에 저장할 데이터 준비
+      const dataToSave = {
         ...seminarData,
         createdAt: firebase.firestore.FieldValue.serverTimestamp ? firebase.firestore.FieldValue.serverTimestamp() : new Date(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+      };
+      
+      // 배열 필드 검증
+      if (dataToSave.images && !Array.isArray(dataToSave.images)) {
+        console.warn('⚠️ images가 배열이 아닙니다. 배열로 변환합니다:', dataToSave.images);
+        dataToSave.images = Array.isArray(dataToSave.images) ? dataToSave.images : [dataToSave.images].filter(Boolean);
+      }
+      
+      console.log('💾 Firestore에 저장할 최종 데이터:', {
+        ...dataToSave,
+        images: dataToSave.images,
+        imagesType: Array.isArray(dataToSave.images) ? 'array' : typeof dataToSave.images
       });
+      
+      const docRef = await window.firebaseServices.db.collection('seminars').add(dataToSave);
+      
+      console.log('✅ Firebase createSeminar 성공:', docRef.id);
       return docRef.id;
     } catch (error) {
-      console.error('Error creating seminar:', error);
+      console.error('❌ Error creating seminar:', error);
+      console.error('에러 상세:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack,
+        seminarData
+      });
       throw error;
     }
   },
 
   async updateSeminar(seminarId, seminarData) {
     try {
-      await window.firebaseServices.db.collection('seminars').doc(seminarId).update({
+      console.log('🔥 Firebase updateSeminar 호출:', {
+        seminarId,
+        seminarData: {
+          ...seminarData,
+          images: seminarData.images,
+          imagesLength: Array.isArray(seminarData.images) ? seminarData.images.length : 'not array',
+          img: seminarData.img
+        }
+      });
+      
+      // Firestore에 저장할 데이터 준비
+      const dataToSave = {
         ...seminarData,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+      };
+      
+      // 배열 필드 검증
+      if (dataToSave.images && !Array.isArray(dataToSave.images)) {
+        console.warn('⚠️ images가 배열이 아닙니다. 배열로 변환합니다:', dataToSave.images);
+        dataToSave.images = Array.isArray(dataToSave.images) ? dataToSave.images : [dataToSave.images].filter(Boolean);
+      }
+      
+      console.log('💾 Firestore에 저장할 최종 데이터:', {
+        ...dataToSave,
+        images: dataToSave.images,
+        imagesType: Array.isArray(dataToSave.images) ? 'array' : typeof dataToSave.images
       });
+      
+      await window.firebaseServices.db.collection('seminars').doc(seminarId).update(dataToSave);
+      
+      console.log('✅ Firebase updateSeminar 성공:', seminarId);
     } catch (error) {
-      console.error('Error updating seminar:', error);
+      console.error('❌ Error updating seminar:', error);
+      console.error('에러 상세:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack,
+        seminarId,
+        seminarData
+      });
       throw error;
     }
   },

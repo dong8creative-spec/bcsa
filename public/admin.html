@@ -1002,6 +1002,65 @@
             }
         };
         
+        // 해상도 추천 함수
+        const getRecommendedResolution = (imageType) => {
+            const recommendations = {
+                'program': { width: 1200, height: 800, ratio: '16:9', description: '프로그램 이미지' },
+                'program-square': { width: 1200, height: 1200, ratio: '1:1', description: '프로그램 이미지 (정사각형)' },
+                'hero': { width: 1920, height: 1080, ratio: '16:9', description: 'Hero 이미지' },
+                'feature': { width: 1200, height: 800, ratio: '3:2', description: 'Feature 이미지' },
+                'activity': { width: 1200, height: 800, ratio: '3:2', description: 'Activity 이미지' },
+                'restaurant': { width: 1200, height: 800, ratio: '3:2', description: '맛집 이미지' },
+                'donation': { width: 1920, height: 1080, ratio: '16:9', description: 'Donation 이미지' },
+                'cta': { width: 1920, height: 1080, ratio: '16:9', description: 'CTA 이미지' }
+            };
+            return recommendations[imageType] || { width: 1200, height: 800, ratio: '16:9', description: '일반 이미지' };
+        };
+        
+        // 이미지 크롭 함수
+        const cropImage = (imageFile, cropArea, outputWidth = null, outputHeight = null) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // 출력 크기 설정 (없으면 크롭 영역 크기 사용)
+                        const outputW = outputWidth || cropArea.width;
+                        const outputH = outputHeight || cropArea.height;
+                        
+                        canvas.width = outputW;
+                        canvas.height = outputH;
+                        
+                        // 이미지 크롭 및 리사이즈
+                        ctx.drawImage(
+                            img,
+                            cropArea.x, cropArea.y, cropArea.width, cropArea.height,
+                            0, 0, outputW, outputH
+                        );
+                        
+                        // base64로 변환
+                        canvas.toBlob((blob) => {
+                            if (blob) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => resolve(reader.result);
+                                reader.onerror = reject;
+                                reader.readAsDataURL(blob);
+                            } else {
+                                reject(new Error('이미지 크롭 실패'));
+                            }
+                        }, imageFile.type || 'image/jpeg', 0.9);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(imageFile);
+            });
+        };
+        
         // calculateStatus는 utils.js에서 로드됨 (중복 선언 방지)
 
         // ==========================================
@@ -1509,12 +1568,393 @@
         };
 
         // ==========================================
+        // 이미지 크롭 모달 컴포넌트
+        // ==========================================
+        const ImageCropModal = ({ imageFile, onCropComplete, onCancel, recommendedWidth, recommendedHeight, aspectRatio = null }) => {
+            const [imageSrc, setImageSrc] = useState(null);
+            const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 0, height: 0 });
+            const [isDragging, setIsDragging] = useState(false);
+            const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+            const [zoom, setZoom] = useState(1);
+            const [selectedAspectRatio, setSelectedAspectRatio] = useState(aspectRatio);
+            const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+            const canvasRef = React.useRef(null);
+            const containerRef = React.useRef(null);
+            const imageRef = React.useRef(null);
+            
+            const aspectRatios = [
+                { label: '자유', value: null },
+                { label: '16:9', value: 16/9 },
+                { label: '4:3', value: 4/3 },
+                { label: '1:1', value: 1 }
+            ];
+            
+            // 이미지 로드
+            useEffect(() => {
+                if (imageFile) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        setImageSrc(e.target.result);
+                        const img = new Image();
+                        img.onload = () => {
+                            setImageSize({ width: img.width, height: img.height });
+                            // 초기 크롭 영역 설정 (이미지 중앙, 추천 해상도 비율)
+                            const containerWidth = 600;
+                            const containerHeight = 400;
+                            const imgAspect = img.width / img.height;
+                            const containerAspect = containerWidth / containerHeight;
+                            
+                            let initWidth, initHeight;
+                            if (imgAspect > containerAspect) {
+                                initHeight = containerHeight * 0.8;
+                                initWidth = initHeight * imgAspect;
+                            } else {
+                                initWidth = containerWidth * 0.8;
+                                initHeight = initWidth / imgAspect;
+                            }
+                            
+                            setCropArea({
+                                x: (containerWidth - initWidth) / 2,
+                                y: (containerHeight - initHeight) / 2,
+                                width: initWidth,
+                                height: initHeight
+                            });
+                        };
+                        img.src = e.target.result;
+                        imageRef.current = img;
+                    };
+                    reader.readAsDataURL(imageFile);
+                }
+            }, [imageFile]);
+            
+            // 비율 변경 시 크롭 영역 조정
+            useEffect(() => {
+                if (selectedAspectRatio !== null && cropArea.width > 0 && cropArea.height > 0) {
+                    const currentAspect = cropArea.width / cropArea.height;
+                    if (Math.abs(currentAspect - selectedAspectRatio) > 0.01) {
+                        let newWidth = cropArea.width;
+                        let newHeight = cropArea.height;
+                        
+                        if (currentAspect > selectedAspectRatio) {
+                            newWidth = cropArea.height * selectedAspectRatio;
+                        } else {
+                            newHeight = cropArea.width / selectedAspectRatio;
+                        }
+                        
+                        setCropArea({
+                            ...cropArea,
+                            width: newWidth,
+                            height: newHeight
+                        });
+                    }
+                }
+            }, [selectedAspectRatio]);
+            
+            const [resizeHandle, setResizeHandle] = useState(null);
+            
+            // 마우스 이벤트 핸들러
+            const handleMouseDown = (e) => {
+                if (!imageSrc || !containerRef.current) return;
+                const rect = containerRef.current.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // 리사이즈 핸들 확인 (8개 핸들)
+                const handleSize = 12;
+                const handles = [
+                    { x: cropArea.x, y: cropArea.y, type: 'nw' },
+                    { x: cropArea.x + cropArea.width / 2, y: cropArea.y, type: 'n' },
+                    { x: cropArea.x + cropArea.width, y: cropArea.y, type: 'ne' },
+                    { x: cropArea.x + cropArea.width, y: cropArea.y + cropArea.height / 2, type: 'e' },
+                    { x: cropArea.x + cropArea.width, y: cropArea.y + cropArea.height, type: 'se' },
+                    { x: cropArea.x + cropArea.width / 2, y: cropArea.y + cropArea.height, type: 's' },
+                    { x: cropArea.x, y: cropArea.y + cropArea.height, type: 'sw' },
+                    { x: cropArea.x, y: cropArea.y + cropArea.height / 2, type: 'w' }
+                ];
+                
+                for (const handle of handles) {
+                    if (Math.abs(x - handle.x) < handleSize && Math.abs(y - handle.y) < handleSize) {
+                        setResizeHandle(handle.type);
+                        setDragStart({ x, y, startCrop: { ...cropArea } });
+                        e.preventDefault();
+                        return;
+                    }
+                }
+                
+                // 크롭 영역 내부인지 확인 (드래그)
+                if (x >= cropArea.x && x <= cropArea.x + cropArea.width &&
+                    y >= cropArea.y && y <= cropArea.y + cropArea.height) {
+                    setIsDragging(true);
+                    setDragStart({ x: x - cropArea.x, y: y - cropArea.y });
+                }
+            };
+            
+            const handleMouseMove = (e) => {
+                if (!imageSrc || !containerRef.current) return;
+                const rect = containerRef.current.getBoundingClientRect();
+                const currentX = e.clientX - rect.left;
+                const currentY = e.clientY - rect.top;
+                
+                if (resizeHandle) {
+                    // 리사이즈 모드
+                    const deltaX = currentX - dragStart.x;
+                    const deltaY = currentY - dragStart.y;
+                    let newCrop = { ...dragStart.startCrop };
+                    
+                    switch (resizeHandle) {
+                        case 'nw':
+                            newCrop.x = Math.max(0, dragStart.startCrop.x + deltaX);
+                            newCrop.y = Math.max(0, dragStart.startCrop.y + deltaY);
+                            newCrop.width = Math.max(50, dragStart.startCrop.width - deltaX);
+                            newCrop.height = Math.max(50, dragStart.startCrop.height - deltaY);
+                            break;
+                        case 'n':
+                            newCrop.y = Math.max(0, dragStart.startCrop.y + deltaY);
+                            newCrop.height = Math.max(50, dragStart.startCrop.height - deltaY);
+                            break;
+                        case 'ne':
+                            newCrop.y = Math.max(0, dragStart.startCrop.y + deltaY);
+                            newCrop.width = Math.max(50, dragStart.startCrop.width + deltaX);
+                            newCrop.height = Math.max(50, dragStart.startCrop.height - deltaY);
+                            break;
+                        case 'e':
+                            newCrop.width = Math.max(50, dragStart.startCrop.width + deltaX);
+                            break;
+                        case 'se':
+                            newCrop.width = Math.max(50, dragStart.startCrop.width + deltaX);
+                            newCrop.height = Math.max(50, dragStart.startCrop.height + deltaY);
+                            break;
+                        case 's':
+                            newCrop.height = Math.max(50, dragStart.startCrop.height + deltaY);
+                            break;
+                        case 'sw':
+                            newCrop.x = Math.max(0, dragStart.startCrop.x + deltaX);
+                            newCrop.width = Math.max(50, dragStart.startCrop.width - deltaX);
+                            newCrop.height = Math.max(50, dragStart.startCrop.height + deltaY);
+                            break;
+                        case 'w':
+                            newCrop.x = Math.max(0, dragStart.startCrop.x + deltaX);
+                            newCrop.width = Math.max(50, dragStart.startCrop.width - deltaX);
+                            break;
+                    }
+                    
+                    // 비율 유지
+                    if (selectedAspectRatio !== null) {
+                        const currentAspect = newCrop.width / newCrop.height;
+                        if (Math.abs(currentAspect - selectedAspectRatio) > 0.01) {
+                            if (currentAspect > selectedAspectRatio) {
+                                newCrop.width = newCrop.height * selectedAspectRatio;
+                            } else {
+                                newCrop.height = newCrop.width / selectedAspectRatio;
+                            }
+                        }
+                    }
+                    
+                    // 경계 체크
+                    if (newCrop.x + newCrop.width > 600) {
+                        newCrop.width = 600 - newCrop.x;
+                        if (selectedAspectRatio !== null) {
+                            newCrop.height = newCrop.width / selectedAspectRatio;
+                        }
+                    }
+                    if (newCrop.y + newCrop.height > 400) {
+                        newCrop.height = 400 - newCrop.y;
+                        if (selectedAspectRatio !== null) {
+                            newCrop.width = newCrop.height * selectedAspectRatio;
+                        }
+                    }
+                    
+                    setCropArea(newCrop);
+                } else if (isDragging) {
+                    // 드래그 모드
+                    const x = currentX - dragStart.x;
+                    const y = currentY - dragStart.y;
+                    
+                    const maxX = 600 - cropArea.width;
+                    const maxY = 400 - cropArea.height;
+                    
+                    setCropArea({
+                        ...cropArea,
+                        x: Math.max(0, Math.min(x, maxX)),
+                        y: Math.max(0, Math.min(y, maxY))
+                    });
+                }
+            };
+            
+            const handleMouseUp = () => {
+                setIsDragging(false);
+                setResizeHandle(null);
+            };
+            
+            // 크롭 완료
+            const handleCrop = async () => {
+                if (!imageFile || !imageSrc) return;
+                
+                try {
+                    // 실제 이미지 좌표로 변환
+                    const img = imageRef.current;
+                    const scaleX = img.width / 600;
+                    const scaleY = img.height / 400;
+                    
+                    const actualCropArea = {
+                        x: cropArea.x * scaleX,
+                        y: cropArea.y * scaleY,
+                        width: cropArea.width * scaleX,
+                        height: cropArea.height * scaleY
+                    };
+                    
+                    const croppedImage = await cropImage(imageFile, actualCropArea, recommendedWidth, recommendedHeight);
+                    onCropComplete(croppedImage);
+                } catch (error) {
+                    console.error('이미지 크롭 오류:', error);
+                    alert('이미지 크롭에 실패했습니다.');
+                }
+            };
+            
+            if (!imageSrc) return null;
+            
+            return React.createElement('div', {
+                className: 'fixed inset-0 z-50 flex items-center justify-center bg-black/70',
+                onClick: onCancel
+            }, React.createElement('div', {
+                className: 'bg-white rounded-2xl p-6 max-w-4xl w-full mx-4',
+                onClick: (e) => e.stopPropagation()
+            }, [
+                React.createElement('div', { key: 'header', className: 'flex items-center justify-between mb-4' },
+                    React.createElement('h3', { className: 'text-xl font-bold text-dark' }, '이미지 크롭'),
+                    React.createElement('button', {
+                        onClick: onCancel,
+                        className: 'p-2 hover:bg-gray-100 rounded-lg'
+                    }, React.createElement(Icons.X, { size: 24 }))
+                ),
+                React.createElement('div', { key: 'info', className: 'mb-4 p-3 bg-blue-50 rounded-lg' },
+                    React.createElement('p', { className: 'text-sm text-gray-700' },
+                        `추천 해상도: ${recommendedWidth}x${recommendedHeight}px`
+                    )
+                ),
+                React.createElement('div', {
+                    key: 'container',
+                    ref: containerRef,
+                    className: 'relative w-full h-96 bg-gray-100 rounded-lg overflow-hidden mb-4',
+                    style: { cursor: isDragging ? 'grabbing' : 'grab' },
+                    onMouseDown: handleMouseDown,
+                    onMouseMove: handleMouseMove,
+                    onMouseUp: handleMouseUp,
+                    onMouseLeave: handleMouseUp
+                }, [
+                    React.createElement('img', {
+                        key: 'image',
+                        src: imageSrc,
+                        alt: '크롭할 이미지',
+                        className: 'absolute inset-0 w-full h-full object-contain',
+                        style: { transform: `scale(${zoom})` }
+                    }),
+                    React.createElement('div', {
+                        key: 'overlay',
+                        className: 'absolute inset-0',
+                        style: {
+                            background: `linear-gradient(to right, 
+                                rgba(0,0,0,0.5) 0%, 
+                                rgba(0,0,0,0.5) ${(cropArea.x / 600) * 100}%, 
+                                transparent ${(cropArea.x / 600) * 100}%, 
+                                transparent ${((cropArea.x + cropArea.width) / 600) * 100}%, 
+                                rgba(0,0,0,0.5) ${((cropArea.x + cropArea.width) / 600) * 100}%, 
+                                rgba(0,0,0,0.5) 100%),
+                                linear-gradient(to bottom, 
+                                rgba(0,0,0,0.5) 0%, 
+                                rgba(0,0,0,0.5) ${(cropArea.y / 400) * 100}%, 
+                                transparent ${(cropArea.y / 400) * 100}%, 
+                                transparent ${((cropArea.y + cropArea.height) / 400) * 100}%, 
+                                rgba(0,0,0,0.5) ${((cropArea.y + cropArea.height) / 400) * 100}%, 
+                                rgba(0,0,0,0.5) 100%)`
+                        }
+                    }),
+                    React.createElement('div', {
+                        key: 'crop-area',
+                        className: 'absolute border-2 border-white shadow-lg',
+                        style: {
+                            left: `${cropArea.x}px`,
+                            top: `${cropArea.y}px`,
+                            width: `${cropArea.width}px`,
+                            height: `${cropArea.height}px`,
+                            boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
+                        }
+                    }, [
+                        React.createElement('div', {
+                            key: 'handles',
+                            className: 'absolute inset-0'
+                        }, [
+                            { top: '-6px', left: '-6px', cursor: 'nw-resize', type: 'nw' },
+                            { top: '-6px', left: '50%', marginLeft: '-6px', cursor: 'n-resize', type: 'n' },
+                            { top: '-6px', right: '-6px', cursor: 'ne-resize', type: 'ne' },
+                            { top: '50%', right: '-6px', marginTop: '-6px', cursor: 'e-resize', type: 'e' },
+                            { bottom: '-6px', right: '-6px', cursor: 'se-resize', type: 'se' },
+                            { bottom: '-6px', left: '50%', marginLeft: '-6px', cursor: 's-resize', type: 's' },
+                            { bottom: '-6px', left: '-6px', cursor: 'sw-resize', type: 'sw' },
+                            { top: '50%', left: '-6px', marginTop: '-6px', cursor: 'w-resize', type: 'w' }
+                        ].map((handle, i) => React.createElement('div', {
+                            key: i,
+                            className: 'absolute w-3 h-3 bg-white border-2 border-brand rounded-full z-10',
+                            style: {
+                                ...handle,
+                                cursor: handle.cursor
+                            }
+                        })))
+                    ])
+                ]),
+                React.createElement('div', { key: 'controls', className: 'space-y-4' },
+                    React.createElement('div', { className: 'flex items-center gap-4' },
+                        React.createElement('label', { className: 'text-sm font-bold text-gray-700' }, '비율:'),
+                        React.createElement('div', { className: 'flex gap-2' },
+                            aspectRatios.map(ratio => React.createElement('button', {
+                                key: ratio.label,
+                                onClick: () => setSelectedAspectRatio(ratio.value),
+                                className: `px-3 py-1 rounded-lg text-sm font-bold transition-colors ${
+                                    selectedAspectRatio === ratio.value
+                                        ? 'bg-brand text-white'
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`
+                            }, ratio.label))
+                        )
+                    ),
+                    React.createElement('div', { className: 'flex items-center gap-4' },
+                        React.createElement('label', { className: 'text-sm font-bold text-gray-700' }, '줌:'),
+                        React.createElement('input', {
+                            type: 'range',
+                            min: '0.5',
+                            max: '2',
+                            step: '0.1',
+                            value: zoom,
+                            onChange: (e) => setZoom(parseFloat(e.target.value)),
+                            className: 'flex-1'
+                        }),
+                        React.createElement('span', { className: 'text-sm text-gray-600 w-12 text-right' }, `${Math.round(zoom * 100)}%`)
+                    )
+                ),
+                React.createElement('div', { key: 'actions', className: 'flex gap-4 mt-6' },
+                    React.createElement('button', {
+                        onClick: onCancel,
+                        className: 'flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors'
+                    }, '취소'),
+                    React.createElement('button', {
+                        onClick: handleCrop,
+                        className: 'flex-1 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors'
+                    }, '크롭 완료')
+                )
+            ]));
+        };
+        
+        // ==========================================
         // 메인 관리 컴포넌트
         // ==========================================
         const MainContentManagement = ({ settings, setSettings, menuEnabled, setMenuEnabled, menuNames, setMenuNames }) => {
             const [formData, setFormData] = useState(settings);
             const [saving, setSaving] = useState(false);
             const saveTimeoutRef = React.useRef(null);
+            const [showCropModal, setShowCropModal] = useState(false);
+            const [cropImageFile, setCropImageFile] = useState(null);
+            const [cropImageField, setCropImageField] = useState(null); // 어떤 필드의 이미지인지
+            const [cropRecommendedSize, setCropRecommendedSize] = useState({ width: 1200, height: 800 });
             
             useEffect(() => {
                 setFormData(settings);
@@ -1533,8 +1973,15 @@
                             await window.firebaseService.updateSettings(formData);
                             setSettings(formData);
                             setSaving(false);
+                            console.log('설정이 자동 저장되었습니다.');
                         } catch (error) {
-                            
+                            console.error('설정 자동 저장 오류:', error);
+                            const errorMessage = translateFirebaseError ? translateFirebaseError(error) : '자동 저장 중 오류가 발생했습니다.';
+                            console.error('에러 상세:', {
+                                code: error.code,
+                                message: error.message,
+                                stack: error.stack
+                            });
                             setSaving(false);
                         }
                     }
@@ -1555,9 +2002,16 @@
                 try {
                     await window.firebaseService.updateSettings(formData);
                     setSettings(formData);
+                    console.log('설정이 수동 저장되었습니다.');
                     alert('저장되었습니다.');
                 } catch (error) {
-                    
+                    console.error('설정 수동 저장 오류:', error);
+                    console.error('에러 상세:', {
+                        code: error.code,
+                        message: error.message,
+                        stack: error.stack,
+                        formData: formData
+                    });
                     const errorMessage = translateFirebaseError ? translateFirebaseError(error) : '저장 중 오류가 발생했습니다.';
                     alert(`저장에 실패했습니다.\n${errorMessage}`);
                 } finally {
@@ -1568,6 +2022,28 @@
             const handleChange = (field, value) => {
                 setSaving(true);
                 setFormData({...formData, [field]: value});
+            };
+            
+            // 크롭 완료 핸들러 (설정 페이지용)
+            const handleCropCompleteSettings = async (croppedImageBase64) => {
+                if (!cropImageFile || !cropImageField) return;
+                
+                try {
+                    const uploaded = await uploadImageToImgBB(croppedImageBase64, cropImageFile.name);
+                    
+                    if (!uploaded || !uploaded.url) {
+                        throw new Error('이미지 업로드 응답에 URL이 없습니다.');
+                    }
+                    
+                    handleChange(cropImageField, uploaded.url);
+                    
+                    setShowCropModal(false);
+                    setCropImageFile(null);
+                    setCropImageField(null);
+                } catch (error) {
+                    console.error('이미지 업로드 오류:', error);
+                    alert(`이미지 업로드에 실패했습니다.\n${error.message || '알 수 없는 오류'}`);
+                }
             };
             
             return (
@@ -1599,7 +2075,12 @@
                                     />
                                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">배경 이미지</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        배경 이미지
+                                        <span className="text-xs text-gray-500 font-normal ml-2">
+                                            추천 해상도: 1920x1080px (16:9)
+                                        </span>
+                                    </label>
                                     <div className="flex gap-4 items-start">
                                         {formData.hero_image && (
                                             <div className="w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
@@ -1617,16 +2098,19 @@
                                             <input
                                                 type="file"
                                                 accept="image/*"
-                                                onChange={async (e) => {
+                                                onChange={(e) => {
                                                     const file = e.target.files[0];
                                                     if (file) {
-                                                        try {
-                                                            const resized = await resizeImage(file, 1920, 1920);
-                                                            const uploaded = await uploadImageToImgBB(resized, file.name);
-                                                            handleChange('hero_image', uploaded.url);
-                                                        } catch (error) {
-                                                            alert('이미지 업로드에 실패했습니다.');
+                                                        if (file.size > 10 * 1024 * 1024) {
+                                                            alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                            e.target.value = '';
+                                                            return;
                                                         }
+                                                        setCropImageFile(file);
+                                                        setCropImageField('hero_image');
+                                                        setCropRecommendedSize({ width: 1920, height: 1080 });
+                                                        setShowCropModal(true);
+                                                        e.target.value = '';
                                                     }
                                                 }}
                                                 className="hidden"
@@ -1640,7 +2124,7 @@
                                             </label>
                                         </div>
                                     </div>
-                                                </div>
+                                </div>
                                                                 </div>
                                             </div>
                     
@@ -1715,7 +2199,12 @@
                                     <label className="block text-sm font-bold text-gray-700 mb-2">이미지</label>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-xs text-gray-600 mb-2">이미지 1</label>
+                                            <label className="block text-xs text-gray-600 mb-2">
+                                                이미지 1
+                                                <span className="text-xs text-gray-500 font-normal ml-2">
+                                                    추천: 1200x800px (3:2)
+                                                </span>
+                                            </label>
                                             <div className="flex gap-3 items-start">
                                                 {formData.features_image_1 && (
                                                     <div className="w-32 h-20 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
@@ -1733,16 +2222,19 @@
                                                     <input
                                                         type="file"
                                                         accept="image/*"
-                                                        onChange={async (e) => {
+                                                        onChange={(e) => {
                                                             const file = e.target.files[0];
                                                             if (file) {
-                                                                try {
-                                                                    const resized = await resizeImage(file, 1200, 1200);
-                                                                    const uploaded = await uploadImageToImgBB(resized, file.name);
-                                                                    handleChange('features_image_1', uploaded.url);
-                                                                } catch (error) {
-                                                                    alert('이미지 업로드에 실패했습니다.');
+                                                                if (file.size > 10 * 1024 * 1024) {
+                                                                    alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                                    e.target.value = '';
+                                                                    return;
                                                                 }
+                                                                setCropImageFile(file);
+                                                                setCropImageField('features_image_1');
+                                                                setCropRecommendedSize({ width: 1200, height: 800 });
+                                                                setShowCropModal(true);
+                                                                e.target.value = '';
                                                             }
                                                         }}
                                                         className="hidden"
@@ -1758,7 +2250,12 @@
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-xs text-gray-600 mb-2">이미지 2</label>
+                                            <label className="block text-xs text-gray-600 mb-2">
+                                                이미지 2
+                                                <span className="text-xs text-gray-500 font-normal ml-2">
+                                                    추천: 1200x800px (3:2)
+                                                </span>
+                                            </label>
                                             <div className="flex gap-3 items-start">
                                                 {formData.features_image_2 && (
                                                     <div className="w-32 h-20 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
@@ -1776,16 +2273,19 @@
                                                     <input
                                                         type="file"
                                                         accept="image/*"
-                                                        onChange={async (e) => {
+                                                        onChange={(e) => {
                                                             const file = e.target.files[0];
                                                             if (file) {
-                                                                try {
-                                                                    const resized = await resizeImage(file, 1200, 1200);
-                                                                    const uploaded = await uploadImageToImgBB(resized, file.name);
-                                                                    handleChange('features_image_2', uploaded.url);
-                                                                } catch (error) {
-                                                                    alert('이미지 업로드에 실패했습니다.');
+                                                                if (file.size > 10 * 1024 * 1024) {
+                                                                    alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                                    e.target.value = '';
+                                                                    return;
                                                                 }
+                                                                setCropImageFile(file);
+                                                                setCropImageField('features_image_2');
+                                                                setCropRecommendedSize({ width: 1200, height: 800 });
+                                                                setShowCropModal(true);
+                                                                e.target.value = '';
                                                             }
                                                         }}
                                                         className="hidden"
@@ -1846,7 +2346,12 @@
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-600 mb-2">이미지</label>
+                                            <label className="block text-xs font-bold text-gray-600 mb-2">
+                                                이미지
+                                                <span className="text-xs text-gray-500 font-normal ml-2">
+                                                    추천: 1200x800px (3:2)
+                                                </span>
+                                            </label>
                                             {formData.activity_seminar_image && (
                                                 <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm">
                                                     <img src={formData.activity_seminar_image} alt="Seminar" className="w-full h-full object-cover" />
@@ -1862,16 +2367,19 @@
                                             <input
                                                 type="file"
                                                 accept="image/*"
-                                                onChange={async (e) => {
+                                                onChange={(e) => {
                                                     const file = e.target.files[0];
                                                     if (file) {
-                                                        try {
-                                                            const resized = await resizeImage(file, 1200, 1200);
-                                                            const uploaded = await uploadImageToImgBB(resized, file.name);
-                                                            handleChange('activity_seminar_image', uploaded.url);
-                                                        } catch (error) {
-                                                            alert('이미지 업로드에 실패했습니다.');
+                                                        if (file.size > 10 * 1024 * 1024) {
+                                                            alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                            e.target.value = '';
+                                                            return;
                                                         }
+                                                        setCropImageFile(file);
+                                                        setCropImageField('activity_seminar_image');
+                                                        setCropRecommendedSize({ width: 1200, height: 800 });
+                                                        setShowCropModal(true);
+                                                        e.target.value = '';
                                                     }
                                                 }}
                                                 className="hidden"
@@ -1924,7 +2432,12 @@
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-600 mb-2">이미지</label>
+                                            <label className="block text-xs font-bold text-gray-600 mb-2">
+                                                이미지
+                                                <span className="text-xs text-gray-500 font-normal ml-2">
+                                                    추천: 1200x800px (3:2)
+                                                </span>
+                                            </label>
                                             {formData.activity_investment_image && (
                                                 <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm">
                                                     <img src={formData.activity_investment_image} alt="Investment" className="w-full h-full object-cover" />
@@ -1940,16 +2453,19 @@
                                             <input
                                                 type="file"
                                                 accept="image/*"
-                                                onChange={async (e) => {
+                                                onChange={(e) => {
                                                     const file = e.target.files[0];
                                                     if (file) {
-                                                        try {
-                                                            const resized = await resizeImage(file, 1200, 1200);
-                                                            const uploaded = await uploadImageToImgBB(resized, file.name);
-                                                            handleChange('activity_investment_image', uploaded.url);
-                                                        } catch (error) {
-                                                            alert('이미지 업로드에 실패했습니다.');
+                                                        if (file.size > 10 * 1024 * 1024) {
+                                                            alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                            e.target.value = '';
+                                                            return;
                                                         }
+                                                        setCropImageFile(file);
+                                                        setCropImageField('activity_investment_image');
+                                                        setCropRecommendedSize({ width: 1200, height: 800 });
+                                                        setShowCropModal(true);
+                                                        e.target.value = '';
                                                     }
                                                 }}
                                                 className="hidden"
@@ -2002,7 +2518,12 @@
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-600 mb-2">이미지</label>
+                                            <label className="block text-xs font-bold text-gray-600 mb-2">
+                                                이미지
+                                                <span className="text-xs text-gray-500 font-normal ml-2">
+                                                    추천: 1200x800px (3:2)
+                                                </span>
+                                            </label>
                                             {formData.activity_networking_image && (
                                                 <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm">
                                                     <img src={formData.activity_networking_image} alt="Networking" className="w-full h-full object-cover" />
@@ -2018,16 +2539,19 @@
                                             <input
                                                 type="file"
                                                 accept="image/*"
-                                                onChange={async (e) => {
+                                                onChange={(e) => {
                                                     const file = e.target.files[0];
                                                     if (file) {
-                                                        try {
-                                                            const resized = await resizeImage(file, 1200, 1200);
-                                                            const uploaded = await uploadImageToImgBB(resized, file.name);
-                                                            handleChange('activity_networking_image', uploaded.url);
-                                                        } catch (error) {
-                                                            alert('이미지 업로드에 실패했습니다.');
+                                                        if (file.size > 10 * 1024 * 1024) {
+                                                            alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                            e.target.value = '';
+                                                            return;
                                                         }
+                                                        setCropImageFile(file);
+                                                        setCropImageField('activity_networking_image');
+                                                        setCropRecommendedSize({ width: 1200, height: 800 });
+                                                        setShowCropModal(true);
+                                                        e.target.value = '';
                                                     }
                                                 }}
                                                 className="hidden"
@@ -2080,7 +2604,12 @@
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">배경 이미지</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        배경 이미지
+                                        <span className="text-xs text-gray-500 font-normal ml-2">
+                                            추천 해상도: 1920x1080px (16:9)
+                                        </span>
+                                    </label>
                                     <div className="flex gap-4 items-start">
                                         {formData.donation_image && (
                                             <div className="w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
@@ -2098,16 +2627,19 @@
                                             <input
                                                 type="file"
                                                 accept="image/*"
-                                                onChange={async (e) => {
+                                                onChange={(e) => {
                                                     const file = e.target.files[0];
                                                     if (file) {
-                                                        try {
-                                                            const resized = await resizeImage(file, 1920, 1920);
-                                                            const uploaded = await uploadImageToImgBB(resized, file.name);
-                                                            handleChange('donation_image', uploaded.url);
-                                                        } catch (error) {
-                                                            alert('이미지 업로드에 실패했습니다.');
+                                                        if (file.size > 10 * 1024 * 1024) {
+                                                            alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                            e.target.value = '';
+                                                            return;
                                                         }
+                                                        setCropImageFile(file);
+                                                        setCropImageField('donation_image');
+                                                        setCropRecommendedSize({ width: 1920, height: 1080 });
+                                                        setShowCropModal(true);
+                                                        e.target.value = '';
                                                     }
                                                 }}
                                                 className="hidden"
@@ -2170,7 +2702,12 @@
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">배경 이미지</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        배경 이미지
+                                        <span className="text-xs text-gray-500 font-normal ml-2">
+                                            추천 해상도: 1920x1080px (16:9)
+                                        </span>
+                                    </label>
                                     <div className="flex gap-4 items-start">
                                         {formData.cta_image && (
                                             <div className="w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
@@ -2188,16 +2725,19 @@
                                             <input
                                                 type="file"
                                                 accept="image/*"
-                                                onChange={async (e) => {
+                                                onChange={(e) => {
                                                     const file = e.target.files[0];
                                                     if (file) {
-                                                        try {
-                                                            const resized = await resizeImage(file, 1920, 1920);
-                                                            const uploaded = await uploadImageToImgBB(resized, file.name);
-                                                            handleChange('cta_image', uploaded.url);
-                                                        } catch (error) {
-                                                            alert('이미지 업로드에 실패했습니다.');
+                                                        if (file.size > 10 * 1024 * 1024) {
+                                                            alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                            e.target.value = '';
+                                                            return;
                                                         }
+                                                        setCropImageFile(file);
+                                                        setCropImageField('cta_image');
+                                                        setCropRecommendedSize({ width: 1920, height: 1080 });
+                                                        setShowCropModal(true);
+                                                        e.target.value = '';
                                                     }
                                                 }}
                                                 className="hidden"
@@ -2353,6 +2893,10 @@
                 phone: '',
                 openTime: '09:00',
                 closeTime: '22:00',
+            const [showCropModal, setShowCropModal] = useState(false);
+            const [cropImageFile, setCropImageFile] = useState(null);
+            const [cropImageContext, setCropImageContext] = useState(null); // 'edit' or 'add'
+            const [cropImageIndex, setCropImageIndex] = useState(null); // 이미지 인덱스 (맛집은 여러 이미지)
                 priceRange: '',
                 images: [],
                 location: {
@@ -2528,33 +3072,73 @@
                 setShowAddModal(true);
             };
 
-            // 이미지 업로드 핸들러 (추가용)
-            const handleImageUpload = async (e) => {
-                const files = Array.from(e.target.files || []);
-                if (addFormData.images.length + files.length > 10) {
-                    alert('이미지는 최대 10장까지 업로드할 수 있습니다.');
-                    return;
-                }
-
-                setUploadingImages(true);
+            // 크롭 완료 핸들러 (맛집 관리용)
+            const handleCropCompleteRestaurant = async (croppedImageBase64) => {
+                if (!cropImageFile) return;
+                
                 try {
-                    const uploadPromises = files.map(async (file) => {
-                        const resized = await resizeImage(file, 1920, 1920);
-                        const uploaded = await uploadImageToImgBB(resized, file.name);
-                        return uploaded.url;
-                    });
+                    setUploadingImages(true);
+                    const uploaded = await uploadImageToImgBB(croppedImageBase64, cropImageFile.name);
                     
-                    const uploadedUrls = await Promise.all(uploadPromises);
-                    setAddFormData({
-                        ...addFormData,
-                        images: [...addFormData.images, ...uploadedUrls]
-                    });
+                    if (!uploaded || !uploaded.url) {
+                        throw new Error('이미지 업로드 응답에 URL이 없습니다.');
+                    }
+                    
+                    if (cropImageContext === 'edit') {
+                        const currentImages = editFormData.images || [];
+                        if (cropImageIndex !== null) {
+                            // 특정 인덱스 교체
+                            const newImages = [...currentImages];
+                            newImages[cropImageIndex] = uploaded.url;
+                            setEditFormData({ ...editFormData, images: newImages });
+                        } else {
+                            // 새 이미지 추가
+                            setEditFormData({
+                                ...editFormData,
+                                images: [...currentImages, uploaded.url]
+                            });
+                        }
+                    } else if (cropImageContext === 'add') {
+                        setAddFormData({
+                            ...addFormData,
+                            images: [...addFormData.images, uploaded.url]
+                        });
+                    }
+                    
+                    setShowCropModal(false);
+                    setCropImageFile(null);
+                    setCropImageContext(null);
+                    setCropImageIndex(null);
                 } catch (error) {
                     console.error('이미지 업로드 오류:', error);
-                    alert('이미지 업로드에 실패했습니다.');
+                    alert(`이미지 업로드에 실패했습니다.\n${error.message || '알 수 없는 오류'}`);
                 } finally {
                     setUploadingImages(false);
                 }
+            };
+            
+            // 이미지 업로드 핸들러 (추가용) - 크롭 모달로 변경
+            const handleImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                if (addFormData.images.length >= 10) {
+                    alert('이미지는 최대 10장까지 업로드할 수 있습니다.');
+                    e.target.value = '';
+                    return;
+                }
+                
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('이미지 크기는 10MB 이하여야 합니다.');
+                    e.target.value = '';
+                    return;
+                }
+                
+                setCropImageFile(file);
+                setCropImageContext('add');
+                setCropImageIndex(null);
+                setShowCropModal(true);
+                e.target.value = '';
             };
 
             // 이미지 삭제 핸들러 (추가용)
@@ -2563,53 +3147,44 @@
                 setAddFormData({ ...addFormData, images: newImages });
             };
             
-            // 수정용 이미지 업로드 핸들러
-            const handleEditImageUpload = async (e, index = null) => {
-                const files = Array.from(e.target.files || []);
+            // 수정용 이미지 업로드 핸들러 - 크롭 모달로 변경
+            const handleEditImageUpload = (e, index = null) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
                 const currentImages = editFormData.images || [];
                 
                 if (index !== null) {
                     // 특정 인덱스 교체
-                    if (files.length === 0) return;
-                    setUploadingImages(true);
-                    try {
-                        const file = files[0];
-                        const resized = await resizeImage(file, 1920, 1920);
-                        const uploaded = await uploadImageToImgBB(resized, file.name);
-                        const newImages = [...currentImages];
-                        newImages[index] = uploaded.url;
-                        setEditFormData({ ...editFormData, images: newImages });
-                    } catch (error) {
-                        console.error('이미지 업로드 오류:', error);
-                        alert('이미지 업로드에 실패했습니다.');
-                    } finally {
-                        setUploadingImages(false);
-                    }
-                } else {
-                    // 새 이미지 추가
-                    if (currentImages.length + files.length > 10) {
-                        alert('이미지는 최대 10장까지 업로드할 수 있습니다.');
+                    if (file.size > 10 * 1024 * 1024) {
+                        alert('이미지 크기는 10MB 이하여야 합니다.');
+                        e.target.value = '';
                         return;
                     }
-                    setUploadingImages(true);
-                    try {
-                        const uploadPromises = files.map(async (file) => {
-                            const resized = await resizeImage(file, 1920, 1920);
-                            const uploaded = await uploadImageToImgBB(resized, file.name);
-                            return uploaded.url;
-                        });
-                        
-                        const uploadedUrls = await Promise.all(uploadPromises);
-                        setEditFormData({
-                            ...editFormData,
-                            images: [...currentImages, ...uploadedUrls]
-                        });
-                    } catch (error) {
-                        console.error('이미지 업로드 오류:', error);
-                        alert('이미지 업로드에 실패했습니다.');
-                    } finally {
-                        setUploadingImages(false);
+                    setCropImageFile(file);
+                    setCropImageContext('edit');
+                    setCropImageIndex(index);
+                    setShowCropModal(true);
+                    e.target.value = '';
+                } else {
+                    // 새 이미지 추가
+                    if (currentImages.length >= 10) {
+                        alert('이미지는 최대 10장까지 업로드할 수 있습니다.');
+                        e.target.value = '';
+                        return;
                     }
+                    
+                    if (file.size > 10 * 1024 * 1024) {
+                        alert('이미지 크기는 10MB 이하여야 합니다.');
+                        e.target.value = '';
+                        return;
+                    }
+                    
+                    setCropImageFile(file);
+                    setCropImageContext('edit');
+                    setCropImageIndex(null);
+                    setShowCropModal(true);
+                    e.target.value = '';
                 }
             };
 
@@ -2851,7 +3426,12 @@
                                     
                                     {/* 이미지 */}
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">이미지 (최대 10장)</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            이미지 (최대 10장)
+                                            <span className="text-xs text-gray-500 font-normal ml-2">
+                                                추천 해상도: 1200x800px (3:2)
+                                            </span>
+                                        </label>
                                         <div className="space-y-3">
                                             {/* 기존 이미지 표시 */}
                                             {(editFormData.images || []).length > 0 && (
@@ -3198,14 +3778,18 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">이미지 (최대 10장)</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            이미지 (최대 10장)
+                                            <span className="text-xs text-gray-500 font-normal ml-2">
+                                                추천 해상도: 1200x800px (3:2)
+                                            </span>
+                                        </label>
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2">
                                                 <label className="flex-1 p-3 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-brand transition-colors text-center">
                                                     <input
                                                         type="file"
                                                         accept="image/*"
-                                                        multiple
                                                         onChange={handleImageUpload}
                                                         disabled={uploadingImages || addFormData.images.length >= 10}
                                                         className="hidden"
@@ -3258,6 +3842,21 @@
                             </div>
                         </div>
                     )}
+                    
+                    {/* 크롭 모달 (맛집 관리용) */}
+                    {showCropModal && cropImageFile && React.createElement(ImageCropModal, {
+                        imageFile: cropImageFile,
+                        onCropComplete: handleCropCompleteRestaurant,
+                        onCancel: () => {
+                            setShowCropModal(false);
+                            setCropImageFile(null);
+                            setCropImageContext(null);
+                            setCropImageIndex(null);
+                        },
+                        recommendedWidth: 1200,
+                        recommendedHeight: 800,
+                        aspectRatio: 3/2
+                    })}
                                 </div>
             );
         };
@@ -3591,16 +4190,57 @@
             const [showAddModal, setShowAddModal] = useState(false);
             const [showMapModal, setShowMapModal] = useState(false);
             const [editFormData, setEditFormData] = useState({});
+            const [uploadingImage, setUploadingImage] = useState(false);
+            const [showCropModal, setShowCropModal] = useState(false);
+            const [cropImageFile, setCropImageFile] = useState(null);
+            const [cropImageType, setCropImageType] = useState(null); // 'edit' or 'add'
             
             const handleEdit = (seminar) => {
                 setSelectedSeminar(seminar);
+                // images 배열과 img 필드 모두 처리 (App.jsx와 동일한 정규화 로직)
+                let imagesArray = [];
+                
+                if (Array.isArray(seminar.images)) {
+                    // 배열인 경우: 빈 문자열, null, undefined 필터링
+                    imagesArray = seminar.images.filter(img => 
+                        img !== null && 
+                        img !== undefined && 
+                        typeof img === 'string' && 
+                        img.trim() !== ''
+                    );
+                } else if (typeof seminar.images === 'string' && seminar.images.trim() !== '') {
+                    // 문자열인 경우 배열로 변환
+                    try {
+                        const parsed = JSON.parse(seminar.images);
+                        if (Array.isArray(parsed)) {
+                            imagesArray = parsed.filter(img => 
+                                img !== null && 
+                                img !== undefined && 
+                                typeof img === 'string' && 
+                                img.trim() !== ''
+                            );
+                        } else {
+                            imagesArray = [seminar.images];
+                        }
+                    } catch (e) {
+                        // JSON 파싱 실패 시 단일 문자열로 처리
+                        imagesArray = [seminar.images];
+                    }
+                }
+                
+                // images 배열이 비어있고 img 필드가 있으면 img 필드 사용
+                if (imagesArray.length === 0 && seminar.img && typeof seminar.img === 'string' && seminar.img.trim() !== '') {
+                    imagesArray = [seminar.img];
+                }
+                
                 setEditFormData({
                     title: seminar.title || '',
                     desc: seminar.desc || seminar.description || '',
                     description: seminar.description || seminar.desc || '',
                     date: seminar.date || '',
                     location: seminar.location || '',
-                    img: seminar.img || '',
+                    images: imagesArray,
+                    img: seminar.img || (imagesArray.length > 0 ? imagesArray[0] : ''),
                     category: seminar.category || '',
                     status: seminar.status || '모집중',
                     price: seminar.price || 0,
@@ -3620,6 +4260,7 @@
                     description: '',
                     date: '',
                     location: '',
+                    images: [],
                     img: '',
                     category: '',
                     status: '모집중',
@@ -3647,23 +4288,89 @@
                 }
                 
                 try {
+                    // images 배열 처리 및 정규화
+                    const imagesArray = editFormData.images && Array.isArray(editFormData.images)
+                        ? editFormData.images.filter(img => img && img && typeof img === 'string' && img.trim() !== '')
+                        : (editFormData.img && typeof editFormData.img === 'string' && editFormData.img.trim() !== '' ? [editFormData.img] : []);
+                    
+                    console.log('📝 프로그램 수정 - 저장 전 데이터 검증:', {
+                        editFormData,
+                        imagesArray,
+                        imagesCount: imagesArray.length,
+                        firstImage: imagesArray[0] || null
+                    });
+                    
                     // desc와 description 통합 (desc 우선)
                     const saveData = {
                         ...editFormData,
+                        images: imagesArray,
+                        img: imagesArray.length > 0 ? imagesArray[0] : (editFormData.img || ''),
                         desc: editFormData.desc || editFormData.description || '',
                         description: editFormData.desc || editFormData.description || ''
                     };
                     
+                    // 저장 전 최종 데이터 검증
+                    console.log('💾 Firebase에 저장할 데이터:', {
+                        id: selectedSeminar.id,
+                        title: saveData.title,
+                        images: saveData.images,
+                        imagesLength: saveData.images.length,
+                        img: saveData.img,
+                        desc: saveData.desc,
+                        description: saveData.description
+                    });
+                    
                     await window.firebaseService.updateSeminar(selectedSeminar.id, saveData);
+                    console.log('✅ 프로그램 수정 성공:', selectedSeminar.id);
+                    
                     const updatedSeminars = seminars.map(s => 
                         s.id === selectedSeminar.id ? {...s, ...saveData} : s
                     );
                     setSeminars(updatedSeminars);
                     setShowEditModal(false);
                     alert('수정되었습니다.');
-                                                            } catch (error) {
+                } catch (error) {
+                    console.error('❌ 프로그램 수정 오류:', error);
+                    console.error('에러 상세:', {
+                        code: error.code,
+                        message: error.message,
+                        stack: error.stack,
+                        seminarId: selectedSeminar.id,
+                        editFormData: editFormData
+                    });
                     const errorMessage = translateFirebaseError ? translateFirebaseError(error) : '수정 중 오류가 발생했습니다.';
-                    alert(`수정에 실패했습니다.\n${errorMessage}`);
+                    alert(`수정에 실패했습니다.\n${errorMessage}\n\n콘솔을 확인해주세요.`);
+                }
+            };
+            
+            // 크롭 완료 핸들러
+            const handleCropComplete = async (croppedImageBase64) => {
+                if (!cropImageFile) return;
+                
+                try {
+                    setUploadingImage(true);
+                    const uploaded = await uploadImageToImgBB(croppedImageBase64, cropImageFile.name);
+                    
+                    if (!uploaded || !uploaded.url) {
+                        throw new Error('이미지 업로드 응답에 URL이 없습니다.');
+                    }
+                    
+                    const currentImages = editFormData.images || [];
+                    const newImages = [...currentImages, uploaded.url];
+                    setEditFormData({
+                        ...editFormData,
+                        images: newImages,
+                        img: newImages.length > 0 ? newImages[0] : ''
+                    });
+                    
+                    setShowCropModal(false);
+                    setCropImageFile(null);
+                    setCropImageType(null);
+                } catch (error) {
+                    console.error('이미지 업로드 오류:', error);
+                    alert(`이미지 업로드에 실패했습니다.\n${error.message || '알 수 없는 오류'}`);
+                } finally {
+                    setUploadingImage(false);
                 }
             };
             
@@ -3680,21 +4387,54 @@
                 }
                 
                 try {
+                    // images 배열 처리 및 정규화
+                    const imagesArray = editFormData.images && Array.isArray(editFormData.images)
+                        ? editFormData.images.filter(img => img && img && typeof img === 'string' && img.trim() !== '')
+                        : (editFormData.img && typeof editFormData.img === 'string' && editFormData.img.trim() !== '' ? [editFormData.img] : []);
+                    
+                    console.log('📝 프로그램 추가 - 저장 전 데이터 검증:', {
+                        editFormData,
+                        imagesArray,
+                        imagesCount: imagesArray.length,
+                        firstImage: imagesArray[0] || null
+                    });
+                    
                     // desc와 description 통합 (desc 우선)
                     const saveData = {
                         ...editFormData,
+                        images: imagesArray,
+                        img: imagesArray.length > 0 ? imagesArray[0] : (editFormData.img || ''),
                         desc: editFormData.desc || editFormData.description || '',
                         description: editFormData.desc || editFormData.description || ''
                     };
                     
-                    await window.firebaseService.createSeminar(saveData);
+                    // 저장 전 최종 데이터 검증
+                    console.log('💾 Firebase에 저장할 데이터:', {
+                        title: saveData.title,
+                        images: saveData.images,
+                        imagesLength: saveData.images.length,
+                        img: saveData.img,
+                        desc: saveData.desc,
+                        description: saveData.description
+                    });
+                    
+                    const newId = await window.firebaseService.createSeminar(saveData);
+                    console.log('✅ 프로그램 추가 성공:', newId);
+                    
                     const newSeminars = await window.firebaseService.getSeminars();
                     setSeminars(newSeminars);
                     setShowAddModal(false);
                     alert('추가되었습니다.');
-                                                            } catch (error) {
+                } catch (error) {
+                    console.error('❌ 프로그램 추가 오류:', error);
+                    console.error('에러 상세:', {
+                        code: error.code,
+                        message: error.message,
+                        stack: error.stack,
+                        editFormData: editFormData
+                    });
                     const errorMessage = translateFirebaseError ? translateFirebaseError(error) : '추가 중 오류가 발생했습니다.';
-                    alert(`추가에 실패했습니다.\n${errorMessage}`);
+                    alert(`추가에 실패했습니다.\n${errorMessage}\n\n콘솔을 확인해주세요.`);
                 }
             };
             
@@ -3794,63 +4534,155 @@
                             />
                             </div>
                                 <div>
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">이미지</label>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">이미지 (최대 5장)</label>
                                                 <div className="space-y-3">
-                                                    {editFormData.img && (
-                                                        <div className="relative group">
-                                                            <div className="w-full h-48 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
-                                                                <img src={editFormData.img} alt="프로그램 이미지" className="w-full h-full object-cover" />
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setEditFormData({...editFormData, img: ''})}
-                                                                className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                                                            >
-                                                                <Icons.X size={16} />
-                                                            </button>
+                                                    {/* 이미지 갤러리 */}
+                                                    {(editFormData.images && editFormData.images.length > 0) ? (
+                                                        <div className="grid grid-cols-1 gap-3">
+                                                            {(editFormData.images || []).map((imgUrl, idx) => (
+                                                                <div key={idx} className="relative group">
+                                                                    <div className="w-full h-32 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
+                                                                        <img src={imgUrl} alt={`프로그램 이미지 ${idx + 1}`} className="w-full h-full object-cover" />
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const newImages = (editFormData.images || []).filter((_, i) => i !== idx);
+                                                                            setEditFormData({...editFormData, images: newImages, img: newImages.length > 0 ? newImages[0] : ''});
+                                                                        }}
+                                                                        className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                                                    >
+                                                                        <Icons.X size={16} />
+                                                                    </button>
+                                                                    <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                                                                        {idx + 1}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                    )}
-                                                    <div className="flex gap-3">
-                                                        <label
-                                                            htmlFor="edit-seminar-image-upload"
-                                                            className="flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-brand hover:bg-brand/5 transition-colors"
-                                                        >
-                                                            <Icons.Camera size={32} className="text-gray-400 mb-2" />
-                                                            <span className="text-sm font-bold text-gray-600">이미지 업로드</span>
-                                                            <span className="text-xs text-gray-500 mt-1">클릭하거나 드래그하여 업로드</span>
-                                                        </label>
-                                                        <input
-                                                            type="file"
-                                                            accept="image/*"
-                                                            onChange={async (e) => {
-                                                                const file = e.target.files[0];
-                                                                if (file) {
-                                                                    if (file.size > 10 * 1024 * 1024) {
-                                                                        alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                    ) : null}
+                                                    
+                                                    {/* 이미지 업로드 버튼 (최대 5장) */}
+                                                    {(!editFormData.images || editFormData.images.length < 5) ? (
+                                                        <>
+                                                            <label
+                                                                htmlFor="edit-seminar-image-upload"
+                                                                className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-brand hover:bg-brand/5 transition-colors"
+                                                            >
+                                                                <Icons.Camera size={32} className="text-gray-400 mb-2" />
+                                                                <span className="text-sm font-bold text-gray-600">이미지 업로드</span>
+                                                                <span className="text-xs text-gray-500 mt-1">
+                                                                    클릭하여 이미지 선택 ({editFormData.images?.length || 0}/5)
+                                                                </span>
+                                                            </label>
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                id="edit-seminar-image-upload"
+                                                                className="hidden"
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files[0];
+                                                                    if (!file) return;
+                                                                    
+                                                                    const currentImages = editFormData.images || [];
+                                                                    if (currentImages.length >= 5) {
+                                                                        alert('이미지는 최대 5장까지 업로드할 수 있습니다.');
+                                                                        e.target.value = '';
                                                                         return;
                                                                     }
-                                                                    try {
-                                                                        const resized = await resizeImage(file, 1200, 1200);
-                                                                        const uploaded = await uploadImageToImgBB(resized, file.name);
-                                                                        setEditFormData({...editFormData, img: uploaded.url});
-                                                                    } catch (error) {
-                                                                        alert('이미지 업로드에 실패했습니다.');
+                                                                    
+                                                                    if (file.size > 10 * 1024 * 1024) {
+                                                                        alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                                        e.target.value = '';
+                                                                        return;
                                                                     }
-                                                                }
-                                                            }}
-                                                            className="hidden"
-                                                            id="edit-seminar-image-upload"
-                                                        />
-                                                    </div>
+                                                                    
+                                                                    // 크롭 모달 표시
+                                                                    setCropImageFile(file);
+                                                                    setCropImageType('edit');
+                                                                    setShowCropModal(true);
+                                                                    e.target.value = '';
+                                                                }}
+                                                            />
+                                                        </>
+                                                    ) : (
+                                                        <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
+                                                            <Icons.CheckCircle size={32} className="text-green-500 mb-2" />
+                                                            <span className="text-sm font-bold text-gray-600">이미지 업로드 완료</span>
+                                                            <span className="text-xs text-gray-500 mt-1">
+                                                                최대 5장까지 업로드 가능합니다 (5/5)
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 이미지 URL 직접 입력 */}
                                                     <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">또는 이미지 URL 직접 입력</label>
-                                                        <input 
-                                                            type="text"
-                                                            value={editFormData.img || ''}
-                                                            onChange={(e) => setEditFormData({...editFormData, img: e.target.value})}
-                                                            className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm"
-                                                            placeholder="https://..."
-                                                        />
+                                                        <label className="block text-xs text-gray-500 mb-1">
+                                                            또는 이미지 URL 직접 입력 <span className="text-brand font-bold">({editFormData.images?.length || 0}/5)</span>
+                                                        </label>
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="text"
+                                                                id="edit-image-url-input"
+                                                                className="flex-1 p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                                                placeholder={(editFormData.images?.length || 0) >= 5 ? "최대 5장까지 업로드 가능합니다" : "https://..."}
+                                                                disabled={(editFormData.images?.length || 0) >= 5}
+                                                                onKeyPress={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        e.preventDefault();
+                                                                        const currentImages = editFormData.images || [];
+                                                                        if (currentImages.length >= 5) {
+                                                                            alert('이미지는 최대 5장까지 업로드할 수 있습니다.');
+                                                                            return;
+                                                                        }
+                                                                        const url = e.target.value.trim();
+                                                                        if (url) {
+                                                                            if (currentImages.includes(url)) {
+                                                                                alert('이미 추가된 이미지입니다.');
+                                                                                e.target.value = '';
+                                                                                return;
+                                                                            }
+                                                                            const newImages = [...currentImages, url];
+                                                                            setEditFormData({
+                                                                                ...editFormData,
+                                                                                images: newImages,
+                                                                                img: newImages.length > 0 ? newImages[0] : ''
+                                                                            });
+                                                                            e.target.value = '';
+                                                                        }
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const input = document.getElementById('edit-image-url-input');
+                                                                    const url = input?.value.trim();
+                                                                    if (url) {
+                                                                        const currentImages = editFormData.images || [];
+                                                                        if (currentImages.length >= 5) {
+                                                                            alert('이미지는 최대 5장까지 업로드할 수 있습니다.');
+                                                                            return;
+                                                                        }
+                                                                        if (currentImages.includes(url)) {
+                                                                            alert('이미 추가된 이미지입니다.');
+                                                                            return;
+                                                                        }
+                                                                        const newImages = [...currentImages, url];
+                                                                        setEditFormData({
+                                                                            ...editFormData,
+                                                                            images: newImages,
+                                                                            img: newImages.length > 0 ? newImages[0] : ''
+                                                                        });
+                                                                        if (input) input.value = '';
+                                                                    }
+                                                                }}
+                                                                disabled={(editFormData.images?.length || 0) >= 5}
+                                                                className="px-4 py-2 bg-brand text-white rounded-lg font-bold hover:bg-blue-700 transition-colors whitespace-nowrap disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300"
+                                                            >
+                                                                추가
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -4041,6 +4873,20 @@
                         </div>
                     )}
                     
+                    {/* 크롭 모달 */}
+                    {showCropModal && cropImageFile && React.createElement(ImageCropModal, {
+                        imageFile: cropImageFile,
+                        onCropComplete: handleCropComplete,
+                        onCancel: () => {
+                            setShowCropModal(false);
+                            setCropImageFile(null);
+                            setCropImageType(null);
+                        },
+                        recommendedWidth: 1200,
+                        recommendedHeight: 800,
+                        aspectRatio: 16/9
+                    })}
+                    
                     {/* 추가 모달 */}
                     {showAddModal && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowAddModal(false)}>
@@ -4080,63 +4926,160 @@
                                         />
                                     </div>
                                     <div>
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">이미지</label>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">
+                                                    이미지 (최대 5장)
+                                                    <span className="text-xs text-gray-500 font-normal ml-2">
+                                                        추천 해상도: 1200x800px (16:9)
+                                                    </span>
+                                                </label>
                                                 <div className="space-y-3">
-                                                    {editFormData.img && (
-                                                        <div className="relative group">
-                                                            <div className="w-full h-48 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
-                                                                <img src={editFormData.img} alt="프로그램 이미지" className="w-full h-full object-cover" />
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setEditFormData({...editFormData, img: ''})}
-                                                                className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                                                            >
-                                                                <Icons.X size={16} />
-                                                            </button>
+                                                    {/* 이미지 갤러리 */}
+                                                    {(editFormData.images && editFormData.images.length > 0) ? (
+                                                        <div className="grid grid-cols-1 gap-3">
+                                                            {(editFormData.images || []).map((imgUrl, idx) => (
+                                                                <div key={idx} className="relative group">
+                                                                    <div className="w-full h-32 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
+                                                                        <img src={imgUrl} alt={`프로그램 이미지 ${idx + 1}`} className="w-full h-full object-cover" />
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const newImages = (editFormData.images || []).filter((_, i) => i !== idx);
+                                                                            setEditFormData({...editFormData, images: newImages, img: newImages.length > 0 ? newImages[0] : ''});
+                                                                        }}
+                                                                        className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                                                    >
+                                                                        <Icons.X size={16} />
+                                                                    </button>
+                                                                    <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                                                                        {idx + 1}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                    )}
-                                                    <div className="flex gap-3">
-                                                        <label
-                                                            htmlFor="add-seminar-image-upload"
-                                                            className="flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-brand hover:bg-brand/5 transition-colors"
-                                                        >
-                                                            <Icons.Camera size={32} className="text-gray-400 mb-2" />
-                                                            <span className="text-sm font-bold text-gray-600">이미지 업로드</span>
-                                                            <span className="text-xs text-gray-500 mt-1">클릭하거나 드래그하여 업로드</span>
-                                                        </label>
-                                                        <input
-                                                            type="file"
-                                                            accept="image/*"
-                                                            onChange={async (e) => {
-                                                                const file = e.target.files[0];
-                                                                if (file) {
-                                                                    if (file.size > 10 * 1024 * 1024) {
-                                                                        alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                    ) : null}
+                                                    
+                                                    {/* 이미지 업로드 버튼 (최대 5장) */}
+                                                    {(!editFormData.images || editFormData.images.length < 5) ? (
+                                                        <>
+                                                            <label
+                                                                htmlFor="add-seminar-image-upload"
+                                                                className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-brand hover:bg-brand/5 transition-colors"
+                                                            >
+                                                                <Icons.Camera size={32} className="text-gray-400 mb-2" />
+                                                                <span className="text-sm font-bold text-gray-600">이미지 업로드</span>
+                                                                <span className="text-xs text-gray-500 mt-1">
+                                                                    클릭하여 이미지 선택 ({editFormData.images?.length || 0}/5)
+                                                                </span>
+                                                            </label>
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                id="add-seminar-image-upload"
+                                                                className="hidden"
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files[0];
+                                                                    if (!file) return;
+                                                                    
+                                                                    const currentImages = editFormData.images || [];
+                                                                    if (currentImages.length >= 5) {
+                                                                        alert('이미지는 최대 5장까지 업로드할 수 있습니다.');
+                                                                        e.target.value = '';
                                                                         return;
                                                                     }
-                                                                    try {
-                                                                        const resized = await resizeImage(file, 1200, 1200);
-                                                                        const uploaded = await uploadImageToImgBB(resized, file.name);
-                                                                        setEditFormData({...editFormData, img: uploaded.url});
-                                                                    } catch (error) {
-                                                                        alert('이미지 업로드에 실패했습니다.');
+                                                                    
+                                                                    if (file.size > 10 * 1024 * 1024) {
+                                                                        alert('이미지 크기는 10MB 이하여야 합니다.');
+                                                                        e.target.value = '';
+                                                                        return;
                                                                     }
-                                                                }
-                                                            }}
-                                                            className="hidden"
-                                                            id="add-seminar-image-upload"
-                                                        />
-                                                    </div>
+                                                                    
+                                                                    // 크롭 모달 표시
+                                                                    setCropImageFile(file);
+                                                                    setCropImageType('add');
+                                                                    setShowCropModal(true);
+                                                                    e.target.value = '';
+                                                                }}
+                                                            />
+                                                        </>
+                                                    ) : (
+                                                        <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
+                                                            <Icons.CheckCircle size={32} className="text-green-500 mb-2" />
+                                                            <span className="text-sm font-bold text-gray-600">이미지 업로드 완료</span>
+                                                            <span className="text-xs text-gray-500 mt-1">
+                                                                최대 5장까지 업로드 가능합니다 (5/5)
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 이미지 URL 직접 입력 */}
                                                     <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">또는 이미지 URL 직접 입력</label>
-                                                        <input
-                                                            type="text"
-                                                            value={editFormData.img || ''}
-                                                            onChange={(e) => setEditFormData({...editFormData, img: e.target.value})}
-                                                            className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm"
-                                                            placeholder="https://..."
-                                                        />
+                                                        <label className="block text-xs text-gray-500 mb-1">
+                                                            또는 이미지 URL 직접 입력 <span className="text-brand font-bold">({editFormData.images?.length || 0}/5)</span>
+                                                        </label>
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="text"
+                                                                id="add-image-url-input"
+                                                                className="flex-1 p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                                                placeholder={(editFormData.images?.length || 0) >= 5 ? "최대 5장까지 업로드 가능합니다" : "https://..."}
+                                                                disabled={(editFormData.images?.length || 0) >= 5}
+                                                                onKeyPress={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        e.preventDefault();
+                                                                        const currentImages = editFormData.images || [];
+                                                                        if (currentImages.length >= 5) {
+                                                                            alert('이미지는 최대 5장까지 업로드할 수 있습니다.');
+                                                                            return;
+                                                                        }
+                                                                        const url = e.target.value.trim();
+                                                                        if (url) {
+                                                                            if (currentImages.includes(url)) {
+                                                                                alert('이미 추가된 이미지입니다.');
+                                                                                e.target.value = '';
+                                                                                return;
+                                                                            }
+                                                                            const newImages = [...currentImages, url];
+                                                                            setEditFormData({
+                                                                                ...editFormData,
+                                                                                images: newImages,
+                                                                                img: newImages.length > 0 ? newImages[0] : ''
+                                                                            });
+                                                                            e.target.value = '';
+                                                                        }
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const input = document.getElementById('add-image-url-input');
+                                                                    const url = input?.value.trim();
+                                                                    if (url) {
+                                                                        const currentImages = editFormData.images || [];
+                                                                        if (currentImages.length >= 5) {
+                                                                            alert('이미지는 최대 5장까지 업로드할 수 있습니다.');
+                                                                            return;
+                                                                        }
+                                                                        if (currentImages.includes(url)) {
+                                                                            alert('이미 추가된 이미지입니다.');
+                                                                            return;
+                                                                        }
+                                                                        const newImages = [...currentImages, url];
+                                                                        setEditFormData({
+                                                                            ...editFormData,
+                                                                            images: newImages,
+                                                                            img: newImages.length > 0 ? newImages[0] : ''
+                                                                        });
+                                                                        if (input) input.value = '';
+                                                                    }
+                                                                }}
+                                                                disabled={(editFormData.images?.length || 0) >= 5}
+                                                                className="px-4 py-2 bg-brand text-white rounded-lg font-bold hover:bg-blue-700 transition-colors whitespace-nowrap disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300"
+                                                            >
+                                                                추가
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -4314,18 +5257,32 @@
                                             className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
                         >
                                             취소
-                                </button>
-                                        <button
+                                    </button>
+                                    <button
                                             onClick={handleSaveAdd}
                                             className="flex-1 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
                                         >
                                             추가
                                         </button>
                             </div>
-                        </div>
-                                </div>
                             </div>
+                                </div>
+                        </div>
                     )}
+                    
+                    {/* 크롭 모달 (추가 모달용) */}
+                    {showCropModal && cropImageFile && cropImageType === 'add' && React.createElement(ImageCropModal, {
+                        imageFile: cropImageFile,
+                        onCropComplete: handleCropComplete,
+                        onCancel: () => {
+                            setShowCropModal(false);
+                            setCropImageFile(null);
+                            setCropImageType(null);
+                        },
+                        recommendedWidth: 1200,
+                        recommendedHeight: 800,
+                        aspectRatio: 16/9
+                    })}
                     
                     {/* 지도 선택 모달 */}
                     {showMapModal && (

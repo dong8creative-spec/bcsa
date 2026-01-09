@@ -103,9 +103,20 @@ export const firebaseService = {
   async getSeminars() {
     try {
       const snapshot = await getDocs(collection(db, 'seminars'));
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const seminars = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log('📖 Firebase getSeminars 성공:', {
+        count: seminars.length,
+        sample: seminars.length > 0 ? {
+          id: seminars[0].id,
+          title: seminars[0].title,
+          images: seminars[0].images,
+          imagesType: Array.isArray(seminars[0].images) ? 'array' : typeof seminars[0].images,
+          img: seminars[0].img
+        } : null
+      });
+      return seminars;
     } catch (error) {
-      console.error('Error getting seminars:', error);
+      console.error('❌ Error getting seminars:', error);
       throw error;
     }
   },
@@ -126,27 +137,93 @@ export const firebaseService = {
 
   async createSeminar(seminarData) {
     try {
-      const docRef = await addDoc(collection(db, 'seminars'), {
+      console.log('🔥 Firebase createSeminar 호출 (인덱스):', {
+        seminarData: {
+          ...seminarData,
+          images: seminarData.images,
+          imagesLength: Array.isArray(seminarData.images) ? seminarData.images.length : 'not array',
+          img: seminarData.img
+        }
+      });
+      
+      // Firestore에 저장할 데이터 준비
+      const dataToSave = {
         ...seminarData,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
+      };
+      
+      // 배열 필드 검증
+      if (dataToSave.images && !Array.isArray(dataToSave.images)) {
+        console.warn('⚠️ images가 배열이 아닙니다. 배열로 변환합니다:', dataToSave.images);
+        dataToSave.images = Array.isArray(dataToSave.images) ? dataToSave.images : [dataToSave.images].filter(Boolean);
+      }
+      
+      console.log('💾 Firestore에 저장할 최종 데이터 (인덱스):', {
+        ...dataToSave,
+        images: dataToSave.images,
+        imagesType: Array.isArray(dataToSave.images) ? 'array' : typeof dataToSave.images
       });
+      
+      const docRef = await addDoc(collection(db, 'seminars'), dataToSave);
+      
+      console.log('✅ Firebase createSeminar 성공 (인덱스):', docRef.id);
       return docRef.id;
     } catch (error) {
-      console.error('Error creating seminar:', error);
+      console.error('❌ Error creating seminar (인덱스):', error);
+      console.error('에러 상세:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack,
+        seminarData
+      });
       throw error;
     }
   },
 
   async updateSeminar(seminarId, seminarData) {
     try {
-      const docRef = doc(db, 'seminars', seminarId);
-      await updateDoc(docRef, {
+      console.log('🔥 Firebase updateSeminar 호출 (인덱스):', {
+        seminarId,
+        seminarData: {
+          ...seminarData,
+          images: seminarData.images,
+          imagesLength: Array.isArray(seminarData.images) ? seminarData.images.length : 'not array',
+          img: seminarData.img
+        }
+      });
+      
+      // Firestore에 저장할 데이터 준비
+      const dataToSave = {
         ...seminarData,
         updatedAt: serverTimestamp()
+      };
+      
+      // 배열 필드 검증
+      if (dataToSave.images && !Array.isArray(dataToSave.images)) {
+        console.warn('⚠️ images가 배열이 아닙니다. 배열로 변환합니다:', dataToSave.images);
+        dataToSave.images = Array.isArray(dataToSave.images) ? dataToSave.images : [dataToSave.images].filter(Boolean);
+      }
+      
+      console.log('💾 Firestore에 저장할 최종 데이터 (인덱스):', {
+        ...dataToSave,
+        images: dataToSave.images,
+        imagesType: Array.isArray(dataToSave.images) ? 'array' : typeof dataToSave.images
       });
+      
+      const docRef = doc(db, 'seminars', seminarId);
+      await updateDoc(docRef, dataToSave);
+      
+      console.log('✅ Firebase updateSeminar 성공 (인덱스):', seminarId);
     } catch (error) {
-      console.error('Error updating seminar:', error);
+      console.error('❌ Error updating seminar (인덱스):', error);
+      console.error('에러 상세:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack,
+        seminarId,
+        seminarData
+      });
       throw error;
     }
   },
