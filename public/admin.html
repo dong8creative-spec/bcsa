@@ -2087,21 +2087,25 @@
             // 크롭 완료 핸들러 (설정 페이지용)
             const handleCropCompleteSettings = async (croppedImageBase64) => {
                 if (!cropImageFile || !cropImageField) return;
-                
+
                 try {
+                    console.log('🖼️ 설정 이미지 크롭 완료:', { cropImageField });
                     const uploaded = await uploadImageToImgBB(croppedImageBase64, cropImageFile.name);
-                    
+
                     if (!uploaded || !uploaded.url) {
                         throw new Error('이미지 업로드 응답에 URL이 없습니다.');
                     }
-                    
+
+                    console.log('✅ 이미지 업로드 성공:', uploaded.url);
+                    console.log('📝 설정 필드 업데이트:', cropImageField, uploaded.url);
+
                     handleChange(cropImageField, uploaded.url);
-                    
+
                     setShowCropModal(false);
                     setCropImageFile(null);
                     setCropImageField(null);
                 } catch (error) {
-                    console.error('이미지 업로드 오류:', error);
+                    console.error('❌ 이미지 업로드 오류:', error);
                     alert(`이미지 업로드에 실패했습니다.\n${error.message || '알 수 없는 오류'}`);
                 }
             };
@@ -2178,9 +2182,10 @@
                                             />
                                             <label
                                                 htmlFor="hero-image-upload"
-                                                className="inline-block px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
                                             >
-                                                이미지 업로드
+                                                {React.createElement(Icons.Camera, { size: 18 })}
+                                                <span>{formData.hero_image ? '이미지 교체' : '이미지 업로드'}</span>
                                             </label>
                                         </div>
                                     </div>
@@ -2302,9 +2307,10 @@
                                                     />
                                                     <label
                                                         htmlFor="features-image-1-upload"
-                                                        className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
+                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
                                                     >
-                                                        업로드
+                                                        {React.createElement(Icons.Camera, { size: 18 })}
+                                                        <span>{formData.features_image_1 ? '이미지 교체' : '이미지 업로드'}</span>
                                                     </label>
                                                 </div>
                                             </div>
@@ -2353,9 +2359,10 @@
                                                     />
                                                     <label
                                                         htmlFor="features-image-2-upload"
-                                                        className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
+                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
                                                     >
-                                                        업로드
+                                                        {React.createElement(Icons.Camera, { size: 18 })}
+                                                        <span>{formData.features_image_2 ? '이미지 교체' : '이미지 업로드'}</span>
                                                     </label>
                                                 </div>
                                             </div>
@@ -2447,9 +2454,10 @@
                                             />
                                             <label
                                                 htmlFor="activity-seminar-upload"
-                                                className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
                                             >
-                                                업로드
+                                                {React.createElement(Icons.Camera, { size: 18 })}
+                                                <span>{formData.activity_seminar_image ? '이미지 교체' : '이미지 업로드'}</span>
                                             </label>
                                         </div>
                                     </div>
@@ -2533,9 +2541,10 @@
                                             />
                                             <label
                                                 htmlFor="activity-investment-upload"
-                                                className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
                                             >
-                                                업로드
+                                                {React.createElement(Icons.Camera, { size: 18 })}
+                                                <span>{formData.activity_investment_image ? '이미지 교체' : '이미지 업로드'}</span>
                                             </label>
                                         </div>
                                     </div>
@@ -2619,9 +2628,10 @@
                                             />
                                             <label
                                                 htmlFor="activity-networking-upload"
-                                                className="inline-block px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors cursor-pointer text-xs"
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
                                             >
-                                                업로드
+                                                {React.createElement(Icons.Camera, { size: 18 })}
+                                                <span>{formData.activity_networking_image ? '이미지 교체' : '이미지 업로드'}</span>
                                             </label>
                                         </div>
                                     </div>
@@ -2707,9 +2717,10 @@
                                             />
                                             <label
                                                 htmlFor="donation-image-upload"
-                                                className="inline-block px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
                                             >
-                                                이미지 업로드
+                                                {React.createElement(Icons.Camera, { size: 18 })}
+                                                <span>{formData.donation_image ? '이미지 교체' : '이미지 업로드'}</span>
                                             </label>
                                         </div>
                                     </div>
@@ -2805,9 +2816,10 @@
                                             />
                                             <label
                                                 htmlFor="cta-image-upload"
-                                                className="inline-block px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer text-sm"
                                             >
-                                                이미지 업로드
+                                                {React.createElement(Icons.Camera, { size: 18 })}
+                                                <span>{formData.cta_image ? '이미지 교체' : '이미지 업로드'}</span>
                                             </label>
                                         </div>
                                     </div>
@@ -3030,11 +3042,21 @@
                 
                 // images 필터링 (빈 항목 제거)
                 if (updateData.images) {
-                    updateData.images = updateData.images.filter(img => img && img.trim());
+                    updateData.images = updateData.images.filter(img => img && typeof img === 'string' && img.trim() !== '');
                 }
+                
+                console.log('💾 맛집 수정 - 저장할 데이터:', {
+                    id: selectedRestaurant.id,
+                    title: updateData.title,
+                    images: updateData.images,
+                    imagesLength: updateData.images?.length || 0,
+                    imagesType: Array.isArray(updateData.images) ? 'array' : typeof updateData.images
+                });
                 
                 try {
                     await window.firebaseService.updateRestaurant(selectedRestaurant.id, updateData);
+                    console.log('✅ 맛집 수정 성공:', selectedRestaurant.id);
+                    
                     const updatedRestaurants = restaurants.map(r => 
                         r.id === selectedRestaurant.id ? {...r, ...updateData} : r
                     );
@@ -3042,9 +3064,16 @@
                     setShowEditModal(false);
                     alert('수정되었습니다.');
                 } catch (error) {
-                    console.error('맛집 수정 오류:', error);
+                    console.error('❌ 맛집 수정 오류:', error);
+                    console.error('에러 상세:', {
+                        code: error.code,
+                        message: error.message,
+                        stack: error.stack,
+                        restaurantId: selectedRestaurant.id,
+                        updateData: updateData
+                    });
                     const errorMessage = translateFirebaseError ? translateFirebaseError(error) : '수정 중 오류가 발생했습니다.';
-                    alert(`수정에 실패했습니다.\n${errorMessage}`);
+                    alert(`수정에 실패했습니다.\n${errorMessage}\n\n콘솔을 확인해주세요.`);
                 }
             };
             
@@ -3138,31 +3167,45 @@
                 
                 try {
                     setUploadingImages(true);
+                    console.log('🖼️ 맛집 이미지 크롭 완료:', { cropImageContext, cropImageIndex });
                     const uploaded = await uploadImageToImgBB(croppedImageBase64, cropImageFile.name);
                     
                     if (!uploaded || !uploaded.url) {
                         throw new Error('이미지 업로드 응답에 URL이 없습니다.');
                     }
                     
+                    console.log('✅ 이미지 업로드 성공:', uploaded.url);
+                    
                     if (cropImageContext === 'edit') {
-                        const currentImages = editFormData.images || [];
-                        if (cropImageIndex !== null) {
-                            // 특정 인덱스 교체
-                            const newImages = [...currentImages];
-                            newImages[cropImageIndex] = uploaded.url;
-                            setEditFormData({ ...editFormData, images: newImages });
-                        } else {
-                            // 새 이미지 추가
-                            setEditFormData({
-                                ...editFormData,
-                                images: [...currentImages, uploaded.url]
-                            });
-                        }
-                    } else if (cropImageContext === 'add') {
-                        setAddFormData({
-                            ...addFormData,
-                            images: [...addFormData.images, uploaded.url]
+                        // 함수형 업데이트 사용
+                        setEditFormData(prevData => {
+                            const currentImages = prevData.images || [];
+                            let newImages;
+                            
+                            if (cropImageIndex !== null && cropImageIndex >= 0) {
+                                // 특정 인덱스 교체
+                                console.log(`🔄 이미지 교체: 인덱스 ${cropImageIndex}`);
+                                newImages = [...currentImages];
+                                newImages[cropImageIndex] = uploaded.url;
+                            } else {
+                                // 새 이미지 추가
+                                console.log('➕ 새 이미지 추가');
+                                newImages = [...currentImages, uploaded.url];
+                            }
+                            
+                            console.log('📝 업데이트된 이미지 배열:', newImages);
+                            
+                            return {
+                                ...prevData,
+                                images: newImages
+                            };
                         });
+                    } else if (cropImageContext === 'add') {
+                        // 함수형 업데이트 사용
+                        setAddFormData(prevData => ({
+                            ...prevData,
+                            images: [...(prevData.images || []), uploaded.url]
+                        }));
                     }
                     
                     setShowCropModal(false);
@@ -3170,7 +3213,7 @@
                     setCropImageContext(null);
                     setCropImageIndex(null);
                 } catch (error) {
-                    console.error('이미지 업로드 오류:', error);
+                    console.error('❌ 이미지 업로드 오류:', error);
                     alert(`이미지 업로드에 실패했습니다.\n${error.message || '알 수 없는 오류'}`);
                 } finally {
                     setUploadingImages(false);
@@ -4409,25 +4452,34 @@
                 
                 try {
                     setUploadingImage(true);
+                    console.log('🖼️ 프로그램 이미지 크롭 완료:', { cropImageType });
                     const uploaded = await uploadImageToImgBB(croppedImageBase64, cropImageFile.name);
                     
                     if (!uploaded || !uploaded.url) {
                         throw new Error('이미지 업로드 응답에 URL이 없습니다.');
                     }
                     
-                    const currentImages = editFormData.images || [];
-                    const newImages = [...currentImages, uploaded.url];
-                    setEditFormData({
-                        ...editFormData,
-                        images: newImages,
-                        img: newImages.length > 0 ? newImages[0] : ''
+                    console.log('✅ 이미지 업로드 성공:', uploaded.url);
+                    
+                    // 함수형 업데이트 사용
+                    setEditFormData(prevData => {
+                        const currentImages = prevData.images || [];
+                        const newImages = [...currentImages, uploaded.url];
+                        
+                        console.log('📝 업데이트된 이미지 배열:', newImages);
+                        
+                        return {
+                            ...prevData,
+                            images: newImages,
+                            img: newImages.length > 0 ? newImages[0] : ''
+                        };
                     });
                     
                     setShowCropModal(false);
                     setCropImageFile(null);
                     setCropImageType(null);
                 } catch (error) {
-                    console.error('이미지 업로드 오류:', error);
+                    console.error('❌ 이미지 업로드 오류:', error);
                     alert(`이미지 업로드에 실패했습니다.\n${error.message || '알 수 없는 오류'}`);
                 } finally {
                     setUploadingImage(false);
