@@ -2081,7 +2081,10 @@
             
             const handleChange = (field, value) => {
                 setSaving(true);
-                setFormData({...formData, [field]: value});
+                setFormData(prevData => {
+                    const newData = {...prevData, [field]: value};
+                    return newData;
+                });
             };
             
             // 크롭 완료 핸들러 (설정 페이지용)
@@ -2089,6 +2092,9 @@
                 if (!cropImageFile || !cropImageField) return;
 
                 try {
+                    // 로딩 상태 시작
+                    setSaving(true);
+                    
                     console.log('🖼️ 설정 이미지 크롭 완료:', { cropImageField });
                     const uploaded = await uploadImageToImgBB(croppedImageBase64, cropImageFile.name);
 
@@ -2099,7 +2105,11 @@
                     console.log('✅ 이미지 업로드 성공:', uploaded.url);
                     console.log('📝 설정 필드 업데이트:', cropImageField, uploaded.url);
 
-                    handleChange(cropImageField, uploaded.url);
+                    // 함수형 업데이트로 즉시 반영
+                    setFormData(prevData => {
+                        const newData = {...prevData, [cropImageField]: uploaded.url};
+                        return newData;
+                    });
 
                     setShowCropModal(false);
                     setCropImageFile(null);
@@ -2107,6 +2117,8 @@
                 } catch (error) {
                     console.error('❌ 이미지 업로드 오류:', error);
                     alert(`이미지 업로드에 실패했습니다.\n${error.message || '알 수 없는 오류'}`);
+                } finally {
+                    setSaving(false);
                 }
             };
             
