@@ -1724,37 +1724,37 @@
                     
                     switch (resizeHandle) {
                         case 'nw':
-                            newCrop.x = Math.max(0, startCropArea.x + deltaX);
-                            newCrop.y = Math.max(0, startCropArea.y + deltaY);
+                            newCrop.x = startCropArea.x + deltaX;
+                            newCrop.y = startCropArea.y + deltaY;
                             newCrop.width = Math.max(50, startCropArea.width - deltaX);
                             newCrop.height = Math.max(50, startCropArea.height - deltaY);
                             break;
                         case 'n':
-                            newCrop.y = Math.max(0, startCropArea.y + deltaY);
+                            newCrop.y = startCropArea.y + deltaY;
                             newCrop.height = Math.max(50, startCropArea.height - deltaY);
                             break;
                         case 'ne':
-                            newCrop.y = Math.max(0, startCropArea.y + deltaY);
-                            newCrop.width = Math.max(50, Math.min(startCropArea.width + deltaX, 600 - startCropArea.x));
+                            newCrop.y = startCropArea.y + deltaY;
+                            newCrop.width = Math.max(50, startCropArea.width + deltaX);
                             newCrop.height = Math.max(50, startCropArea.height - deltaY);
                             break;
                         case 'e':
-                            newCrop.width = Math.max(50, Math.min(startCropArea.width + deltaX, 600 - startCropArea.x));
+                            newCrop.width = Math.max(50, startCropArea.width + deltaX);
                             break;
                         case 'se':
-                            newCrop.width = Math.max(50, Math.min(startCropArea.width + deltaX, 600 - startCropArea.x));
-                            newCrop.height = Math.max(50, Math.min(startCropArea.height + deltaY, 400 - startCropArea.y));
+                            newCrop.width = Math.max(50, startCropArea.width + deltaX);
+                            newCrop.height = Math.max(50, startCropArea.height + deltaY);
                             break;
                         case 's':
-                            newCrop.height = Math.max(50, Math.min(startCropArea.height + deltaY, 400 - startCropArea.y));
+                            newCrop.height = Math.max(50, startCropArea.height + deltaY);
                             break;
                         case 'sw':
-                            newCrop.x = Math.max(0, startCropArea.x + deltaX);
+                            newCrop.x = startCropArea.x + deltaX;
                             newCrop.width = Math.max(50, startCropArea.width - deltaX);
-                            newCrop.height = Math.max(50, Math.min(startCropArea.height + deltaY, 400 - startCropArea.y));
+                            newCrop.height = Math.max(50, startCropArea.height + deltaY);
                             break;
                         case 'w':
-                            newCrop.x = Math.max(0, startCropArea.x + deltaX);
+                            newCrop.x = startCropArea.x + deltaX;
                             newCrop.width = Math.max(50, startCropArea.width - deltaX);
                             break;
                     }
@@ -1771,41 +1771,16 @@
                         }
                     }
                     
-                    // 경계 체크 및 조정
-                    if (newCrop.x + newCrop.width > 600) {
-                        newCrop.width = 600 - newCrop.x;
-                        if (selectedAspectRatio !== null && selectedAspectRatio > 0) {
-                            newCrop.height = newCrop.width / selectedAspectRatio;
-                        }
-                    }
-                    if (newCrop.y + newCrop.height > 400) {
-                        newCrop.height = 400 - newCrop.y;
-                        if (selectedAspectRatio !== null && selectedAspectRatio > 0) {
-                            newCrop.width = newCrop.height * selectedAspectRatio;
-                        }
-                    }
-                    if (newCrop.x < 0) {
-                        newCrop.width += newCrop.x;
-                        newCrop.x = 0;
-                    }
-                    if (newCrop.y < 0) {
-                        newCrop.height += newCrop.y;
-                        newCrop.y = 0;
-                    }
-                    
                     setCropArea(newCrop);
                 } else if (isDragging) {
-                    // 드래그 모드
+                    // 드래그 모드 - 영역 제한 없음
                     const x = currentX - dragStart.x;
                     const y = currentY - dragStart.y;
                     
-                    const maxX = 600 - cropArea.width;
-                    const maxY = 400 - cropArea.height;
-                    
                     setCropArea({
                         ...cropArea,
-                        x: Math.max(0, Math.min(x, maxX)),
-                        y: Math.max(0, Math.min(y, maxY))
+                        x: x,
+                        y: y
                     });
                 }
             };
