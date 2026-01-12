@@ -2960,6 +2960,19 @@
                         </div>
                                                                 </div>
                                 </div>
+                    {/* 이미지 크롭 모달 */}
+                    {showCropModal && cropImageFile && cropImageField && React.createElement(ImageCropModal, {
+                        imageFile: cropImageFile,
+                        onCropComplete: handleCropCompleteSettings,
+                        onCancel: () => {
+                            setShowCropModal(false);
+                            setCropImageFile(null);
+                            setCropImageField(null);
+                        },
+                        recommendedWidth: cropRecommendedSize.width,
+                        recommendedHeight: cropRecommendedSize.height,
+                        aspectRatio: cropRecommendedSize.width === 1920 ? 16/9 : (cropRecommendedSize.width === 1200 ? 3/2 : null)
+                    })}
             );
         };
         
