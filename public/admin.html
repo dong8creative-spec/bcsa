@@ -2147,8 +2147,8 @@
                                     </label>
                                     <div className="flex gap-4 items-start">
                                         {formData.hero_image && (
-                                            <div className="w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
-                                                <img src={getImageUrlWithTimestamp(formData.hero_image)} alt="Hero" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                            <div className="w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
+                                                <img src={getImageUrlWithTimestamp(formData.hero_image)} alt="Hero" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                             </div>
                                         )}
                                         <div className="flex-1">
@@ -2272,8 +2272,8 @@
                                             </label>
                                             <div className="flex gap-3 items-start">
                                                 {formData.features_image_1 && (
-                                                    <div className="w-32 h-20 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
-                                                        <img src={getImageUrlWithTimestamp(formData.features_image_1)} alt="Features 1" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                    <div className="w-32 h-20 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
+                                                        <img src={getImageUrlWithTimestamp(formData.features_image_1)} alt="Features 1" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                     </div>
                                                 )}
                                                 <div className="flex-1">
@@ -2420,8 +2420,8 @@
                                                 </span>
                                             </label>
                                             {formData.activity_seminar_image && (
-                                                <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm">
-                                                    <img src={getImageUrlWithTimestamp(formData.activity_seminar_image)} alt="Seminar" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm flex-shrink-0">
+                                                    <img src={getImageUrlWithTimestamp(formData.activity_seminar_image)} alt="Seminar" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                 </div>
                                             )}
                                             <input
@@ -2507,8 +2507,8 @@
                                                 </span>
                                             </label>
                                             {formData.activity_investment_image && (
-                                                <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm">
-                                                    <img src={getImageUrlWithTimestamp(formData.activity_investment_image)} alt="Investment" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm flex-shrink-0">
+                                                    <img src={getImageUrlWithTimestamp(formData.activity_investment_image)} alt="Investment" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                 </div>
                                             )}
                                             <input
@@ -2594,8 +2594,8 @@
                                                 </span>
                                             </label>
                                             {formData.activity_networking_image && (
-                                                <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm">
-                                                    <img src={getImageUrlWithTimestamp(formData.activity_networking_image)} alt="Networking" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm flex-shrink-0">
+                                                    <img src={getImageUrlWithTimestamp(formData.activity_networking_image)} alt="Networking" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                 </div>
                                             )}
                                             <input
@@ -2682,8 +2682,8 @@
                                     </label>
                                     <div className="flex gap-4 items-start">
                                         {formData.donation_image && (
-                                            <div className="w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
-                                                <img src={getImageUrlWithTimestamp(formData.donation_image)} alt="Donation" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                            <div className="w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
+                                                <img src={getImageUrlWithTimestamp(formData.donation_image)} alt="Donation" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                             </div>
                                         )}
                                         <div className="flex-1">
@@ -2781,8 +2781,8 @@
                                     </label>
                                     <div className="flex gap-4 items-start">
                                         {formData.cta_image && (
-                                            <div className="w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
-                                                <img src={getImageUrlWithTimestamp(formData.cta_image)} alt="CTA" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                            <div className="w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
+                                                <img src={getImageUrlWithTimestamp(formData.cta_image)} alt="CTA" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                             </div>
                                         )}
                                         <div className="flex-1">
@@ -3564,7 +3564,7 @@
                                                                 src={getImageUrlWithTimestamp(imageUrl)}
                                                                 alt={`맛집 이미지 ${index + 1}`}
                                                                 className="w-full h-24 object-cover rounded-xl border-2 border-gray-200"
-                                                                onError={(e) => { e.target.style.display = 'none'; }}
+                                                                onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }}
                                                             />
                                                             <button
                                                                 type="button"
@@ -3933,7 +3933,7 @@
                                                                 src={getImageUrlWithTimestamp(imageUrl)}
                                                                 alt={`맛집 이미지 ${index + 1}`}
                                                                 className="w-full h-24 object-cover rounded-xl border-2 border-gray-200"
-                                                                onError={(e) => { e.target.style.display = 'none'; }}
+                                                                onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }}
                                                             />
                                                             <button
                                                                 type="button"
@@ -4679,8 +4679,8 @@
                                                         <div className="grid grid-cols-1 gap-3">
                                                             {(editFormData.images || []).map((imgUrl, idx) => (
                                                                 <div key={idx} className="relative group">
-                                                                    <div className="w-full h-32 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
-                                                                        <img src={getImageUrlWithTimestamp(imgUrl)} alt={`프로그램 이미지 ${idx + 1}`} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                                    <div className="w-full h-32 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
+                                                                        <img src={getImageUrlWithTimestamp(imgUrl)} alt={`프로그램 이미지 ${idx + 1}`} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                                     </div>
                                                                     <button
                                                                         type="button"
@@ -5076,8 +5076,8 @@
                                                         <div className="grid grid-cols-1 gap-3">
                                                             {(editFormData.images || []).map((imgUrl, idx) => (
                                                                 <div key={idx} className="relative group">
-                                                                    <div className="w-full h-32 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm">
-                                                                        <img src={getImageUrlWithTimestamp(imgUrl)} alt={`프로그램 이미지 ${idx + 1}`} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                                    <div className="w-full h-32 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
+                                                                        <img src={getImageUrlWithTimestamp(imgUrl)} alt={`프로그램 이미지 ${idx + 1}`} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                                     </div>
                                                                     <button
                                                                         type="button"
