@@ -383,6 +383,7 @@ const defaultContent = {
     hero_title: "함께 성장하는\n청년 사업가 커뮤니티\n부산청년사업가들",
     hero_desc: "부산 지역 청년 사업가들이 모여 아이디어를 공유하고, 네트워킹하며 함께 성장해나가는 공간입니다.",
     hero_bg: "", // 히어로 섹션 배경 이미지
+    hero_image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80", // 히어로 섹션 메인 이미지
     stat_1_val: "200+", stat_1_desc: "활동중인 사업가",
     stat_2_val: "80+", stat_2_desc: "진행된 세미나",
     stat_3_val: "35+", stat_3_desc: "투자 성공 사례",
@@ -390,12 +391,15 @@ const defaultContent = {
     stat_bg: "", // 통계 섹션 배경 이미지
     cta_title: "사업의 꿈을 현실로!",
     cta_bg: "", // CTA 섹션 배경 이미지
+    cta_image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80", // CTA 섹션 메인 이미지
     cta_desc: "혼자 고민하지 마세요. 부산 최고의 청년 사업가들과 함께 당신의 비즈니스를 다음 단계로 끌어올리세요.",
     category_area_options: ["부산 전체", "해운대구 / IT", "부산진구 / 유통", "남구 / 금융"],
     category_activity_options: ["비즈니스 세미나", "투자 설명회", "네트워킹 파티", "멘토링"],
     category_target_options: ["예비/초기 창업가", "시리즈A 단계", "대학생", "일반인"],
     // Features 섹션
     features_title: "함께할 때 더 멀리 갈 수 있습니다",
+    features_image_1: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80", // Features 이미지 1
+    features_image_2: "https://images.unsplash.com/photo-1559223607-a43c990c364c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80", // Features 이미지 2
     features_network_title: "다양한 네트워크",
     features_network_desc: "IT, 제조, 유통 등 다양한 산업군의 대표님들과 연결되어 새로운 비즈니스 기회를 창출합니다.",
     features_expert_title: "검증된 전문가",
@@ -417,10 +421,15 @@ const defaultContent = {
     activity_networking_schedule: "매주 금요일",
     activity_more_title: "More Programs",
     activity_more_desc: "멘토링, 워크샵 등 더 많은 활동 보기",
+    // Activities 섹션 이미지
+    activity_seminar_image: "https://images.unsplash.com/photo-1544531586-fde5298cdd40?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    activity_investment_image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    activity_networking_image: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
     // Donation 섹션
     donation_title: "부청사와 함께 성장하세요",
     donation_desc: "후원을 통해 더 많은 청년 사업가들이 꿈을 이룰 수 있도록 도와주세요",
     donation_button: "후원하기",
+    donation_image: "https://images.unsplash.com/photo-1556761175-4b46a572b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
     // About 페이지 (소개 페이지)
     about_hero_title: "함께 성장하는 사업가 네트워크",
     about_hero_desc: "부산 지역 청년 사업가들의 성장과 연결을 돕는 비즈니스 커뮤니티, 부청사입니다.",
@@ -8232,8 +8241,29 @@ const App = () => {
         if (firebaseService && firebaseService.subscribeSettings) {
             const unsubscribe = firebaseService.subscribeSettings((settings) => {
                 if (settings && Object.keys(settings).length > 0) {
-                    // 기본값과 Firebase Settings 병합
-                    setContent(prevContent => ({ ...defaultContent, ...prevContent, ...settings }));
+                    // 이미지 필드 디버깅 로그
+                    const imageFields = [
+                        'hero_image', 'features_image_1', 'features_image_2',
+                        'activity_seminar_image', 'activity_investment_image', 'activity_networking_image',
+                        'donation_image', 'cta_image'
+                    ];
+                    const imageFieldsInSettings = imageFields.filter(field => settings[field]);
+                    if (imageFieldsInSettings.length > 0) {
+                        console.log('🖼️ Firebase Settings에서 이미지 필드 발견:', imageFieldsInSettings);
+                        imageFieldsInSettings.forEach(field => {
+                            console.log(`  - ${field}:`, settings[field]);
+                        });
+                    }
+                    
+                    // 기본값과 Firebase Settings 병합 (settings가 마지막이므로 우선순위가 높음)
+                    const mergedContent = { ...defaultContent, ...settings };
+                    setContent(mergedContent);
+                    
+                    // 병합된 이미지 필드 확인
+                    const mergedImageFields = imageFields.filter(field => mergedContent[field]);
+                    if (mergedImageFields.length > 0) {
+                        console.log('✅ 병합된 이미지 필드:', mergedImageFields.length, '개');
+                    }
                     
                     // menuNames도 Firebase에서 가져오기 (우선 사용)
                     if (settings.menuNames) {
@@ -8250,11 +8280,24 @@ const App = () => {
         } else {
             // Firebase Service가 없으면 초기 로드 시 Settings 가져오기
             const loadSettings = async () => {
-                        if (firebaseService && firebaseService.getSettings) {
+                if (firebaseService && firebaseService.getSettings) {
                     try {
-                                const settings = await firebaseService.getSettings();
+                        const settings = await firebaseService.getSettings();
                         if (settings && Object.keys(settings).length > 0) {
-                            setContent(prevContent => ({ ...defaultContent, ...prevContent, ...settings }));
+                            // 이미지 필드 디버깅 로그
+                            const imageFields = [
+                                'hero_image', 'features_image_1', 'features_image_2',
+                                'activity_seminar_image', 'activity_investment_image', 'activity_networking_image',
+                                'donation_image', 'cta_image'
+                            ];
+                            const imageFieldsInSettings = imageFields.filter(field => settings[field]);
+                            if (imageFieldsInSettings.length > 0) {
+                                console.log('🖼️ Firebase Settings에서 이미지 필드 발견 (초기 로드):', imageFieldsInSettings);
+                            }
+                            
+                            // 기본값과 Firebase Settings 병합
+                            const mergedContent = { ...defaultContent, ...settings };
+                            setContent(mergedContent);
                             
                             // menuNames도 Firebase에서 가져오기
                             if (settings.menuNames) {
@@ -8266,7 +8309,7 @@ const App = () => {
                             }
                         }
                     } catch (error) {
-                        
+                        console.error('❌ Settings 로드 오류:', error);
                     }
                 }
             };
