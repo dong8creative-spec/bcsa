@@ -11,8 +11,7 @@
       "package-lock.json",
       "tailwind.config.js",
       "README.md",
-      ".git/**",
-      "del/**"
+      ".git/**"
     ],
     "rewrites": [
       {

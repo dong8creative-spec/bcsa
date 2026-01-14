@@ -1731,22 +1731,16 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                                 
                                                                 setUploadingImage(true);
                                                                 try {
-                                                                    console.log('📤 이미지 업로드 시작 (인덱스):', file.name, file.size);
                                                                     const resized = await resizeImage(file, 1200, 1200);
                                                                     const uploaded = await uploadImageToImgBB(resized, file.name);
-                                                                    
+
                                                                     if (!uploaded || !uploaded.url) {
                                                                         throw new Error('이미지 업로드 응답에 URL이 없습니다.');
                                                                     }
-                                                                    
-                                                                    console.log('✅ 이미지 업로드 성공 (인덱스):', uploaded.url);
+
                                                                     setAddFormData({
                                                                         ...addFormData,
                                                                         images: [...addFormData.images, uploaded.url]
-                                                                    });
-                                                                    console.log('📝 addFormData 업데이트 완료 (인덱스):', {
-                                                                        imagesCount: addFormData.images.length + 1,
-                                                                        newImage: uploaded.url
                                                                     });
                                                                 } catch (error) {
                                                                     console.error('❌ 이미지 업로드 오류 (인덱스):', error);
@@ -2044,13 +2038,6 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                 ? addFormData.images.filter(img => img && img && typeof img === 'string' && img.trim() !== '')
                                                 : (addFormData.img && typeof addFormData.img === 'string' && addFormData.img.trim() !== '' ? [addFormData.img] : []);
                                             
-                                            console.log('📝 프로그램 추가 - 저장 전 데이터 검증 (인덱스):', {
-                                                addFormData,
-                                                imagesArray,
-                                                imagesCount: imagesArray.length,
-                                                firstImage: imagesArray[0] || null
-                                            });
-                                            
                                             const saveData = {
                                                 ...addFormData,
                                                 desc: addFormData.desc || addFormData.description || '',
@@ -2060,15 +2047,6 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                 // 호환성을 위해 첫 번째 이미지를 img 필드에도 저장
                                                 img: imagesArray.length > 0 ? imagesArray[0] : (addFormData.img || '')
                                             };
-                                            
-                                            console.log('💾 Firebase에 저장할 데이터 (인덱스):', {
-                                                title: saveData.title,
-                                                images: saveData.images,
-                                                imagesLength: saveData.images.length,
-                                                img: saveData.img,
-                                                desc: saveData.desc,
-                                                description: saveData.description
-                                            });
                                             
                                             const success = await onAddProgram(saveData);
                                             if (success) {

@@ -1034,21 +1034,31 @@
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
                         
-                        // 출력 크기 설정 (없으면 크롭 영역 크기 사용)
-                        const outputW = outputWidth || cropArea.width;
-                        const outputH = outputHeight || cropArea.height;
+                        // 출력 크기 설정 (없으면 크롭 영역 크기 사용) - 정수화
+                        const outputW = Math.round(outputWidth || cropArea.width);
+                        const outputH = Math.round(outputHeight || cropArea.height);
                         
                         canvas.width = outputW;
                         canvas.height = outputH;
                         
+                        // Canvas 렌더링 품질 설정
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+                        
+                        // 크롭 영역 좌표 정수화
+                        const sourceX = Math.round(cropArea.x);
+                        const sourceY = Math.round(cropArea.y);
+                        const sourceWidth = Math.round(cropArea.width);
+                        const sourceHeight = Math.round(cropArea.height);
+                        
                         // 이미지 크롭 및 리사이즈
                         ctx.drawImage(
                             img,
-                            cropArea.x, cropArea.y, cropArea.width, cropArea.height,
+                            sourceX, sourceY, sourceWidth, sourceHeight,
                             0, 0, outputW, outputH
                         );
                         
-                        // base64로 변환
+                        // base64로 변환 (품질 향상)
                         canvas.toBlob((blob) => {
                             if (blob) {
                                 const reader = new FileReader();
@@ -1058,7 +1068,7 @@
                             } else {
                                 reject(new Error('이미지 크롭 실패'));
                             }
-                        }, imageFile.type || 'image/jpeg', 0.9);
+                        }, imageFile.type || 'image/jpeg', 0.95);
                     };
                     img.onerror = reject;
                     img.src = e.target.result;
@@ -1854,11 +1864,11 @@
                         height: cropRelativeHeight * scaleY
                     };
                     
-                    // 좌표 검증
-                    actualCropArea.x = Math.max(0, Math.min(actualCropArea.x, img.width));
-                    actualCropArea.y = Math.max(0, Math.min(actualCropArea.y, img.height));
-                    actualCropArea.width = Math.max(1, Math.min(actualCropArea.width, img.width - actualCropArea.x));
-                    actualCropArea.height = Math.max(1, Math.min(actualCropArea.height, img.height - actualCropArea.y));
+                    // 좌표 정수화 및 검증
+                    actualCropArea.x = Math.round(Math.max(0, Math.min(actualCropArea.x, img.width - 1)));
+                    actualCropArea.y = Math.round(Math.max(0, Math.min(actualCropArea.y, img.height - 1)));
+                    actualCropArea.width = Math.round(Math.max(1, Math.min(actualCropArea.width, img.width - actualCropArea.x)));
+                    actualCropArea.height = Math.round(Math.max(1, Math.min(actualCropArea.height, img.height - actualCropArea.y)));
                     
                     const croppedImage = await cropImage(imageFile, actualCropArea, recommendedWidth, recommendedHeight);
                     await onCropComplete(croppedImage);
@@ -1901,10 +1911,15 @@
                 }, [
                     React.createElement('img', {
                         key: 'image',
+                        ref: imageRef,
                         src: imageSrc,
                         alt: '크롭할 이미지',
                         className: 'absolute inset-0 w-full h-full object-contain',
-                        style: { transform: `scale(${zoom})` }
+                        style: { 
+                            transform: `scale(${zoom})`,
+                            transformOrigin: 'center center',
+                            imageRendering: 'high-quality'
+                        }
                     }),
                     React.createElement('div', {
                         key: 'overlay',
@@ -2015,7 +2030,6 @@
                             await window.firebaseService.updateSettings(formData);
                             setSettings(formData);
                             setSaving(false);
-                            console.log('설정이 자동 저장되었습니다.');
                         } catch (error) {
                             console.error('설정 자동 저장 오류:', error);
                             const errorMessage = translateFirebaseError ? translateFirebaseError(error) : '자동 저장 중 오류가 발생했습니다.';
@@ -2044,7 +2058,6 @@
                 try {
                     await window.firebaseService.updateSettings(formData);
                     setSettings(formData);
-                    console.log('설정이 수동 저장되었습니다.');
                     alert('저장되었습니다.');
                 } catch (error) {
                     console.error('설정 수동 저장 오류:', error);
@@ -2077,15 +2090,11 @@
                     // 로딩 상태 시작
                     setSaving(true);
                     
-                    console.log('🖼️ 설정 이미지 크롭 완료:', { cropImageField });
                     const uploaded = await uploadImageToImgBB(croppedImageBase64, cropImageFile.name);
 
                     if (!uploaded || !uploaded.url) {
                         throw new Error('이미지 업로드 응답에 URL이 없습니다.');
                     }
-
-                    console.log('✅ 이미지 업로드 성공:', uploaded.url);
-                    console.log('📝 설정 필드 업데이트:', cropImageField, uploaded.url);
 
                     // 함수형 업데이트로 즉시 반영
                     setFormData(prevData => {
@@ -2147,8 +2156,16 @@
                                     </label>
                                     <div className="flex gap-4 items-start">
                                         {formData.hero_image && (
-                                            <div className="w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
+                                            <div className="relative w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
                                                 <img src={getImageUrlWithTimestamp(formData.hero_image)} alt="Hero" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleChange('hero_image', '')}
+                                                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                                                    title="이미지 삭제"
+                                                >
+                                                    {React.createElement(Icons.X, { size: 14 })}
+                                                </button>
                                             </div>
                                         )}
                                         <div className="flex-1">
@@ -2272,8 +2289,16 @@
                                             </label>
                                             <div className="flex gap-3 items-start">
                                                 {formData.features_image_1 && (
-                                                    <div className="w-32 h-20 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
+                                                    <div className="relative w-32 h-20 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
                                                         <img src={getImageUrlWithTimestamp(formData.features_image_1)} alt="Features 1" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleChange('features_image_1', '')}
+                                                            className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                                                            title="이미지 삭제"
+                                                        >
+                                                            {React.createElement(Icons.X, { size: 12 })}
+                                                        </button>
                                                     </div>
                                                 )}
                                                 <div className="flex-1">
@@ -2324,8 +2349,16 @@
                                             </label>
                                             <div className="flex gap-3 items-start">
                                                 {formData.features_image_2 && (
-                                                    <div className="w-32 h-20 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
+                                                    <div className="relative w-32 h-20 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
                                                         <img src={getImageUrlWithTimestamp(formData.features_image_2)} alt="Features 2" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleChange('features_image_2', '')}
+                                                            className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                                                            title="이미지 삭제"
+                                                        >
+                                                            {React.createElement(Icons.X, { size: 12 })}
+                                                        </button>
                                                     </div>
                                                 )}
                                                 <div className="flex-1">
@@ -2420,8 +2453,16 @@
                                                 </span>
                                             </label>
                                             {formData.activity_seminar_image && (
-                                                <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm flex-shrink-0">
+                                                <div className="relative w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm flex-shrink-0">
                                                     <img src={getImageUrlWithTimestamp(formData.activity_seminar_image)} alt="Seminar" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleChange('activity_seminar_image', '')}
+                                                        className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                                                        title="이미지 삭제"
+                                                    >
+                                                        {React.createElement(Icons.X, { size: 14 })}
+                                                    </button>
                                                 </div>
                                             )}
                                             <input
@@ -2507,8 +2548,16 @@
                                                 </span>
                                             </label>
                                             {formData.activity_investment_image && (
-                                                <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm flex-shrink-0">
+                                                <div className="relative w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm flex-shrink-0">
                                                     <img src={getImageUrlWithTimestamp(formData.activity_investment_image)} alt="Investment" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleChange('activity_investment_image', '')}
+                                                        className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                                                        title="이미지 삭제"
+                                                    >
+                                                        {React.createElement(Icons.X, { size: 14 })}
+                                                    </button>
                                                 </div>
                                             )}
                                             <input
@@ -2594,8 +2643,16 @@
                                                 </span>
                                             </label>
                                             {formData.activity_networking_image && (
-                                                <div className="w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm flex-shrink-0">
+                                                <div className="relative w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm flex-shrink-0">
                                                     <img src={getImageUrlWithTimestamp(formData.activity_networking_image)} alt="Networking" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleChange('activity_networking_image', '')}
+                                                        className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                                                        title="이미지 삭제"
+                                                    >
+                                                        {React.createElement(Icons.X, { size: 14 })}
+                                                    </button>
                                                 </div>
                                             )}
                                             <input
@@ -2682,8 +2739,16 @@
                                     </label>
                                     <div className="flex gap-4 items-start">
                                         {formData.donation_image && (
-                                            <div className="w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
+                                            <div className="relative w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
                                                 <img src={getImageUrlWithTimestamp(formData.donation_image)} alt="Donation" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleChange('donation_image', '')}
+                                                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                                                    title="이미지 삭제"
+                                                >
+                                                    {React.createElement(Icons.X, { size: 14 })}
+                                                </button>
                                             </div>
                                         )}
                                         <div className="flex-1">
@@ -2781,8 +2846,16 @@
                                     </label>
                                     <div className="flex gap-4 items-start">
                                         {formData.cta_image && (
-                                            <div className="w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
+                                            <div className="relative w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
                                                 <img src={getImageUrlWithTimestamp(formData.cta_image)} alt="CTA" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleChange('cta_image', '')}
+                                                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+                                                    title="이미지 삭제"
+                                                >
+                                                    {React.createElement(Icons.X, { size: 14 })}
+                                                </button>
                                             </div>
                                         )}
                                         <div className="flex-1">
@@ -3059,17 +3132,8 @@
                     updateData.images = updateData.images.filter(img => img && typeof img === 'string' && img.trim() !== '');
                 }
                 
-                console.log('💾 맛집 수정 - 저장할 데이터:', {
-                    id: selectedRestaurant.id,
-                    title: updateData.title,
-                    images: updateData.images,
-                    imagesLength: updateData.images?.length || 0,
-                    imagesType: Array.isArray(updateData.images) ? 'array' : typeof updateData.images
-                });
-                
                 try {
                     await window.firebaseService.updateRestaurant(selectedRestaurant.id, updateData);
-                    console.log('✅ 맛집 수정 성공:', selectedRestaurant.id);
                     
                     const updatedRestaurants = restaurants.map(r => 
                         r.id === selectedRestaurant.id ? {...r, ...updateData} : r
@@ -3181,14 +3245,11 @@
                 
                 try {
                     setUploadingImages(true);
-                    console.log('🖼️ 맛집 이미지 크롭 완료:', { cropImageContext, cropImageIndex });
                     const uploaded = await uploadImageToImgBB(croppedImageBase64, cropImageFile.name);
                     
                     if (!uploaded || !uploaded.url) {
                         throw new Error('이미지 업로드 응답에 URL이 없습니다.');
                     }
-                    
-                    console.log('✅ 이미지 업로드 성공:', uploaded.url);
                     
                     if (cropImageContext === 'edit') {
                         // 함수형 업데이트 사용
@@ -3198,16 +3259,12 @@
                             
                             if (cropImageIndex !== null && cropImageIndex >= 0) {
                                 // 특정 인덱스 교체
-                                console.log(`🔄 이미지 교체: 인덱스 ${cropImageIndex}`);
                                 newImages = [...currentImages];
                                 newImages[cropImageIndex] = uploaded.url;
                             } else {
                                 // 새 이미지 추가
-                                console.log('➕ 새 이미지 추가');
                                 newImages = [...currentImages, uploaded.url];
                             }
-                            
-                            console.log('📝 업데이트된 이미지 배열:', newImages);
                             
                             return {
                                 ...prevData,
@@ -4417,13 +4474,6 @@
                         ? editFormData.images.filter(img => img && img && typeof img === 'string' && img.trim() !== '')
                         : (editFormData.img && typeof editFormData.img === 'string' && editFormData.img.trim() !== '' ? [editFormData.img] : []);
                     
-                    console.log('📝 프로그램 수정 - 저장 전 데이터 검증:', {
-                        editFormData,
-                        imagesArray,
-                        imagesCount: imagesArray.length,
-                        firstImage: imagesArray[0] || null
-                    });
-                    
                     // desc와 description 통합 (desc 우선)
                     const saveData = {
                         ...editFormData,
@@ -4434,18 +4484,11 @@
                     };
                     
                     // 저장 전 최종 데이터 검증
-                    console.log('💾 Firebase에 저장할 데이터:', {
-                        id: selectedSeminar.id,
-                        title: saveData.title,
-                        images: saveData.images,
-                        imagesLength: saveData.images.length,
-                        img: saveData.img,
                         desc: saveData.desc,
                         description: saveData.description
                     });
                     
                     await window.firebaseService.updateSeminar(selectedSeminar.id, saveData);
-                    console.log('✅ 프로그램 수정 성공:', selectedSeminar.id);
                     
                     const updatedSeminars = seminars.map(s => 
                         s.id === selectedSeminar.id ? {...s, ...saveData} : s
@@ -4473,21 +4516,16 @@
                 
                 try {
                     setUploadingImage(true);
-                    console.log('🖼️ 프로그램 이미지 크롭 완료:', { cropImageType });
                     const uploaded = await uploadImageToImgBB(croppedImageBase64, cropImageFile.name);
                     
                     if (!uploaded || !uploaded.url) {
                         throw new Error('이미지 업로드 응답에 URL이 없습니다.');
                     }
                     
-                    console.log('✅ 이미지 업로드 성공:', uploaded.url);
-                    
                     // 함수형 업데이트 사용
                     setEditFormData(prevData => {
                         const currentImages = prevData.images || [];
                         const newImages = [...currentImages, uploaded.url];
-                        
-                        console.log('📝 업데이트된 이미지 배열:', newImages);
                         
                         return {
                             ...prevData,
@@ -4530,13 +4568,6 @@
                         ? editFormData.images.filter(img => img && img && typeof img === 'string' && img.trim() !== '')
                         : (editFormData.img && typeof editFormData.img === 'string' && editFormData.img.trim() !== '' ? [editFormData.img] : []);
                     
-                    console.log('📝 프로그램 추가 - 저장 전 데이터 검증:', {
-                        editFormData,
-                        imagesArray,
-                        imagesCount: imagesArray.length,
-                        firstImage: imagesArray[0] || null
-                    });
-                    
                     // desc와 description 통합 (desc 우선)
                     const saveData = {
                         ...editFormData,
@@ -4546,18 +4577,7 @@
                         description: editFormData.desc || editFormData.description || ''
                     };
                     
-                    // 저장 전 최종 데이터 검증
-                    console.log('💾 Firebase에 저장할 데이터:', {
-                        title: saveData.title,
-                        images: saveData.images,
-                        imagesLength: saveData.images.length,
-                        img: saveData.img,
-                        desc: saveData.desc,
-                        description: saveData.description
-                    });
-                    
                     const newId = await window.firebaseService.createSeminar(saveData);
-                    console.log('✅ 프로그램 추가 성공:', newId);
                     
                     const newSeminars = await window.firebaseService.getSeminars();
                     setSeminars(newSeminars);
