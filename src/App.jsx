@@ -830,7 +830,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                             </option>
                                                         ))}
                                                     </select>
-                                                ) : null}
+                                                )}
                             </div>
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">별점 *</label>
