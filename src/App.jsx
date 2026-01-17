@@ -3103,7 +3103,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                         </button>
                                     </div>
                                 </div>
-                            )}
+                            ) : null}
                         </div>
                         
                         {/* 필터 섹션 - 나라장터 스타일 */}
