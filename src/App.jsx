@@ -670,7 +670,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                                 }} 
                                                             />
                                                         </label>
-                                                    ) : null}
+                                                            )}
                             </div>
                                     </div>
                                 </React.Fragment>
@@ -785,7 +785,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                                 }} 
                                                             />
                                                         </label>
-                            ) : null}
+                                                            )}
                         </div>
                         </div>
                                             <div>
@@ -885,7 +885,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                                 e.target.value = '';
                                                             }} />
                                                         </label>
-                                                    ) : null}
+                                                            )}
                                                 </div>
                                             </div>
                                         </React.Fragment>
@@ -1051,7 +1051,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                 </div>
                             ) : null}
                                     </div>
-                                )}
+                                ) : null}
                                 
                                 {/* 중고거래 추가 정보 */}
                             {selectedPost.category === \'중고거래\' ? (
@@ -1113,7 +1113,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                 </div>
                             ) : null}
                             </div>
-                                )}
+                                ) : null}
                                 
                                 {/* 프로그램 후기 추가 정보 */}
                                 {selectedPost.category === \'프로그램 후기\' ? (
@@ -1150,7 +1150,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                 </div>
                             ) : null}
                                     </div>
-                                )}
+                                ) : null}
                                 
                             {selectedPost.reply ? (
                                 <div className="mt-6 bg-brand/5 p-6 rounded-2xl border border-brand/20">
@@ -1160,7 +1160,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                     </div>
                                     <p className="text-gray-700">{selectedPost.reply}</p>
                                     </div>
-                                )}
+                                ) : null}
                             </div>
                         </div>
                                 </div>
@@ -1218,7 +1218,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                             >
                                 <Icons.Plus size={20} /> 맛집 등록
                             </button>
-                        )}
+                        ) : null}
                         <button 
                             type="button" 
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} 
@@ -1267,7 +1267,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                             onError={(e) => { e.target.style.display = 'none'; }}
                                         />
                                     </div>
-                                )}
+                                ) : null}
                                 <div className="p-6">
                                     <h3 className="text-lg font-bold text-dark mb-2 line-clamp-2">{restaurant.title || '제목 없음'}</h3>
                                     {restaurant.location?.address ? (
@@ -1275,17 +1275,17 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                             <Icons.MapPin size={14} />
                                             <span className="line-clamp-1">{restaurant.location.address}</span>
                                         </div>
-                                    )}
+                                    ) : null}
                                     {restaurant.ownerName ? (
                                         <div className="text-xs text-gray-500 mb-2">
                                             등록자: {restaurant.ownerName}
                                         </div>
-                                    )}
+                                    ) : null}
                                     {restaurant.menuItems && restaurant.menuItems.length > 0 ? (
                                         <div className="text-xs text-gray-500 mb-2">
                                             대표메뉴: {restaurant.menuItems[0].name}
                                         </div>
-                                    )}
+                                    ) : null}
                                 </div>
                             </div>
                         ))}
@@ -1302,7 +1302,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                             >
                                 맛집 등록하기
                             </button>
-                        )}
+                        ) : null}
                     </div>
                 )}
             </div>
@@ -1405,7 +1405,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                             ) : null}
                         </div>
                     </div>
-                )}
+                ) : null}
                 
                 {/* 기본 정보 */}
                 <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
@@ -1428,21 +1428,21 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                             <Icons.MapPin size={18} />
                             <span>{restaurant.location.address}</span>
                         </div>
-                    )}
+                    ) : null}
                     
                     {restaurant.phone ? (
                         <div className="flex items-center gap-2 text-gray-600 mb-2">
                             <Icons.Phone size={18} />
                             <span>{restaurant.phone}</span>
                         </div>
-                    )}
+                    ) : null}
                     
                     {restaurant.businessHours ? (
                         <div className="flex items-center gap-2 text-gray-600 mb-2">
                             <Icons.Clock size={18} />
                             <span>{restaurant.businessHours}</span>
                         </div>
-                    )}
+                    ) : null}
                     
                     {restaurant.priceRange ? (
                         <div className="flex items-center gap-2 text-gray-600 mb-4">
