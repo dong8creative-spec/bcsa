@@ -1158,14 +1158,14 @@
                 myPage: { text: "마이페이지", fontSize: "text-3xl", fontWeight: "font-bold" }
             },
             // 이미지 URL 필드
-            hero_image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
-            features_image_1: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-            features_image_2: "https://images.unsplash.com/photo-1559223607-a43c990c364c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-            activity_seminar_image: "https://images.unsplash.com/photo-1544531586-fde5298cdd40?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-            activity_investment_image: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-            activity_networking_image: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-            donation_image: "https://images.unsplash.com/photo-1556761175-4b46a572b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
-            cta_image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
+            hero_image: "",
+            features_image_1: "",
+            features_image_2: "",
+            activity_seminar_image: "",
+            activity_investment_image: "",
+            activity_networking_image: "",
+            donation_image: "",
+            cta_image: "",
         };
 
         const defaultMembersData = [];
@@ -1607,7 +1607,7 @@
             const [isDragging, setIsDragging] = useState(false);
             const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
             const [zoom, setZoom] = useState(1);
-            const [selectedAspectRatio, setSelectedAspectRatio] = useState(aspectRatio);
+            const [selectedAspectRatio, setSelectedAspectRatio] = useState(null); // 항상 자유로 시작
             const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
             const canvasRef = React.useRef(null);
             const containerRef = React.useRef(null);
@@ -1629,12 +1629,12 @@
                         const img = new Image();
                         img.onload = () => {
                             setImageSize({ width: img.naturalWidth, height: img.naturalHeight });
-                            // 초기 크롭 영역 설정 (이미지 중앙, 추천 해상도 비율)
+                            // 초기 크롭 영역 설정 (이미지 중앙, 이미지 원본 비율 사용)
                             const containerWidth = 600;
                             const containerHeight = 400;
                             
-                            // 추천 비율 사용 또는 이미지 원본 비율
-                            const targetAspect = aspectRatio !== null ? aspectRatio : (img.naturalWidth / img.naturalHeight);
+                            // 이미지 원본 비율 사용 (사용자가 자유롭게 선택할 수 있도록)
+                            const targetAspect = img.naturalWidth / img.naturalHeight;
                             
                             let initWidth, initHeight;
                             
@@ -1933,7 +1933,9 @@
                 ),
                 React.createElement('div', { key: 'info', className: 'mb-4 p-3 bg-blue-50 rounded-lg' },
                     React.createElement('p', { className: 'text-sm text-gray-700' },
-                        `추천 해상도: ${recommendedWidth}x${recommendedHeight}px`
+                        `추천 해상도: ${recommendedWidth}x${recommendedHeight}px` + 
+                        (aspectRatio ? ` (비율: ${aspectRatio === 16/9 ? '16:9' : aspectRatio === 3/2 ? '3:2' : aspectRatio === 4/3 ? '4:3' : aspectRatio === 1 ? '1:1' : aspectRatio.toFixed(2)})` : '') +
+                        ' - 원하는 비율을 선택할 수 있습니다'
                     )
                 ),
                 React.createElement('div', {
@@ -2038,6 +2040,20 @@
             ]));
         };
         
+        // ==========================================
+        // 비율 계산 헬퍼 함수
+        // ==========================================
+        const calculateAspectRatio = (width, height) => {
+            if (!width || !height) return null;
+            const ratio = width / height;
+            // 일반적인 비율과 비교하여 정확히 일치하는 경우만 반환
+            if (Math.abs(ratio - 16/9) < 0.01) return 16/9;
+            if (Math.abs(ratio - 3/2) < 0.01) return 3/2;
+            if (Math.abs(ratio - 4/3) < 0.01) return 4/3;
+            if (Math.abs(ratio - 1) < 0.01) return 1;
+            return null; // 정확히 일치하지 않으면 null
+        };
+
         // ==========================================
         // 메인 관리 컴포넌트
         // ==========================================
@@ -3086,7 +3102,7 @@
                         },
                         recommendedWidth: cropRecommendedSize.width,
                         recommendedHeight: cropRecommendedSize.height,
-                        aspectRatio: cropRecommendedSize.width === 1920 ? 16/9 : (cropRecommendedSize.width === 1200 ? 3/2 : null)
+                        aspectRatio: calculateAspectRatio(cropRecommendedSize.width, cropRecommendedSize.height)
                     })}
                 </>
             );
@@ -4090,7 +4106,7 @@
                         },
                         recommendedWidth: 1200,
                         recommendedHeight: 800,
-                        aspectRatio: 3/2
+                        aspectRatio: calculateAspectRatio(1200, 800)
                     })}
                                 </div>
             );
@@ -5092,7 +5108,7 @@
                         },
                         recommendedWidth: 1200,
                         recommendedHeight: 800,
-                        aspectRatio: 16/9
+                        aspectRatio: calculateAspectRatio(1200, 800)
                     })}
                     
                     {/* 추가 모달 */}
@@ -5489,7 +5505,7 @@
                         },
                         recommendedWidth: 1200,
                         recommendedHeight: 800,
-                        aspectRatio: 16/9
+                        aspectRatio: calculateAspectRatio(1200, 800)
                     })}
                     
                     {/* 지도 선택 모달 */}

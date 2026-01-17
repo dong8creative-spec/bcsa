@@ -59,7 +59,7 @@ const CalendarSection = ({ seminars, onSelectSeminar, currentUser }) => {
                             {getEventsForDate(selectedDate).map((ev, idx) => (
                                 <div key={idx} className="flex flex-col gap-4">
                                     <div className="w-full h-48 rounded-xl overflow-hidden shadow-sm relative">
-                                        <img src={ev.img || "https://placehold.co/600x400"} alt={ev.title} className="w-full h-full object-cover" />
+                                        {ev.img && <img src={ev.img} alt={ev.title} className="w-full h-full object-cover" />}
                                         <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold shadow-sm ${ev.status === '모집중' ? 'bg-brand text-white' : ev.status === '마감임박' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>{ev.status}</div>
                                     </div>
                                     <div>
