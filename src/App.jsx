@@ -1449,11 +1449,11 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                             <Icons.DollarSign size={18} />
                             <span>{restaurant.priceRange}</span>
                         </div>
-                    )}
+                    ) : null}
                     
                     {restaurant.description ? (
                         <p className="text-gray-700 mb-4">{restaurant.description}</p>
-                    )}
+                    ) : null}
                     
                     {/* 예약 버튼 */}
                     <div className="flex gap-4 mt-6">
