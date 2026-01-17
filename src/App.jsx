@@ -522,7 +522,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                         <Icons.Info className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                         <p>등록된 게시글이 없습니다.</p>
                 </div>
-            ) : null}
+            )}
 
                 {/* 게시글 작성 모달 */}
                 {isCreateModalOpen ? (
