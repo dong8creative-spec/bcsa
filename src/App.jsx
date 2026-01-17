@@ -460,7 +460,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                             ))}
                             </div>
                         </div>
-                    )}
+                    ) : null}
 
                 {/* 게시글 리스트 */}
                 {filteredPosts.length > 0 ? (
