@@ -6060,6 +6060,9 @@
             
             // 인증 실패 - 로그인 화면
             if (!isAuthenticated) {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6063',message:'AdminDashboard early return (not authenticated)',data:{isAuthenticated:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
                 return (
                     <div className="min-h-screen bg-soft flex items-center justify-center p-4">
                         <div className="bg-white rounded-3xl shadow-lg p-8 max-w-md w-full">
@@ -6086,9 +6089,9 @@
                                     />
                                 </div>
                                 
-                                {authError && (
+                                {authError ? (
                                     <p className="text-sm text-red-600 text-center">{authError}</p>
-                                )}
+                                ) : null}
                                 
                                 <button
                                     type="submit"
@@ -6136,6 +6139,9 @@
                 { id: 'restaurants', label: '맛집 관리', icon: Icons.MapPin },
             ];
 
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6139',message:'AdminDashboard main return (authenticated)',data:{isAuthenticated:true,activeMenu,loading,hasDashboardHome:typeof DashboardHome !== 'undefined',hasMainContent:typeof MainContentManagement !== 'undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
             return (
                 <div className="min-h-screen bg-soft flex">
                     {/* 사이드바 */}
@@ -6202,16 +6208,21 @@
                                     <p className="text-gray-600">데이터를 불러오는 중...</p>
                                 </div>
                             ) : null}
-                            {!loading && activeMenu === 'dashboard' && typeof DashboardHome !== 'undefined' ? React.createElement(DashboardHome, {
-                                users: users || [],
-                                posts: posts || [],
-                                seminars: seminars || [],
-                                menuEnabled: menuEnabled,
-                                setMenuEnabled: setMenuEnabled,
-                                menuNames: menuNames,
-                                setMenuNames: setMenuNames,
-                                settings: settings || {}
-                            }) : null}
+                            {!loading && activeMenu === 'dashboard' ? (
+                                // #region agent log
+                                (() => {fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6205',message:'Rendering DashboardHome',data:{isDefined:typeof DashboardHome !== 'undefined',activeMenu,loading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{}); return null;})()
+                                // #endregion
+                                typeof DashboardHome !== 'undefined' ? React.createElement(DashboardHome, {
+                                    users: users || [],
+                                    posts: posts || [],
+                                    seminars: seminars || [],
+                                    menuEnabled: menuEnabled,
+                                    setMenuEnabled: setMenuEnabled,
+                                    menuNames: menuNames,
+                                    setMenuNames: setMenuNames,
+                                    settings: settings || {}
+                                }) : null
+                            ) : null}
                             {!loading && activeMenu === 'main' && typeof MainContentManagement !== 'undefined' ? React.createElement(MainContentManagement, {
                                 settings: settings || {},
                                 setSettings: setSettings,
@@ -6241,6 +6252,9 @@
                 </div>
             );
             } catch (error) {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6243',message:'AdminDashboard catch error',data:{error:error.message,stack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
                 console.error('AdminDashboard 렌더링 오류:', error);
                 return React.createElement('div', { className: 'min-h-screen bg-soft flex items-center justify-center p-4' },
                     React.createElement('div', { className: 'bg-white rounded-3xl shadow-lg p-8 max-w-md w-full' },
@@ -6303,6 +6317,9 @@
         // App 컴포넌트
         // ==========================================
         const App = () => {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6306',message:'App component rendering',data:{hasAdminDashboard:typeof AdminDashboard !== 'undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
             try {
                 if (typeof AdminDashboard === 'undefined') {
                     console.error('AdminDashboard 컴포넌트가 정의되지 않았습니다.');
@@ -6310,8 +6327,18 @@
                         React.createElement('p', { className: 'text-red-500' }, 'AdminDashboard 컴포넌트를 찾을 수 없습니다.')
                     );
                 }
-                return React.createElement(AdminDashboard);
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6313',message:'App creating AdminDashboard element',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                const result = React.createElement(AdminDashboard);
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6314',message:'App created AdminDashboard element',data:{resultType:typeof result,isNull:result === null,isUndefined:result === undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                return result;
             } catch (error) {
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6315',message:'App catch error',data:{error:error.message,stack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
                 console.error('App 컴포넌트 렌더링 오류:', error);
                 return React.createElement('div', { className: 'p-6' }, 
                     React.createElement('p', { className: 'text-red-500' }, '애플리케이션 로드 중 오류가 발생했습니다: ' + error.message)
@@ -6327,9 +6354,19 @@
         }
         
         try {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6329',message:'Starting React root render',data:{hasRoot:!!rootElement},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
             const root = ReactDOM.createRoot(rootElement);
-            root.render(React.createElement(App));
+            const appElement = React.createElement(App);
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6331',message:'About to render App element',data:{appElementType:typeof appElement,isNull:appElement === null,isUndefined:appElement === undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            root.render(appElement);
         } catch (error) {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6333',message:'React root render catch error',data:{error:error.message,stack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
             console.error('React 렌더링 오류:', error);
         }
         })(); // IIFE 종료 - 스코프 격리
