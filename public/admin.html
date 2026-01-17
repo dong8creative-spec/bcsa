@@ -7,26 +7,31 @@
     
     <!-- checkFirebaseConfig 함수를 가장 먼저 정의 (다른 스크립트 로드 전) -->
     <script>
-        // 즉시 함수 정의 보장
-        window.checkFirebaseConfig = window.checkFirebaseConfig || function() {
-            try {
-                return {
-                    initialized: typeof firebase !== 'undefined',
-                    config: typeof window.firebaseConfig !== 'undefined' ? window.firebaseConfig : {},
-                    services: {
-                        firebaseServices: !!window.firebaseServices,
-                        firebaseService: !!window.firebaseService,
-                        authService: !!window.authService
-                    },
-                    app: typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0 ? firebase.apps[0].name : 'NOT_INITIALIZED'
-                };
-            } catch (error) {
-                return {
-                    initialized: false,
-                    error: error.message || 'Unknown error'
-                };
-            }
-        };
+        // 즉시 함수 정의 보장 (항상 덮어쓰기)
+        (function() {
+            'use strict';
+            window.checkFirebaseConfig = function() {
+                try {
+                    return {
+                        initialized: typeof firebase !== 'undefined',
+                        config: typeof window.firebaseConfig !== 'undefined' ? window.firebaseConfig : {},
+                        services: {
+                            firebaseServices: !!window.firebaseServices,
+                            firebaseService: !!window.firebaseService,
+                            authService: !!window.authService
+                        },
+                        app: typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0 ? firebase.apps[0].name : 'NOT_INITIALIZED'
+                    };
+                } catch (error) {
+                    return {
+                        initialized: false,
+                        error: error.message || 'Unknown error'
+                    };
+                }
+            };
+            // 함수 정의 확인 로그
+            console.log('checkFirebaseConfig 함수 정의 완료');
+        })();
     </script>
     
     <!-- 폰트 -->
@@ -5541,7 +5546,7 @@
         // 관리자 대시보드 컴포넌트
         // ==========================================
         const AdminDashboard = () => {
-            try {
+            // React Hooks는 반드시 컴포넌트 최상위에서 호출되어야 함 (try 블록 밖)
             // 인증 상태
             const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [isChecking, setIsChecking] = useState(false);
@@ -5941,17 +5946,10 @@
             
             // 데이터는 Firebase에서 실시간으로 관리되므로 localStorage 저장 불필요
             
-            // 로그 추가 함수
+            // 로그 추가 함수 (현재 사용하지 않음, 호환성을 위해 유지)
             const addLog = (action, targetType, details, adminName, itemInfo) => {
-                const newLog = {
-                    timestamp: new Date().toLocaleString('ko-KR'),
-                    action,
-                    targetType,
-                    details,
-                    adminName: adminName || '관리자',
-                    itemInfo: itemInfo || '',
-                };
-                setLogs(prev => [...prev, newLog]);
+                // 로그 기능은 현재 사용하지 않음
+                console.log('Admin Log:', { action, targetType, details, adminName, itemInfo });
             };
             
             // 데이터 초기화 함수
