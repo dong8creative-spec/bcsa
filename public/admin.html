@@ -34,10 +34,10 @@
     <!-- Firebase Configuration (동기 로드) -->
     <!-- checkFirebaseConfig 함수를 즉시 정의 (firebase-config.js 로드 전에도 사용 가능) -->
     <script>
-        // 즉시 실행 함수로 함수 정의 보장
+        // 즉시 실행 함수로 함수 정의 보장 (항상 덮어쓰기)
         (function() {
-            if (typeof window.checkFirebaseConfig === 'undefined') {
-                window.checkFirebaseConfig = function() {
+            window.checkFirebaseConfig = function() {
+                try {
                     return {
                         initialized: typeof firebase !== 'undefined',
                         config: typeof window.firebaseConfig !== 'undefined' ? window.firebaseConfig : {},
@@ -48,8 +48,13 @@
                         },
                         app: typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0 ? firebase.apps[0].name : 'NOT_INITIALIZED'
                     };
-                };
-            }
+                } catch (error) {
+                    return {
+                        initialized: false,
+                        error: error.message
+                    };
+                }
+            };
         })();
     </script>
     
@@ -642,7 +647,7 @@
                         </div>
                         
                         {/* 검색 결과 */}
-                        {searchResults.length > 0 && (
+                        {searchResults.length > 0 ? (
                             <div className="mb-4 max-h-40 overflow-y-auto border border-gray-200 rounded-xl">
                                 {searchResults.map((result, idx) => (
                                     <div
@@ -650,12 +655,12 @@
                                         onClick={() => handleSelectResult(result)}
                                         className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                                     >
-                                        {result.name && <p className="font-bold text-sm text-dark">{result.name}</p>}
+                                        {result.name ? <p className="font-bold text-sm text-dark">{result.name}</p> : null}
                                         <p className="text-sm text-gray-600">{result.address}</p>
                                     </div>
                                 ))}
                             </div>
-                        )}
+                        ) : null}
                         
                         {/* 지도 */}
                         <div 
@@ -3099,7 +3104,7 @@
                     </div>
                     </div>
                     {/* 이미지 크롭 모달 */}
-                    {showCropModal && cropImageFile && cropImageField && React.createElement(ImageCropModal, {
+                    {(showCropModal && cropImageFile && cropImageField) ? React.createElement(ImageCropModal, {
                         imageFile: cropImageFile,
                         onCropComplete: handleCropCompleteSettings,
                         onCancel: () => {
@@ -3110,7 +3115,7 @@
                         recommendedWidth: cropRecommendedSize.width,
                         recommendedHeight: cropRecommendedSize.height,
                         aspectRatio: calculateAspectRatio(cropRecommendedSize.width, cropRecommendedSize.height)
-                    })}
+                    }) : null}
                 </>
             );
         };
@@ -4102,7 +4107,7 @@
                     )}
                     
                     {/* 크롭 모달 (맛집 관리용) */}
-                    {showCropModal && cropImageFile && React.createElement(ImageCropModal, {
+                    {(showCropModal && cropImageFile) ? React.createElement(ImageCropModal, {
                         imageFile: cropImageFile,
                         onCropComplete: handleCropCompleteRestaurant,
                         onCancel: () => {
@@ -4114,7 +4119,7 @@
                         recommendedWidth: 1200,
                         recommendedHeight: 800,
                         aspectRatio: calculateAspectRatio(1200, 800)
-                    })}
+                    }) : null}
                                 </div>
             );
         };
@@ -5105,7 +5110,7 @@
                     )}
                     
                     {/* 크롭 모달 */}
-                    {showCropModal && cropImageFile && React.createElement(ImageCropModal, {
+                    {(showCropModal && cropImageFile) ? React.createElement(ImageCropModal, {
                         imageFile: cropImageFile,
                         onCropComplete: handleCropComplete,
                         onCancel: () => {
@@ -5116,7 +5121,7 @@
                         recommendedWidth: 1200,
                         recommendedHeight: 800,
                         aspectRatio: calculateAspectRatio(1200, 800)
-                    })}
+                    }) : null}
                     
                     {/* 추가 모달 */}
                     {showAddModal && (
@@ -5502,7 +5507,7 @@
                     )}
                     
                     {/* 크롭 모달 (추가 모달용) */}
-                    {showCropModal && cropImageFile && cropImageType === 'add' && React.createElement(ImageCropModal, {
+                    {(showCropModal && cropImageFile && cropImageType === 'add') ? React.createElement(ImageCropModal, {
                         imageFile: cropImageFile,
                         onCropComplete: handleCropComplete,
                         onCancel: () => {
@@ -5513,7 +5518,7 @@
                         recommendedWidth: 1200,
                         recommendedHeight: 800,
                         aspectRatio: calculateAspectRatio(1200, 800)
-                    })}
+                    }) : null}
                     
                     {/* 지도 선택 모달 */}
                     {showMapModal && (
@@ -6193,13 +6198,13 @@
                     
                     {/* 콘텐츠 영역 */}
                         <div className="p-6">
-                            {loading && (
+                            {loading ? (
                                 <div className="text-center py-12">
                                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand mx-auto mb-4"></div>
                                     <p className="text-gray-600">데이터를 불러오는 중...</p>
-                            </div>
-                        )}
-                            {!loading && activeMenu === 'dashboard' && typeof DashboardHome !== 'undefined' && React.createElement(DashboardHome, {
+                                </div>
+                            ) : null}
+                            {!loading && activeMenu === 'dashboard' && typeof DashboardHome !== 'undefined' ? React.createElement(DashboardHome, {
                                 users: users || [],
                                 posts: posts || [],
                                 seminars: seminars || [],
@@ -6208,31 +6213,31 @@
                                 menuNames: menuNames,
                                 setMenuNames: setMenuNames,
                                 settings: settings || {}
-                            })}
-                            {!loading && activeMenu === 'main' && typeof MainContentManagement !== 'undefined' && React.createElement(MainContentManagement, {
+                            }) : null}
+                            {!loading && activeMenu === 'main' && typeof MainContentManagement !== 'undefined' ? React.createElement(MainContentManagement, {
                                 settings: settings || {},
                                 setSettings: setSettings,
                                 menuEnabled: menuEnabled,
                                 setMenuEnabled: setMenuEnabled,
                                 menuNames: menuNames,
                                 setMenuNames: setMenuNames
-                            })}
-                            {!loading && activeMenu === 'users' && typeof UserManagement !== 'undefined' && React.createElement(UserManagement, {
+                            }) : null}
+                            {!loading && activeMenu === 'users' && typeof UserManagement !== 'undefined' ? React.createElement(UserManagement, {
                                 users: users || [],
                                 setUsers: setUsers
-                            })}
-                            {!loading && activeMenu === 'posts' && typeof PostManagement !== 'undefined' && React.createElement(PostManagement, {
+                            }) : null}
+                            {!loading && activeMenu === 'posts' && typeof PostManagement !== 'undefined' ? React.createElement(PostManagement, {
                                 posts: posts || [],
                                 setPosts: setPosts
-                            })}
-                            {!loading && activeMenu === 'programs' && typeof ProgramManagement !== 'undefined' && React.createElement(ProgramManagement, {
+                            }) : null}
+                            {!loading && activeMenu === 'programs' && typeof ProgramManagement !== 'undefined' ? React.createElement(ProgramManagement, {
                                 seminars: seminars || [],
                                 setSeminars: setSeminars
-                            })}
-                            {!loading && activeMenu === 'restaurants' && typeof RestaurantManagement !== 'undefined' && React.createElement(RestaurantManagement, {
+                            }) : null}
+                            {!loading && activeMenu === 'restaurants' && typeof RestaurantManagement !== 'undefined' ? React.createElement(RestaurantManagement, {
                                 restaurants: restaurants || [],
                                 setRestaurants: setRestaurants
-                            })}
+                            }) : null}
                         </div>
                     </div>
                 </div>
