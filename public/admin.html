@@ -22,7 +22,7 @@
     
     <!-- 다음 우편번호 서비스 + 카카오 맵 SDK (장소 선택용) -->
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
-    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=f35b8c9735d77cced1235c5775c7c3b1&libraries=services" async></script>
+    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=f35b8c9735d77cced1235c5775c7c3b1&libraries=services" defer></script>
 
     <!-- Firebase SDK v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -67,6 +67,20 @@
                     }));
                 }
             }, 100);
+            
+            // checkFirebaseConfig 함수 추가 (디버깅용)
+            window.checkFirebaseConfig = function() {
+                return {
+                    initialized: typeof firebase !== 'undefined',
+                    config: typeof window.firebaseConfig !== 'undefined' ? window.firebaseConfig : {},
+                    services: {
+                        firebaseServices: !!window.firebaseServices,
+                        firebaseService: !!window.firebaseService,
+                        authService: !!window.authService
+                    },
+                    app: typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0 ? firebase.apps[0].name : 'NOT_INITIALIZED'
+                };
+            };
         })();
     </script>
 
@@ -1614,13 +1628,13 @@
                         setImageSrc(e.target.result);
                         const img = new Image();
                         img.onload = () => {
-                            setImageSize({ width: img.width, height: img.height });
+                            setImageSize({ width: img.naturalWidth, height: img.naturalHeight });
                             // 초기 크롭 영역 설정 (이미지 중앙, 추천 해상도 비율)
                             const containerWidth = 600;
                             const containerHeight = 400;
                             
                             // 추천 비율 사용 또는 이미지 원본 비율
-                            const targetAspect = aspectRatio !== null ? aspectRatio : (img.width / img.height);
+                            const targetAspect = aspectRatio !== null ? aspectRatio : (img.naturalWidth / img.naturalHeight);
                             
                             let initWidth, initHeight;
                             
@@ -1811,26 +1825,36 @@
             
             // 크롭 완료
             const handleCrop = async () => {
-                if (!imageFile || !imageSrc || !imageRef.current || !containerRef.current) return;
+                if (!imageFile || !imageSrc || !imageRef.current || !containerRef.current) {
+                    console.error('크롭에 필요한 요소가 없습니다:', {
+                        imageFile: !!imageFile,
+                        imageSrc: !!imageSrc,
+                        imageRef: !!imageRef.current,
+                        containerRef: !!containerRef.current
+                    });
+                    return;
+                }
                 
                 try {
                     const img = imageRef.current;
                     const containerRect = containerRef.current.getBoundingClientRect();
-                    const containerWidth = 600;
-                    const containerHeight = 400;
+                    const containerWidth = containerRect.width || 600;
+                    const containerHeight = containerRect.height || 400;
                     
                     // 이미지가 object-contain으로 표시된 실제 크기 계산
-                    const imgAspect = img.width / img.height;
+                    const imgAspect = img.naturalWidth / img.naturalHeight;
                     const containerAspect = containerWidth / containerHeight;
                     
                     let displayedWidth, displayedHeight, offsetX, offsetY;
                     
                     if (imgAspect > containerAspect) {
+                        // 이미지가 컨테이너보다 넓음
                         displayedWidth = containerWidth;
                         displayedHeight = containerWidth / imgAspect;
                         offsetX = 0;
                         offsetY = (containerHeight - displayedHeight) / 2;
                     } else {
+                        // 이미지가 컨테이너보다 높음
                         displayedHeight = containerHeight;
                         displayedWidth = containerHeight * imgAspect;
                         offsetX = (containerWidth - displayedWidth) / 2;
@@ -1854,8 +1878,8 @@
                     const cropRelativeHeight = Math.min(cropArea.height, zoomedHeight - cropRelativeY);
                     
                     // 실제 이미지 좌표로 변환
-                    const scaleX = img.width / zoomedWidth;
-                    const scaleY = img.height / zoomedHeight;
+                    const scaleX = img.naturalWidth / zoomedWidth;
+                    const scaleY = img.naturalHeight / zoomedHeight;
                     
                     const actualCropArea = {
                         x: cropRelativeX * scaleX,
@@ -1865,12 +1889,25 @@
                     };
                     
                     // 좌표 정수화 및 검증
-                    actualCropArea.x = Math.round(Math.max(0, Math.min(actualCropArea.x, img.width - 1)));
-                    actualCropArea.y = Math.round(Math.max(0, Math.min(actualCropArea.y, img.height - 1)));
-                    actualCropArea.width = Math.round(Math.max(1, Math.min(actualCropArea.width, img.width - actualCropArea.x)));
-                    actualCropArea.height = Math.round(Math.max(1, Math.min(actualCropArea.height, img.height - actualCropArea.y)));
+                    actualCropArea.x = Math.round(Math.max(0, Math.min(actualCropArea.x, img.naturalWidth - 1)));
+                    actualCropArea.y = Math.round(Math.max(0, Math.min(actualCropArea.y, img.naturalHeight - 1)));
+                    actualCropArea.width = Math.round(Math.max(1, Math.min(actualCropArea.width, img.naturalWidth - actualCropArea.x)));
+                    actualCropArea.height = Math.round(Math.max(1, Math.min(actualCropArea.height, img.naturalHeight - actualCropArea.y)));
+                    
+                    console.log('크롭 영역:', {
+                        cropArea,
+                        actualCropArea,
+                        imageSize: { width: img.naturalWidth, height: img.naturalHeight },
+                        displayedSize: { width: displayedWidth, height: displayedHeight },
+                        zoom
+                    });
                     
                     const croppedImage = await cropImage(imageFile, actualCropArea, recommendedWidth, recommendedHeight);
+                    
+                    if (!croppedImage) {
+                        throw new Error('크롭된 이미지가 생성되지 않았습니다.');
+                    }
+                    
                     await onCropComplete(croppedImage);
                 } catch (error) {
                     console.error('이미지 크롭 오류:', error);
@@ -1878,7 +1915,7 @@
                 }
             };
             
-            if (!imageSrc) return null;
+            if (!imageSrc) return React.createElement(React.Fragment);
             
             return React.createElement('div', {
                 className: 'fixed inset-0 z-50 flex items-center justify-center bg-black/70',
@@ -2084,32 +2121,49 @@
             
             // 크롭 완료 핸들러 (설정 페이지용)
             const handleCropCompleteSettings = async (croppedImageBase64) => {
-                if (!cropImageFile || !cropImageField) return;
+                if (!cropImageFile || !cropImageField) {
+                    console.error('크롭 정보가 없습니다:', { cropImageFile, cropImageField });
+                    return;
+                }
+
+                if (!croppedImageBase64) {
+                    console.error('크롭된 이미지가 없습니다');
+                    alert('크롭된 이미지를 받지 못했습니다.');
+                    return;
+                }
 
                 try {
                     // 로딩 상태 시작
                     setSaving(true);
                     
+                    console.log('이미지 업로드 시작:', cropImageField);
                     const uploaded = await uploadImageToImgBB(croppedImageBase64, cropImageFile.name);
 
                     if (!uploaded || !uploaded.url) {
                         throw new Error('이미지 업로드 응답에 URL이 없습니다.');
                     }
 
+                    console.log('이미지 업로드 완료:', uploaded.url);
+
                     // 함수형 업데이트로 즉시 반영
                     setFormData(prevData => {
                         const newData = {...prevData, [cropImageField]: uploaded.url};
+                        console.log('formData 업데이트:', cropImageField, uploaded.url);
                         return newData;
                     });
 
-                    // 렌더링 시간 확보 후 모달 닫기
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            setShowCropModal(false);
-                            setCropImageFile(null);
-                            setCropImageField(null);
-                        });
+                    // settings도 업데이트 (실시간 저장을 위해)
+                    setSettings(prevSettings => {
+                        const newSettings = {...prevSettings, [cropImageField]: uploaded.url};
+                        return newSettings;
                     });
+
+                    // 렌더링 시간 확보 후 모달 닫기
+                    setTimeout(() => {
+                        setShowCropModal(false);
+                        setCropImageFile(null);
+                        setCropImageField(null);
+                    }, 100);
                 } catch (error) {
                     console.error('❌ 이미지 업로드 오류:', error);
                     alert(`이미지 업로드에 실패했습니다.\n${error.message || '알 수 없는 오류'}`);
@@ -6203,8 +6257,18 @@
         };
 
         // 렌더링
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        const rootElement = document.getElementById('root');
+        if (!rootElement) {
+            console.error('Root element not found');
+            return;
+        }
+        
+        try {
+            const root = ReactDOM.createRoot(rootElement);
+            root.render(React.createElement(App));
+        } catch (error) {
+            console.error('React 렌더링 오류:', error);
+        }
         })(); // IIFE 종료 - 스코프 격리
     </script>
 </body>
