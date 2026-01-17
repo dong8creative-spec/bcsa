@@ -34,19 +34,23 @@
     <!-- Firebase Configuration (동기 로드) -->
     <!-- checkFirebaseConfig 함수를 즉시 정의 (firebase-config.js 로드 전에도 사용 가능) -->
     <script>
-        // checkFirebaseConfig 함수를 즉시 정의하여 콘솔에서 호출 가능하도록 함
-        window.checkFirebaseConfig = function() {
-            return {
-                initialized: typeof firebase !== 'undefined',
-                config: typeof window.firebaseConfig !== 'undefined' ? window.firebaseConfig : {},
-                services: {
-                    firebaseServices: !!window.firebaseServices,
-                    firebaseService: !!window.firebaseService,
-                    authService: !!window.authService
-                },
-                app: typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0 ? firebase.apps[0].name : 'NOT_INITIALIZED'
-            };
-        };
+        // 즉시 실행 함수로 함수 정의 보장
+        (function() {
+            if (typeof window.checkFirebaseConfig === 'undefined') {
+                window.checkFirebaseConfig = function() {
+                    return {
+                        initialized: typeof firebase !== 'undefined',
+                        config: typeof window.firebaseConfig !== 'undefined' ? window.firebaseConfig : {},
+                        services: {
+                            firebaseServices: !!window.firebaseServices,
+                            firebaseService: !!window.firebaseService,
+                            authService: !!window.authService
+                        },
+                        app: typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0 ? firebase.apps[0].name : 'NOT_INITIALIZED'
+                    };
+                };
+            }
+        })();
     </script>
     
     <script src="./assets/js/firebase-config.js"></script>
@@ -1187,7 +1191,7 @@
         // ==========================================
         // 대시보드 홈 컴포넌트
         // ==========================================
-        const DashboardHome = ({ users, posts, seminars, menuEnabled, setMenuEnabled, menuNames, setMenuNames, settings }) => {
+        const DashboardHome = ({ users = [], posts = [], seminars = [], menuEnabled, setMenuEnabled, menuNames, setMenuNames, settings = {} }) => {
             const [searchLogs, setSearchLogs] = useState([]);
             const [loadingLogs, setLoadingLogs] = useState(false);
             const refreshIntervalRef = useRef(null);
@@ -2060,7 +2064,7 @@
         // ==========================================
         // 메인 관리 컴포넌트
         // ==========================================
-        const MainContentManagement = ({ settings, setSettings, menuEnabled, setMenuEnabled, menuNames, setMenuNames }) => {
+        const MainContentManagement = ({ settings = {}, setSettings, menuEnabled, setMenuEnabled, menuNames, setMenuNames }) => {
             const [formData, setFormData] = useState(settings);
             const [saving, setSaving] = useState(false);
             const saveTimeoutRef = React.useRef(null);
@@ -3114,7 +3118,7 @@
         // ==========================================
         // 맛집 관리 컴포넌트
         // ==========================================
-        const RestaurantManagement = ({ restaurants, setRestaurants }) => {
+        const RestaurantManagement = ({ restaurants = [], setRestaurants }) => {
             const [selectedRestaurant, setSelectedRestaurant] = useState(null);
             const [showEditModal, setShowEditModal] = useState(false);
             const [showAddModal, setShowAddModal] = useState(false);
@@ -4118,7 +4122,7 @@
         // ==========================================
         // 회원 관리 컴포넌트
         // ==========================================
-        const UserManagement = ({ users, setUsers }) => {
+        const UserManagement = ({ users = [], setUsers }) => {
             const [selectedUser, setSelectedUser] = useState(null);
             const [showEditModal, setShowEditModal] = useState(false);
             const [editFormData, setEditFormData] = useState({});
@@ -4300,7 +4304,7 @@
         // ==========================================
         // 게시글 관리 컴포넌트
         // ==========================================
-        const PostManagement = ({ posts, setPosts }) => {
+        const PostManagement = ({ posts = [], setPosts }) => {
             const [selectedPost, setSelectedPost] = useState(null);
             const [showEditModal, setShowEditModal] = useState(false);
             const [editFormData, setEditFormData] = useState({});
@@ -4438,7 +4442,7 @@
         // ==========================================
         // 프로그램 관리 컴포넌트
         // ==========================================
-        const ProgramManagement = ({ seminars, setSeminars }) => {
+        const ProgramManagement = ({ seminars = [], setSeminars }) => {
             const [selectedSeminar, setSelectedSeminar] = useState(null);
             const [showEditModal, setShowEditModal] = useState(false);
             const [showAddModal, setShowAddModal] = useState(false);
@@ -6195,40 +6199,40 @@
                                     <p className="text-gray-600">데이터를 불러오는 중...</p>
                             </div>
                         )}
-                            {!loading && activeMenu === 'dashboard' && typeof DashboardHome !== 'undefined' && (
-                                <DashboardHome 
-                                    users={users} 
-                                    posts={posts} 
-                                    seminars={seminars}
-                                    menuEnabled={menuEnabled}
-                                    setMenuEnabled={setMenuEnabled}
-                                    menuNames={menuNames}
-                                    setMenuNames={setMenuNames}
-                                    settings={settings}
-                                />
-                            )}
-                            {!loading && activeMenu === 'main' && typeof MainContentManagement !== 'undefined' && (
-                                <MainContentManagement 
-                                    settings={settings} 
-                                    setSettings={setSettings}
-                                    menuEnabled={menuEnabled}
-                                    setMenuEnabled={setMenuEnabled}
-                                    menuNames={menuNames}
-                                    setMenuNames={setMenuNames}
-                                />
-                            )}
-                            {!loading && activeMenu === 'users' && typeof UserManagement !== 'undefined' && (
-                                <UserManagement users={users} setUsers={setUsers} />
-                            )}
-                            {!loading && activeMenu === 'posts' && typeof PostManagement !== 'undefined' && (
-                                <PostManagement posts={posts} setPosts={setPosts} />
-                            )}
-                            {!loading && activeMenu === 'programs' && typeof ProgramManagement !== 'undefined' && (
-                                <ProgramManagement seminars={seminars} setSeminars={setSeminars} />
-                            )}
-                            {!loading && activeMenu === 'restaurants' && typeof RestaurantManagement !== 'undefined' && (
-                                <RestaurantManagement restaurants={restaurants} setRestaurants={setRestaurants} />
-                            )}
+                            {!loading && activeMenu === 'dashboard' && typeof DashboardHome !== 'undefined' && React.createElement(DashboardHome, {
+                                users: users || [],
+                                posts: posts || [],
+                                seminars: seminars || [],
+                                menuEnabled: menuEnabled,
+                                setMenuEnabled: setMenuEnabled,
+                                menuNames: menuNames,
+                                setMenuNames: setMenuNames,
+                                settings: settings || {}
+                            })}
+                            {!loading && activeMenu === 'main' && typeof MainContentManagement !== 'undefined' && React.createElement(MainContentManagement, {
+                                settings: settings || {},
+                                setSettings: setSettings,
+                                menuEnabled: menuEnabled,
+                                setMenuEnabled: setMenuEnabled,
+                                menuNames: menuNames,
+                                setMenuNames: setMenuNames
+                            })}
+                            {!loading && activeMenu === 'users' && typeof UserManagement !== 'undefined' && React.createElement(UserManagement, {
+                                users: users || [],
+                                setUsers: setUsers
+                            })}
+                            {!loading && activeMenu === 'posts' && typeof PostManagement !== 'undefined' && React.createElement(PostManagement, {
+                                posts: posts || [],
+                                setPosts: setPosts
+                            })}
+                            {!loading && activeMenu === 'programs' && typeof ProgramManagement !== 'undefined' && React.createElement(ProgramManagement, {
+                                seminars: seminars || [],
+                                setSeminars: setSeminars
+                            })}
+                            {!loading && activeMenu === 'restaurants' && typeof RestaurantManagement !== 'undefined' && React.createElement(RestaurantManagement, {
+                                restaurants: restaurants || [],
+                                setRestaurants: setRestaurants
+                            })}
                         </div>
                     </div>
                 </div>
