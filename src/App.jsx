@@ -522,7 +522,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                         <Icons.Info className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                         <p>등록된 게시글이 없습니다.</p>
                 </div>
-            )}
+            ) : null}
 
                 {/* 게시글 작성 모달 */}
                 {isCreateModalOpen ? (
@@ -653,7 +653,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                                     <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
                                                                     <span className="text-xs text-gray-500">사진 추가</span>
                                         </div>
-                    )}
+                                                            )}
                                                             <input 
                                                                 type="file" 
                                                                 accept="image/*" 
@@ -785,7 +785,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                                 }} 
                                                             />
                                                         </label>
-                            )}
+                            ) : null}
                         </div>
                         </div>
                                             <div>
@@ -830,7 +830,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                             </option>
                                                         ))}
                                                     </select>
-                                                )}
+                                                ) : null}
                             </div>
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">별점 *</label>
@@ -878,14 +878,14 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                                     <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
                                                                     <span className="text-xs text-gray-500">사진 추가</span>
                                                         </div>
-                                                    )}
+                                                            )}
                                                             <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                                                                 const files = Array.from(e.target.files);
                                                                 handleImageUpload(files, 'review');
                                                                 e.target.value = '';
                                                             }} />
                                                         </label>
-                                                    )}
+                                                    ) : null}
                                                 </div>
                                             </div>
                                         </React.Fragment>
@@ -898,7 +898,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                 </label>
                                     {formData.isSecret ? (
                                         <input type="text" placeholder="비밀번호" className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
-                                    )}
+                                    ) : null}
                                 </div>
                         <div className="flex gap-4 mt-8">
                                     <button type="button" onClick={() => setIsCreateModalOpen(false)} className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200">
