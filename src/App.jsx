@@ -1466,7 +1466,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                             >
                                 네이버 예약
                             </a>
-                        )}
+                        ) : null}
                         {restaurant.smartPlaceUrl ? (
                             <a 
                                 href={restaurant.smartPlaceUrl} 
@@ -1476,7 +1476,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                             >
                                 스마트플레이스
                             </a>
-                        )}
+                        ) : null}
                     </div>
                 </div>
                 
@@ -1493,7 +1493,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                             ))}
                         </div>
                     </div>
-                )}
+                ) : null}
                 
                 {/* 지도 */}
                 {restaurant.location?.lat && restaurant.location?.lng ? (
@@ -3785,7 +3785,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                                             className={bookmarked ? 'fill-current' : ''} 
                                                         />
                                                     </button>
-                                                )}
+                                                ) : null}
                                                 <span className="text-xs text-gray-400">{bid.bidNtceNo || '-'}</span>
                                             </div>
                                         </div>
