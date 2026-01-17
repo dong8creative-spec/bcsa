@@ -6060,12 +6060,12 @@
             
             // 렌더링 로직을 try-catch로 감싸기
             try {
-            // 인증 실패 - 로그인 화면
-            if (!isAuthenticated) {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6063',message:'AdminDashboard early return (not authenticated)',data:{isAuthenticated:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
-                return (
+                // 인증 실패 - 로그인 화면
+                if (!isAuthenticated) {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6065',message:'AdminDashboard early return (not authenticated)',data:{isAuthenticated:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                    // #endregion
+                    return (
                     <div className="min-h-screen bg-soft flex items-center justify-center p-4">
                         <div className="bg-white rounded-3xl shadow-lg p-8 max-w-md w-full">
                             <div className="text-center mb-6">
@@ -6116,10 +6116,10 @@
                             </button>
                         </div>
                     </div>
-                );
-            }
+                    );
+                }
             
-            // 메뉴 표시/비표시 토글 함수
+                // 메뉴 표시/비표시 토글 함수
             const toggleMenuEnabled = (menuKey) => {
                 const newMenuEnabled = { ...menuEnabled, [menuKey]: !menuEnabled[menuKey] };
                 setMenuEnabled(newMenuEnabled);
@@ -6141,10 +6141,10 @@
                 { id: 'restaurants', label: '맛집 관리', icon: Icons.MapPin },
             ];
 
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6139',message:'AdminDashboard main return (authenticated)',data:{isAuthenticated:true,activeMenu,loading,hasDashboardHome:typeof DashboardHome !== 'undefined',hasMainContent:typeof MainContentManagement !== 'undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
-            return (
+                // #region agent log
+                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6143',message:'AdminDashboard main return (authenticated)',data:{isAuthenticated:true,activeMenu,loading,hasDashboardHome:typeof DashboardHome !== 'undefined',hasMainContent:typeof MainContentManagement !== 'undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                // #endregion
+                return (
                 <div className="min-h-screen bg-soft flex">
                     {/* 사이드바 */}
                     <div className="w-64 bg-white border-r border-gray-200 fixed h-screen overflow-y-auto">
@@ -6249,7 +6249,7 @@
                         </div>
                     </div>
                 </div>
-            );
+                );
             } catch (error) {
                 // #region agent log
                 fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6259',message:'AdminDashboard catch error',data:{error:error.message,stack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
