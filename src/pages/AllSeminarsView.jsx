@@ -1,0 +1,527 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import PageTitle from '../components/PageTitle';
+import { Icons } from '../components/Icons';
+import CalendarSection from '../components/CalendarSection';
+
+const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, onAddProgram, waitForKakaoMap, openKakaoPlacesSearch, pageTitles }) => {
+    const [searchKeyword, setSearchKeyword] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('전체');
+    const [selectedStatus, setSelectedStatus] = useState('전체');
+    const [sortBy, setSortBy] = useState('latest');
+    const [selectedSeminar, setSelectedSeminar] = useState(null);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0); // 이미지 갤러리 현재 인덱스
+    const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+    const [applySeminar, setApplySeminar] = useState(null);
+    const [applicationData, setApplicationData] = useState({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    
+    // selectedSeminar가 변경될 때 이미지 인덱스 초기화
+    useEffect(() => {
+        setCurrentImageIndex(0);
+    }, [selectedSeminar?.id]);
+    
+    const [addFormData, setAddFormData] = useState({
+        title: '',
+        desc: '',
+        description: '',
+        date: '',
+        location: '',
+        images: [], // 이미지 배열 (최대 5장)
+        img: '', // 호환성을 위해 유지 (기존 데이터 대응)
+        category: '',
+        status: '모집중',
+        price: 0,
+        requiresPayment: false,
+        maxParticipants: 0,
+        currentParticipants: 0,
+        deadline: ''
+    });
+    const [uploadingImage, setUploadingImage] = useState(false);
+    
+    const categories = ['전체', ...new Set(seminars.map(s => s.category).filter(Boolean))];
+    const statuses = ['전체', '모집중', '마감임박', '종료'];
+    
+    const filteredSeminars = seminars.filter(seminar => {
+        const matchKeyword = !searchKeyword || seminar.title.toLowerCase().includes(searchKeyword.toLowerCase()) || seminar.desc?.toLowerCase().includes(searchKeyword.toLowerCase());
+        const matchCategory = selectedCategory === '전체' || seminar.category === selectedCategory;
+        const matchStatus = selectedStatus === '전체' || seminar.status === selectedStatus;
+        return matchKeyword && matchCategory && matchStatus;
+    });
+    
+    // 정렬 로직
+    const sortedSeminars = useMemo(() => {
+        const sorted = [...filteredSeminars];
+        // 날짜 파싱 함수 (공통 사용)
+        const parseDate = (dateStr) => {
+            if (!dateStr) return new Date(0);
+            // "2024.01.15" 또는 "2024-01-15" 형식 파싱
+            const match = dateStr.match(/(\d{4})[.-](\d{1,2})[.-](\d{1,2})/);
+            if (match) {
+                return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+            }
+            return new Date(dateStr) || new Date(0);
+        };
+        
+        switch(sortBy) {
+            case 'latest':
+                // 운영일자 기준 최신순 정렬
+                return sorted.sort((a, b) => {
+                    const aDate = parseDate(a.date);
+                    const bDate = parseDate(b.date);
+                    return bDate - aDate; // 내림차순 (최신순)
+                });
+            case 'popular':
+                return sorted.sort((a, b) => 
+                    (b.currentParticipants || 0) - (a.currentParticipants || 0)
+                );
+            case 'date':
+                return sorted.sort((a, b) => {
+                    return parseDate(a.date) - parseDate(b.date);
+                });
+            default:
+                return sorted;
+        }
+    }, [filteredSeminars, sortBy]);
+
+    const getStatusColor = (status) => {
+        switch(status) {
+            case '모집중': return 'bg-blue-100 text-blue-700';
+            case '마감임박': return 'bg-orange-100 text-orange-700';
+            case '종료': return 'bg-gray-100 text-gray-600';
+            default: return 'bg-gray-100 text-gray-600';
+        }
+    };
+
+    const getCategoryColor = (category) => {
+        const colorMap = {
+            '교육/세미나': 'bg-blue-100 text-blue-700',
+            '네트워킹/모임': 'bg-green-100 text-green-700',
+            '투자/IR': 'bg-orange-100 text-orange-700',
+            '멘토링/상담': 'bg-purple-100 text-purple-700',
+            '기타': 'bg-gray-100 text-gray-700'
+        };
+        return colorMap[category] || 'bg-gray-100 text-gray-700';
+    };
+
+    const handleOpenApplyModal = (seminar) => {
+        
+        if (!seminar) {
+            
+            return;
+        }
+        if (seminar.status === '종료') {
+            
+            return;
+        }
+        setApplySeminar(seminar);
+        setApplicationData({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
+        setIsApplyModalOpen(true);
+    };
+
+    const handleSubmitApplication = () => {
+        if (!applicationData.reason.trim()) {
+            alert('신청사유를 입력해주세요.');
+            return;
+        }
+        if (!applicationData.questions[0].trim() || !applicationData.questions[1].trim()) {
+            alert('사전질문 2개를 모두 입력해주세요.');
+            return;
+        }
+        const success = onApply(applySeminar, applicationData);
+        if (success) {
+            // 캘린더 파일 생성 및 다운로드 (generateAndDownloadCalendar는 상위 컴포넌트에서 정의됨)
+            // AllSeminarsView는 함수형 컴포넌트이므로, onApply 콜백에서 처리하거나
+            // 상위 컴포넌트에서 generateAndDownloadCalendar를 prop으로 전달받아야 함
+            // 일단 onApply가 성공하면 상위에서 처리하도록 함
+        }
+        setIsApplyModalOpen(false);
+        setApplySeminar(null);
+        setApplicationData({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
+    };
+
+    return (
+        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+            <div className="container mx-auto max-w-7xl">
+                <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+                    <div>
+                        <PageTitle pageKey="programs" pageTitles={pageTitles} defaultText={menuNames?.['프로그램'] || '프로그램'} />
+                        <p className="text-gray-500 text-sm">비즈니스 세미나 및 네트워킹</p>
+                                </div>
+                    <div className="flex items-center gap-3">
+                        {currentUser && onAddProgram && (
+                            <button 
+                                type="button" 
+                                onClick={() => setIsAddModalOpen(true)} 
+                                className="flex items-center gap-2 px-4 py-2 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                            >
+                                <Icons.Plus size={20} /> 프로그램 등록
+                            </button>
+                        )}
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
+                            <Icons.ArrowLeft size={20} /> 메인으로
+                        </button>
+                    </div>
+                    </div>
+
+                {/* 검색 및 필터 */}
+                <div className="bg-white rounded-3xl shadow-card p-6 mb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div className="md:col-span-2">
+                            <label className="block text-xs font-bold text-gray-600 mb-2">검색</label>
+                            <div className="relative">
+                                <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input type="text" placeholder="제목 또는 내용 검색" className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm" value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} />
+                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 mb-2">카테고리</label>
+                            <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm bg-white" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+                                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                </select>
+                            </div>
+                                    <div>
+                            <label className="block text-xs font-bold text-gray-600 mb-2">상태</label>
+                            <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm bg-white" value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}>
+                                {statuses.map(status => <option key={status} value={status}>{status}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                            <label className="block text-xs font-bold text-gray-600 mb-2">정렬</label>
+                            <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm bg-white" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                                <option value="latest">최신순</option>
+                                <option value="popular">인기순</option>
+                                <option value="date">날짜순</option>
+                                        </select>
+                                    </div>
+                                    </div>
+                    <div className="text-xs text-gray-500 mt-4">
+                        검색 결과: <span className="font-bold text-brand">{sortedSeminars.length}</span>개
+                                    </div>
+                                    </div>
+
+                {/* 세미나 리스트 */}
+                {sortedSeminars.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {sortedSeminars.map((seminar) => {
+                            // images 배열이 있으면 첫 번째 이미지 사용, 없으면 img 필드 사용
+                            const displayImage = (seminar.images && seminar.images.length > 0) 
+                                ? seminar.images[0] 
+                                : seminar.img;
+                            
+                            return (
+                            <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-3xl shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 cursor-pointer overflow-hidden" onClick={() => setSelectedSeminar(seminar)}>
+                                {displayImage && (
+                                    <div className="w-full overflow-hidden relative" style={{ aspectRatio: '3/4' }}>
+                                        <img src={displayImage} alt={seminar.title} className="w-full h-full object-cover" />
+                                        {/* 이미지가 여러 장일 경우 표시 */}
+                                        {(seminar.images && seminar.images.length > 1) && (
+                                            <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+                                                <Icons.Camera size={12} className="inline mr-1" />
+                                                {seminar.images.length}
+                                            </div>
+                                        )}
+                                        </div>
+                                )}
+                                <div className="p-6">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${getStatusColor(seminar.status)}`}>{seminar.status}</span>
+                                        {seminar.category && (
+                                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${getCategoryColor(seminar.category)}`}>
+                                                {seminar.category}
+                                            </span>
+                                        )}
+                                        <span className="text-xs font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">
+                                            {seminar.requiresPayment ? (seminar.price ? `${seminar.price.toLocaleString()}원` : '유료') : '무료'}
+                                        </span>
+                                    </div>
+                                    <h3 className="text-lg font-bold text-dark mb-2 line-clamp-2">{seminar.title}</h3>
+                                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">{seminar.desc}</p>
+                                    <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                                        <span className="flex items-center gap-1"><Icons.Calendar size={14} /> {seminar.date}</span>
+                                        {seminar.location && <span className="flex items-center gap-1"><Icons.MapPin size={14} /> {seminar.location}</span>}
+                                    </div>
+                                <div className="flex items-center justify-between">
+                                        <span className="text-xs text-gray-500">신청: {seminar.currentParticipants || 0} / {seminar.maxParticipants || 0}명</span>
+                                        {currentUser && (
+                                        <button
+                                            type="button"
+                                                onClick={(e) => { e.stopPropagation(); handleOpenApplyModal(seminar); }} 
+                                                disabled={seminar.status === '종료'}
+                                                className={`px-4 py-2 text-xs font-bold rounded-lg ${
+                                                    seminar.status === '종료' 
+                                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                                        : 'bg-brand text-white hover:bg-blue-700'
+                                                }`}
+                                            >
+                                                {seminar.status === '종료' ? '종료' : '신청하기'}
+                                        </button>
+                                    )}
+                                    </div>
+                                    </div>
+                                    </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="text-center py-20 text-gray-500">
+                        <Icons.Info className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <p>등록된 프로그램이 없습니다.</p>
+                                    </div>
+                )}
+
+                {/* 월간일정표 */}
+                <CalendarSection 
+                    seminars={seminars} 
+                    onSelectSeminar={(seminar) => setSelectedSeminar(seminar)}
+                    currentUser={currentUser}
+                />
+
+                {/* 세미나 상세 모달 */}
+                {selectedSeminar && (() => {
+                    // images 배열 정규화: 빈 문자열 필터링 및 null 처리
+                    let images = [];
+                    if (selectedSeminar.images && Array.isArray(selectedSeminar.images) && selectedSeminar.images.length > 0) {
+                        images = selectedSeminar.images.filter(img => img && typeof img === 'string' && img.trim() !== '');
+                    } else if (selectedSeminar.img && typeof selectedSeminar.img === 'string' && selectedSeminar.img.trim() !== '') {
+                        images = [selectedSeminar.img];
+                    }
+                    
+                    // currentImageIndex가 유효한 범위 내에 있는지 확인
+                    const validIndex = images.length > 0 
+                        ? Math.min(currentImageIndex, images.length - 1)
+                        : 0;
+                    const currentImage = images.length > 0 ? images[validIndex] : null;
+                    const hasImages = images.length > 0;
+                    
+                    return (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { 
+                        if (e.target === e.currentTarget) {
+                            setSelectedSeminar(null);
+                            setCurrentImageIndex(0);
+                        }
+                    }}>
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl z-10 max-h-[90vh] flex flex-col md:flex-row overflow-hidden relative">
+                            <button type="button" onClick={() => {
+                                setSelectedSeminar(null);
+                                setCurrentImageIndex(0);
+                            }} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 z-20">
+                            <Icons.X size={18}/>
+                        </button>
+                            {/* 이미지 갤러리 영역 (왼쪽) */}
+                            <div className="flex-[0_0_100%] md:flex-[0_0_400px] lg:flex-[0_0_450px] relative bg-gray-50" style={{ minHeight: '400px' }}>
+                                {hasImages && currentImage ? (
+                                    <>
+                                        <img 
+                                            src={currentImage} 
+                                            alt={selectedSeminar.title} 
+                                            className="w-full h-full object-contain cursor-pointer" 
+                                            style={{ maxHeight: '90vh' }}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (images.length > 1) {
+                                                    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+                                                }
+                                            }}
+                                            onError={(e) => {
+                                                e.target.style.display = 'none';
+                                                const placeholder = e.target.nextElementSibling;
+                                                if (placeholder) placeholder.style.display = 'flex';
+                                            }}
+                                        />
+                                        <div className="hidden w-full h-full items-center justify-center bg-gray-100">
+                                            <div className="text-center">
+                                                <Icons.Camera className="w-16 h-16 text-gray-400 mx-auto mb-2" />
+                                                <p className="text-sm text-gray-500">이미지를 불러올 수 없습니다</p>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                                        <div className="text-center">
+                                            <Icons.Camera className="w-16 h-16 text-gray-400 mx-auto mb-2" />
+                                            <p className="text-sm text-gray-500">이미지가 없습니다</p>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* 이미지가 여러 장일 경우 네비게이션 */}
+                                {hasImages && images.length > 1 && (
+                                    <>
+                                        {/* 이전 버튼 */}
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+                                            }}
+                                            className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors z-10"
+                                        >
+                                            <Icons.ChevronLeft size={20} />
+                                        </button>
+                                        {/* 다음 버튼 */}
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setCurrentImageIndex((prev) => (prev + 1) % images.length);
+                                            }}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors z-10"
+                                        >
+                                            <Icons.ChevronRight size={20} />
+                                        </button>
+                                        {/* 이미지 인덱스 표시 */}
+                                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-3 py-1 rounded-full z-10">
+                                            {validIndex + 1} / {images.length}
+                                        </div>
+                                        {/* 썸네일 목록 (하단) */}
+                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-3 z-10">
+                                            <div className="flex gap-2 justify-center overflow-x-auto">
+                                                {images.map((img, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setCurrentImageIndex(idx);
+                                                        }}
+                                                        className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                                                            idx === validIndex 
+                                                                ? 'border-white scale-110' 
+                                                                : 'border-white/50 opacity-60 hover:opacity-100'
+                                                        }`}
+                                                    >
+                                                        <img 
+                                                            src={img} 
+                                                            alt={`${idx + 1}`} 
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => {
+                                                                e.target.style.display = 'none';
+                                                            }}
+                                                        />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                                
+                                <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
+                                        {selectedSeminar.category && (
+                                        <span className={`text-xs font-bold px-2 py-1 rounded-full shadow-sm ${getCategoryColor(selectedSeminar.category)}`} style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
+                                                {selectedSeminar.category}
+                                            </span>
+                                        )}
+                                    <span className="text-xs font-bold px-2 py-1 bg-white/90 text-gray-700 rounded-full shadow-sm">
+                                            {selectedSeminar.requiresPayment ? (selectedSeminar.price ? `${selectedSeminar.price.toLocaleString()}원` : '유료') : '무료'}
+                                        </span>
+                                    </div>
+                                </div>
+                            {/* 텍스트 영역 (오른쪽) */}
+                        <div className="flex-1 p-6 md:p-8 overflow-y-auto modal-scroll" style={{ minWidth: '300px' }}>
+                            <div className="flex items-center gap-3 mb-4">
+                                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${getStatusColor(selectedSeminar.status)}`}>{selectedSeminar.status}</span>
+                                    </div>
+                                <h3 className="text-2xl font-bold text-dark mb-4">{selectedSeminar.title}</h3>
+                                <div className="space-y-2 text-sm text-gray-600 mb-6">
+                                    <div className="flex items-center gap-2"><Icons.Calendar size={16} /> {selectedSeminar.date}</div>
+                                    {selectedSeminar.location && <div className="flex items-center gap-2"><Icons.MapPin size={16} /> {selectedSeminar.location}</div>}
+                                            </div>
+                                <div className="bg-soft p-6 rounded-2xl border border-brand/5 mb-6">
+                                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{selectedSeminar.desc}</p>
+                                        </div>
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <span className="text-sm text-gray-500">신청: {selectedSeminar.currentParticipants || 0} / {selectedSeminar.maxParticipants || 0}명</span>
+                                    {currentUser && (
+                                                        <button 
+                                                            type="button"
+                                            onClick={() => { handleOpenApplyModal(selectedSeminar); }} 
+                                            disabled={selectedSeminar.status === '종료'}
+                                            className={`px-6 py-3 font-bold rounded-xl transition-colors ${
+                                                selectedSeminar.status === '종료' 
+                                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                                    : 'bg-brand text-white hover:bg-blue-700'
+                                            }`}
+                                        >
+                                            {selectedSeminar.status === '종료' ? '종료' : '신청하기'}
+                                                        </button>
+                                        )}
+                                    </div>
+                                    </div>
+                        </div>
+                    </div>
+                    );
+                })()}
+
+                {/* 신청 모달 */}
+                {isApplyModalOpen && applySeminar && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setIsApplyModalOpen(false); }}>
+                        <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-2xl font-bold text-dark">프로그램 신청</h3>
+                                <button type="button" onClick={() => setIsApplyModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                            <Icons.X size={24} />
+                        </button>
+                            </div>
+                            <div className="mb-6">
+                                <h4 className="text-lg font-bold text-dark mb-2">{applySeminar.title}</h4>
+                                <div className="text-sm text-gray-600 space-y-1">
+                                    <div><span className="font-bold">일시:</span> {applySeminar.date}</div>
+                                    {applySeminar.location && <div><span className="font-bold">장소:</span> {applySeminar.location}</div>}
+                            </div>
+                                    </div>
+                        <div className="space-y-4">
+                                    <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">신청사유 *</label>
+                                        <textarea 
+                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-32 resize-none" 
+                                        value={applicationData.reason}
+                                        onChange={(e) => setApplicationData({...applicationData, reason: e.target.value})}
+                                        placeholder="이 프로그램에 신청하는 이유를 작성해주세요"
+                                        />
+                                    </div>
+                                    <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">사전질문 *</label>
+                                        <div className="space-y-3">
+                                <input 
+                                    type="text" 
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            value={applicationData.questions[0]}
+                                                onChange={(e) => {
+                                                const newQuestions = [...applicationData.questions];
+                                                newQuestions[0] = e.target.value;
+                                                setApplicationData({...applicationData, questions: newQuestions});
+                                            }}
+                                            placeholder="사전질문 1"
+                                        />
+                                                                <input 
+                                    type="text" 
+                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            value={applicationData.questions[1]}
+                                            onChange={(e) => {
+                                                const newQuestions = [...applicationData.questions];
+                                                newQuestions[1] = e.target.value;
+                                                setApplicationData({...applicationData, questions: newQuestions});
+                                            }}
+                                            placeholder="사전질문 2"
+                                        />
+                                            </div>
+                                                    </div>
+                                <div className="flex gap-4 mt-8">
+                                    <button type="button" onClick={() => setIsApplyModalOpen(false)} className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200">
+                                취소
+                            </button>
+                                    <button type="button" onClick={handleSubmitApplication} className="flex-1 py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">
+                                        신청하기
+                            </button>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            )}
+                        </div>
+        </div>
+    );
+};
+
+export default AllSeminarsView;

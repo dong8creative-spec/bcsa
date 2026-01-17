@@ -1,6 +1,6 @@
 # 환경 변수 및 설정 파일 (민감 정보 포함)
-assets/js/config.js
-assets/js/firebase-config.js
+public/assets/js/config.js
+public/assets/js/firebase-config.js
 api-proxy.php
 
 # Node modules
