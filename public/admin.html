@@ -1918,7 +1918,7 @@
                 }
             };
             
-            if (!imageSrc) return React.createElement(React.Fragment);
+            if (!imageSrc) return null;
             
             return React.createElement('div', {
                 className: 'fixed inset-0 z-50 flex items-center justify-center bg-black/70',
@@ -6195,7 +6195,7 @@
                                     <p className="text-gray-600">데이터를 불러오는 중...</p>
                             </div>
                         )}
-                            {!loading && activeMenu === 'dashboard' && (
+                            {!loading && activeMenu === 'dashboard' && typeof DashboardHome !== 'undefined' && (
                                 <DashboardHome 
                                     users={users} 
                                     posts={posts} 
@@ -6207,7 +6207,7 @@
                                     settings={settings}
                                 />
                             )}
-                            {!loading && activeMenu === 'main' && (
+                            {!loading && activeMenu === 'main' && typeof MainContentManagement !== 'undefined' && (
                                 <MainContentManagement 
                                     settings={settings} 
                                     setSettings={setSettings}
@@ -6217,16 +6217,16 @@
                                     setMenuNames={setMenuNames}
                                 />
                             )}
-                            {!loading && activeMenu === 'users' && (
+                            {!loading && activeMenu === 'users' && typeof UserManagement !== 'undefined' && (
                                 <UserManagement users={users} setUsers={setUsers} />
                             )}
-                            {!loading && activeMenu === 'posts' && (
+                            {!loading && activeMenu === 'posts' && typeof PostManagement !== 'undefined' && (
                                 <PostManagement posts={posts} setPosts={setPosts} />
                             )}
-                            {!loading && activeMenu === 'programs' && (
+                            {!loading && activeMenu === 'programs' && typeof ProgramManagement !== 'undefined' && (
                                 <ProgramManagement seminars={seminars} setSeminars={setSeminars} />
                             )}
-                            {!loading && activeMenu === 'restaurants' && (
+                            {!loading && activeMenu === 'restaurants' && typeof RestaurantManagement !== 'undefined' && (
                                 <RestaurantManagement restaurants={restaurants} setRestaurants={setRestaurants} />
                             )}
                         </div>
@@ -6237,14 +6237,23 @@
 
         // 기존 탭 컴포넌트들 (호환성 유지)
         const MembersTab = ({ members, setMembers, addLog, currentUser }) => {
+            if (typeof UserManagement === 'undefined') {
+                return React.createElement('div', { className: 'p-4' }, 'UserManagement 컴포넌트를 찾을 수 없습니다.');
+            }
             return <UserManagement users={members} setUsers={setMembers} />;
         };
         
         const SeminarsTab = ({ seminars, setSeminars, addLog, currentUser }) => {
+            if (typeof ProgramManagement === 'undefined') {
+                return React.createElement('div', { className: 'p-4' }, 'ProgramManagement 컴포넌트를 찾을 수 없습니다.');
+            }
             return <ProgramManagement seminars={seminars} setSeminars={setSeminars} />;
         };
         
         const CommunityTab = ({ posts, setPosts, addLog, currentUser }) => {
+            if (typeof PostManagement === 'undefined') {
+                return React.createElement('div', { className: 'p-4' }, 'PostManagement 컴포넌트를 찾을 수 없습니다.');
+            }
             return <PostManagement posts={posts} setPosts={setPosts} />;
         };
         
