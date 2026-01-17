@@ -4630,7 +4630,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                 </label>
                                             </div>
                                         </>
-                                    )}
+                                    ) : null}
                                 </div>
                             ) : null}
 
