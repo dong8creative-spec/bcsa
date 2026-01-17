@@ -791,9 +791,9 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">사업자등록번호 * (신뢰도 확인용)</label>
                                                 <input type="text" className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.businessNumber} onChange={(e) => setFormData({...formData, businessNumber: e.target.value})} placeholder="사업자등록번호를 입력해주세요" />
-                                                {currentUser && currentUser.businessRegistrationNumber && formData.businessNumber && formData.businessNumber !== currentUser.businessRegistrationNumber && (
+                                                {currentUser && currentUser.businessRegistrationNumber && formData.businessNumber && formData.businessNumber !== currentUser.businessRegistrationNumber ? (
                                                     <p className="text-red-500 text-xs mt-1">회원 정보의 사업자등록번호와 일치하지 않습니다.</p>
-            )}
+            ) : null}
         </div>
                                 </React.Fragment>
                                     ) : null}
@@ -993,52 +993,52 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">업무 내용</label>
                                                 <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.jobDetails}</p>
                                 </div>
-                            )}
+                            ) : null}
                                         <div className="grid grid-cols-2 gap-4">
                                             {selectedPost.recruitCount ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">모집 인원</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.recruitCount}</p>
                                             </div>
-                                        )}
+                                        ) : null}
                                             {selectedPost.workHours ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">근무 시간</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.workHours}</p>
                                             </div>
-                                        )}
+                                        ) : null}
                                         {selectedPost.salary ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">급여/처우</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.salary}</p>
                                             </div>
-                                        )}
+                                        ) : null}
                                             {selectedPost.deadline ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">마감일</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.deadline}</p>
                                             </div>
-                                        )}
+                                        ) : null}
                                         </div>
                                         {selectedPost.preferred ? (
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">우대 사항</label>
                                                 <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.preferred}</p>
                                             </div>
-                                        )}
+                                        ) : null}
                                         {selectedPost.storeLocation ? (
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">매장 위치</label>
                                                 <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.storeLocation}</p>
                                             </div>
-                                        )}
+                                        ) : null}
                                         {selectedPost.storePhone ? (
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">전화번호</label>
                                                 <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.storePhone}</p>
                                             </div>
-                                        )}
-                                        {selectedPost.storeImages && selectedPost.storeImages.length > 0 && (
+                                        ) : null}
+                                        {selectedPost.storeImages && selectedPost.storeImages.length > 0 ? (
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">매장 사진</label>
                                                 <div className="grid grid-cols-3 gap-4">
@@ -1049,7 +1049,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                     ))}
                                     </div>
                                 </div>
-                            )}
+                            ) : null}
                                     </div>
                                 )}
                                 
@@ -1062,45 +1062,45 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">제품명</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.itemName}</p>
                                                 </div>
-                                            )}
+                                            ) : null}
                                         {selectedPost.itemCategory ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.itemCategory}</p>
                                             </div>
-                                        )}
+                                        ) : null}
                                         {selectedPost.price ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">가격</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl font-bold text-brand">{selectedPost.price}</p>
                                             </div>
-                                        )}
+                                        ) : null}
                                         {selectedPost.itemCondition ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">상태</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.itemCondition}</p>
                                             </div>
-                                        )}
+                                        ) : null}
                                         {selectedPost.tradeMethod ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">거래 방식</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.tradeMethod}</p>
                                             </div>
-                                        )}
+                                        ) : null}
                                         {selectedPost.tradeLocation ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">거래 지역</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.tradeLocation}</p>
                                             </div>
-                                        )}
+                                        ) : null}
                                         </div>
                                         {selectedPost.businessNumber ? (
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">사업자등록번호</label>
                                                 <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.businessNumber}</p>
                                             </div>
-                                        )}
-                                        {selectedPost.itemImages && selectedPost.itemImages.length > 0 && (
+                                        ) : null}
+                                        {selectedPost.itemImages && selectedPost.itemImages.length > 0 ? (
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">제품 사진</label>
                                                 <div className="grid grid-cols-3 gap-4">
@@ -1111,7 +1111,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                     ))}
                                     </div>
                                 </div>
-                            )}
+                            ) : null}
                             </div>
                                 )}
                                 
@@ -1136,8 +1136,8 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                     <span className="ml-2 text-gray-600 font-bold">{selectedPost.rating}점</span>
                                     </div>
                                 </div>
-                            )}
-                                        {(selectedPost.images || selectedPost.reviewImages) && (selectedPost.images || selectedPost.reviewImages).length > 0 && (
+                            ) : null}
+                                        {(selectedPost.images || selectedPost.reviewImages) && (selectedPost.images || selectedPost.reviewImages).length > 0 ? (
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">후기 사진</label>
                                                 <div className="grid grid-cols-3 gap-4">
@@ -1148,7 +1148,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                     ))}
                                                 </div>
                                 </div>
-                            )}
+                            ) : null}
                                     </div>
                                 )}
                                 
@@ -1378,7 +1378,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                                 alt={restaurant.title}
                                 className="w-full h-full object-cover rounded-xl"
                             />
-                            {restaurant.images.length > 1 && (
+                            {restaurant.images.length > 1 ? (
                                 <>
                                     <button
                                         onClick={() => setCurrentImageIndex((prev) => (prev - 1 + restaurant.images.length) % restaurant.images.length)}
@@ -1402,7 +1402,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                                         ))}
                                     </div>
                                 </>
-                            )}
+                            ) : null}
                         </div>
                     </div>
                 )}
@@ -1411,7 +1411,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                 <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
                     <div className="flex justify-between items-start mb-4">
                         <h2 className="text-3xl font-bold text-dark">{restaurant.title}</h2>
-                        {isOwner && (
+                        {isOwner ? (
                             <div className="flex gap-2">
                                 <button onClick={onEdit} className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700">
                                     수정
@@ -1420,7 +1420,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                                     삭제
                                 </button>
                             </div>
-                        )}
+                        ) : null}
                     </div>
                     
                     {restaurant.location?.address ? (
@@ -1496,12 +1496,12 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                 )}
                 
                 {/* 지도 */}
-                {restaurant.location?.lat && restaurant.location?.lng && (
+                {restaurant.location?.lat && restaurant.location?.lng ? (
                     <div className="bg-white rounded-3xl shadow-card p-6">
                         <h3 className="text-xl font-bold text-dark mb-4">위치</h3>
                         <div ref={mapContainerRef} className="w-full" style={{ height: '400px', borderRadius: '12px', overflow: 'hidden' }}></div>
                     </div>
-                )}
+                ) : null}
             </div>
         </div>
     );
@@ -1724,11 +1724,11 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                                     </div>
                                 ))}
                             </div>
-                            {restaurant && (
+                            {restaurant ? (
                                 <p className="text-xs text-gray-500 mt-2">
                                     * 수정 시 기존 이미지를 유지하거나 교체할 수 있습니다. 최소 1장 이상 필요합니다.
                                 </p>
-                            )}
+                            ) : null}
                         </div>
                         
                         {/* 지도 위치 */}
@@ -1775,24 +1775,24 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                                         className="w-32 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
                                         placeholder="가격"
                                     />
-                                    {formData.menuItems.length > 1 && (
+                                    {formData.menuItems.length > 1 ? (
                                         <button
                                             onClick={() => handleRemoveMenuItem(index)}
                                             className="px-4 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600"
                                         >
                                             삭제
                                         </button>
-                                    )}
+                                    ) : null}
                                 </div>
                             ))}
-                            {formData.menuItems.length < 10 && (
+                            {formData.menuItems.length < 10 ? (
                                 <button
                                     onClick={handleAddMenuItem}
                                     className="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300"
                                 >
                                     메뉴 추가
                                 </button>
-                            )}
+                            ) : null}
                         </div>
                         
                         {/* 네이버 예약 URL */}
@@ -3068,9 +3068,9 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                             </button>
                             
                             {/* 북마크 필터 및 정렬 옵션 */}
-                            {bidList.length > 0 && (
+                            {bidList.length > 0 ? (
                                 <div className="flex flex-wrap items-center gap-3">
-                                    {currentUser && (
+                                    {currentUser ? (
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input
                                                 type="checkbox"
@@ -3080,7 +3080,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                             />
                                             <span className="text-sm text-gray-600">북마크만 보기</span>
                                         </label>
-                                    )}
+                                    ) : null}
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm text-gray-600">정렬:</span>
                                         <select
@@ -3107,7 +3107,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                         </div>
                         
                         {/* 필터 섹션 - 나라장터 스타일 */}
-                        {isFilterExpanded && (
+                        {isFilterExpanded ? (
                             <div className="border-t border-gray-200 pt-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-xl">
                                     {/* 공고/개찰일자 */}
@@ -3261,7 +3261,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                                 placeholder="기관명 입력"
                                                 className="w-full px-3 py-2 pr-8 border border-gray-200 rounded-lg text-sm focus:border-brand focus:outline-none bg-white"
                                             />
-                                            {institutionName && (
+                                            {institutionName ? (
                                                 <button
                                                     type="button"
                                                     onClick={() => setInstitutionName('')}
@@ -3269,7 +3269,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                                 >
                                                     <Icons.X size={16} />
                                                 </button>
-                                            )}
+                                            ) : null}
                                         </div>
                                         <div className="flex gap-4 mt-2">
                                             <label className="flex items-center gap-1 cursor-pointer">
@@ -3336,7 +3336,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                     </div>
                                     
                                     {/* 상세 필터 (접기/펼치기) */}
-                                    {isDetailedFilterExpanded && (
+                                    {isDetailedFilterExpanded ? (
                                         <>
                                             {/* 업종 */}
                                             <div>
@@ -3352,7 +3352,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                                         placeholder="업종 입력"
                                                         className="w-full px-3 py-2 pr-8 border border-gray-200 rounded-lg text-sm focus:border-brand focus:outline-none bg-white"
                                                     />
-                                                    {industry && (
+                                                    {industry ? (
                                                         <button
                                                             type="button"
                                                             onClick={() => setIndustry('')}
@@ -3360,7 +3360,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                                         >
                                                             <Icons.X size={16} />
                                                         </button>
-                                                    )}
+                                                    ) : null}
                                                 </div>
                                             </div>
                                             
@@ -3403,7 +3403,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                                         placeholder="세부품명번호 입력"
                                                         className="w-full px-3 py-2 pr-8 border border-gray-200 rounded-lg text-sm focus:border-brand focus:outline-none bg-white"
                                                     />
-                                                    {detailItemNo && (
+                                                    {detailItemNo ? (
                                                         <button
                                                             type="button"
                                                             onClick={() => setDetailItemNo('')}
@@ -3411,7 +3411,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                                         >
                                                             <Icons.X size={16} />
                                                         </button>
-                                                    )}
+                                                    ) : null}
                                                 </div>
                                             </div>
                                             
@@ -3537,7 +3537,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                                 </select>
                                             </div>
                                         </>
-                                    )}
+                                    ) : null}
                                 </div>
                             </div>
                         )}
@@ -3545,7 +3545,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                 </div>
 
                 {/* 에러 메시지 */}
-                {error && (
+                {error ? (
                     <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
                         <div className="flex items-center gap-3 mb-3">
                             <Icons.AlertCircle className="text-red-500 shrink-0" size={24} />
@@ -3559,19 +3559,19 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                             다시 시도
                         </button>
                     </div>
-                )}
+                ) : null}
 
                 {/* 검색 결과 없음 */}
-                {!isLoading && bidList.length === 0 && !error && (keyword || bidNoticeNo) && (
+                {!isLoading && bidList.length === 0 && !error && (keyword || bidNoticeNo) ? (
                     <div className="bg-white rounded-3xl shadow-card p-12 text-center">
                         <Icons.FileSearch className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                         <h3 className="text-xl font-bold text-gray-600 mb-2">검색 결과가 없습니다</h3>
                         <p className="text-gray-400">검색 조건을 변경하거나 다른 키워드로 검색해보세요.</p>
                     </div>
-                )}
+                ) : null}
                 
                 {/* 필터 적용 후 결과 없음 */}
-                {!isLoading && bidList.length > 0 && filteredAndSortedList.length === 0 && (
+                {!isLoading && bidList.length > 0 && filteredAndSortedList.length === 0 ? (
                     <div className="bg-white rounded-3xl shadow-card p-12 text-center">
                         <Icons.FileSearch className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                         <h3 className="text-xl font-bold text-gray-600 mb-2">필터 조건에 맞는 결과가 없습니다</h3>
@@ -3584,22 +3584,22 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                             필터 초기화
                         </button>
                     </div>
-                )}
+                ) : null}
 
                 {/* 결과 테이블 */}
-                {bidList.length > 0 && (
+                {bidList.length > 0 ? (
                     <React.Fragment>
                         <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
                             <div className="flex items-center gap-3">
                                 <p className="text-gray-600">
                                     총 <span className="font-bold text-brand">{totalCount.toLocaleString()}</span>건의 입찰공고
-                                    {filteredAndSortedList.length !== bidList.length && (
+                                    {filteredAndSortedList.length !== bidList.length ? (
                                         <span className="text-gray-500 ml-2">
                                             (필터 적용: {filteredAndSortedList.length}건)
                                         </span>
-                                    )}
+                                    ) : null}
                                 </p>
-                                {filteredAndSortedList.length > 0 && (
+                                {filteredAndSortedList.length > 0 ? (
                                     <button
                                         type="button"
                                         onClick={downloadCSV}
@@ -3609,7 +3609,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                         <Icons.FileText size={16} />
                                         CSV 다운로드
                                     </button>
-                                )}
+                                ) : null}
                             </div>
                             <p className="text-sm text-gray-400">
                                 {currentPage} / {totalPages} 페이지
@@ -3629,9 +3629,9 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                             <th className="px-4 py-3 text-left text-sm font-bold" scope="col">공고기관</th>
                                             <th className="px-4 py-3 text-left text-sm font-bold" scope="col">등록일시</th>
                                             <th className="px-4 py-3 text-left text-sm font-bold" scope="col">마감일시</th>
-                                            {currentUser && (
+                                            {currentUser ? (
                                                 <th className="px-4 py-3 text-center text-sm font-bold w-20" scope="col">북마크</th>
-                                            )}
+                                            ) : null}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
@@ -3704,13 +3704,13 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                                     role="cell"
                                                 >
                                                     {formatDate(bid.bidClseDt) || '-'}
-                                                    {status.status !== 'closed' && getTimeRemaining(bid.bidClseDt) && (
+                                                    {status.status !== 'closed' && getTimeRemaining(bid.bidClseDt) ? (
                                                         <span className="block text-xs text-gray-400 mt-1">
                                                             ({getTimeRemaining(bid.bidClseDt)} 남음)
                                                         </span>
-                                                    )}
+                                                    ) : null}
                                                 </td>
-                                                    {currentUser && (
+                                                    {currentUser ? (
                                                         <td 
                                                             className="px-4 py-3 text-center"
                                                             onClick={(e) => e.stopPropagation()}
@@ -3767,7 +3767,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
-                                                {currentUser && (
+                                                {currentUser ? (
                                                     <button
                                                         type="button"
                                                         onClick={(e) => {
@@ -3803,11 +3803,11 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                                 <div className="flex items-center gap-2 text-gray-500">
                                                     <Icons.Clock size={16} className="text-gray-400 shrink-0" />
                                                     <span>마감: {formatDate(bid.bidClseDt) || '-'}</span>
-                                                    {status.status !== 'closed' && getTimeRemaining(bid.bidClseDt) && (
+                                                    {status.status !== 'closed' && getTimeRemaining(bid.bidClseDt) ? (
                                                         <span className="text-xs text-orange-600 font-bold">
                                                             ({getTimeRemaining(bid.bidClseDt)} 남음)
                                                         </span>
-                                                    )}
+                                                    ) : null}
                                                 </div>
                                             </div>
                                         </div>
@@ -3817,7 +3817,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                         </div>
 
                         {/* 페이지네이션 */}
-                        {totalPages > 1 && (
+                        {totalPages > 1 ? (
                             <div className="flex justify-center items-center gap-2 mt-8">
                                 <button
                                     type="button"
@@ -3868,12 +3868,12 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                     <Icons.ChevronsRight size={20} />
                                 </button>
                             </div>
-                        )}
+                        ) : null}
                     </React.Fragment>
-            )}
+            ) : null}
                 
                 {/* 상세 정보 모달 */}
-                {selectedBid && (
+                {selectedBid ? (
                     <div 
                         className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70" 
                         style={{ position: 'fixed', zIndex: 9999 }}
@@ -3909,7 +3909,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                     <p className="text-sm text-gray-500">공고번호: {selectedBid.bidNtceNo || '-'}</p>
                                 </div>
                                 <div className="flex items-start gap-2 shrink-0">
-                                    {currentUser && (
+                                    {currentUser ? (
                                         <button
                                             type="button"
                                             onClick={() => toggleBookmark(selectedBid)}
@@ -3973,34 +3973,34 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                 </div>
                                 
                                 {/* 추가 정보 (API 응답에 있는 경우) */}
-                                {(selectedBid.cntrctMthdNm || selectedBid.presmptPrce || selectedBid.dminsttNm) && (
+                                {(selectedBid.cntrctMthdNm || selectedBid.presmptPrce || selectedBid.dminsttNm) ? (
                                     <div className="border-t border-gray-200 pt-6">
                                         <h3 className="text-lg font-bold text-dark mb-4">상세 정보</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {selectedBid.cntrctMthdNm && (
+                                            {selectedBid.cntrctMthdNm ? (
                                                 <div className="bg-gray-50 rounded-xl p-4">
                                                     <div className="text-xs text-gray-500 mb-1">계약방법</div>
                                                     <div className="font-bold text-dark">{selectedBid.cntrctMthdNm}</div>
                                                 </div>
-                                            )}
-                                            {selectedBid.presmptPrce && (
+                                            ) : null}
+                                            {selectedBid.presmptPrce ? (
                                                 <div className="bg-gray-50 rounded-xl p-4">
                                                     <div className="text-xs text-gray-500 mb-1">예산</div>
                                                     <div className="font-bold text-dark">{selectedBid.presmptPrce}</div>
                                                 </div>
-                                            )}
-                                            {selectedBid.dminsttNm && (
+                                            ) : null}
+                                            {selectedBid.dminsttNm ? (
                                                 <div className="bg-gray-50 rounded-xl p-4">
                                                     <div className="text-xs text-gray-500 mb-1">담당기관</div>
                                                     <div className="font-bold text-dark">{selectedBid.dminsttNm}</div>
                                                 </div>
-                                            )}
+                                            ) : null}
                                         </div>
                                     </div>
-                                )}
+                                ) : null}
                                 
                                 {/* 나라장터 링크 */}
-                                {selectedBid.bidNtceNo && (
+                                {selectedBid.bidNtceNo ? (
                                     <div className="border-t border-gray-200 pt-6">
                                         <a
                                             href={`https://www.g2b.go.kr/ep/co/co/coDetail.do?bidno=${selectedBid.bidNtceNo}&bidseq=${selectedBid.bidNtceOrd || '0'}`}
@@ -4012,11 +4012,11 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                             나라장터에서 상세보기
                                         </a>
                                     </div>
-                                )}
+                                ) : null}
                     </div>
                     </div>
                 </div>
-            )}
+            ) : null}
                         </div>
         </div>
     );
@@ -4493,7 +4493,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
 
                     <div className="flex-1 overflow-y-auto modal-scroll p-8">
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {currentStep === 1 && (
+                            {currentStep === 1 ? (
                                 <div className="space-y-5 animate-fade-in">
                                     <div className="mb-6 text-center">
                                         <h4 className="text-2xl font-bold text-dark mb-2">회원 유형 선택</h4>
@@ -4538,7 +4538,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                         </button>
                                     </div>
 
-                                    {formData.userType && (
+                                    {formData.userType ? (
                                         <>
                                             <div className="mb-6">
                                                 <h4 className="text-xl font-bold text-dark mb-1">기본 정보</h4>
@@ -4590,12 +4590,12 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                             {showPasswordConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
                                                         </button>
                                                     </div>
-                                                    {formData.passwordConfirm && formData.password !== formData.passwordConfirm && (
+                                                    {formData.passwordConfirm && formData.password !== formData.passwordConfirm ? (
                                                         <div className="mt-2 text-xs text-red-500">비밀번호가 일치하지 않습니다.</div>
-                                                    )}
-                                                    {formData.passwordConfirm && formData.password === formData.passwordConfirm && formData.passwordConfirm.length > 0 && (
+                                                    ) : null}
+                                                    {formData.passwordConfirm && formData.password === formData.passwordConfirm && formData.passwordConfirm.length > 0 ? (
                                                         <div className="mt-2 text-xs text-green-600">✓ 비밀번호가 일치합니다.</div>
-                                                    )}
+                                                    ) : null}
                                                 </div>
                                                 <div className="md:col-span-2">
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">전화번호 <span className="text-red-500">*</span></label>
@@ -4632,9 +4632,9 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                         </>
                                     )}
                                 </div>
-                            )}
+                            ) : null}
 
-                            {currentStep === 2 && (
+                            {currentStep === 2 ? (
                                 <div className="space-y-5 animate-fade-in">
                                     <div className="mb-6">
                                         <h4 className="text-xl font-bold text-dark mb-1">상세 정보</h4>
@@ -4644,7 +4644,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        {formData.userType === '사업자' && (
+                                        {formData.userType === '사업자' ? (
                                             <>
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">사업자 유형 <span className="text-red-500">*</span></label>
@@ -4760,15 +4760,15 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                                 </span>
                                                             </button>
                                                         </div>
-                                                        {formData.zipCode && (
+                                                        {formData.zipCode ? (
                                                             <p className="text-xs text-gray-500">우편번호: {formData.zipCode}</p>
-                                                        )}
+                                                        ) : null}
                                                         <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.detailAddress} onChange={e => setFormData({...formData, detailAddress: e.target.value})} />
                                                     </div>
                                                 </div>
                                             </>
                                         )}
-                                        {formData.userType === '예비창업자' && (
+                                        {formData.userType === '예비창업자' ? (
                                             <div className="md:col-span-2">
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">집주소 <span className="text-red-500">*</span></label>
                                                 <div className="space-y-2">
@@ -4816,9 +4816,9 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                             </span>
                                                         </button>
                                                     </div>
-                                                    {formData.zipCode && (
+                                                    {formData.zipCode ? (
                                                         <p className="text-xs text-gray-500">우편번호: {formData.zipCode}</p>
-                                                    )}
+                                                    ) : null}
                                                     <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.detailAddress} onChange={e => setFormData({...formData, detailAddress: e.target.value})} />
                                                 </div>
                                             </div>
@@ -4838,7 +4838,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     <CheckCircle className="w-6 h-6 text-white" />
                                                 ) : (
                                                     <Info className="w-6 h-6 text-white" />
-                                                )}
+                                                ) : null}
                                             </div>
                                             <div className="flex-1">
                                                 <h5 className="font-bold text-dark mb-2">
@@ -4888,7 +4888,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     maxLength="12"
                                                     disabled={formData.userType === '사업자' && formData.businessVerificationStatus === 'api_verified'}
                                                 />
-                                                {formData.userType === '사업자' && formData.businessRegistrationNumber.length === 12 && (
+                                                {formData.userType === '사업자' && formData.businessRegistrationNumber.length === 12 ? (
                                                     <button
                                                         type="button"
                                                         onClick={async (event) => {
@@ -4956,34 +4956,34 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                             '검증하기'
                                                         )}
                                                     </button>
-                                                )}
+                                                ) : null}
                                             </div>
                                             
-                                            {formData.userType === '사업자' && formData.businessRegistrationNumber && (
+                                            {formData.userType === '사업자' && formData.businessRegistrationNumber ? (
                                                 <div className="mt-3 space-y-2">
-                                                    {formData.businessVerificationStatus === 'format_valid' && (
+                                                    {formData.businessVerificationStatus === 'format_valid' ? (
                                                         <p className="text-xs text-blue-600 flex items-center gap-1">
                                                             <CheckCircle size={12} />
                                                             형식 검증 완료
                                                         </p>
-                                                    )}
-                                                    {formData.businessVerificationStatus === 'api_verified' && (
+                                                    ) : null}
+                                                    {formData.businessVerificationStatus === 'api_verified' ? (
                                                         <p className="text-xs text-green-600 flex items-center gap-1">
                                                             <CheckCircle size={12} />
                                                             운영 중인 사업자로 확인되었습니다.
                                                         </p>
-                                                    )}
-                                                    {formData.businessVerificationStatus === 'api_failed' && (
+                                                    ) : null}
+                                                    {formData.businessVerificationStatus === 'api_failed' ? (
                                                         <p className="text-xs text-red-600 flex items-center gap-1">
                                                             <X size={12} />
                                                             검증 실패. 다시 시도해주세요.
                                                         </p>
-                                                    )}
-                                                    {formData.businessVerificationStatus === 'not_started' && formData.businessRegistrationNumber.length === 12 && (
+                                                    ) : null}
+                                                    {formData.businessVerificationStatus === 'not_started' && formData.businessRegistrationNumber.length === 12 ? (
                                                         <p className="text-xs text-gray-500">
                                                             검증하기 버튼을 클릭하여 사업자등록번호를 검증해주세요.
                                                         </p>
-                                                    )}
+                                                    ) : null}
                                                 </div>
                                             )}
 
@@ -4994,16 +4994,16 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                            ) : null}
                         </form>
                     </div>
 
                     <div className="border-t border-gray-200 p-6 bg-gray-50 flex gap-3">
-                        {currentStep > 1 && (
+                        {currentStep > 1 ? (
                             <button type="button" onClick={handlePrevStep} className="flex-1 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 transition-colors">
                                 이전
                             </button>
-                        )}
+                        ) : null}
                         {currentStep === 1 ? (
                             <button 
                                 type="button" 
@@ -5169,7 +5169,7 @@ const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, mem
 
                     <div className="space-y-6">
                         {/* 비회원인 경우 이름과 이메일 입력 필드 */}
-                        {!currentUser && (
+                        {!currentUser ? (
                             <div className="space-y-4 p-6 bg-blue-50 rounded-2xl border border-blue-100">
                                 <h4 className="font-bold text-dark mb-4">후원자 정보</h4>
                                 <div>
@@ -5193,7 +5193,7 @@ const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, mem
                                     />
                                 </div>
                             </div>
-                        )}
+                        ) : null}
                         
                         {/* 후원 타입 선택 */}
                         <div>
@@ -5222,7 +5222,7 @@ const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, mem
                                     정기 후원
                             </button>
                         </div>
-                            {donationType === 'recurring' && (
+                            {donationType === 'recurring' ? (
                                 <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
                                     <p className="text-sm text-blue-700 mb-3">
                                         정기 후원을 선택하시면 선택한 주기에 따라 자동으로 후원금이 결제됩니다. 언제든지 해지하실 수 있습니다.
@@ -5239,7 +5239,7 @@ const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, mem
                                         <option value="yearly">연간</option>
                                     </select>
                                 </div>
-                            )}
+                            ) : null}
                     </div>
 
                             <div>
@@ -7696,7 +7696,7 @@ END:VCALENDAR`;
                                         <div className="p-4 flex flex-col">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-500 text-white rounded">프로그램 후기</span>
-                                                {review.rating && (
+                                                {review.rating ? (
                                                     <div className="flex gap-0.5">
                                                         {[1, 2, 3, 4, 5].map(star => (
                                                             review.rating >= star ? (
@@ -7706,12 +7706,12 @@ END:VCALENDAR`;
                                                             )
                                                         ))}
                                                     </div>
-                                                )}
+                                                ) : null}
                                             </div>
                                             <h4 className="font-bold text-dark text-base mb-2 break-keep">{review.title}</h4>
                                             <p className="text-sm text-gray-600 break-keep">{review.content}</p>
                                         </div>
-                                        {review.images && review.images.length > 0 && (
+                                        {review.images && review.images.length > 0 ? (
                                             <div className="flex flex-col px-4 pb-4 gap-[10px]" style={{ marginTop: '10px' }}>
                                                 {review.images.slice(0, 2).map((img, imgIdx) => (
                                                     <div 
@@ -7729,7 +7729,7 @@ END:VCALENDAR`;
                                     </div>
                                 ))}
                                             </div>
-                                        )}
+                                        ) : null}
                                     </div>
                         );
                     };
@@ -7825,7 +7825,7 @@ END:VCALENDAR`;
                                         })}
                                     </div>
                                     {/* 슬라이드 인디케이터 */}
-                                    {reviewPosts.length > 1 && (
+                                    {reviewPosts.length > 1 ? (
                                         <div className="flex justify-center gap-2 mt-4">
                                             {reviewPosts.map((_, idx) => (
                                                 <button
@@ -7844,7 +7844,7 @@ END:VCALENDAR`;
                                                 />
                                 ))}
                                             </div>
-                                        )}
+                                        ) : null}
                             </div>
                         </div>
                     );
@@ -7897,7 +7897,7 @@ END:VCALENDAR`;
                     비즈니스 세미나, 투자/지원사업, 네트워킹 등의 카드가 표시됩니다.
                     순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
                     ============================================ */}
-                {menuEnabled['프로그램'] && (
+                {menuEnabled['프로그램'] ? (
                 <section className="py-20 px-6">
                     <div className="container mx-auto max-w-7xl">
                         <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
@@ -7912,7 +7912,7 @@ END:VCALENDAR`;
                         </div>
                     </div>
                 </section>
-                )}
+                ) : null}
 
                 {/* ============================================
                     📍 섹션 6-1: 후원 섹션
@@ -7920,7 +7920,7 @@ END:VCALENDAR`;
                     후원하기 전용 섹션입니다.
                     순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
                     ============================================ */}
-                {menuEnabled['후원'] && (
+                {menuEnabled['후원'] ? (
                 <section className="py-24 px-6 bg-gradient-to-br from-green-50 to-emerald-50">
                     <div className="container mx-auto max-w-6xl">
                         <div className="relative rounded-4xl overflow-hidden bg-gradient-to-br from-green-600 to-emerald-600 h-[350px] flex items-center justify-center text-center px-6 shadow-2xl shadow-green-500/40">
@@ -7933,7 +7933,7 @@ END:VCALENDAR`;
                         </div>
                     </div>
                 </section>
-                )}
+                ) : null}
 
                 {/* ============================================
                     📍 섹션 6: CTA (행동 유도 섹션)
@@ -7970,7 +7970,7 @@ END:VCALENDAR`;
     return (
         <div className="min-h-screen bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">
             {/* 프로그램 팝업 (최대 3개 동시 표시, 1회만 표시) */}
-            {popupPrograms && popupPrograms.length > 0 && (
+            {popupPrograms && popupPrograms.length > 0 ? (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) closePopupAndMarkAsShown(); }}>
                     <div className="flex flex-col md:flex-row gap-4 max-w-6xl w-full overflow-x-auto py-4" onClick={(e) => e.stopPropagation()}>
                         {popupPrograms.map((program, idx) => {
@@ -7986,7 +7986,7 @@ END:VCALENDAR`;
                                         {/* 이미지 영역 (3:4 비율) */}
                                         <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
                                             {/* 마감임박 마크 */}
-                                            {program.isDeadlineSoon && (
+                                            {program.isDeadlineSoon ? (
                                                 <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
                                                     마감임박
                                                 </div>
@@ -8007,7 +8007,7 @@ END:VCALENDAR`;
                                                 <Icons.X size={18} />
                                             </button>
                                             {/* 이미지 */}
-                                            {program.img && (
+                                            {program.img ? (
                                                 <img 
                                                     src={program.img} 
                                                     alt={program.title} 
@@ -8052,7 +8052,7 @@ END:VCALENDAR`;
                                         {/* 이미지 영역 (왼쪽) */}
                                         <div className="w-full md:flex-[0_0_400px] lg:flex-[0_0_450px] relative bg-gray-50 flex items-center justify-center overflow-hidden" style={{ minHeight: '400px' }}>
                                             {/* 마감임박 마크 */}
-                                            {program.isDeadlineSoon && (
+                                            {program.isDeadlineSoon ? (
                                                 <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
                                                     마감임박
                                                 </div>
@@ -8073,14 +8073,14 @@ END:VCALENDAR`;
                                                 <Icons.X size={18} />
                                             </button>
                                             {/* 이미지 */}
-                                            {program.img && (
+                                            {program.img ? (
                                                 <img 
                                                     src={program.img} 
                                                     alt={program.title} 
                                                     className="w-full h-full object-contain"
                                                     style={{ maxHeight: '90vh' }}
                                                 />
-                                            )}
+                                            ) : null}
                                         </div>
                                         
                                         {/* 정보 영역 (오른쪽) */}
@@ -8089,7 +8089,7 @@ END:VCALENDAR`;
                                             
                                             {/* 카테고리 및 유료/무료 배지 */}
                                             <div className="flex items-center gap-2 mb-3">
-                                                {program.category && (
+                                                {program.category ? (
                                                     <span className={`text-xs font-bold px-2 py-1 rounded-full ${getCategoryColor(program.category)}`}>
                                                         {program.category}
                                                     </span>
@@ -8104,7 +8104,7 @@ END:VCALENDAR`;
                                                 <div className="flex items-center gap-2">
                                                     <Icons.Calendar size={16} className="text-brand" /> {program.date}
                                                 </div>
-                                                {program.location && (
+                                                {program.location ? (
                                                     <div className="flex items-center gap-2">
                                                         <Icons.MapPin size={16} className="text-brand" /> {program.location}
                                                     </div>
@@ -8115,11 +8115,11 @@ END:VCALENDAR`;
                                             </div>
                                             
                                             {/* 프로그램 설명 */}
-                                            {program.desc && (
+                                            {program.desc ? (
                                                 <div className="mb-4">
                                                     <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{program.desc}</p>
                                                 </div>
-                                            )}
+                                            ) : null}
                                             
                                             {/* 신청하기 버튼 */}
                                             {currentUser ? (
@@ -8150,7 +8150,7 @@ END:VCALENDAR`;
                         })}
                     </div>
                     {/* 전체 닫기 버튼 */}
-                    {popupPrograms.length > 1 && (
+                    {popupPrograms.length > 1 ? (
                         <button 
                             type="button" 
                             onClick={() => closePopupAndMarkAsShown()} 
@@ -8158,12 +8158,12 @@ END:VCALENDAR`;
                         >
                             모두 닫기
                         </button>
-                    )}
+                    ) : null}
                 </div>
-            )}
+            ) : null}
             
             {/* 팝업 신청 모달 */}
-            {isPopupApplyModalOpen && applySeminarFromPopup && (
+            {isPopupApplyModalOpen && applySeminarFromPopup ? (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setIsPopupApplyModalOpen(false); }}>
                     <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
                         <div className="flex items-center justify-between mb-6">
@@ -8315,20 +8315,20 @@ END:VCALENDAR`;
                             <p className="text-gray-500 text-sm leading-relaxed max-w-xs break-keep">부산 지역 청년 사업가들이 모여 함께 성장하는<br/>비즈니스 커뮤니티입니다.</p>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-12">
-                            {(menuEnabled['부청사 회원'] || menuEnabled['커뮤니티']) && (
+                            {(menuEnabled['부청사 회원'] || menuEnabled['커뮤니티']) ? (
                                 <div>
                                     <h4 className="font-bold text-dark mb-4">커뮤니티</h4>
                                     <ul className="space-y-2 text-sm text-gray-500">
-                                        {menuEnabled['부청사 회원'] && (
+                                        {menuEnabled['부청사 회원'] ? (
                                             <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allMembers'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">부청사 회원</button></li>
                                         )}
-                                        {menuEnabled['커뮤니티'] && (
+                                        {menuEnabled['커뮤니티'] ? (
                                             <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('community'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">커뮤니티 게시판</button></li>
-                                        )}
+                                        ) : null}
                                     </ul>
                                 </div>
-                            )}
-                            {menuEnabled['프로그램'] && (
+                            ) : null}
+                            {menuEnabled['프로그램'] ? (
                                 <div>
                                     <h4 className="font-bold text-dark mb-4">프로그램</h4>
                                     <ul className="space-y-2 text-sm text-gray-500">
@@ -8336,20 +8336,20 @@ END:VCALENDAR`;
                                     </ul>
                                 </div>
                             )}
-                            {(menuEnabled['후원'] || menuEnabled['소개']) && (
+                            {(menuEnabled['후원'] || menuEnabled['소개']) ? (
                                 <div>
                                     <h4 className="font-bold text-dark mb-4">지원</h4>
                                     <ul className="space-y-2 text-sm text-gray-500">
                                         <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">공지사항</button></li>
-                                        {menuEnabled['후원'] && (
+                                        {menuEnabled['후원'] ? (
                                             <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('donation'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">후원하기</button></li>
                                         )}
-                                        {menuEnabled['소개'] && (
+                                        {menuEnabled['소개'] ? (
                                             <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">소개</button></li>
-                                        )}
+                                        ) : null}
                                     </ul>
                                 </div>
-                            )}
+                            ) : null}
                         </div>
                     </div>
                     <div className="pt-8 border-t border-brand/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-400">
@@ -8375,7 +8375,7 @@ END:VCALENDAR`;
             </footer>
 
             {/* 🌟 모달들 */}
-            {showSignUpModal === true && (
+            {showSignUpModal === true ? (
                 <SignUpModal 
                     onClose={() => {
                         
@@ -8384,8 +8384,8 @@ END:VCALENDAR`;
                     onSignUp={handleSignUp}
                     existingUsers={users}
                 />
-            )}
-            {showLoginModal === true && (
+            ) : null}
+            {showLoginModal === true ? (
                 <LoginModal 
                     onClose={() => {
                         
