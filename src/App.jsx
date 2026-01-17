@@ -3540,7 +3540,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                     ) : null}
                                 </div>
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 </div>
 
@@ -3734,7 +3734,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                                                 />
                                                             </button>
                                                         </td>
-                                                    )}
+                                                    ) : null}
                                                 </tr>
                                             );
                                         })}
@@ -3925,7 +3925,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                                 className={isBidBookmarked(selectedBid) ? 'fill-current' : ''} 
                                             />
                                         </button>
-                                    )}
+                                    ) : null}
                                     <button
                                         type="button"
                                         onClick={() => setSelectedBid(null)}
@@ -7990,7 +7990,7 @@ END:VCALENDAR`;
                                                 <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
                                                     마감임박
                                                 </div>
-                                            )}
+                                            ) : null}
                                             {/* 닫기 버튼 */}
                                             <button 
                                                 type="button" 
@@ -8013,7 +8013,7 @@ END:VCALENDAR`;
                                                     alt={program.title} 
                                                     className="w-full h-full object-cover"
                                                 />
-                                            )}
+                                            ) : null}
                                         </div>
                                         {/* 더 자세히 알아보기 버튼 */}
                                         <button 
@@ -8056,7 +8056,7 @@ END:VCALENDAR`;
                                                 <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
                                                     마감임박
                                                 </div>
-                                            )}
+                                            ) : null}
                                             {/* 닫기 버튼 */}
                                             <button 
                                                 type="button" 
@@ -8093,7 +8093,7 @@ END:VCALENDAR`;
                                                     <span className={`text-xs font-bold px-2 py-1 rounded-full ${getCategoryColor(program.category)}`}>
                                                         {program.category}
                                                     </span>
-                                                )}
+                                                ) : null}
                                                 <span className="text-xs font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">
                                                     {program.requiresPayment ? (program.price ? `${program.price.toLocaleString()}원` : '유료') : '무료'}
                                                 </span>
@@ -8108,7 +8108,7 @@ END:VCALENDAR`;
                                                     <div className="flex items-center gap-2">
                                                         <Icons.MapPin size={16} className="text-brand" /> {program.location}
                                                     </div>
-                                                )}
+                                                ) : null}
                                                 <div className="flex items-center gap-2">
                                                     <Icons.Users size={16} className="text-brand" /> {program.currentParticipants || 0} / {program.maxParticipants || 0}명
                                                 </div>
@@ -8227,7 +8227,7 @@ END:VCALENDAR`;
                         </div>
                     </div>
                 </div>
-            )}
+            ) : null}
             
             <header className={`fixed top-0 w-full z-50 transition-all duration-300 ease-in-out px-4 md:px-6 py-5 ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : 'bg-transparent'}`}>
                 <div className="container mx-auto flex justify-between items-center relative">
@@ -8321,7 +8321,7 @@ END:VCALENDAR`;
                                     <ul className="space-y-2 text-sm text-gray-500">
                                         {menuEnabled['부청사 회원'] ? (
                                             <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allMembers'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">부청사 회원</button></li>
-                                        )}
+                                        ) : null}
                                         {menuEnabled['커뮤니티'] ? (
                                             <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('community'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">커뮤니티 게시판</button></li>
                                         ) : null}
@@ -8335,7 +8335,7 @@ END:VCALENDAR`;
                                         <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">세미나 일정</button></li>
                                     </ul>
                                 </div>
-                            )}
+                            ) : null}
                             {(menuEnabled['후원'] || menuEnabled['소개']) ? (
                                 <div>
                                     <h4 className="font-bold text-dark mb-4">지원</h4>
@@ -8343,7 +8343,7 @@ END:VCALENDAR`;
                                         <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">공지사항</button></li>
                                         {menuEnabled['후원'] ? (
                                             <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('donation'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">후원하기</button></li>
-                                        )}
+                                        ) : null}
                                         {menuEnabled['소개'] ? (
                                             <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">소개</button></li>
                                         ) : null}
@@ -8393,7 +8393,7 @@ END:VCALENDAR`;
                     }} 
                     onLogin={handleLogin} 
                 />
-            )}
+            ) : null}
             
             {/* 문의하기 모달 */}
             {isInquiryModalOpen ? (
