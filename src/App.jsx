@@ -43,7 +43,8 @@ const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d
 // loadUsersFromStorage, hashPassword, verifyPassword, generateTemporaryPassword, sendEmailViaEmailJS, saveUsersToStorage, loadCurrentUserFromStorage, saveCurrentUserToStorage는 authUtils에서 import
 
 // 상수들은 별도 파일로 분리됨
-// CONFIG_SHEET_URL, MEMBER_SHEET_URL 등은 constants/index.js에서 import
+// PORTONE_IMP_CODE는 constants/index.js에서 import
+// SHEET_URL은 CONFIG.SHEET_URLS로 통일됨
 // CustomIcons는 components/Icons.jsx에 포함됨
 // defaultContent는 constants/content.js에서 import
 
@@ -6232,7 +6233,7 @@ const App = () => {
     const loadMembersFromCSV = async () => {
         try {
             // CONFIG에서 URL 가져오기
-            const csvUrl = CONFIG.SHEET_URLS?.MEMBER || MEMBER_SHEET_URL;
+            const csvUrl = CONFIG.SHEET_URLS?.MEMBER || '';
             
             if (!csvUrl) {
                 return null;
@@ -6288,7 +6289,7 @@ const App = () => {
     };
     const loadSeminarsFromCSV = async () => {
         try {
-            const csvUrl = CONFIG.SHEET_URLS?.SEMINAR || SEMINAR_SHEET_URL;
+            const csvUrl = CONFIG.SHEET_URLS?.SEMINAR || '';
             
             if (!csvUrl) {
                 return null;
@@ -6387,7 +6388,7 @@ const App = () => {
             const hasFirebaseData = firebaseService && (firebaseService.subscribeUsers || firebaseService.getUsers);
             
             if (!hasFirebaseData) {
-                const csvUrl = CONFIG.SHEET_URLS?.MEMBER || MEMBER_SHEET_URL;
+                const csvUrl = CONFIG.SHEET_URLS?.MEMBER || '';
                 
                 if (csvUrl) {
                     const csvMembers = await loadMembersFromCSV();
@@ -6476,7 +6477,7 @@ const App = () => {
     
     useEffect(() => {
         const loadCSVData = async () => {
-            const csvUrl = CONFIG.SHEET_URLS?.SEMINAR || SEMINAR_SHEET_URL;
+            const csvUrl = CONFIG.SHEET_URLS?.SEMINAR || '';
             
             if (csvUrl) {
                 const csvSeminars = await loadSeminarsFromCSV();
@@ -8322,16 +8323,14 @@ END:VCALENDAR`;
                     <div className="flex items-center cursor-pointer group h-[75px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
                         {/* 🌟 Logo Image: 부산청년사업가들 로고 */}
                         <img 
-                            src="./assets/images/logo.png" 
+                            src="/assets/images/logo.png" 
                             alt="부산청년사업가들" 
                             className="h-full w-auto object-contain hover:opacity-90 transition-opacity" 
                             onError={(e) => {
                                 e.target.onerror = null;
-                                // 상대 경로와 절대 경로 모두 시도
+                                // 절대 경로 사용 (Vite가 public을 루트로 복사)
                                 if (e.target.src.includes('/assets/')) {
-                                    e.target.src = './assets/images/logo.png';
-                                } else if (e.target.src.includes('./assets/')) {
-                                    e.target.src = 'assets/images/logo.png';
+                                    e.target.src = '/assets/images/logo.png';
                                 } else {
                                 e.target.style.display = 'none';
                                 const fallback = document.createElement('div');
@@ -8384,16 +8383,14 @@ END:VCALENDAR`;
                         <div>
                             <div className="flex items-center gap-2 mb-4 h-20 overflow-hidden">
                                 <img 
-                                    src="./assets/images/logo.png" 
+                                    src="/assets/images/logo.png" 
                                     alt="부산청년사업가들" 
                                     className="h-full w-auto object-contain" 
                                     onError={(e) => {
                                         e.target.onerror = null;
-                                        // 상대 경로와 절대 경로 모두 시도
+                                        // 절대 경로 사용 (Vite가 public을 루트로 복사)
                                         if (e.target.src.includes('/assets/')) {
-                                            e.target.src = './assets/images/logo.png';
-                                        } else if (e.target.src.includes('./assets/')) {
-                                            e.target.src = 'assets/images/logo.png';
+                                            e.target.src = '/assets/images/logo.png';
                                         } else {
                                         e.target.style.display = 'none';
                                         const fallback = document.createElement('div');

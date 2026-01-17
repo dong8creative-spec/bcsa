@@ -1,5 +1,6 @@
 /**
  * 유틸리티 함수 모음
+ * 기존 utils.js의 함수들을 utils/ 폴더로 통합
  */
 
 /**
@@ -137,6 +138,42 @@ export const parseCSV = (csvText) => {
 };
 
 /**
+ * 에러 핸들링 헬퍼
+ * @param {Error} error - 에러 객체
+ * @param {string} context - 에러 발생 컨텍스트
+ */
+export const handleError = (error, context = '') => {
+    console.error(`[${context}] 에러 발생:`, error);
+    // 필요시 사용자에게 알림 표시
+    // alert(`오류가 발생했습니다: ${error.message}`);
+};
+
+/**
+ * 날짜 포맷팅 함수
+ * @param {Date|string} date - 날짜 객체 또는 문자열
+ * @param {string} format - 포맷 형식 (기본: 'YYYY.MM.DD')
+ * @returns {string} 포맷된 날짜 문자열
+ */
+export const formatDate = (date, format = 'YYYY.MM.DD') => {
+    try {
+        const d = date instanceof Date ? date : new Date(date);
+        if (isNaN(d.getTime())) return '';
+        
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        
+        return format
+            .replace('YYYY', year)
+            .replace('MM', month)
+            .replace('DD', day);
+    } catch (error) {
+        console.error('날짜 포맷팅 오류:', error);
+        return '';
+    }
+};
+
+/**
  * Google Sheets에서 데이터 가져오기 (재시도 로직 포함)
  * @param {string} url - Google Sheets CSV URL
  * @param {number} retries - 재시도 횟수 (기본: 3)
@@ -180,42 +217,6 @@ export const fetchSheetData = async (url, retries = 3, delay = 1000) => {
     }
     
     return [];
-};
-
-/**
- * 날짜 포맷팅 함수
- * @param {Date|string} date - 날짜 객체 또는 문자열
- * @param {string} format - 포맷 형식 (기본: 'YYYY.MM.DD')
- * @returns {string} 포맷된 날짜 문자열
- */
-export const formatDate = (date, format = 'YYYY.MM.DD') => {
-    try {
-        const d = date instanceof Date ? date : new Date(date);
-        if (isNaN(d.getTime())) return '';
-        
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        
-        return format
-            .replace('YYYY', year)
-            .replace('MM', month)
-            .replace('DD', day);
-    } catch (error) {
-        console.error('날짜 포맷팅 오류:', error);
-        return '';
-    }
-};
-
-/**
- * 에러 핸들링 헬퍼
- * @param {Error} error - 에러 객체
- * @param {string} context - 에러 발생 컨텍스트
- */
-export const handleError = (error, context = '') => {
-    console.error(`[${context}] 에러 발생:`, error);
-    // 필요시 사용자에게 알림 표시
-    // alert(`오류가 발생했습니다: ${error.message}`);
 };
 
 /**
@@ -295,6 +296,3 @@ export const convertToCSV = (data, headers = null) => {
         return '';
     }
 };
-
-
-
