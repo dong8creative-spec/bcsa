@@ -673,16 +673,16 @@
                         />
                         
                         {/* 선택된 장소 정보 */}
-                        {selectedPlace && (
+                        {selectedPlace ? (
                             <div className="mt-4 p-4 bg-yellow-50 border border-yellow-300 rounded-xl">
                                 <p className="text-sm font-bold text-yellow-700 mb-1">선택된 장소</p>
-                                {selectedPlace.name && <p className="font-bold text-sm text-dark">{selectedPlace.name}</p>}
+                                {selectedPlace.name ? <p className="font-bold text-sm text-dark">{selectedPlace.name}</p> : null}
                                 <p className="text-sm text-gray-700">{selectedPlace.address}</p>
                                 <p className="text-xs text-gray-500 mt-1">
                                     좌표: {selectedPlace.lat?.toFixed(6)}, {selectedPlace.lng?.toFixed(6)}
                                 </p>
                             </div>
-                        )}
+                        ) : null}
                         
                         {/* 버튼 */}
                         <div className="flex gap-3 mt-4">
@@ -839,7 +839,7 @@
                         <Icons.Calendar size={20} className="text-gray-400" />
                     </div>
                     
-                    {showCalendar && (
+                    {showCalendar ? (
                         <div className="absolute top-full left-0 mt-2 bg-white border-2 border-gray-200 rounded-2xl shadow-xl z-50 p-4 w-80">
                             {/* 월 네비게이션 */}
                             <div className="flex items-center justify-between mb-4">
@@ -915,7 +915,7 @@
                                 선택 완료
                             </button>
                         </div>
-                    )}
+                    ) : null}
                 </div>
             );
         };
@@ -1508,7 +1508,7 @@
                     </div>
 
                     {/* 상단 메뉴 관리 */}
-                    {menuEnabled && setMenuEnabled && menuNames && setMenuNames && orderedMenuKeys && (
+                    {menuEnabled && setMenuEnabled && menuNames && setMenuNames && orderedMenuKeys ? (
                         <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
                             <h3 className="text-lg font-bold text-dark mb-4">상단 메뉴 관리</h3>
                             <p className="text-sm text-gray-600 mb-6">드래그하여 순서를 변경하고, 스위치와 메뉴명을 수정할 수 있습니다.</p>
@@ -1609,7 +1609,7 @@
                                 ))}
                             </div>
                         </div>
-                    )}
+                    ) : null}
                 </div>
             );
         };
@@ -2241,7 +2241,7 @@
                                         </span>
                                     </label>
                                     <div className="flex gap-4 items-start">
-                                        {formData.hero_image && (
+                                        {formData.hero_image ? (
                                             <div className="relative w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
                                                 <img src={getImageUrlWithTimestamp(formData.hero_image)} alt="Hero" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                 <button
@@ -2253,7 +2253,7 @@
                                                     {React.createElement(Icons.X, { size: 14 })}
                                                 </button>
                                             </div>
-                                        )}
+                                        ) : null}
                                         <div className="flex-1">
                                             <input
                                                 type="text"
@@ -2374,7 +2374,7 @@
                                                 </span>
                                             </label>
                                             <div className="flex gap-3 items-start">
-                                                {formData.features_image_1 && (
+                                                {formData.features_image_1 ? (
                                                     <div className="relative w-32 h-20 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
                                                         <img src={getImageUrlWithTimestamp(formData.features_image_1)} alt="Features 1" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                         <button
@@ -2386,7 +2386,7 @@
                                                             {React.createElement(Icons.X, { size: 12 })}
                                                         </button>
                                                     </div>
-                                                )}
+                                                ) : null}
                                                 <div className="flex-1">
                                                     <input
                                                         type="text"
@@ -2434,7 +2434,7 @@
                                                 </span>
                                             </label>
                                             <div className="flex gap-3 items-start">
-                                                {formData.features_image_2 && (
+                                                {formData.features_image_2 ? (
                                                     <div className="relative w-32 h-20 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
                                                         <img src={getImageUrlWithTimestamp(formData.features_image_2)} alt="Features 2" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
                                                         <button
@@ -2446,7 +2446,7 @@
                                                             {React.createElement(Icons.X, { size: 12 })}
                                                         </button>
                                                     </div>
-                                                )}
+                                                ) : null}
                                                 <div className="flex-1">
                                                     <input
                                                         type="text"
@@ -2538,7 +2538,7 @@
                                                     추천: 1200x800px (3:2)
                                                 </span>
                                             </label>
-                                            {formData.activity_seminar_image && (
+                                            {formData.activity_seminar_image ? (
                                                 <div className="relative w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm flex-shrink-0">
                                                     <img src={getImageUrlWithTimestamp(formData.activity_seminar_image)} alt="Seminar" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                     <button
@@ -2550,7 +2550,7 @@
                                                         {React.createElement(Icons.X, { size: 14 })}
                                                     </button>
                                                 </div>
-                                            )}
+                                            ) : null}
                                             <input
                                                 type="text"
                                                 value={formData.activity_seminar_image || ''}
@@ -2633,7 +2633,7 @@
                                                     추천: 1200x800px (3:2)
                                                 </span>
                                             </label>
-                                            {formData.activity_investment_image && (
+                                            {formData.activity_investment_image ? (
                                                 <div className="relative w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm flex-shrink-0">
                                                     <img src={getImageUrlWithTimestamp(formData.activity_investment_image)} alt="Investment" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                     <button
@@ -2645,7 +2645,7 @@
                                                         {React.createElement(Icons.X, { size: 14 })}
                                                     </button>
                                                 </div>
-                                            )}
+                                            ) : null}
                                             <input
                                                 type="text"
                                                 value={formData.activity_investment_image || ''}
@@ -2728,7 +2728,7 @@
                                                     추천: 1200x800px (3:2)
                                                 </span>
                                             </label>
-                                            {formData.activity_networking_image && (
+                                            {formData.activity_networking_image ? (
                                                 <div className="relative w-full h-32 rounded-lg overflow-hidden border-2 border-gray-200 mb-2 shadow-sm flex-shrink-0">
                                                     <img src={getImageUrlWithTimestamp(formData.activity_networking_image)} alt="Networking" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                     <button
@@ -2740,7 +2740,7 @@
                                                         {React.createElement(Icons.X, { size: 14 })}
                                                     </button>
                                                 </div>
-                                            )}
+                                            ) : null}
                                             <input
                                                 type="text"
                                                 value={formData.activity_networking_image || ''}
@@ -2824,7 +2824,7 @@
                                         </span>
                                     </label>
                                     <div className="flex gap-4 items-start">
-                                        {formData.donation_image && (
+                                        {formData.donation_image ? (
                                             <div className="relative w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
                                                 <img src={getImageUrlWithTimestamp(formData.donation_image)} alt="Donation" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                 <button
@@ -2836,7 +2836,7 @@
                                                     {React.createElement(Icons.X, { size: 14 })}
                                                 </button>
                                             </div>
-                                        )}
+                                        ) : null}
                                         <div className="flex-1">
                                             <input
                                                 type="text"
@@ -2931,7 +2931,7 @@
                                         </span>
                                     </label>
                                     <div className="flex gap-4 items-start">
-                                        {formData.cta_image && (
+                                        {formData.cta_image ? (
                                             <div className="relative w-40 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
                                                 <img src={getImageUrlWithTimestamp(formData.cta_image)} alt="CTA" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                 <button
@@ -2943,7 +2943,7 @@
                                                     {React.createElement(Icons.X, { size: 14 })}
                                                 </button>
                                             </div>
-                                        )}
+                                        ) : null}
                                         <div className="flex-1">
                                             <input
                                                 type="text"
@@ -3610,7 +3610,7 @@
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex gap-2">
-                                                    {restaurant.approvalStatus !== 'approved' && (
+                                                    {restaurant.approvalStatus !== 'approved' ? (
                                                         <button
                                                             onClick={() => handleApprove(restaurant)}
                                                             className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
@@ -3618,8 +3618,8 @@
                                                         >
                                                             <Icons.CheckCircle size={16} />
                                                         </button>
-                                                    )}
-                                                    {restaurant.approvalStatus !== 'rejected' && (
+                                                    ) : null}
+                                                    {restaurant.approvalStatus !== 'rejected' ? (
                                                         <button
                                                             onClick={() => handleReject(restaurant)}
                                                             className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
@@ -3627,7 +3627,7 @@
                                                         >
                                                             <Icons.X size={16} />
                                                         </button>
-                                                    )}
+                                                    ) : null}
                                                     <button
                                                         onClick={() => handleEdit(restaurant)}
                                                         className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
@@ -3652,7 +3652,7 @@
                     </div>
                     
                     {/* 수정 모달 */}
-                    {showEditModal && selectedRestaurant && (
+                    {showEditModal && selectedRestaurant ? (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowEditModal(false)}>
                             <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-scroll" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-between mb-6">
@@ -3699,7 +3699,7 @@
                                         </label>
                                         <div className="space-y-3">
                                             {/* 기존 이미지 표시 */}
-                                            {(editFormData.images || []).length > 0 && (
+                                            {(editFormData.images || []).length > 0 ? (
                                                 <div className="grid grid-cols-5 gap-2">
                                                     {editFormData.images.map((imageUrl, index) => (
                                                         <div key={index} className="relative group">
@@ -3731,9 +3731,9 @@
                                                         </div>
                                                     ))}
                                                 </div>
-                                            )}
+                                            ) : null}
                                             {/* 새 이미지 추가 */}
-                                            {(editFormData.images || []).length < 10 && (
+                                            {(editFormData.images || []).length < 10 ? (
                                                 <div className="flex items-center gap-2">
                                                     <label className="flex-1 p-3 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-brand transition-colors text-center">
                                                         <input
@@ -3752,7 +3752,7 @@
                                                         {(editFormData.images || []).length}/10
                                                     </span>
                                                 </div>
-                                            )}
+                                            ) : null}
                                         </div>
                                     </div>
                                     
@@ -3823,7 +3823,7 @@
                                                     </button>
                                                 </div>
                                             ))}
-                                            {(editFormData.menuItems || []).length < 10 && (
+                                            {(editFormData.menuItems || []).length < 10 ? (
                                                 <button
                                                     type="button"
                                                     onClick={handleEditAddMenuItem}
@@ -3831,7 +3831,7 @@
                                                 >
                                                     메뉴 추가
                                                 </button>
-                                            )}
+                                            ) : null}
                                         </div>
                                     </div>
                                     
@@ -3955,10 +3955,10 @@
                                 </div>
                             </div>
                         </div>
-                    )}
+                    ) : null}
                     
                     {/* 관리자 추가 모달 */}
-                    {showAddModal && (
+                    {showAddModal ? (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowAddModal(false)}>
                             <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                                 <h4 className="text-xl font-bold text-dark mb-4">맛집 추가</h4>
@@ -4068,7 +4068,7 @@
                                                     {addFormData.images.length}/10
                                                 </span>
                                             </div>
-                                            {addFormData.images.length > 0 && (
+                                            {addFormData.images.length > 0 ? (
                                                 <div className="grid grid-cols-5 gap-2">
                                                     {addFormData.images.map((imageUrl, index) => (
                                                         <div key={index} className="relative group">
@@ -4088,7 +4088,7 @@
                                                         </div>
                                                     ))}
                                                 </div>
-                                            )}
+                                            ) : null}
                                         </div>
                                     </div>
                                     <div className="flex gap-4">
@@ -4108,7 +4108,7 @@
                                 </div>
                             </div>
                         </div>
-                    )}
+                    ) : null}
                     
                     {/* 크롭 모달 (맛집 관리용) */}
                     {(showCropModal && cropImageFile) ? React.createElement(ImageCropModal, {
@@ -4205,11 +4205,11 @@
                                         <tr key={user.id || user.uid} className="border-b border-gray-100 hover:bg-gray-50">
                                             <td className="p-4 font-bold text-dark">
                                                 {user.name || '이름 없음'}
-                                                {isHaetban && (
+                                                {isHaetban ? (
                                                     <span className="ml-2 text-xs px-2 py-1 bg-red-100 text-red-700 rounded font-bold">
                                                         관리자
                                                     </span>
-                                                )}
+                                                ) : null}
                                             </td>
                                             <td className="p-4 text-gray-600">{user.email || '-'}</td>
                                             <td className="p-4 text-gray-600">{user.userType || '-'}</td>
@@ -4253,7 +4253,7 @@
                                         </div>
                                         
                     {/* 수정 모달 */}
-                    {showEditModal && selectedUser && (
+                    {showEditModal && selectedUser ? (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowEditModal(false)}>
                             <div className="bg-white rounded-2xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
                                 <h4 className="text-xl font-bold text-dark mb-4">회원 수정</h4>
@@ -4305,7 +4305,7 @@
                                                             </div>
                                                                 </div>
                                                             </div>
-                                    )}
+                                    ) : null}
                                                     </div>
             );
         };
@@ -4394,7 +4394,7 @@
                     </div>
                     
                     {/* 수정 모달 */}
-                    {showEditModal && selectedPost && (
+                    {showEditModal && selectedPost ? (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowEditModal(false)}>
                             <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                                 <h4 className="text-xl font-bold text-dark mb-4">게시글 수정</h4>
@@ -4443,7 +4443,7 @@
                                                     </div>
                             </div>
                                                     </div>
-                                                )}
+                                                ) : null}
                                                     </div>
             );
         };
@@ -4736,7 +4736,7 @@
                                     </div>
                     
                     {/* 수정 모달 */}
-                    {showEditModal && selectedSeminar && (
+                    {showEditModal && selectedSeminar ? (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowEditModal(false)}>
                             <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-scroll" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-between mb-6">
@@ -5078,7 +5078,7 @@
                                                 />
                                                 <label className="text-sm font-bold text-gray-700">유료 프로그램</label>
                                             </div>
-                                            {editFormData.requiresPayment && (
+                                            {editFormData.requiresPayment ? (
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">가격 (원)</label>
                                                     <input
@@ -5089,7 +5089,7 @@
                                                         min="0"
                                                     />
                                                 </div>
-                                            )}
+                                            ) : null}
                                         </div>
                                     </div>
                                     
@@ -5111,7 +5111,7 @@
                             </div>
                                 </div>
                         </div>
-                    )}
+                    ) : null}
                     
                     {/* 크롭 모달 */}
                     {(showCropModal && cropImageFile) ? React.createElement(ImageCropModal, {
@@ -5128,7 +5128,7 @@
                     }) : null}
                     
                     {/* 추가 모달 */}
-                    {showAddModal && (
+                    {showAddModal ? (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowAddModal(false)}>
                             <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-scroll" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-between mb-6">
@@ -5475,7 +5475,7 @@
                                                 />
                                                 <label className="text-sm font-bold text-gray-700">유료 프로그램</label>
                                             </div>
-                                            {editFormData.requiresPayment && (
+                                            {editFormData.requiresPayment ? (
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">가격 (원)</label>
                                                     <input
@@ -5486,7 +5486,7 @@
                                                         min="0"
                                                     />
                                                 </div>
-                                            )}
+                                            ) : null}
                                         </div>
                                     </div>
                                     
@@ -5508,7 +5508,7 @@
                             </div>
                                 </div>
                         </div>
-                    )}
+                    ) : null}
                     
                     {/* 크롭 모달 (추가 모달용) */}
                     {(showCropModal && cropImageFile && cropImageType === 'add') ? React.createElement(ImageCropModal, {
@@ -5525,7 +5525,7 @@
                     }) : null}
                     
                     {/* 지도 선택 모달 */}
-                    {showMapModal && (
+                    {showMapModal ? (
                         <KakaoMapModal
                             onClose={() => setShowMapModal(false)}
                             onSelectLocation={(location) => {
@@ -5537,7 +5537,7 @@
                             }}
                             initialLocation={editFormData.location ? null : null}
                         />
-                    )}
+                    ) : null}
                 </div>
             );
         };
@@ -6058,6 +6058,8 @@
                 }
             };
             
+            // 렌더링 로직을 try-catch로 감싸기
+            try {
             // 인증 실패 - 로그인 화면
             if (!isAuthenticated) {
                 // #region agent log
@@ -6209,9 +6211,6 @@
                                 </div>
                             ) : null}
                             {!loading && activeMenu === 'dashboard' ? (
-                                // #region agent log
-                                (() => {fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6205',message:'Rendering DashboardHome',data:{isDefined:typeof DashboardHome !== 'undefined',activeMenu,loading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{}); return null;})()
-                                // #endregion
                                 typeof DashboardHome !== 'undefined' ? React.createElement(DashboardHome, {
                                     users: users || [],
                                     posts: posts || [],
@@ -6253,7 +6252,7 @@
             );
             } catch (error) {
                 // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6243',message:'AdminDashboard catch error',data:{error:error.message,stack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6259',message:'AdminDashboard catch error',data:{error:error.message,stack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
                 // #endregion
                 console.error('AdminDashboard 렌더링 오류:', error);
                 return React.createElement('div', { className: 'min-h-screen bg-soft flex items-center justify-center p-4' },
