@@ -986,7 +986,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                             </div>
                                 
                                 {/* 인력구인 추가 정보 */}
-                                {selectedPost.category === \'인력구인\' ? (
+                                {selectedPost.category === '인력구인' ? (
                                     <div className="mt-6 space-y-4">
                                         {selectedPost.jobDetails ? (
                                             <div>
@@ -1054,7 +1054,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                 ) : null}
                                 
                                 {/* 중고거래 추가 정보 */}
-                            {selectedPost.category === \'중고거래\' ? (
+                            {selectedPost.category === '중고거래' ? (
                                     <div className="mt-6 space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             {selectedPost.itemName ? (
@@ -1116,7 +1116,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                 ) : null}
                                 
                                 {/* 프로그램 후기 추가 정보 */}
-                                {selectedPost.category === \'프로그램 후기\' ? (
+                                {selectedPost.category === '프로그램 후기' ? (
                                     <div className="mt-6 space-y-4">
                                         {selectedPost.rating ? (
                                             <div>
