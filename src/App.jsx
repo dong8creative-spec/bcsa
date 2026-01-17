@@ -354,11 +354,11 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                         <p className="text-gray-500 text-sm">정보 공유 및 소통 공간</p>
                                         </div>
                     <div className="flex gap-3">
-                        {currentUser && (
+                        {currentUser ? (
                             <button type="button" onClick={() => setIsCreateModalOpen(true)} className="px-6 py-2.5 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2">
                                 <Icons.Plus size={18} /> 글쓰기
                                                         </button>
-                        )}
+                        ) : null}
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
                             <Icons.ArrowLeft size={20} /> 메인으로
                                                     </button>
@@ -384,7 +384,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                     </div>
 
                 {/* 공지사항 상단 고정 (1줄 표기) */}
-                {noticePosts.length > 0 && (
+                {noticePosts.length > 0 ? (
                     <div className="mb-8">
                         <h3 className="text-xl font-bold text-dark mb-4 flex items-center gap-2">
                             <Icons.Info className="text-brand" /> 공지사항
@@ -403,7 +403,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                         <span className="text-xs text-gray-500 flex-shrink-0">{post.date}</span>
                                         <span className="text-xs text-gray-500 flex-shrink-0">조회 {post.views || 0}</span>
                                                         </div>
-                                    {isCurrentUserAdmin && (
+                                    {isCurrentUserAdmin ? (
                                         <div className="flex gap-2 ml-4 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                     <button
                                         type="button"
@@ -455,7 +455,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                 <Icons.Trash size={14} />
                                     </button>
                                 </div>
-                                                                    )}
+                                                                    ) : null}
                                                                 </div>
                             ))}
                             </div>
@@ -486,7 +486,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
             </div>
                         </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                        {isCurrentUserAdmin && (
+                                        {isCurrentUserAdmin ? (
                                             <React.Fragment>
                                                 <button
                                                     onClick={(e) => {
@@ -510,7 +510,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                     <Icons.Trash size={16} />
                                                 </button>
                                             </React.Fragment>
-                                        )}
+                                        ) : null}
                                         <Icons.ArrowRight className="w-5 h-5 text-gray-400 cursor-pointer" onClick={() => handleViewPost(post)} />
                                     </div>
                     </div>
@@ -525,7 +525,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
             )}
 
                 {/* 게시글 작성 모달 */}
-                {isCreateModalOpen && (
+                {isCreateModalOpen ? (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setIsCreateModalOpen(false); }}>
                         <div className="bg-white rounded-3xl p-8 max-w-3xl w-full max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll">
                             <div className="flex items-center justify-between mb-6">
@@ -574,7 +574,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                     </div>
 
                                     {/* 인력구인 추가 필드 */}
-                                    {formData.category === '인력구인' && (
+                                    {formData.category === '인력구인' ? (
                                         <React.Fragment>
                                                 <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">업무 내용 *</label>
@@ -641,7 +641,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                             <button type="button" onClick={() => setFormData({...formData, storeImages: formData.storeImages.filter((_, i) => i !== idx)})} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
                                                 </div>
                                                     ))}
-                                                    {formData.storeImages.length < 3 && (
+                                                    {formData.storeImages.length < 3 ? (
                                                         <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                             {uploadingImages ? (
                                                                 <div className="text-center">
@@ -670,14 +670,14 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                                 }} 
                                                             />
                                                         </label>
-                                                    )}
+                                                    ) : null}
                             </div>
                                     </div>
                                 </React.Fragment>
-                                    )}
+                                    ) : null}
 
                                     {/* 중고거래 추가 필드 */}
-                                    {formData.category === '중고거래' && (
+                                    {formData.category === '중고거래' ? (
                                 <React.Fragment>
                                             <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -756,7 +756,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                             <button type="button" onClick={() => setFormData({...formData, itemImages: formData.itemImages.filter((_, i) => i !== idx)})} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
                                                 </div>
                                             ))}
-                                                    {formData.itemImages.length < 3 && (
+                                                    {formData.itemImages.length < 3 ? (
                                                         <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                             {uploadingImages ? (
                                                                 <div className="text-center">
@@ -796,10 +796,10 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
             )}
         </div>
                                 </React.Fragment>
-                                    )}
+                                    ) : null}
 
                                     {/* 프로그램 후기 추가 필드 */}
-                                    {formData.category === '프로그램 후기' && (
+                                    {formData.category === '프로그램 후기' ? (
                                         <React.Fragment>
                     <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">프로그램 선택 *</label>
@@ -853,9 +853,9 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                     </button>
                                 ))}
                             </div>
-                                                {formData.rating > 0 && (
+                                                {formData.rating > 0 ? (
                                                     <p className="text-xs text-gray-500 mt-1">{formData.rating}점 선택됨</p>
-                                                )}
+                                                ) : null}
                         </div>
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">후기 사진 (최대 3장)</label>
@@ -866,7 +866,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                             <button type="button" onClick={() => setFormData({...formData, reviewImages: formData.reviewImages.filter((_, i) => i !== idx)})} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
                                                 </div>
                                             ))}
-                                                    {formData.reviewImages.length < 3 && (
+                                                    {formData.reviewImages.length < 3 ? (
                                                         <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                             {uploadingImages ? (
                                                                 <div className="text-center">
@@ -889,14 +889,14 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                 </div>
                                             </div>
                                         </React.Fragment>
-                                    )}
+                                    ) : null}
 
                                 <div className="flex items-center gap-4">
                                     <label className="flex items-center gap-2">
                                         <input type="checkbox" checked={formData.isSecret} onChange={(e) => setFormData({...formData, isSecret: e.target.checked})} />
                                         <span className="text-sm font-bold text-gray-700">비밀글</span>
                                                 </label>
-                                    {formData.isSecret && (
+                                    {formData.isSecret ? (
                                         <input type="text" placeholder="비밀번호" className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
                                     )}
                                 </div>
@@ -911,10 +911,10 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                         </div>
                                     </div>
                     </div>
-                )}
+                ) : null}
 
                 {/* 게시글 수정 모달 */}
-                {isEditModalOpen && editingPost && isCurrentUserAdmin && (
+                {isEditModalOpen && editingPost && isCurrentUserAdmin ? (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
                         <div className="bg-white rounded-3xl p-8 max-w-3xl w-full max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll">
                             <div className="flex items-center justify-between mb-6">
@@ -960,10 +960,10 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                         </div>
                                     </div>
                     </div>
-                )}
+                ) : null}
 
                 {/* 게시글 상세 모달 */}
-            {selectedPost && currentUser && (
+            {selectedPost && currentUser ? (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPost(null); }}>
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
                         <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl z-10 p-8 max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll relative">
@@ -986,53 +986,53 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                             </div>
                                 
                                 {/* 인력구인 추가 정보 */}
-                                {selectedPost.category === '인력구인' && (
+                                {selectedPost.category === \'인력구인\' ? (
                                     <div className="mt-6 space-y-4">
-                                        {selectedPost.jobDetails && (
+                                        {selectedPost.jobDetails ? (
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">업무 내용</label>
                                                 <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.jobDetails}</p>
                                 </div>
                             )}
                                         <div className="grid grid-cols-2 gap-4">
-                                            {selectedPost.recruitCount && (
+                                            {selectedPost.recruitCount ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">모집 인원</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.recruitCount}</p>
                                             </div>
                                         )}
-                                            {selectedPost.workHours && (
+                                            {selectedPost.workHours ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">근무 시간</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.workHours}</p>
                                             </div>
                                         )}
-                                        {selectedPost.salary && (
+                                        {selectedPost.salary ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">급여/처우</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.salary}</p>
                                             </div>
                                         )}
-                                            {selectedPost.deadline && (
+                                            {selectedPost.deadline ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">마감일</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.deadline}</p>
                                             </div>
                                         )}
                                         </div>
-                                        {selectedPost.preferred && (
+                                        {selectedPost.preferred ? (
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">우대 사항</label>
                                                 <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.preferred}</p>
                                             </div>
                                         )}
-                                        {selectedPost.storeLocation && (
+                                        {selectedPost.storeLocation ? (
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">매장 위치</label>
                                                 <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.storeLocation}</p>
                                             </div>
                                         )}
-                                        {selectedPost.storePhone && (
+                                        {selectedPost.storePhone ? (
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">전화번호</label>
                                                 <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.storePhone}</p>
@@ -1054,47 +1054,47 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                 )}
                                 
                                 {/* 중고거래 추가 정보 */}
-                            {selectedPost.category === '중고거래' && (
+                            {selectedPost.category === \'중고거래\' ? (
                                     <div className="mt-6 space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
-                                            {selectedPost.itemName && (
+                                            {selectedPost.itemName ? (
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">제품명</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.itemName}</p>
                                                 </div>
                                             )}
-                                        {selectedPost.itemCategory && (
+                                        {selectedPost.itemCategory ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.itemCategory}</p>
                                             </div>
                                         )}
-                                        {selectedPost.price && (
+                                        {selectedPost.price ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">가격</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl font-bold text-brand">{selectedPost.price}</p>
                                             </div>
                                         )}
-                                        {selectedPost.itemCondition && (
+                                        {selectedPost.itemCondition ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">상태</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.itemCondition}</p>
                                             </div>
                                         )}
-                                        {selectedPost.tradeMethod && (
+                                        {selectedPost.tradeMethod ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">거래 방식</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.tradeMethod}</p>
                                             </div>
                                         )}
-                                        {selectedPost.tradeLocation && (
+                                        {selectedPost.tradeLocation ? (
                                             <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">거래 지역</label>
                                                     <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.tradeLocation}</p>
                                             </div>
                                         )}
                                         </div>
-                                        {selectedPost.businessNumber && (
+                                        {selectedPost.businessNumber ? (
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">사업자등록번호</label>
                                                 <p className="text-gray-600 bg-white p-4 rounded-xl">{selectedPost.businessNumber}</p>
@@ -1116,9 +1116,9 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                 )}
                                 
                                 {/* 프로그램 후기 추가 정보 */}
-                                {selectedPost.category === '프로그램 후기' && (
+                                {selectedPost.category === \'프로그램 후기\' ? (
                                     <div className="mt-6 space-y-4">
-                                        {selectedPost.rating && (
+                                        {selectedPost.rating ? (
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">별점</label>
                                     <div className="flex gap-1">
@@ -1152,7 +1152,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                     </div>
                                 )}
                                 
-                            {selectedPost.reply && (
+                            {selectedPost.reply ? (
                                 <div className="mt-6 bg-brand/5 p-6 rounded-2xl border border-brand/20">
                                     <div className="flex items-center gap-2 mb-2">
                                         <Icons.MessageCircle size={16} className="text-brand" />
@@ -1164,10 +1164,10 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                             </div>
                         </div>
                                 </div>
-                            )}
+                            ) : null}
 
                 {/* 이미지 확대 모달 */}
-                {selectedImage && (
+                {selectedImage ? (
                     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90" onClick={(e) => { if (e.target === e.currentTarget) setSelectedImage(null); }}>
                         <button type="button" onClick={() => setSelectedImage(null)} className="absolute top-5 right-5 w-10 h-10 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-all z-10">
                             <Icons.X size={24} />
@@ -1176,7 +1176,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                             <img src={selectedImage} alt="확대 이미지" className="max-w-full max-h-[90vh] object-contain rounded-lg" />
                             </div>
                                                 </div>
-                )}
+                ) : null}
                                             </div>
                                     </div>
     );
@@ -1210,7 +1210,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                         <p className="text-gray-500 text-sm">부산 지역 맛집 정보</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        {isFoodBusinessOwner(currentUser) && (
+                        {isFoodBusinessOwner(currentUser) ? (
                             <button 
                                 type="button" 
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCreateClick(); }} 
@@ -1258,7 +1258,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                 className="bg-white rounded-3xl shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 cursor-pointer overflow-hidden" 
                                 onClick={() => onRestaurantClick(restaurant)}
                             >
-                                {restaurant.images && restaurant.images.length > 0 && (
+                                {restaurant.images && restaurant.images.length > 0 ? (
                                     <div className="w-full overflow-hidden" style={{ aspectRatio: '3/2' }}>
                                         <img 
                                             src={restaurant.images[0]} 
@@ -1270,18 +1270,18 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                 )}
                                 <div className="p-6">
                                     <h3 className="text-lg font-bold text-dark mb-2 line-clamp-2">{restaurant.title || '제목 없음'}</h3>
-                                    {restaurant.location?.address && (
+                                    {restaurant.location?.address ? (
                                         <div className="flex items-center gap-1 text-sm text-gray-600 mb-3">
                                             <Icons.MapPin size={14} />
                                             <span className="line-clamp-1">{restaurant.location.address}</span>
                                         </div>
                                     )}
-                                    {restaurant.ownerName && (
+                                    {restaurant.ownerName ? (
                                         <div className="text-xs text-gray-500 mb-2">
                                             등록자: {restaurant.ownerName}
                                         </div>
                                     )}
-                                    {restaurant.menuItems && restaurant.menuItems.length > 0 && (
+                                    {restaurant.menuItems && restaurant.menuItems.length > 0 ? (
                                         <div className="text-xs text-gray-500 mb-2">
                                             대표메뉴: {restaurant.menuItems[0].name}
                                         </div>
@@ -1294,7 +1294,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                     <div className="text-center py-20 text-gray-500">
                         <Icons.Info className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                         <p>등록된 맛집이 없습니다.</p>
-                        {isFoodBusinessOwner(currentUser) && (
+                        {isFoodBusinessOwner(currentUser) ? (
                             <button 
                                 type="button"
                                 onClick={onCreateClick}
@@ -1370,7 +1370,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                 </button>
                 
                 {/* 갤러리 */}
-                {restaurant.images && restaurant.images.length > 0 && (
+                {restaurant.images && restaurant.images.length > 0 ? (
                     <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
                         <div className="relative" style={{ aspectRatio: '3/2' }}>
                             <img 
@@ -1423,41 +1423,41 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                         )}
                     </div>
                     
-                    {restaurant.location?.address && (
+                    {restaurant.location?.address ? (
                         <div className="flex items-center gap-2 text-gray-600 mb-2">
                             <Icons.MapPin size={18} />
                             <span>{restaurant.location.address}</span>
                         </div>
                     )}
                     
-                    {restaurant.phone && (
+                    {restaurant.phone ? (
                         <div className="flex items-center gap-2 text-gray-600 mb-2">
                             <Icons.Phone size={18} />
                             <span>{restaurant.phone}</span>
                         </div>
                     )}
                     
-                    {restaurant.businessHours && (
+                    {restaurant.businessHours ? (
                         <div className="flex items-center gap-2 text-gray-600 mb-2">
                             <Icons.Clock size={18} />
                             <span>{restaurant.businessHours}</span>
                         </div>
                     )}
                     
-                    {restaurant.priceRange && (
+                    {restaurant.priceRange ? (
                         <div className="flex items-center gap-2 text-gray-600 mb-4">
                             <Icons.DollarSign size={18} />
                             <span>{restaurant.priceRange}</span>
                         </div>
                     )}
                     
-                    {restaurant.description && (
+                    {restaurant.description ? (
                         <p className="text-gray-700 mb-4">{restaurant.description}</p>
                     )}
                     
                     {/* 예약 버튼 */}
                     <div className="flex gap-4 mt-6">
-                        {restaurant.naverReservationUrl && (
+                        {restaurant.naverReservationUrl ? (
                             <a 
                                 href={restaurant.naverReservationUrl} 
                                 target="_blank" 
@@ -1467,7 +1467,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                                 네이버 예약
                             </a>
                         )}
-                        {restaurant.smartPlaceUrl && (
+                        {restaurant.smartPlaceUrl ? (
                             <a 
                                 href={restaurant.smartPlaceUrl} 
                                 target="_blank" 
@@ -1481,7 +1481,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                 </div>
                 
                 {/* 대표메뉴 */}
-                {restaurant.menuItems && restaurant.menuItems.length > 0 && (
+                {restaurant.menuItems && restaurant.menuItems.length > 0 ? (
                     <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
                         <h3 className="text-xl font-bold text-dark mb-4">대표메뉴</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -8396,13 +8396,13 @@ END:VCALENDAR`;
             )}
             
             {/* 문의하기 모달 */}
-            {isInquiryModalOpen && (
+            {isInquiryModalOpen ? (
                 <InquiryModal 
                     onClose={() => setIsInquiryModalOpen(false)}
                     currentUser={currentUser}
                     onSubmit={handleInquirySubmit}
                 />
-            )}
+            ) : null}
             {/* 🌟 모바일 메뉴 오버레이 */}
             <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onNavigate={handleNavigation} menuEnabled={menuEnabled} menuNames={menuNames} menuOrder={menuOrder} />
 
