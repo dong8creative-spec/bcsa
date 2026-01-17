@@ -4480,11 +4480,10 @@
                         images: imagesArray,
                         img: imagesArray.length > 0 ? imagesArray[0] : (editFormData.img || ''),
                         desc: editFormData.desc || editFormData.description || '',
-                        description: editFormData.desc || editFormData.description || ''
+                        description: editFormData.desc || editFormData.description || '',
                     };
                     
-                    // 저장 전 최종 데이터 검증 (saveData는 이미 위에서 생성됨)
-                    
+                    // 저장 전 최종 데이터 검증
                     await window.firebaseService.updateSeminar(selectedSeminar.id, saveData);
                     
                     const updatedSeminars = seminars.map(s => 
@@ -4571,7 +4570,7 @@
                         images: imagesArray,
                         img: imagesArray.length > 0 ? imagesArray[0] : (editFormData.img || ''),
                         desc: editFormData.desc || editFormData.description || '',
-                        description: editFormData.desc || editFormData.description || ''
+                        description: editFormData.desc || editFormData.description || '',
                     };
                     
                     const newId = await window.firebaseService.createSeminar(saveData);
