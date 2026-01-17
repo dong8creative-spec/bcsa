@@ -670,7 +670,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                                 }} 
                                                             />
                                                         </label>
-                                                            )}
+                                                    ) : null}
                             </div>
                                     </div>
                                 </React.Fragment>
@@ -785,7 +785,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                                 }} 
                                                             />
                                                         </label>
-                                                            )}
+                                                    ) : null}
                         </div>
                         </div>
                                             <div>
@@ -885,7 +885,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                                 e.target.value = '';
                                                             }} />
                                                         </label>
-                                                            )}
+                                                    ) : null}
                                                 </div>
                                             </div>
                                         </React.Fragment>
