@@ -1094,11 +1094,23 @@
                         ctx.imageSmoothingEnabled = true;
                         ctx.imageSmoothingQuality = 'high';
                         
-                        // 크롭 영역 좌표 정수화
-                        const sourceX = Math.round(cropArea.x);
-                        const sourceY = Math.round(cropArea.y);
-                        const sourceWidth = Math.round(cropArea.width);
-                        const sourceHeight = Math.round(cropArea.height);
+                        // 크롭 영역 좌표 정수화 및 검증 (이미지 경계 내로 제한)
+                        const sourceX = Math.max(0, Math.min(Math.round(cropArea.x), img.naturalWidth - 1));
+                        const sourceY = Math.max(0, Math.min(Math.round(cropArea.y), img.naturalHeight - 1));
+                        const maxWidth = img.naturalWidth - sourceX;
+                        const maxHeight = img.naturalHeight - sourceY;
+                        const sourceWidth = Math.max(1, Math.min(Math.round(cropArea.width), maxWidth));
+                        const sourceHeight = Math.max(1, Math.min(Math.round(cropArea.height), maxHeight));
+                        
+                        console.log('cropImage 함수 내부:', {
+                            cropArea,
+                            sourceX,
+                            sourceY,
+                            sourceWidth,
+                            sourceHeight,
+                            naturalSize: { width: img.naturalWidth, height: img.naturalHeight },
+                            outputSize: { width: outputW, height: outputH }
+                        });
                         
                         // 이미지 크롭 및 리사이즈
                         ctx.drawImage(
@@ -1909,10 +1921,12 @@
                     // 이미지 영역 밖으로 나간 부분 제거
                     cropRelativeX = Math.max(0, Math.min(cropRelativeX, zoomedWidth));
                     cropRelativeY = Math.max(0, Math.min(cropRelativeY, zoomedHeight));
+                    
+                    // 크롭 영역이 이미지 영역을 벗어나지 않도록 제한
                     const cropRelativeWidth = Math.min(cropArea.width, zoomedWidth - cropRelativeX);
                     const cropRelativeHeight = Math.min(cropArea.height, zoomedHeight - cropRelativeY);
                     
-                    // 실제 이미지 좌표로 변환
+                    // 실제 이미지 좌표로 변환 (zoomedWidth/Height 기준이 맞음)
                     const scaleX = img.naturalWidth / zoomedWidth;
                     const scaleY = img.naturalHeight / zoomedHeight;
                     
@@ -1922,6 +1936,23 @@
                         width: cropRelativeWidth * scaleX,
                         height: cropRelativeHeight * scaleY
                     };
+                    
+                    // 디버깅 로그 추가
+                    console.log('크롭 계산 상세:', {
+                        cropArea,
+                        zoomOffsetX,
+                        zoomOffsetY,
+                        zoomedWidth,
+                        zoomedHeight,
+                        cropRelativeX,
+                        cropRelativeY,
+                        cropRelativeWidth,
+                        cropRelativeHeight,
+                        scaleX,
+                        scaleY,
+                        naturalSize: { width: img.naturalWidth, height: img.naturalHeight },
+                        actualCropAreaBeforeRound: { ...actualCropArea }
+                    });
                     
                     // 좌표 정수화 및 검증
                     actualCropArea.x = Math.round(Math.max(0, Math.min(actualCropArea.x, img.naturalWidth - 1)));
@@ -1942,6 +1973,18 @@
                     if (!croppedImage) {
                         throw new Error('크롭된 이미지가 생성되지 않았습니다.');
                     }
+                    
+                    // base64 문자열인지 확인
+                    if (typeof croppedImage !== 'string' || !croppedImage.startsWith('data:image')) {
+                        console.error('크롭된 이미지 형식 오류:', typeof croppedImage, croppedImage?.substring(0, 50));
+                        throw new Error('크롭된 이미지 형식이 올바르지 않습니다.');
+                    }
+                    
+                    console.log('크롭 완료, onCropComplete 호출:', {
+                        cropImageField,
+                        imageLength: croppedImage.length,
+                        imagePreview: croppedImage.substring(0, 100) + '...'
+                    });
                     
                     await onCropComplete(croppedImage);
                 } catch (error) {
@@ -2195,19 +2238,32 @@
                     }
 
                     console.log('이미지 업로드 완료:', uploaded.url);
+                    console.log('업데이트할 필드:', cropImageField);
 
                     // 함수형 업데이트로 즉시 반영
                     setFormData(prevData => {
                         const newData = {...prevData, [cropImageField]: uploaded.url};
                         console.log('formData 업데이트:', cropImageField, uploaded.url);
+                        console.log('업데이트된 formData:', newData);
                         return newData;
                     });
 
                     // settings도 업데이트 (실시간 저장을 위해)
                     setSettings(prevSettings => {
                         const newSettings = {...prevSettings, [cropImageField]: uploaded.url};
+                        console.log('settings 업데이트:', cropImageField, uploaded.url);
                         return newSettings;
                     });
+
+                    // 즉시 저장 (크롭된 이미지가 반영되도록)
+                    try {
+                        const updatedFormData = {...formData, [cropImageField]: uploaded.url};
+                        await window.firebaseService.updateSettings(updatedFormData);
+                        console.log('크롭된 이미지가 Firebase에 저장되었습니다.');
+                    } catch (saveError) {
+                        console.error('자동 저장 오류 (무시 가능):', saveError);
+                        // 자동 저장 실패해도 계속 진행
+                    }
 
                     // 렌더링 시간 확보 후 모달 닫기
                     setTimeout(() => {
