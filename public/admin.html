@@ -7,7 +7,7 @@
     
     <!-- checkFirebaseConfig 함수를 가장 먼저 정의 (다른 스크립트 로드 전) -->
     <script>
-        // 즉시 함수 정의 보장 (이미 정의되어 있으면 재정의하지 않음)
+        // 즉시 함수 정의 보장 (항상 정의되어 있도록 보장)
         (function() {
             'use strict';
             // 함수가 이미 정의되어 있으면 재정의하지 않음
@@ -35,6 +35,20 @@
                 console.log('checkFirebaseConfig 함수 정의 완료');
             } else {
                 console.log('checkFirebaseConfig 함수가 이미 정의되어 있습니다.');
+            }
+            
+            // 전역에서 안전하게 호출할 수 있도록 보장 (콘솔에서 직접 호출 시도 방지)
+            // 함수가 제대로 정의되었는지 확인
+            try {
+                if (typeof window.checkFirebaseConfig === 'function') {
+                    // 함수가 호출 가능한지 테스트
+                    const testResult = window.checkFirebaseConfig();
+                    if (!testResult || typeof testResult !== 'object') {
+                        console.warn('checkFirebaseConfig 함수가 올바르지 않은 값을 반환합니다.');
+                    }
+                }
+            } catch (e) {
+                console.error('checkFirebaseConfig 초기화 검증 오류:', e);
             }
         })();
     </script>

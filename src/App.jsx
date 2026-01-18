@@ -7414,7 +7414,11 @@ END:VCALENDAR`;
     }
 
     const renderView = () => {
-        if (currentView === 'myPage') return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} pageTitles={pageTitles} />;
+        try {
+            if (currentView === 'myPage') {
+                const result = <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} pageTitles={pageTitles} />;
+                return result || null;
+            }
         if (currentView === 'allMembers' && !menuEnabled['부청사 회원']) {
             alert('준비중인 서비스입니다.');
             setCurrentView('home');
@@ -7646,7 +7650,7 @@ END:VCALENDAR`;
         }
         
         // currentView가 'home'이거나 null/undefined인 경우 홈 화면 렌더링
-        return (
+        const homeView = (
             <React.Fragment>
                 {/* ============================================
                     📍 섹션 1: HERO & SEARCH (메인 히어로 + 검색)
@@ -8082,6 +8086,17 @@ END:VCALENDAR`;
                 </section>
             </React.Fragment>
         );
+        return homeView || null;
+        } catch (error) {
+            console.error('renderView error:', error);
+            console.error('Error stack:', error.stack);
+            console.error('Current view:', currentView);
+            // 오류 발생 시 홈으로 리다이렉트
+            if (currentView !== 'home') {
+                setCurrentView('home');
+            }
+            return null;
+        }
     };
     
     return (
@@ -8404,13 +8419,36 @@ END:VCALENDAR`;
             </header>
             
             {(() => {
-                const viewResult = renderView();
-                // renderView()가 undefined를 반환하는 경우를 방지
-                if (viewResult === undefined) {
-                    console.error('renderView() returned undefined');
+                try {
+                    const viewResult = renderView();
+                    // renderView()가 undefined를 반환하는 경우를 방지
+                    if (viewResult === undefined || viewResult === null) {
+                        console.error('renderView() returned undefined or null, currentView:', currentView);
+                        // 홈으로 리다이렉트
+                        if (currentView !== 'home') {
+                            setCurrentView('home');
+                        }
+                        return null;
+                    }
+                    // React 요소인지 확인 (React.isValidElement 사용)
+                    if (!React.isValidElement(viewResult) && viewResult !== null) {
+                        console.error('renderView() returned invalid element:', viewResult);
+                        // 홈으로 리다이렉트
+                        if (currentView !== 'home') {
+                            setCurrentView('home');
+                        }
+                        return null;
+                    }
+                    return viewResult;
+                } catch (error) {
+                    console.error('renderView() error:', error);
+                    console.error('Error stack:', error.stack);
+                    // 오류 발생 시 홈으로 리다이렉트
+                    if (currentView !== 'home') {
+                        setCurrentView('home');
+                    }
                     return null;
                 }
-                return viewResult;
             })()}
 
             <footer className="py-12 bg-white px-6 shadow-[0_-4px_25px_rgba(0,69,165,0.05)] border-none">
@@ -8572,6 +8610,5 @@ END:VCALENDAR`;
             </div>
         </div>
     );
-};
 
 export default App;
