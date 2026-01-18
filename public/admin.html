@@ -1074,18 +1074,48 @@
         };
         
         // 이미지 크롭 함수
-        const cropImage = (imageFile, cropArea, outputWidth = null, outputHeight = null) => {
+        // getCroppedImg - react-easy-crop 스타일의 정확한 크롭 함수
+        const getCroppedImg = (imageSrc, pixelCrop, outputWidth = null, outputHeight = null) => {
             return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
                     const img = new Image();
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
                         
-                        // 출력 크기 설정 (없으면 크롭 영역 크기 사용) - 정수화
-                        const outputW = Math.round(outputWidth || cropArea.width);
-                        const outputH = Math.round(outputHeight || cropArea.height);
+                    if (!ctx) {
+                        reject(new Error('Canvas 2d context를 가져올 수 없습니다.'));
+                        return;
+                    }
+                    
+                    // 실제 크롭 영역의 비율 계산
+                    const cropAspectRatio = pixelCrop.width / pixelCrop.height;
+                    
+                    // 출력 크기 결정
+                    let outputW, outputH;
+                    if (outputWidth && outputHeight) {
+                        const recommendedAspectRatio = outputWidth / outputHeight;
+                        
+                        // 비율이 거의 같으면 권장 크기 사용
+                        if (Math.abs(cropAspectRatio - recommendedAspectRatio) < 0.01) {
+                            outputW = Math.round(outputWidth);
+                            outputH = Math.round(outputHeight);
+                        } else {
+                            // 비율이 다르면 크롭 영역의 비율을 유지하면서 권장 크기에 최대한 맞춤
+                            if (cropAspectRatio > recommendedAspectRatio) {
+                                // 크롭 영역이 더 넓음 - 높이 기준
+                                outputH = Math.round(outputHeight);
+                                outputW = Math.round(outputH * cropAspectRatio);
+                            } else {
+                                // 크롭 영역이 더 높음 - 너비 기준
+                                outputW = Math.round(outputWidth);
+                                outputH = Math.round(outputW / cropAspectRatio);
+                            }
+                        }
+                    } else {
+                        // 권장 크기가 없으면 크롭 영역 크기 사용
+                        outputW = Math.round(pixelCrop.width);
+                        outputH = Math.round(pixelCrop.height);
+                    }
                         
                         canvas.width = outputW;
                         canvas.height = outputH;
@@ -1094,32 +1124,22 @@
                         ctx.imageSmoothingEnabled = true;
                         ctx.imageSmoothingQuality = 'high';
                         
-                        // 크롭 영역 좌표 정수화 및 검증 (이미지 경계 내로 제한)
-                        const sourceX = Math.max(0, Math.min(Math.round(cropArea.x), img.naturalWidth - 1));
-                        const sourceY = Math.max(0, Math.min(Math.round(cropArea.y), img.naturalHeight - 1));
-                        const maxWidth = img.naturalWidth - sourceX;
-                        const maxHeight = img.naturalHeight - sourceY;
-                        const sourceWidth = Math.max(1, Math.min(Math.round(cropArea.width), maxWidth));
-                        const sourceHeight = Math.max(1, Math.min(Math.round(cropArea.height), maxHeight));
-                        
-                        console.log('cropImage 함수 내부:', {
-                            cropArea,
-                            sourceX,
-                            sourceY,
-                            sourceWidth,
-                            sourceHeight,
-                            naturalSize: { width: img.naturalWidth, height: img.naturalHeight },
-                            outputSize: { width: outputW, height: outputH }
-                        });
-                        
-                        // 이미지 크롭 및 리사이즈
+                    // 크롭 영역 좌표 정수화 및 검증
+                    const sourceX = Math.max(0, Math.min(Math.round(pixelCrop.x), img.naturalWidth - 1));
+                    const sourceY = Math.max(0, Math.min(Math.round(pixelCrop.y), img.naturalHeight - 1));
+                    const maxWidth = img.naturalWidth - sourceX;
+                    const maxHeight = img.naturalHeight - sourceY;
+                    const sourceWidth = Math.max(1, Math.min(Math.round(pixelCrop.width), maxWidth));
+                    const sourceHeight = Math.max(1, Math.min(Math.round(pixelCrop.height), maxHeight));
+                    
+                    // 이미지 크롭 및 리사이즈 (비율 유지)
                         ctx.drawImage(
                             img,
                             sourceX, sourceY, sourceWidth, sourceHeight,
                             0, 0, outputW, outputH
                         );
                         
-                        // base64로 변환 (품질 향상)
+                    // base64로 변환
                         canvas.toBlob((blob) => {
                             if (blob) {
                                 const reader = new FileReader();
@@ -1129,10 +1149,21 @@
                             } else {
                                 reject(new Error('이미지 크롭 실패'));
                             }
-                        }, imageFile.type || 'image/jpeg', 0.95);
+                    }, 'image/jpeg', 0.95);
                     };
                     img.onerror = reject;
-                    img.src = e.target.result;
+                img.src = imageSrc;
+            });
+        };
+        
+        // 기존 cropImage 함수 (하위 호환성 유지)
+        const cropImage = (imageFile, cropArea, outputWidth = null, outputHeight = null) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    getCroppedImg(e.target.result, cropArea, outputWidth, outputHeight)
+                        .then(resolve)
+                        .catch(reject);
                 };
                 reader.onerror = reject;
                 reader.readAsDataURL(imageFile);
@@ -1654,8 +1685,10 @@
             const [isDragging, setIsDragging] = useState(false);
             const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
             const [zoom, setZoom] = useState(1);
-            const [selectedAspectRatio, setSelectedAspectRatio] = useState(null); // 항상 자유로 시작
+            const [selectedAspectRatio, setSelectedAspectRatio] = useState(aspectRatio); // 초기값을 aspectRatio로 설정
             const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+            const [previewImage, setPreviewImage] = useState(null); // 미리보기 이미지
+            const [showPreview, setShowPreview] = useState(false); // 미리보기 모달 표시 여부
             const canvasRef = React.useRef(null);
             const containerRef = React.useRef(null);
             const imageRef = React.useRef(null);
@@ -1666,6 +1699,75 @@
                 { label: '4:3', value: 4/3 },
                 { label: '1:1', value: 1 }
             ];
+            
+            // 미리보기 생성 함수
+            const generatePreview = async () => {
+                if (!imageSrc || !imageRef.current || !containerRef.current) return;
+                
+                try {
+                    const img = imageRef.current;
+                    const containerRect = containerRef.current.getBoundingClientRect();
+                    const containerWidth = containerRect.width || 600;
+                    const containerHeight = containerRect.height || 400;
+                    
+                    // 이미지가 object-contain으로 표시된 실제 크기 계산
+                    const imgAspect = img.naturalWidth / img.naturalHeight;
+                    const containerAspect = containerWidth / containerHeight;
+                    
+                    let displayedWidth, displayedHeight, offsetX, offsetY;
+                    
+                    if (imgAspect > containerAspect) {
+                        displayedWidth = containerWidth;
+                        displayedHeight = containerWidth / imgAspect;
+                        offsetX = 0;
+                        offsetY = (containerHeight - displayedHeight) / 2;
+                    } else {
+                        displayedHeight = containerHeight;
+                        displayedWidth = containerHeight * imgAspect;
+                        offsetX = (containerWidth - displayedWidth) / 2;
+                        offsetY = 0;
+                    }
+                    
+                    // 줌 적용
+                    const zoomedWidth = displayedWidth * zoom;
+                    const zoomedHeight = displayedHeight * zoom;
+                    const zoomOffsetX = offsetX - (zoomedWidth - displayedWidth) / 2;
+                    const zoomOffsetY = offsetY - (zoomedHeight - displayedHeight) / 2;
+                    
+                    // 크롭 영역을 이미지 상대 좌표로 변환
+                    let cropRelativeX = cropArea.x - zoomOffsetX;
+                    let cropRelativeY = cropArea.y - zoomOffsetY;
+                    
+                    cropRelativeX = Math.max(0, Math.min(cropRelativeX, zoomedWidth));
+                    cropRelativeY = Math.max(0, Math.min(cropRelativeY, zoomedHeight));
+                    const cropRelativeWidth = Math.min(cropArea.width, zoomedWidth - cropRelativeX);
+                    const cropRelativeHeight = Math.min(cropArea.height, zoomedHeight - cropRelativeY);
+                    
+                    // 실제 이미지 좌표로 변환
+                    const scaleX = img.naturalWidth / zoomedWidth;
+                    const scaleY = img.naturalHeight / zoomedHeight;
+                    
+                    const actualCropArea = {
+                        x: cropRelativeX * scaleX,
+                        y: cropRelativeY * scaleY,
+                        width: cropRelativeWidth * scaleX,
+                        height: cropRelativeHeight * scaleY
+                    };
+                    
+                    // 좌표 정수화
+                    actualCropArea.x = Math.round(Math.max(0, Math.min(actualCropArea.x, img.naturalWidth - 1)));
+                    actualCropArea.y = Math.round(Math.max(0, Math.min(actualCropArea.y, img.naturalHeight - 1)));
+                    actualCropArea.width = Math.round(Math.max(1, Math.min(actualCropArea.width, img.naturalWidth - actualCropArea.x)));
+                    actualCropArea.height = Math.round(Math.max(1, Math.min(actualCropArea.height, img.naturalHeight - actualCropArea.y)));
+                    
+                    // 미리보기 이미지 생성 (작은 크기로)
+                    const preview = await getCroppedImg(imageSrc, actualCropArea, 300, 300);
+                    setPreviewImage(preview);
+                    setShowPreview(true);
+                } catch (error) {
+                    console.error('미리보기 생성 오류:', error);
+                }
+            };
             
             // 이미지 로드
             useEffect(() => {
@@ -1680,20 +1782,33 @@
                             const containerWidth = 600;
                             const containerHeight = 400;
                             
-                            // 이미지 원본 비율 사용 (사용자가 자유롭게 선택할 수 있도록)
-                            const targetAspect = img.naturalWidth / img.naturalHeight;
-                            
+                            // 초기 크롭 영역 설정
                             let initWidth, initHeight;
                             
-                            // 컨테이너에 맞게 크롭 영역 크기 계산
-                            if (containerWidth / containerHeight > targetAspect) {
+                            // aspectRatio가 지정된 경우 해당 비율로 설정
+                            if (selectedAspectRatio !== null && selectedAspectRatio > 0) {
+                                const containerAspect = containerWidth / containerHeight;
+                                
+                                if (containerAspect > selectedAspectRatio) {
                                 // 컨테이너가 더 넓음 - 높이 기준
                                 initHeight = containerHeight * 0.8;
-                                initWidth = initHeight * targetAspect;
+                                    initWidth = initHeight * selectedAspectRatio;
                             } else {
                                 // 컨테이너가 더 높음 - 너비 기준
+                                    initWidth = containerWidth * 0.8;
+                                    initHeight = initWidth / selectedAspectRatio;
+                                }
+                            } else {
+                                // 자유 비율 - 이미지 원본 비율 사용
+                                const targetAspect = img.naturalWidth / img.naturalHeight;
+                                
+                                if (containerWidth / containerHeight > targetAspect) {
+                                    initHeight = containerHeight * 0.8;
+                                    initWidth = initHeight * targetAspect;
+                                } else {
                                 initWidth = containerWidth * 0.8;
                                 initHeight = initWidth / targetAspect;
+                                }
                             }
                             
                             // 최소 크기 보장
@@ -1968,7 +2083,8 @@
                         zoom
                     });
                     
-                    const croppedImage = await cropImage(imageFile, actualCropArea, recommendedWidth, recommendedHeight);
+                    // getCroppedImg 사용 (비율 왜곡 방지)
+                    const croppedImage = await getCroppedImg(imageSrc, actualCropArea, recommendedWidth, recommendedHeight);
                     
                     if (!croppedImage) {
                         throw new Error('크롭된 이미지가 생성되지 않았습니다.');
@@ -2111,10 +2227,55 @@
                         className: 'flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors'
                     }, '취소'),
                     React.createElement('button', {
+                        onClick: generatePreview,
+                        className: 'px-4 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition-colors'
+                    }, '미리보기'),
+                    React.createElement('button', {
                         onClick: handleCrop,
                         className: 'flex-1 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors'
                     }, '크롭 완료')
-                )
+                ),
+                // 미리보기 모달
+                showPreview && previewImage ? React.createElement('div', {
+                    key: 'preview-modal',
+                    className: 'fixed inset-0 z-[60] flex items-center justify-center bg-black/80',
+                    onClick: () => setShowPreview(false)
+                }, React.createElement('div', {
+                    className: 'bg-white rounded-2xl p-6 max-w-md w-full mx-4',
+                    onClick: (e) => e.stopPropagation()
+                }, [
+                    React.createElement('div', { key: 'preview-header', className: 'flex items-center justify-between mb-4' },
+                        React.createElement('h3', { className: 'text-lg font-bold text-dark' }, '크롭 미리보기'),
+                        React.createElement('button', {
+                            onClick: () => setShowPreview(false),
+                            className: 'p-2 hover:bg-gray-100 rounded-lg'
+                        }, React.createElement(Icons.X, { size: 20 }))
+                    ),
+                    React.createElement('div', { key: 'preview-image', className: 'mb-4 rounded-lg overflow-hidden' },
+                        React.createElement('img', {
+                            src: previewImage,
+                            alt: '크롭 미리보기',
+                            className: 'w-full h-auto',
+                            style: { 
+                                aspectRatio: selectedAspectRatio ? `${selectedAspectRatio}/1` : 'auto',
+                                objectFit: 'contain'
+                            }
+                        })
+                    ),
+                    React.createElement('div', { key: 'preview-actions', className: 'flex gap-2' },
+                        React.createElement('button', {
+                            onClick: () => setShowPreview(false),
+                            className: 'flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors'
+                        }, '닫기'),
+                        React.createElement('button', {
+                            onClick: async () => {
+                                setShowPreview(false);
+                                await handleCrop();
+                            },
+                            className: 'flex-1 py-2 bg-brand text-white rounded-lg font-bold hover:bg-blue-700 transition-colors'
+                        }, '이대로 적용')
+                    )
+                ])) : null
             ]));
         };
         
@@ -2131,7 +2292,7 @@
             if (Math.abs(ratio - 1) < 0.01) return 1;
             return null; // 정확히 일치하지 않으면 null
         };
-
+        
         // ==========================================
         // 메인 관리 컴포넌트
         // ==========================================
@@ -2267,9 +2428,9 @@
 
                     // 렌더링 시간 확보 후 모달 닫기
                     setTimeout(() => {
-                        setShowCropModal(false);
-                        setCropImageFile(null);
-                        setCropImageField(null);
+                            setShowCropModal(false);
+                            setCropImageFile(null);
+                            setCropImageField(null);
                     }, 100);
                 } catch (error) {
                     console.error('❌ 이미지 업로드 오류:', error);
@@ -6142,12 +6303,12 @@
             
             // 렌더링 로직을 try-catch로 감싸기
             try {
-                // 인증 실패 - 로그인 화면
-                if (!isAuthenticated) {
+            // 인증 실패 - 로그인 화면
+            if (!isAuthenticated) {
                     // #region agent log
                     fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6065',message:'AdminDashboard early return (not authenticated)',data:{isAuthenticated:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
                     // #endregion
-                    return (
+                return (
                     <div className="min-h-screen bg-soft flex items-center justify-center p-4">
                         <div className="bg-white rounded-3xl shadow-lg p-8 max-w-md w-full">
                             <div className="text-center mb-6">
@@ -6198,10 +6359,10 @@
                             </button>
                         </div>
                     </div>
-                    );
-                }
+                );
+            }
             
-                // 메뉴 표시/비표시 토글 함수
+            // 메뉴 표시/비표시 토글 함수
             const toggleMenuEnabled = (menuKey) => {
                 const newMenuEnabled = { ...menuEnabled, [menuKey]: !menuEnabled[menuKey] };
                 setMenuEnabled(newMenuEnabled);
@@ -6226,7 +6387,7 @@
                 // #region agent log
                 fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6143',message:'AdminDashboard main return (authenticated)',data:{isAuthenticated:true,activeMenu,loading,hasDashboardHome:typeof DashboardHome !== 'undefined',hasMainContent:typeof MainContentManagement !== 'undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
                 // #endregion
-                return (
+            return (
                 <div className="min-h-screen bg-soft flex">
                     {/* 사이드바 */}
                     <div className="w-64 bg-white border-r border-gray-200 fixed h-screen overflow-y-auto">
@@ -6290,7 +6451,7 @@
                                 <div className="text-center py-12">
                                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand mx-auto mb-4"></div>
                                     <p className="text-gray-600">데이터를 불러오는 중...</p>
-                                </div>
+                            </div>
                             ) : null}
                             {!loading && activeMenu === 'dashboard' ? (
                                 typeof DashboardHome !== 'undefined' ? React.createElement(DashboardHome, {
@@ -6331,7 +6492,7 @@
                         </div>
                     </div>
                 </div>
-                );
+            );
             } catch (error) {
                 // #region agent log
                 fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.html:6259',message:'AdminDashboard catch error',data:{error:error.message,stack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
