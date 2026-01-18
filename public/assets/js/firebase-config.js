@@ -42,35 +42,41 @@ if (typeof firebase !== 'undefined') {
       storage: !!window.firebaseServices.storage
     });
     
-    // Safe function for checking Firebase config
-    window.checkFirebaseConfig = function() {
-      return {
-        initialized: true,
-        config: firebaseConfig,
-        services: Object.keys(window.firebaseServices || {}),
-        app: app.name
+    // Safe function for checking Firebase config (이미 정의되어 있으면 덮어쓰지 않음)
+    if (typeof window.checkFirebaseConfig !== 'function') {
+      window.checkFirebaseConfig = function() {
+        return {
+          initialized: true,
+          config: firebaseConfig,
+          services: Object.keys(window.firebaseServices || {}),
+          app: app.name
+        };
       };
-    };
+    }
   } catch (error) {
     console.error('❌ Firebase initialization error:', error);
     
-    // Safe fallback function
-    window.checkFirebaseConfig = function() {
-      return {
-        initialized: false,
-        error: error.message
+    // Safe fallback function (이미 정의되어 있으면 덮어쓰지 않음)
+    if (typeof window.checkFirebaseConfig !== 'function') {
+      window.checkFirebaseConfig = function() {
+        return {
+          initialized: false,
+          error: error.message
+        };
       };
-    };
+    }
   }
 } else {
   console.error('❌ Firebase SDK not loaded');
   
-  // Safe fallback function
-  window.checkFirebaseConfig = function() {
-    return {
-      initialized: false,
-      error: 'Firebase SDK not loaded'
+  // Safe fallback function (이미 정의되어 있으면 덮어쓰지 않음)
+  if (typeof window.checkFirebaseConfig !== 'function') {
+    window.checkFirebaseConfig = function() {
+      return {
+        initialized: false,
+        error: 'Firebase SDK not loaded'
+      };
     };
-  };
+  }
 }
 

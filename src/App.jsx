@@ -482,7 +482,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                             <span>{post.author}</span>
                                             <span>{post.date}</span>
                                             <span>조회 {post.views || 0}</span>
-                                            {post.likes > 0 && <span>❤️ {post.likes}</span>}
+                                            {post.likes > 0 ? <span>❤️ {post.likes}</span> : null}
             </div>
                         </div>
                                     <div className="flex items-center gap-2 shrink-0">
@@ -7554,6 +7554,15 @@ END:VCALENDAR`;
         }
         if (currentView === 'about') return <AboutView onBack={() => setCurrentView('home')} content={content} pageTitles={pageTitles} />;
         
+        // 예상치 못한 currentView 값에 대한 fallback (항상 유효한 React 요소 반환 보장)
+        // currentView가 'home'이 아니고 위의 모든 조건에 맞지 않으면 홈으로 리다이렉트
+        if (currentView && currentView !== 'home') {
+            console.warn(`알 수 없는 뷰: ${currentView}, 홈으로 리다이렉트`);
+            setCurrentView('home');
+            return null;
+        }
+        
+        // currentView가 'home'이거나 null/undefined인 경우 홈 화면 렌더링
         return (
             <React.Fragment>
                 {/* ============================================
@@ -8286,7 +8295,15 @@ END:VCALENDAR`;
                 </div>
             </header>
             
-            {renderView()}
+            {(() => {
+                const viewResult = renderView();
+                // renderView()가 undefined를 반환하는 경우를 방지
+                if (viewResult === undefined) {
+                    console.error('renderView() returned undefined');
+                    return null;
+                }
+                return viewResult;
+            })()}
 
             <footer className="py-12 bg-white px-6 shadow-[0_-4px_25px_rgba(0,69,165,0.05)] border-none">
                 <div className="container mx-auto max-w-6xl">
