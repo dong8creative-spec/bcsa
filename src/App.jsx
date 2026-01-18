@@ -8610,5 +8610,5 @@ END:VCALENDAR`;
             </div>
         </div>
     );
-
+}
 export default App;
