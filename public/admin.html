@@ -1648,7 +1648,7 @@
         // ==========================================
         // 이미지 크롭 모달 컴포넌트
         // ==========================================
-        const ImageCropModal = ({ imageFile, onCropComplete, onCancel, recommendedWidth, recommendedHeight, aspectRatio = null }) => {
+        const ImageCropModal = ({ imageFile, onCropComplete, onCancel, recommendedWidth, recommendedHeight, aspectRatio = null, cropImageField = null }) => {
             const [imageSrc, setImageSrc] = useState(null);
             const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 0, height: 0 });
             const [isDragging, setIsDragging] = useState(false);
@@ -1981,7 +1981,7 @@
                     }
                     
                     console.log('크롭 완료, onCropComplete 호출:', {
-                        cropImageField,
+                        imageFileName: imageFile?.name,
                         imageLength: croppedImage.length,
                         imagePreview: croppedImage.substring(0, 100) + '...'
                     });
@@ -3193,7 +3193,8 @@
                         },
                         recommendedWidth: cropRecommendedSize.width,
                         recommendedHeight: cropRecommendedSize.height,
-                        aspectRatio: calculateAspectRatio(cropRecommendedSize.width, cropRecommendedSize.height)
+                        aspectRatio: calculateAspectRatio(cropRecommendedSize.width, cropRecommendedSize.height),
+                        cropImageField: cropImageField
                     }) : null}
                 </>
             );
@@ -4200,7 +4201,8 @@
                         },
                         recommendedWidth: 1200,
                         recommendedHeight: 800,
-                        aspectRatio: calculateAspectRatio(1200, 800)
+                        aspectRatio: calculateAspectRatio(1200, 800),
+                        cropImageField: null
                     }) : null}
                                 </div>
             );
@@ -5202,7 +5204,8 @@
                         },
                         recommendedWidth: 1200,
                         recommendedHeight: 800,
-                        aspectRatio: calculateAspectRatio(1200, 800)
+                        aspectRatio: calculateAspectRatio(1200, 800),
+                        cropImageField: null
                     }) : null}
                     
                     {/* 추가 모달 */}
@@ -5599,7 +5602,8 @@
                         },
                         recommendedWidth: 1200,
                         recommendedHeight: 800,
-                        aspectRatio: calculateAspectRatio(1200, 800)
+                        aspectRatio: calculateAspectRatio(1200, 800),
+                        cropImageField: null
                     }) : null}
                     
                     {/* 지도 선택 모달 */}
