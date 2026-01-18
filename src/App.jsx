@@ -5484,37 +5484,25 @@ const App = () => {
         if (firebaseService && firebaseService.subscribeSettings) {
             const unsubscribe = firebaseService.subscribeSettings((settings) => {
                 if (settings && Object.keys(settings).length > 0) {
-                    // 이미지 필드 디버깅 로그
-                    const imageFields = [
-                        'hero_image', 'features_image_1', 'features_image_2',
-                        'activity_seminar_image', 'activity_investment_image', 'activity_networking_image',
-                        'donation_image', 'cta_image'
-                    ];
-                    const imageFieldsInSettings = imageFields.filter(field => settings[field]);
-                    if (imageFieldsInSettings.length > 0) {
-                        console.log('🖼️ Firebase Settings에서 이미지 필드 발견:', imageFieldsInSettings);
-                        imageFieldsInSettings.forEach(field => {
-                            console.log(`  - ${field}:`, settings[field]);
-                        });
-                    }
-                    
-                    // 기본값과 Firebase Settings 병합 (settings가 마지막이므로 우선순위가 높음)
-                    const mergedContent = { ...defaultContent, ...settings };
-                    setContent(mergedContent);
-                    
-                    // 병합된 이미지 필드 확인
-                    const mergedImageFields = imageFields.filter(field => mergedContent[field]);
-                    if (mergedImageFields.length > 0) {
-                        console.log('✅ 병합된 이미지 필드:', mergedImageFields.length, '개');
-                    }
+                    // 기본값과 Firebase Settings 병합 (기본값을 기준으로 Firebase 설정으로 덮어쓰기)
+                    setContent(prevContent => {
+                        // prevContent가 이미 defaultContent를 포함하고 있을 수 있으므로,
+                        // 기본값부터 시작하여 Firebase 설정으로 덮어쓰기
+                        return { ...defaultContent, ...settings };
+                    });
                     
                     // menuNames도 Firebase에서 가져오기 (우선 사용)
                     if (settings.menuNames) {
-                        setMenuNames(prev => ({ ...defaultMenuNames, ...prev, ...settings.menuNames }));
+                        setMenuNames(prev => ({ ...defaultMenuNames, ...settings.menuNames }));
                     } else {
                         // Firebase에 menuNames가 없으면 localStorage 사용 (폴백)
                         const localMenuNames = loadMenuNamesFromStorage();
                         setMenuNames(localMenuNames);
+                    }
+                    
+                    // menuEnabled도 Firebase에서 가져오기 (우선 사용)
+                    if (settings.menuEnabled) {
+                        setMenuEnabled(prev => ({ ...loadMenuEnabledFromStorage(), ...settings.menuEnabled }));
                     }
                 }
             });
@@ -5523,36 +5511,29 @@ const App = () => {
         } else {
             // Firebase Service가 없으면 초기 로드 시 Settings 가져오기
             const loadSettings = async () => {
-                if (firebaseService && firebaseService.getSettings) {
+                        if (firebaseService && firebaseService.getSettings) {
                     try {
-                        const settings = await firebaseService.getSettings();
+                                const settings = await firebaseService.getSettings();
                         if (settings && Object.keys(settings).length > 0) {
-                            // 이미지 필드 디버깅 로그
-                            const imageFields = [
-                                'hero_image', 'features_image_1', 'features_image_2',
-                                'activity_seminar_image', 'activity_investment_image', 'activity_networking_image',
-                                'donation_image', 'cta_image'
-                            ];
-                            const imageFieldsInSettings = imageFields.filter(field => settings[field]);
-                            if (imageFieldsInSettings.length > 0) {
-                                console.log('🖼️ Firebase Settings에서 이미지 필드 발견 (초기 로드):', imageFieldsInSettings);
-                            }
-                            
-                            // 기본값과 Firebase Settings 병합
-                            const mergedContent = { ...defaultContent, ...settings };
-                            setContent(mergedContent);
+                            // 기본값과 Firebase Settings 병합 (기본값을 기준으로 Firebase 설정으로 덮어쓰기)
+                            setContent(prevContent => ({ ...defaultContent, ...settings }));
                             
                             // menuNames도 Firebase에서 가져오기
                             if (settings.menuNames) {
-                                setMenuNames(prev => ({ ...defaultMenuNames, ...prev, ...settings.menuNames }));
+                                setMenuNames(prev => ({ ...defaultMenuNames, ...settings.menuNames }));
                             } else {
                                 // Firebase에 없으면 localStorage 사용
                                 const localMenuNames = loadMenuNamesFromStorage();
                                 setMenuNames(localMenuNames);
                             }
+                            
+                            // menuEnabled도 Firebase에서 가져오기
+                            if (settings.menuEnabled) {
+                                setMenuEnabled(prev => ({ ...loadMenuEnabledFromStorage(), ...settings.menuEnabled }));
+                            }
                         }
                     } catch (error) {
-                        console.error('❌ Settings 로드 오류:', error);
+                        
                     }
                 }
             };
@@ -7786,10 +7767,19 @@ END:VCALENDAR`;
                             return () => clearInterval(interval);
                         }, [reviewPosts.length]);
                         
+                        // currentIndex가 유효한지 확인
+                        if (currentIndex < 0 || currentIndex >= reviewPosts.length) {
+                            return null;
+                        }
+                        
                         const currentReview = reviewPosts[currentIndex];
                         const transitioningReview = nextIndex !== null ? reviewPosts[nextIndex] : null;
                     
                         const renderReviewCard = (review, animationClass, zIndex, animKey, isTransitioning = false) => {
+                            // review가 없는 경우 null 반환
+                            if (!review) {
+                                return null;
+                            }
                     return (
                             <div 
                                 key={`${review.id}-${animKey}`}
@@ -7897,6 +7887,11 @@ END:VCALENDAR`;
                                                 const cellNextIndex = (index + 1) % reviewPosts.length;
                                                 const nextReview = reviewPosts[cellNextIndex];
                                                 
+                                                // review가 없는 경우 null 반환
+                                                if (!currentReview || !nextReview) {
+                                                    return null;
+                                                }
+                                                
                                                 // 각 셀의 position에 따라 순차적 디졸브 적용 (1.2초 간격)
                                                 const transitionDelay = position * 1200; // 셀 0: 0ms, 셀 1: 1200ms, 셀 2: 2400ms
                                                 
@@ -7931,6 +7926,10 @@ END:VCALENDAR`;
                                             }
                                             
                                             // 일반 슬라이드 (겹치지 않음)
+                                            // review가 없는 경우 null 반환
+                                            if (!review) {
+                                                return null;
+                                            }
                                             return (
                                                 <div 
                                                     key={`review-${review.id}-${index}`} 

@@ -7,30 +7,35 @@
     
     <!-- checkFirebaseConfig 함수를 가장 먼저 정의 (다른 스크립트 로드 전) -->
     <script>
-        // 즉시 함수 정의 보장 (항상 덮어쓰기)
+        // 즉시 함수 정의 보장 (이미 정의되어 있으면 재정의하지 않음)
         (function() {
             'use strict';
-            window.checkFirebaseConfig = function() {
-                try {
-                    return {
-                        initialized: typeof firebase !== 'undefined',
-                        config: typeof window.firebaseConfig !== 'undefined' ? window.firebaseConfig : {},
-                        services: {
-                            firebaseServices: !!window.firebaseServices,
-                            firebaseService: !!window.firebaseService,
-                            authService: !!window.authService
-                        },
-                        app: typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0 ? firebase.apps[0].name : 'NOT_INITIALIZED'
-                    };
-                } catch (error) {
-                    return {
-                        initialized: false,
-                        error: error.message || 'Unknown error'
-                    };
-                }
-            };
-            // 함수 정의 확인 로그
-            console.log('checkFirebaseConfig 함수 정의 완료');
+            // 함수가 이미 정의되어 있으면 재정의하지 않음
+            if (typeof window.checkFirebaseConfig !== 'function') {
+                window.checkFirebaseConfig = function() {
+                    try {
+                        return {
+                            initialized: typeof firebase !== 'undefined',
+                            config: typeof window.firebaseConfig !== 'undefined' ? window.firebaseConfig : {},
+                            services: {
+                                firebaseServices: !!window.firebaseServices,
+                                firebaseService: !!window.firebaseService,
+                                authService: !!window.authService
+                            },
+                            app: typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0 ? firebase.apps[0].name : 'NOT_INITIALIZED'
+                        };
+                    } catch (error) {
+                        return {
+                            initialized: false,
+                            error: error.message || 'Unknown error'
+                        };
+                    }
+                };
+                // 함수 정의 확인 로그
+                console.log('checkFirebaseConfig 함수 정의 완료');
+            } else {
+                console.log('checkFirebaseConfig 함수가 이미 정의되어 있습니다.');
+            }
         })();
     </script>
     

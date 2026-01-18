@@ -42,8 +42,32 @@ if (typeof firebase !== 'undefined') {
       storage: !!window.firebaseServices.storage
     });
     
-    // Safe function for checking Firebase config (이미 정의되어 있으면 덮어쓰지 않음)
-    if (typeof window.checkFirebaseConfig !== 'function') {
+    // Safe function for checking Firebase config (이미 정의되어 있으면 업데이트, 없으면 새로 정의)
+    if (typeof window.checkFirebaseConfig === 'function') {
+      // 이미 정의되어 있으면 Firebase 초기화 후 정보로 업데이트
+      const originalCheckFirebaseConfig = window.checkFirebaseConfig;
+      window.checkFirebaseConfig = function() {
+        try {
+          const result = originalCheckFirebaseConfig();
+          // Firebase가 초기화된 경우 추가 정보 업데이트
+          if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+            result.initialized = true;
+            result.config = firebaseConfig;
+            result.services = Object.keys(window.firebaseServices || {});
+            result.app = app.name;
+          }
+          return result;
+        } catch (error) {
+          return {
+            initialized: true,
+            config: firebaseConfig,
+            services: Object.keys(window.firebaseServices || {}),
+            app: app.name
+          };
+        }
+      };
+    } else {
+      // 함수가 없으면 새로 정의
       window.checkFirebaseConfig = function() {
         return {
           initialized: true,
