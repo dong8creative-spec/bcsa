@@ -7848,10 +7848,10 @@ END:VCALENDAR`;
                             </div>
                         </div>
                     );
-                    };
-                    
-                    return <ReviewSlider />;
-                })()}
+                        };
+                        
+                        return <ReviewSlider />;
+                    })()}
 
                 {/* ============================================
                     📍 섹션 3: STATS (통계 숫자)
