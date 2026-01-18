@@ -1259,7 +1259,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                 onClick={() => onRestaurantClick(restaurant)}
                             >
                                 {restaurant.images && restaurant.images.length > 0 ? (
-                                    <div className="w-full overflow-hidden" style={{ aspectRatio: '3/2' }}>
+                                    <div className="w-full overflow-hidden" style={{ aspectRatio: '1/1' }}>
                                         <img 
                                             src={restaurant.images[0]} 
                                             alt={restaurant.title} 
@@ -1372,7 +1372,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                 {/* 갤러리 */}
                 {restaurant.images && restaurant.images.length > 0 ? (
                     <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
-                        <div className="relative" style={{ aspectRatio: '3/2' }}>
+                        <div className="relative" style={{ aspectRatio: '1/1' }}>
                             <img 
                                 src={restaurant.images[currentImageIndex]} 
                                 alt={restaurant.title}
