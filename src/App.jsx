@@ -1,13 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Menu, Search, MapPin, Calendar, Users, ArrowRight, Star, CheckCircle, X, Info, ArrowLeft,
-  Clock, Settings, Plus, Trash, Edit, Lock, Unlock, Eye, EyeOff, Key, Tag, List,
-  Phone, Map, Camera, MessageCircle, DollarSign, Zap,
-  Shield, User, Briefcase, Target, TrendingUp, Smile, Mail, FileText, AlertCircle,
-  FileSearch, Building2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  ExternalLink, ChevronUp, ChevronDown
-} from 'lucide-react';
-import { Google, Apple, Facebook, Youtube } from './components/CustomIcons';
 import { firebaseService } from './services/firebaseService';
 import { authService } from './services/authService';
 import { CONFIG } from './config';
@@ -45,7 +36,7 @@ const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d
 // 상수들은 별도 파일로 분리됨
 // PORTONE_IMP_CODE는 constants/index.js에서 import
 // SHEET_URL은 CONFIG.SHEET_URLS로 통일됨
-// CustomIcons는 components/Icons.jsx에 포함됨
+// 모든 아이콘은 components/Icons.jsx의 Icons 객체를 통해 통일된 방식으로 사용
 // defaultContent는 constants/content.js에서 import
 
 // PageTitle은 components/PageTitle.jsx로 분리됨

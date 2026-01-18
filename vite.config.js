@@ -4,7 +4,10 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  base: process.env.NODE_ENV === 'production' ? '/' : '/',
+  // Base 경로 동적 설정
+  // - 환경 변수 VITE_BASE_PATH가 설정되어 있으면 해당 값 사용 (GitHub Pages 등)
+  // - 없으면 기본값 '/' 사용 (Firebase Hosting 등)
+  base: process.env.VITE_BASE_PATH || (process.env.NODE_ENV === 'production' ? '/' : '/'),
   publicDir: 'public',
   resolve: {
     alias: {
