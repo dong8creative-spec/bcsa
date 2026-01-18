@@ -4150,6 +4150,108 @@ const LoginModal = ({ onClose, onLogin }) => {
 };
 
 // SignUpModal Component
+const InquiryModal = ({ onClose, currentUser, onSubmit }) => {
+    const [formData, setFormData] = useState({
+        name: currentUser?.name || '',
+        email: currentUser?.email || '',
+        phone: currentUser?.phone || '',
+        title: '',
+        content: ''
+    });
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!formData.name || !formData.email || !formData.title || !formData.content) {
+            alert('모든 필수 항목을 입력해주세요.');
+            return;
+        }
+        if (onSubmit) {
+            onSubmit(formData);
+            setFormData({
+                name: currentUser?.name || '',
+                email: currentUser?.email || '',
+                phone: currentUser?.phone || '',
+                title: '',
+                content: ''
+            });
+        }
+        if (onClose) {
+            onClose();
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
+                <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-2xl font-bold text-dark">문의하기</h3>
+                    <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+                        <Icons.X size={24} />
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">이름 *</label>
+                        <input
+                            type="text"
+                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                            value={formData.name}
+                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">이메일 *</label>
+                        <input
+                            type="email"
+                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                            value={formData.email}
+                            onChange={(e) => setFormData({...formData, email: e.target.value})}
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">전화번호</label>
+                        <input
+                            type="tel"
+                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
+                        <input
+                            type="text"
+                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                            value={formData.title}
+                            onChange={(e) => setFormData({...formData, title: e.target.value})}
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">내용 *</label>
+                        <textarea
+                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-32 resize-none"
+                            value={formData.content}
+                            onChange={(e) => setFormData({...formData, content: e.target.value})}
+                            required
+                        />
+                    </div>
+                    <div className="flex gap-4 mt-8">
+                        <button type="button" onClick={onClose} className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200">
+                            취소
+                        </button>
+                        <button type="submit" className="flex-1 py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">
+                            문의하기
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
     const [formData, setFormData] = useState({ 
         userType: '',
@@ -7632,10 +7734,14 @@ END:VCALENDAR`;
                     별점과 함께 표시되며, 이미지는 최대 2장만 표시됩니다.
                     ============================================ */}
                 {(() => {
-                    if (!menuEnabled['프로그램'] || !menuEnabled['커뮤니티']) return null;
+                    if (!menuEnabled['프로그램'] || !menuEnabled['커뮤니티']) {
+                        return null;
+                    }
                     
                     const reviewPosts = communityPosts.filter(p => p.category === '프로그램 후기' && p.rating);
-                    if (reviewPosts.length === 0) return null;
+                    if (reviewPosts.length === 0) {
+                        return null;
+                    }
                     
                     const ReviewSlider = () => {
                         const [currentIndex, setCurrentIndex] = React.useState(0);
@@ -7770,6 +7876,9 @@ END:VCALENDAR`;
                     };
                     
                     const visibleReviews = getVisibleReviews();
+                    if (!visibleReviews || visibleReviews.length === 0) {
+                        return null;
+                    }
                     return (
                         <div className="relative w-full bg-gradient-to-r from-blue-50 to-indigo-50 py-6 overflow-hidden border-t border-b border-blue-200/30 mb-20">
                                 <div className="container mx-auto px-4">
