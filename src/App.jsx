@@ -8601,7 +8601,7 @@ END:VCALENDAR`;
                     rel="noopener noreferrer"
                     className="relative w-10 h-10 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
                 >
-                    <Icons.Youtube className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
+                    <Youtube className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
                     <span className="absolute right-full mr-3 px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
                         부청사 유튜브
                         <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-red-600"></span>
