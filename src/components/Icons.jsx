@@ -4,20 +4,20 @@
 import { 
   Menu, Search, MapPin, Calendar, Users, ArrowRight, Star, CheckCircle, X, Info, ArrowLeft,
   Clock, Settings, Plus, Trash, Edit, Lock, Unlock, Eye, EyeOff, Key, Tag, List,
-  Phone, Map, Camera, MessageCircle, DollarSign, Zap,
+  Phone, Map, Camera, MessageCircle, MessageSquare, DollarSign, Zap,
   Shield, User, Briefcase, Target, TrendingUp, Smile, Mail, FileText, AlertCircle,
   FileSearch, Building2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  ExternalLink, ChevronUp, ChevronDown
+  ExternalLink, ChevronUp, ChevronDown, Instagram
 } from 'lucide-react';
 import { Google, Apple, Facebook, Youtube } from './CustomIcons';
 
 export const Icons = {
     Menu, Search, MapPin, Calendar, Users, ArrowRight, Star, CheckCircle, X, Info, ArrowLeft,
     Clock, Settings, Plus, Trash, Edit, Lock, Unlock, Eye, EyeOff, Key, Tag, List,
-    Phone, Map, Camera, MessageCircle, DollarSign, Zap,
+    Phone, Map, Camera, MessageCircle, MessageSquare, DollarSign, Zap,
     Shield, User, Briefcase, Target, TrendingUp, Smile, Mail, FileText, AlertCircle,
     FileSearch, Building2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-    ExternalLink, ChevronUp, ChevronDown,
+    ExternalLink, ChevronUp, ChevronDown, Instagram,
     Google, Apple, Facebook, Youtube
 };
 
