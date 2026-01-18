@@ -4767,7 +4767,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     </div>
                                                 </div>
                                             </>
-                                        )}
+                                        ) : null}
                                         {formData.userType === '예비창업자' ? (
                                             <div className="md:col-span-2">
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">집주소 <span className="text-red-500">*</span></label>
@@ -4822,7 +4822,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.detailAddress} onChange={e => setFormData({...formData, detailAddress: e.target.value})} />
                                                 </div>
                                             </div>
-                                        )}
+                                        ) : null}
                                     </div>
 
                                     <div className={`mt-4 p-6 rounded-2xl border-2 ${
@@ -4838,7 +4838,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     <CheckCircle className="w-6 h-6 text-white" />
                                                 ) : (
                                                     <Info className="w-6 h-6 text-white" />
-                                                ) : null}
+                                                )}
                                             </div>
                                             <div className="flex-1">
                                                 <h5 className="font-bold text-dark mb-2">
@@ -4985,8 +4985,8 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                         </p>
                                                     ) : null}
                                                 </div>
-                                            )}
-
+                                            ) : null}
+                                            
                                             <p className="text-xs text-gray-500 mt-2">
                                                 사업자등록번호는 10자리 숫자입니다. (예: 123-45-67890)
                                                 {formData.userType === '사업자' && ' 검증 완료 후 다음 단계로 진행할 수 있습니다.'}
