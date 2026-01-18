@@ -1064,7 +1064,7 @@
                 'program': { width: 1200, height: 800, ratio: '16:9', description: '프로그램 이미지' },
                 'program-square': { width: 1200, height: 1200, ratio: '1:1', description: '프로그램 이미지 (정사각형)' },
                 'hero': { width: 1920, height: 1080, ratio: '16:9', description: 'Hero 이미지' },
-                'feature': { width: 1200, height: 800, ratio: '3:2', description: 'Feature 이미지' },
+                'feature': { width: 1200, height: 1200, ratio: '1:1', description: 'Feature 이미지 (정사각형)' },
                 'activity': { width: 1200, height: 800, ratio: '3:2', description: 'Activity 이미지' },
                 'restaurant': { width: 1200, height: 1200, ratio: '1:1', description: '맛집 이미지 (정사각형)' },
                 'donation': { width: 1920, height: 1080, ratio: '16:9', description: 'Donation 이미지' },
@@ -2389,12 +2389,12 @@
                                             <label className="block text-xs text-gray-600 mb-2">
                                                 이미지 1
                                                 <span className="text-xs text-gray-500 font-normal ml-2">
-                                                    추천: 1200x800px (3:2)
+                                                    추천: 1200x1200px (1:1) - 정사각형 이미지를 권장합니다
                                                 </span>
                                             </label>
                                             <div className="flex gap-3 items-start">
                                                 {formData.features_image_1 ? (
-                                                    <div className="relative w-32 h-20 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0">
+                                                    <div className="relative w-32 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm flex-shrink-0" style={{ aspectRatio: '1/1' }}>
                                                         <img src={getImageUrlWithTimestamp(formData.features_image_1)} alt="Features 1" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.display = 'none'; }} />
                                                         <button
                                                             type="button"
@@ -2427,7 +2427,7 @@
                                                                 }
                                                                 setCropImageFile(file);
                                                                 setCropImageField('features_image_1');
-                                                                setCropRecommendedSize({ width: 1200, height: 800 });
+                                                                setCropRecommendedSize({ width: 1200, height: 1200 }); // Features 이미지는 1:1 비율
                                                                 setShowCropModal(true);
                                                                 e.target.value = '';
                                                             }
@@ -2449,12 +2449,12 @@
                                             <label className="block text-xs text-gray-600 mb-2">
                                                 이미지 2
                                                 <span className="text-xs text-gray-500 font-normal ml-2">
-                                                    추천: 1200x800px (3:2)
+                                                    추천: 1200x1200px (1:1) - 정사각형 이미지를 권장합니다
                                                 </span>
                                             </label>
                                             <div className="flex gap-3 items-start">
                                                 {formData.features_image_2 ? (
-                                                    <div className="relative w-32 h-20 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm">
+                                                    <div className="relative w-32 rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm" style={{ aspectRatio: '1/1' }}>
                                                         <img src={getImageUrlWithTimestamp(formData.features_image_2)} alt="Features 2" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
                                                         <button
                                                             type="button"
@@ -2487,7 +2487,7 @@
                                                                 }
                                                                 setCropImageFile(file);
                                                                 setCropImageField('features_image_2');
-                                                                setCropRecommendedSize({ width: 1200, height: 800 });
+                                                                setCropRecommendedSize({ width: 1200, height: 1200 }); // Features 이미지는 1:1 비율
                                                                 setShowCropModal(true);
                                                                 e.target.value = '';
                                                             }
