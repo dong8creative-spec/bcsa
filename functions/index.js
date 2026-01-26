@@ -1,7 +1,7 @@
 const { onRequest } = require('firebase-functions/v2/https');
 const express = require('express');
 const cors = require('cors');
-// Node.js 20에는 내장 fetch가 있으므로 node-fetch 불필요
+const fetch = require('node-fetch');
 const admin = require('firebase-admin');
 
 // Firebase Admin 초기화
@@ -79,6 +79,9 @@ app.get('/api/bid-search', async (req, res) => {
   const userEmail = req.query.userEmail || '';
   const userName = req.query.userName || '';
   
+  // type 파라미터 (api-proxy.php 호환성): bid-search, bid-openg-result, bid-award
+  const type = req.query.type || 'bid-search';
+  
   // 날짜 범위 파라미터 (사용자 선택)
   const fromBidDt = req.query.fromBidDt || ''; // YYYYMMDD 형식
   const toBidDt = req.query.toBidDt || ''; // YYYYMMDD 형식
@@ -101,8 +104,22 @@ app.get('/api/bid-search', async (req, res) => {
   const contractMethod = req.query.contractMethod || '';
   const awardMethod = req.query.awardMethod || '';
   // inqryDiv: 조회구분 (1: 입찰공고, 2: 개찰결과, 3: 계약, 4: 변경계약 등)
-  // 기본값은 '1' (입찰공고)
-  const inqryDiv = req.query.inqryDiv || '1';
+  // type 파라미터에 따라 자동 설정
+  let inqryDiv = req.query.inqryDiv;
+  if (!inqryDiv) {
+    switch (type) {
+      case 'bid-openg-result':
+        inqryDiv = '2'; // 개찰결과
+        break;
+      case 'bid-award':
+        inqryDiv = '1'; // 최종낙찰자 (입찰공고와 동일)
+        break;
+      case 'bid-search':
+      default:
+        inqryDiv = '1'; // 입찰공고
+        break;
+    }
+  }
 
   // ServiceKey는 환경 변수에서 가져오기
   const serviceKey = process.env.G2B_API_KEY || '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
@@ -120,26 +137,34 @@ app.get('/api/bid-search', async (req, res) => {
   
   const baseUrl = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
   
-  // 업무구분에 따라 호출할 API 경로 결정
-  // 조달청 API는 업무구분별로 별도 엔드포인트를 제공
+  // type 파라미터에 따라 호출할 API 경로 결정
   const apiPaths = [];
-  const searchAll = businessTypes.includes('전체') || businessTypes.length === 0;
   
-  if (searchAll || businessTypes.includes('물품')) {
-    apiPaths.push('getBidPblancListInfoThngPPSSrch'); // 물품
-  }
-  if (searchAll || businessTypes.includes('일반용역') || businessTypes.includes('기술용역')) {
-    apiPaths.push('getBidPblancListInfoSvcPPSSrch'); // 용역 (추정)
-  }
-  if (searchAll || businessTypes.includes('공사')) {
-    apiPaths.push('getBidPblancListInfoCnstwkPPSSrch'); // 공사 (추정)
-  }
-  
-  // 기본값: 모든 업무구분 검색
-  if (apiPaths.length === 0) {
-    apiPaths.push('getBidPblancListInfoThngPPSSrch'); // 물품 (기본값)
-    apiPaths.push('getBidPblancListInfoSvcPPSSrch'); // 용역
-    apiPaths.push('getBidPblancListInfoCnstwkPPSSrch'); // 공사
+  if (type === 'bid-openg-result') {
+    // 개찰결과
+    apiPaths.push('getOpengResultListInfoThngPPSSrch');
+  } else {
+    // 입찰공고 또는 최종낙찰자
+    // 업무구분에 따라 호출할 API 경로 결정
+    // 조달청 API는 업무구분별로 별도 엔드포인트를 제공
+    const searchAll = businessTypes.includes('전체') || businessTypes.length === 0;
+    
+    if (searchAll || businessTypes.includes('물품')) {
+      apiPaths.push('getBidPblancListInfoThngPPSSrch'); // 물품
+    }
+    if (searchAll || businessTypes.includes('일반용역') || businessTypes.includes('기술용역')) {
+      apiPaths.push('getBidPblancListInfoSvcPPSSrch'); // 용역 (추정)
+    }
+    if (searchAll || businessTypes.includes('공사')) {
+      apiPaths.push('getBidPblancListInfoCnstwkPPSSrch'); // 공사 (추정)
+    }
+    
+    // 기본값: 모든 업무구분 검색
+    if (apiPaths.length === 0) {
+      apiPaths.push('getBidPblancListInfoThngPPSSrch'); // 물품 (기본값)
+      apiPaths.push('getBidPblancListInfoSvcPPSSrch'); // 용역
+      apiPaths.push('getBidPblancListInfoCnstwkPPSSrch'); // 공사
+    }
   }
   
   // 날짜 범위 설정 (사용자가 선택한 날짜가 있으면 사용, 없으면 최근 30일)
@@ -272,6 +297,7 @@ app.get('/api/bid-search', async (req, res) => {
         method: 'GET',
         signal: controller.signal,
         headers: { 'Accept': 'application/json' }
+        // timeout은 AbortController로 처리됨
       });
       clearTimeout(timeoutId);
 
@@ -331,9 +357,9 @@ app.get('/api/bid-search', async (req, res) => {
   try {
     // 캐시 확인 (키워드 검색 시에만)
     if (keyword.trim()) {
-      const cachedResult = await getCachedBids(keyword, pageNo, numOfRows);
+      const cachedResult = await getCachedBids(keyword.trim(), pageNo, numOfRows, type);
       if (cachedResult && cachedResult.items.length > 0) {
-        console.log('[Cache] Returning cached data');
+        console.log(`[Cache] Returning cached data for keyword="${keyword}", type=${type}`);
         return res.status(200).json({
           success: true,
           data: cachedResult,
@@ -379,17 +405,26 @@ app.get('/api/bid-search', async (req, res) => {
       }
     });
 
+    // 최종낙찰자 필터링 (bid-award 타입인 경우)
+    let filteredItems = uniqueItems;
+    if (type === 'bid-award') {
+      filteredItems = uniqueItems.filter(item => {
+        return item.sucsfbidAmt && item.sucsfbidAmt !== '';
+      });
+    }
+
     // 정렬 (게시일시 기준 내림차순 - 최신순)
-    uniqueItems.sort((a, b) => {
+    filteredItems.sort((a, b) => {
       const dateA = a.bidNtceDt ? new Date(a.bidNtceDt.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:00')) : new Date(0);
       const dateB = b.bidNtceDt ? new Date(b.bidNtceDt.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:00')) : new Date(0);
       return dateB - dateA;
     });
     
     // Firestore에 저장 (비동기, 응답과 독립적)
-    if (uniqueItems.length > 0) {
-      uniqueItems.forEach(item => {
-        saveBidToFirestore(item).catch(err => 
+    // 검색어와 함께 캐시 키로 저장
+    if (filteredItems.length > 0 && keyword.trim()) {
+      filteredItems.forEach(item => {
+        saveBidToFirestore(item, keyword.trim(), type).catch(err => 
           console.error('[Cache] Save error:', err)
         );
       });
@@ -398,7 +433,7 @@ app.get('/api/bid-search', async (req, res) => {
     // 페이지네이션 적용
     const startIndex = (pageNo - 1) * numOfRows;
     const endIndex = startIndex + numOfRows;
-    const paginatedItems = uniqueItems.slice(startIndex, endIndex);
+    const paginatedItems = filteredItems.slice(startIndex, endIndex);
 
     const resultCount = paginatedItems.length;
 
@@ -415,7 +450,7 @@ app.get('/api/bid-search', async (req, res) => {
       success: true,
       data: {
         items: paginatedItems,
-        totalCount: uniqueItems.length, // 중복 제거 후 실제 총 개수
+        totalCount: filteredItems.length, // 필터링 후 실제 총 개수
         pageNo: pageNo,
         numOfRows: numOfRows,
         warnings: errors.length > 0 ? errors : undefined
@@ -431,17 +466,24 @@ app.get('/api/bid-search', async (req, res) => {
   }
 });
 
-// Firestore 캐싱 함수 (1시간 TTL)
-async function saveBidToFirestore(bidItem) {
+// Firestore 캐싱 함수 (30분 TTL, 검색어 기반 캐싱)
+async function saveBidToFirestore(bidItem, keyword = '', type = 'bid-search') {
   try {
     if (!bidItem.bidNtceNo) return;
     
-    const docRef = db.collection('tenders').doc(bidItem.bidNtceNo);
+    // 검색어를 포함한 캐시 키 생성
+    const cacheKey = keyword 
+      ? `${bidItem.bidNtceNo}_${keyword}_${type}`.replace(/[^a-zA-Z0-9_가-힣]/g, '_')
+      : bidItem.bidNtceNo;
+    
+    const docRef = db.collection('tenders').doc(cacheKey);
     await docRef.set({
       ...bidItem,
+      keyword: keyword || '',
+      type: type,
       cachedAt: admin.firestore.FieldValue.serverTimestamp(),
       expiresAt: admin.firestore.Timestamp.fromDate(
-        new Date(Date.now() + 60 * 60 * 1000) // 1시간 후
+        new Date(Date.now() + 30 * 60 * 1000) // 30분 후
       )
     }, { merge: true });
   } catch (error) {
@@ -449,34 +491,45 @@ async function saveBidToFirestore(bidItem) {
   }
 }
 
-// 캐시된 데이터 조회
-async function getCachedBids(keyword, pageNo = 1, numOfRows = 10) {
+// 캐시된 데이터 조회 (검색어 기반)
+async function getCachedBids(keyword, pageNo = 1, numOfRows = 10, type = 'bid-search') {
   try {
+    if (!keyword || !keyword.trim()) return null;
+    
     const now = admin.firestore.Timestamp.now();
+    const trimmedKeyword = keyword.trim();
+    
+    // 검색어와 타입으로 필터링
     const snapshot = await db.collection('tenders')
+      .where('keyword', '==', trimmedKeyword)
+      .where('type', '==', type)
       .where('expiresAt', '>', now)
-      .orderBy('expiresAt', 'desc')
-      .limit(100)
+      .limit(1000) // 충분한 데이터 가져오기
       .get();
     
     if (snapshot.empty) return null;
     
-    const items = snapshot.docs.map(doc => doc.data());
+    const items = snapshot.docs.map(doc => {
+      const data = doc.data();
+      // keyword, type, cachedAt, expiresAt 필드 제거 (원본 데이터만 반환)
+      const { keyword: _, type: __, cachedAt: ___, expiresAt: ____, ...item } = data;
+      return item;
+    });
     
-    // 키워드 필터링
-    const filtered = keyword 
-      ? items.filter(item => 
-          item.bidNtceNm && item.bidNtceNm.includes(keyword)
-        )
-      : items;
+    // 정렬 (게시일시 기준 내림차순)
+    items.sort((a, b) => {
+      const dateA = a.bidNtceDt ? new Date(a.bidNtceDt.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:00')) : new Date(0);
+      const dateB = b.bidNtceDt ? new Date(b.bidNtceDt.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:00')) : new Date(0);
+      return dateB - dateA;
+    });
     
     // 페이지네이션
     const start = (pageNo - 1) * numOfRows;
     const end = start + numOfRows;
     
     return {
-      items: filtered.slice(start, end),
-      totalCount: filtered.length,
+      items: items.slice(start, end),
+      totalCount: items.length,
       fromCache: true
     };
   } catch (error) {
@@ -514,8 +567,10 @@ app.use((err, req, res, next) => {
 
 // Express 앱을 Firebase Functions로 내보내기
 // asia-northeast3 (서울) 지역 사용
+// 1,000명 동시 접속 대비: memory 256MiB 설정으로 과금 방지
 exports.apiBid = onRequest({ 
   region: 'asia-northeast3',
-  invoker: 'public'  // 공개 접근 허용, cors는 Express에서 처리
+  invoker: 'public',  // 공개 접근 허용, cors는 Express에서 처리
+  memory: '256MiB'    // 동시 접속 대비 최소 메모리 설정
 }, app);
 
