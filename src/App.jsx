@@ -4090,11 +4090,11 @@ const LoginModal = ({ onClose, onLogin }) => {
                 <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60 backdrop-blur-md"></div>
                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md z-10 p-8 text-center relative border-[0.5px] border-brand" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-all">
-                        <X size={18}/>
+                        <Icons.X size={18}/>
                     </button>
                     <div className="mb-8">
                         <div className="w-16 h-16 bg-gradient-to-br from-brand to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand/30">
-                            <Users className="w-8 h-8 text-white" />
+                            <Icons.Users className="w-8 h-8 text-white" />
                         </div>
                         <h3 className="text-3xl font-bold text-dark mb-2">로그인</h3>
                         <p className="text-sm text-gray-500">부청사 커뮤니티에 오신 것을 환영합니다</p>
@@ -4109,7 +4109,7 @@ const LoginModal = ({ onClose, onLogin }) => {
                             <div className="relative">
                                 <input type={showPassword ? "text" : "password"} placeholder="비밀번호를 입력하세요" className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors pr-12" value={password} onChange={e => setPassword(e.target.value)} />
                                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                    {showPassword ? <Icons.EyeOff size={20} /> : <Icons.Eye size={20} />}
                                 </button>
                             </div>
                         </div>
@@ -4451,7 +4451,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
             IMP.init(PORTONE_IMP_CODE);
             
             IMP.certification({
-                pg: 'inicis',
+                // pg를 지정하지 않으면 PortOne 기본 PG 사용
                 merchant_uid: `cert_${Date.now()}`,
                 m_redirect_url: window.location.href,
                 popup: true,
@@ -4559,7 +4559,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl z-10 relative border-[0.5px] border-brand max-h-[95vh] overflow-hidden flex flex-col" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
                     <div className="bg-gradient-to-r from-brand to-blue-600 text-white p-6 relative">
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 text-white transition-all">
-                            <X size={20}/>
+                            <Icons.X size={20}/>
                         </button>
                         <div className="text-center">
                             <h3 className="text-3xl font-bold mb-2">회원가입</h3>
@@ -4602,7 +4602,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                         >
                                             <div className="flex items-center gap-3 mb-3">
                                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${formData.userType === '사업자' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-400'}`}>
-                                                    <Users size={24} />
+                                                    <Icons.Users size={24} />
                                                 </div>
                                                 <h5 className="text-lg font-bold text-dark">사업자</h5>
                                             </div>
@@ -4637,9 +4637,9 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                             
                                             <div className="flex flex-col items-center mb-6 p-6 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                                                 <div className="w-24 h-24 rounded-full bg-gradient-to-br from-brand/20 to-brand/10 overflow-hidden mb-3 relative group border-4 border-brand/20">
-                                                    {formData.img ? <img src={formData.img} className="w-full h-full object-cover" alt="Profile" /> : <Users className="w-12 h-12 text-brand/40 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />}
+                                                    {formData.img ? <img src={formData.img} className="w-full h-full object-cover" alt="Profile" /> : <Icons.Users className="w-12 h-12 text-brand/40 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />}
                                                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                                        <Camera className="text-white w-5 h-5" />
+                                                        <Icons.Camera className="text-white w-5 h-5" />
                                                     </div>
                                                     <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} />
                                                 </div>
@@ -4660,7 +4660,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     <div className="relative">
                                                         <input type={showPassword ? "text" : "password"} placeholder="비밀번호를 입력하세요" className="w-full p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors pr-12 text-sm" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
                                                         <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                                            {showPassword ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
                                                         </button>
                                                     </div>
                                                     {formData.password && (() => {
@@ -4677,7 +4677,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     <div className="relative">
                                                         <input type={showPasswordConfirm ? "text" : "password"} placeholder="비밀번호를 다시 입력하세요" className="w-full p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors pr-12 text-sm" value={formData.passwordConfirm} onChange={e => setFormData({...formData, passwordConfirm: e.target.value})} />
                                                         <button type="button" onClick={() => setShowPasswordConfirm(!showPasswordConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                                                            {showPasswordConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                                                            {showPasswordConfirm ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
                                                         </button>
                                                     </div>
                                                     {formData.passwordConfirm && formData.password !== formData.passwordConfirm ? (
@@ -5065,7 +5065,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     ) : null}
                                                     {formData.businessVerificationStatus === 'api_failed' ? (
                                                         <p className="text-xs text-red-600 flex items-center gap-1">
-                                                            <X size={12} />
+                                                            <Icons.X size={12} />
                                                             검증 실패. 다시 시도해주세요.
                                                         </p>
                                                     ) : null}
