@@ -1,9 +1,9 @@
 /**
  * 부산청년사업가들 웹사이트 설정 파일
- * Google Sheets 연동 URL 및 기본 설정
+ * admin.html에서 사용되는 설정 파일
  */
 
-const CONFIG = {
+window.CONFIG = {
     SHEET_URLS: {
         CONFIG: "", 
         MEMBER: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTEmEPSeDn1EUcf0DQWJ1EJ3t4nonCL42odDnJn7j8kxAkxl2qJDsXs6mDnxX2tfBJusuNC8ULgWXt4/pub?output=csv", 
@@ -17,24 +17,6 @@ const CONFIG = {
         CACHE_DURATION: 5 * 60 * 1000,
         RETRY_ATTEMPTS: 3,
         RETRY_DELAY: 1000
-    },
-    
-    DEFAULT_CONTENT: {
-        hero_title: "함께 성장하는\n청년 사업가 커뮤니티",
-        hero_desc: "부산 지역 청년 사업가들이 모여 아이디어를 공유하고, 네트워킹하며 함께 성장해나가는 공간입니다.",
-        stat_1_val: "200+", 
-        stat_1_desc: "활동중인 사업가",
-        stat_2_val: "80+", 
-        stat_2_desc: "진행된 세미나",
-        stat_3_val: "35+", 
-        stat_3_desc: "투자 성공 사례",
-        stat_4_val: "100%", 
-        stat_4_desc: "성장 열정",
-        cta_title: "사업의 꿈을 현실로!",
-        cta_desc: "혼자 고민하지 마세요. 부산 최고의 청년 사업가들과 함께 당신의 비즈니스를 다음 단계로 끌어올리세요.",
-        category_area_options: ["부산 전체", "해운대구 / IT", "부산진구 / 유통", "남구 / 금융"],
-        category_activity_options: ["비즈니스 세미나", "투자 설명회", "네트워킹 파티", "멘토링"],
-        category_target_options: ["예비/초기 창업가", "시리즈A 단계", "대학생", "일반인"],
     },
     
     ADMIN: {
@@ -73,8 +55,4 @@ const CONFIG = {
     }
 };
 
-// 전역 변수로 설정 (admin.html에서 사용)
-if (typeof window !== 'undefined') {
-    window.CONFIG = CONFIG;
-}
-
+console.log('✅ CONFIG loaded successfully');

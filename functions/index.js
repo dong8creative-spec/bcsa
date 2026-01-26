@@ -1,7 +1,7 @@
-const functions = require('firebase-functions');
+const { onRequest } = require('firebase-functions/v2/https');
 const express = require('express');
 const cors = require('cors');
-const fetch = require('node-fetch');
+// Node.js 20에는 내장 fetch가 있으므로 node-fetch 불필요
 const admin = require('firebase-admin');
 
 // Firebase Admin 초기화
@@ -20,7 +20,13 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : [
       'https://bcsa.co.kr',
       'https://bcsa-b190f.web.app', 
-      'https://bcsa-b190f.firebaseapp.com'
+      'https://bcsa-b190f.firebaseapp.com',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:5173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+      'http://127.0.0.1:5173'
     ];
 
 app.use(cors({
@@ -38,6 +44,14 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // URL 인코딩 파라미터 처리
+
+// 요청 로깅 미들웨어 (디버깅용)
+app.use((req, res, next) => {
+  console.log(`[Request] ${req.method} ${req.url}`);
+  console.log(`[Query]`, req.query);
+  next();
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -46,7 +60,19 @@ app.get('/health', (req, res) => {
 
 // 조달청 입찰공고 검색 API 프록시 엔드포인트
 app.get('/api/bid-search', async (req, res) => {
-  const keyword = req.query.keyword || '';
+  // 한글 파라미터 명시적 디코딩 및 검증
+  let keyword = '';
+  try {
+    keyword = req.query.keyword 
+      ? decodeURIComponent(String(req.query.keyword)) 
+      : '';
+  } catch (decodeError) {
+    console.warn('[Decode] Keyword decode error:', decodeError);
+    keyword = req.query.keyword || '';
+  }
+  
+  console.log(`[Bid Search] Decoded keyword: "${keyword}"`);
+  
   const pageNo = parseInt(req.query.pageNo) || 1;
   const numOfRows = parseInt(req.query.numOfRows) || 10;
   const userId = req.query.userId || '';
@@ -303,6 +329,20 @@ app.get('/api/bid-search', async (req, res) => {
   console.log(`[Bid Search] Request: keyword="${keyword}", pageNo=${pageNo}, userId=${userId}, businessTypes=${JSON.stringify(businessTypes)}, apiPaths=${JSON.stringify(apiPaths)}`);
 
   try {
+    // 캐시 확인 (키워드 검색 시에만)
+    if (keyword.trim()) {
+      const cachedResult = await getCachedBids(keyword, pageNo, numOfRows);
+      if (cachedResult && cachedResult.items.length > 0) {
+        console.log('[Cache] Returning cached data');
+        return res.status(200).json({
+          success: true,
+          data: cachedResult,
+          cached: true
+        });
+      }
+    }
+    
+    // 캐시 미스 - API 호출
     // 여러 API를 병렬로 호출
     const apiResults = await Promise.all(
       apiPaths.map(apiPath => callBidApi(apiPath))
@@ -345,6 +385,15 @@ app.get('/api/bid-search', async (req, res) => {
       const dateB = b.bidNtceDt ? new Date(b.bidNtceDt.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:00')) : new Date(0);
       return dateB - dateA;
     });
+    
+    // Firestore에 저장 (비동기, 응답과 독립적)
+    if (uniqueItems.length > 0) {
+      uniqueItems.forEach(item => {
+        saveBidToFirestore(item).catch(err => 
+          console.error('[Cache] Save error:', err)
+        );
+      });
+    }
 
     // 페이지네이션 적용
     const startIndex = (pageNo - 1) * numOfRows;
@@ -376,10 +425,65 @@ app.get('/api/bid-search', async (req, res) => {
   } catch (error) {
     console.error('[Bid Search] Error:', error.message);
     res.status(500).json({ 
-      error: `서버 오류: ${error.message}` 
+      error: `서버 오류: ${error.message}`,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
+
+// Firestore 캐싱 함수 (1시간 TTL)
+async function saveBidToFirestore(bidItem) {
+  try {
+    if (!bidItem.bidNtceNo) return;
+    
+    const docRef = db.collection('tenders').doc(bidItem.bidNtceNo);
+    await docRef.set({
+      ...bidItem,
+      cachedAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: admin.firestore.Timestamp.fromDate(
+        new Date(Date.now() + 60 * 60 * 1000) // 1시간 후
+      )
+    }, { merge: true });
+  } catch (error) {
+    console.error('[Cache] Failed to save bid:', error);
+  }
+}
+
+// 캐시된 데이터 조회
+async function getCachedBids(keyword, pageNo = 1, numOfRows = 10) {
+  try {
+    const now = admin.firestore.Timestamp.now();
+    const snapshot = await db.collection('tenders')
+      .where('expiresAt', '>', now)
+      .orderBy('expiresAt', 'desc')
+      .limit(100)
+      .get();
+    
+    if (snapshot.empty) return null;
+    
+    const items = snapshot.docs.map(doc => doc.data());
+    
+    // 키워드 필터링
+    const filtered = keyword 
+      ? items.filter(item => 
+          item.bidNtceNm && item.bidNtceNm.includes(keyword)
+        )
+      : items;
+    
+    // 페이지네이션
+    const start = (pageNo - 1) * numOfRows;
+    const end = start + numOfRows;
+    
+    return {
+      items: filtered.slice(start, end),
+      totalCount: filtered.length,
+      fromCache: true
+    };
+  } catch (error) {
+    console.error('[Cache] Failed to get cached bids:', error);
+    return null;
+  }
+}
 
 // 검색 로그 저장 함수
 async function saveSearchLog(userId, userEmail, userName, keyword, resultCount) {
@@ -399,7 +503,19 @@ async function saveSearchLog(userId, userEmail, userName, keyword, resultCount) 
   }
 }
 
+// 전역 에러 핸들링 미들웨어
+app.use((err, req, res, next) => {
+  console.error('[Global Error]', err);
+  res.status(500).json({ 
+    error: err.message || 'Internal Server Error',
+    details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
+
 // Express 앱을 Firebase Functions로 내보내기
 // asia-northeast3 (서울) 지역 사용
-exports.apiBid = functions.region('asia-northeast3').https.onRequest(app);
+exports.apiBid = onRequest({ 
+  region: 'asia-northeast3',
+  invoker: 'public'  // 공개 접근 허용, cors는 Express에서 처리
+}, app);
 

@@ -2461,26 +2461,23 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                 
                 // 2. 로컬 개발 환경
                 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                    // Firebase Emulator 확인 (포트 5001)
-                    if (window.location.port === '5001') {
-                        return 'http://localhost:5001/bcsa-b190f/asia-northeast3';
-                    }
-                    // 로컬 프록시 서버 (server.js)
-                    return 'http://localhost:3001';
+                    // Firebase Emulator 확인 (포트 5001 또는 5173에서 실행 중일 때)
+                    // Emulator는 별도 포트에서 실행되므로, Vite 개발 서버(3000, 5173)에서도 Emulator 사용 가능
+                    // 로컬 개발 시 Emulator 사용 (포트 5001)
+                    return 'http://localhost:5001/bcsa-b190f/asia-northeast3';
                 }
                 
-                // 3. 프로덕션 환경
-                // 모든 환경에서 Firebase Functions 사용
+                // 3. 프로덕션 환경 - v2 Cloud Run URL 사용
                 const hostname = window.location.hostname;
                 if (hostname === 'bcsa.co.kr' || hostname === 'www.bcsa.co.kr') {
-                    // 호스팅케이알 - Firebase Functions 사용
-                    return 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
+                    // 호스팅케이알 - Firebase Functions v2
+                    return 'https://apibid-oytjv32jna-du.a.run.app';
                 } else if (hostname.includes('web.app') || hostname.includes('firebaseapp.com')) {
-                    // Firebase Hosting - Firebase Functions 사용
-                    return 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
+                    // Firebase Hosting - Firebase Functions v2
+                    return 'https://apibid-oytjv32jna-du.a.run.app';
                 } else {
-                    // 기타 도메인 - Firebase Functions 사용
-                    return 'https://asia-northeast3-bcsa-b190f.cloudfunctions.net';
+                    // 기타 도메인 - Firebase Functions v2
+                    return 'https://apibid-oytjv32jna-du.a.run.app';
                 }
             };
 
@@ -2515,9 +2512,9 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
             const isLocalServer = cleanProxyUrl.includes('localhost') || cleanProxyUrl.includes('127.0.0.1');
             
             if (isFirebaseFunctions) {
-                // Firebase Functions
+                // Firebase Functions v2 - Cloud Run은 함수 이름 없이 직접 경로 사용
                 baseUrl = cleanProxyUrl;
-                apiEndpoint = `${cleanProxyUrl}/apiBid/api/${endpointPath}`;
+                apiEndpoint = `${cleanProxyUrl}/api/${endpointPath}`;
             } else if (cleanProxyUrl.includes('localhost:5001')) {
                 // Firebase Emulator
                 baseUrl = cleanProxyUrl;
