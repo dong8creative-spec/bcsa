@@ -4448,6 +4448,12 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                 return;
             }
             
+            // IMP_CODE 확인
+            if (!PORTONE_IMP_CODE || PORTONE_IMP_CODE === 'imp00000000') {
+                alert('PortOne 가맹점 코드가 설정되지 않았습니다. 관리자에게 문의해주세요.');
+                return;
+            }
+            
             IMP.init(PORTONE_IMP_CODE);
             
             IMP.certification({
@@ -5427,9 +5433,39 @@ const App = () => {
     
     // PortOne 초기화
     useEffect(() => {
-        if (typeof window !== 'undefined' && window.IMP) {
-            window.IMP.init(PORTONE_IMP_CODE);
-        }
+        const initPortOne = () => {
+            if (typeof window !== 'undefined' && window.IMP) {
+                try {
+                    // IMP_CODE가 기본값이 아닌 경우에만 초기화
+                    if (PORTONE_IMP_CODE && PORTONE_IMP_CODE !== 'imp00000000') {
+                        window.IMP.init(PORTONE_IMP_CODE);
+                        console.log('PortOne 초기화 완료');
+                    } else {
+                        console.warn('PortOne IMP_CODE가 설정되지 않았습니다. config.js에서 설정해주세요.');
+                    }
+                } catch (error) {
+                    console.error('PortOne 초기화 오류:', error);
+                }
+            } else {
+                // SDK가 아직 로드되지 않은 경우, 로드될 때까지 대기
+                const checkInterval = setInterval(() => {
+                    if (typeof window !== 'undefined' && window.IMP) {
+                        clearInterval(checkInterval);
+                        initPortOne();
+                    }
+                }, 100);
+                
+                // 5초 후 타임아웃
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    if (typeof window === 'undefined' || !window.IMP) {
+                        console.warn('PortOne SDK가 로드되지 않았습니다.');
+                    }
+                }, 5000);
+            }
+        };
+        
+        initPortOne();
     }, []);
     
     // 승인된 회원만 필터링 (테스트 계정 필터링 제거)

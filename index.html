@@ -29,6 +29,21 @@
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     
     <!-- 카카오맵 SDK는 필요할 때 동적으로 로드됩니다 (document.write 경고 방지) -->
+    
+    <!-- checkFirebaseConfig 함수 안전하게 정의 (admin.html 전용 함수이지만 오류 방지) -->
+    <script>
+        // checkFirebaseConfig는 admin.html에서만 사용되는 함수입니다
+        // 메인 앱에서는 정의하지 않아도 되지만, 콘솔 오류 방지를 위해 안전하게 처리
+        if (typeof window.checkFirebaseConfig === 'undefined') {
+            window.checkFirebaseConfig = function() {
+                console.warn('checkFirebaseConfig는 admin 페이지에서만 사용 가능합니다.');
+                return {
+                    initialized: false,
+                    message: 'This function is only available in admin page'
+                };
+            };
+        }
+    </script>
 </head>
 <body>
     <div id="root"></div>

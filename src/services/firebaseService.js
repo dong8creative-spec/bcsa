@@ -677,20 +677,28 @@ export const firebaseService = {
 
   async getUserBookmarks(userId) {
     try {
+      // orderBy를 제거하여 인덱스 없이도 작동하도록 수정
+      // 클라이언트 측에서 정렬 처리
       const q = query(
         collection(db, 'bookmarks'),
-        where('userId', '==', userId),
-        orderBy('bookmarkedAt', 'desc')
+        where('userId', '==', userId)
       );
       const snapshot = await getDocs(q);
       
-      return snapshot.docs.map(docSnap => {
+      const bookmarks = snapshot.docs.map(docSnap => {
         const data = docSnap.data();
         return {
           id: docSnap.id,
           ...data,
           bookmarkedAt: data.bookmarkedAt?.toDate ? data.bookmarkedAt.toDate() : data.bookmarkedAt
         };
+      });
+      
+      // 클라이언트 측에서 날짜순 정렬
+      return bookmarks.sort((a, b) => {
+        const dateA = a.bookmarkedAt ? (a.bookmarkedAt instanceof Date ? a.bookmarkedAt : new Date(a.bookmarkedAt)) : new Date(0);
+        const dateB = b.bookmarkedAt ? (b.bookmarkedAt instanceof Date ? b.bookmarkedAt : new Date(b.bookmarkedAt)) : new Date(0);
+        return dateB.getTime() - dateA.getTime(); // 내림차순
       });
     } catch (error) {
       console.error('Error getting user bookmarks:', error);
