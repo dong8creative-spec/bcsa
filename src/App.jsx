@@ -2869,23 +2869,15 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
         const loadBookmarks = async () => {
             if (!currentUser || !currentUser.uid || !firebaseService) return;
             
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:2869',message:'loadBookmarks called',data:{userId:currentUser.uid},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
-            // #endregion
             setIsLoadingBookmarks(true);
             try {
                 const userBookmarks = await firebaseService.getUserBookmarks(currentUser.uid);
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:2874',message:'getUserBookmarks returned',data:{count:userBookmarks.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
-                // #endregion
                 const bookmarkSet = new Set(
                     userBookmarks.map(b => `${b.bidNtceNo}-${b.bidNtceOrd || ''}`)
                 );
                 setBookmarks(bookmarkSet);
             } catch (error) {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:2879',message:'getUserBookmarks error in App',data:{error:error.message,code:error.code},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
-                // #endregion
+                
             } finally {
                 setIsLoadingBookmarks(false);
             }

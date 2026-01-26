@@ -36,7 +36,7 @@
         // 메인 앱에서는 정의하지 않아도 되지만, 콘솔 오류 방지를 위해 안전하게 처리
         if (typeof window.checkFirebaseConfig === 'undefined') {
             window.checkFirebaseConfig = function() {
-                console.warn('checkFirebaseConfig는 admin 페이지에서만 사용 가능합니다.');
+                // 경고 제거 (admin 페이지가 아니므로 조용히 처리)
                 return {
                     initialized: false,
                     message: 'This function is only available in admin page'

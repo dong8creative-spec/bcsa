@@ -655,9 +655,6 @@ export const firebaseService = {
 
   async getBookmarkByBidNo(userId, bidNtceNo, bidNtceOrd) {
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebaseService.js:656',message:'getBookmarkByBidNo called',data:{userId,bidNtceNo,bidNtceOrd},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
       const q = query(
         collection(db, 'bookmarks'),
         where('userId', '==', userId),
@@ -673,9 +670,6 @@ export const firebaseService = {
       }
       return null;
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebaseService.js:673',message:'getBookmarkByBidNo error',data:{error:error.message,code:error.code},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
       console.error('Error getting bookmark:', error);
       throw error;
     }
@@ -683,18 +677,12 @@ export const firebaseService = {
 
   async getUserBookmarks(userId) {
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebaseService.js:678',message:'getUserBookmarks called - NO orderBy',data:{userId,hasOrderBy:false},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
       // orderBy를 제거하여 인덱스 없이도 작동하도록 수정
       // 클라이언트 측에서 정렬 처리
       const q = query(
         collection(db, 'bookmarks'),
         where('userId', '==', userId)
       );
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebaseService.js:687',message:'Query created, about to getDocs',data:{userId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
       const snapshot = await getDocs(q);
       
       const bookmarks = snapshot.docs.map(docSnap => {
@@ -712,13 +700,7 @@ export const firebaseService = {
         const dateB = b.bookmarkedAt ? (b.bookmarkedAt instanceof Date ? b.bookmarkedAt : new Date(b.bookmarkedAt)) : new Date(0);
         return dateB.getTime() - dateA.getTime(); // 내림차순
       });
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebaseService.js:702',message:'getUserBookmarks success',data:{userId,bookmarksCount:bookmarks.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebaseService.js:704',message:'getUserBookmarks error',data:{error:error.message,code:error.code},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
       console.error('Error getting user bookmarks:', error);
       throw error;
     }
