@@ -56,6 +56,7 @@ export const defaultContent = {
     // About 페이지 (소개 페이지)
     about_hero_title: "함께 성장하는 사업가 네트워크",
     about_hero_desc: "부산 지역 청년 사업가들의 성장과 연결을 돕는 비즈니스 커뮤니티, 부청사입니다.",
+    about_hero_image: "", // 소개 페이지 히어로 이미지 (16:9)
     about_mission_title: "Platform for Businessmen",
     about_mission_desc_1: "부산청년사업가들은 정기적인 네트워킹과 실무 중심의 세미나를 통해 실질적인 도움을 제공합니다.",
     about_mission_desc_2: "업종을 넘어선 협업과 정보 공유를 지원하며, 온·오프라인을 연계해 지속적인 비즈니스 확장을 돕습니다.",

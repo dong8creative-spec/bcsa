@@ -3,7 +3,7 @@ import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 import CalendarSection from '../components/CalendarSection';
 
-const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, onAddProgram, waitForKakaoMap, openKakaoPlacesSearch, pageTitles }) => {
+const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, onAddProgram, waitForKakaoMap, openKakaoPlacesSearch, pageTitles, onWriteReview, applications }) => {
     const [searchKeyword, setSearchKeyword] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('전체');
     const [selectedStatus, setSelectedStatus] = useState('전체');
@@ -14,6 +14,9 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
     const [applySeminar, setApplySeminar] = useState(null);
     const [applicationData, setApplicationData] = useState({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    
+    const ITEMS_PER_PAGE = 3;
     
     // selectedSeminar가 변경될 때 이미지 인덱스 초기화
     useEffect(() => {
@@ -39,7 +42,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
     const [uploadingImage, setUploadingImage] = useState(false);
     
     const categories = ['전체', ...new Set(seminars.map(s => s.category).filter(Boolean))];
-    const statuses = ['전체', '모집중', '마감임박', '종료'];
+    const statuses = ['전체', '모집중', '마감임박', '후기작성가능', '종료'];
     
     const filteredSeminars = seminars.filter(seminar => {
         const matchKeyword = !searchKeyword || seminar.title.toLowerCase().includes(searchKeyword.toLowerCase()) || seminar.desc?.toLowerCase().includes(searchKeyword.toLowerCase());
@@ -83,13 +86,57 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
         }
     }, [filteredSeminars, sortBy]);
 
+    // 페이지네이션 계산
+    const totalPages = Math.ceil(sortedSeminars.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const currentPageSeminars = sortedSeminars.slice(startIndex, endIndex);
+
+    // 검색/필터 변경 시 첫 페이지로 리셋
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchKeyword, selectedCategory, selectedStatus, sortBy]);
+
     const getStatusColor = (status) => {
         switch(status) {
             case '모집중': return 'bg-blue-100 text-blue-700';
             case '마감임박': return 'bg-orange-100 text-orange-700';
+            case '후기작성가능': return 'bg-green-100 text-green-700';
             case '종료': return 'bg-gray-100 text-gray-600';
             default: return 'bg-gray-100 text-gray-600';
         }
+    };
+
+    // 버튼 설정 계산 함수
+    const getButtonConfig = (seminar) => {
+        if (seminar.status === '종료') {
+            return { text: '종료', disabled: true, onClick: null, className: 'bg-gray-300 text-gray-500 cursor-not-allowed' };
+        }
+        if (seminar.status === '후기작성가능') {
+            const hasApplied = applications?.some(app => 
+                String(app.seminarId) === String(seminar.id) && String(app.userId) === String(currentUser?.id)
+            );
+            if (hasApplied) {
+                return { 
+                    text: '후기쓰기', 
+                    disabled: false, 
+                    onClick: () => onWriteReview && onWriteReview(seminar),
+                    className: 'bg-green-600 text-white hover:bg-green-700'
+                };
+            }
+            return { 
+                text: '참여자만', 
+                disabled: true, 
+                onClick: () => alert('참여한 프로그램에만 후기를 작성할 수 있습니다.'),
+                className: 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            };
+        }
+        return { 
+            text: '신청하기', 
+            disabled: false, 
+            onClick: () => handleOpenApplyModal(seminar),
+            className: 'bg-brand text-white hover:bg-blue-700'
+        };
     };
 
     const getCategoryColor = (category) => {
@@ -202,7 +249,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                 {/* 세미나 리스트 */}
                 {sortedSeminars.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {sortedSeminars.map((seminar) => {
+                        {currentPageSeminars.map((seminar) => {
                             // images 배열이 있으면 첫 번째 이미지 사용, 없으면 img 필드 사용
                             const displayImage = (seminar.images && seminar.images.length > 0) 
                                 ? seminar.images[0] 
@@ -242,20 +289,19 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                                     </div>
                                 <div className="flex items-center justify-between">
                                         <span className="text-xs text-gray-500">신청: {seminar.currentParticipants || 0} / {seminar.maxParticipants || 0}명</span>
-                                        {currentUser && (
-                                        <button
-                                            type="button"
-                                                onClick={(e) => { e.stopPropagation(); handleOpenApplyModal(seminar); }} 
-                                                disabled={seminar.status === '종료'}
-                                                className={`px-4 py-2 text-xs font-bold rounded-lg ${
-                                                    seminar.status === '종료' 
-                                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                                                        : 'bg-brand text-white hover:bg-blue-700'
-                                                }`}
-                                            >
-                                                {seminar.status === '종료' ? '종료' : '신청하기'}
-                                        </button>
-                                    )}
+                                        {currentUser && (() => {
+                                            const btnConfig = getButtonConfig(seminar);
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); btnConfig.onClick && btnConfig.onClick(); }} 
+                                                    disabled={btnConfig.disabled}
+                                                    className={`px-4 py-2 text-xs font-bold rounded-lg ${btnConfig.className}`}
+                                                >
+                                                    {btnConfig.text}
+                                                </button>
+                                            );
+                                        })()}
                                     </div>
                                     </div>
                                     </div>
@@ -269,11 +315,46 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                                     </div>
                 )}
 
-                {/* 월간일정표 */}
+                {/* 페이지네이션 */}
+                {sortedSeminars.length > 0 && totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 my-8">
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                            className="px-4 py-2 rounded-xl border-2 border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
+                        >
+                            <Icons.ChevronLeft size={20} />
+                        </button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                            <button
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={`px-4 py-2 rounded-xl font-bold transition-colors ${
+                                    currentPage === page
+                                        ? 'bg-brand text-white'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                            >
+                                {page}
+                            </button>
+                        ))}
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                            className="px-4 py-2 rounded-xl border-2 border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
+                        >
+                            <Icons.ChevronRight size={20} />
+                        </button>
+                    </div>
+                )}
+
+                {/* 주간일정표 */}
                 <CalendarSection 
                     seminars={seminars} 
                     onSelectSeminar={(seminar) => setSelectedSeminar(seminar)}
                     currentUser={currentUser}
+                    onWriteReview={onWriteReview}
+                    applications={applications}
                 />
 
                 {/* 세미나 상세 모달 */}
@@ -432,20 +513,19 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                                         </div>
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                     <span className="text-sm text-gray-500">신청: {selectedSeminar.currentParticipants || 0} / {selectedSeminar.maxParticipants || 0}명</span>
-                                    {currentUser && (
-                                                        <button 
-                                                            type="button"
-                                            onClick={() => { handleOpenApplyModal(selectedSeminar); }} 
-                                            disabled={selectedSeminar.status === '종료'}
-                                            className={`px-6 py-3 font-bold rounded-xl transition-colors ${
-                                                selectedSeminar.status === '종료' 
-                                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                                                    : 'bg-brand text-white hover:bg-blue-700'
-                                            }`}
-                                        >
-                                            {selectedSeminar.status === '종료' ? '종료' : '신청하기'}
-                                                        </button>
-                                        )}
+                                    {currentUser && (() => {
+                                        const btnConfig = getButtonConfig(selectedSeminar);
+                                        return (
+                                            <button 
+                                                type="button"
+                                                onClick={() => { btnConfig.onClick && btnConfig.onClick(); }} 
+                                                disabled={btnConfig.disabled}
+                                                className={`px-6 py-3 font-bold rounded-xl transition-colors ${btnConfig.className}`}
+                                            >
+                                                {btnConfig.text}
+                                            </button>
+                                        );
+                                    })()}
                                     </div>
                                     </div>
                         </div>

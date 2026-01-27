@@ -786,6 +786,55 @@ export const firebaseService = {
       const restaurants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       callback(restaurants);
     });
+  },
+
+  // ==========================================
+  // Site Content Collection
+  // ==========================================
+  async getContent() {
+    try {
+      const docRef = doc(db, 'siteContent', 'main');
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        return docSnap.data().content || {};
+      }
+      
+      // 문서가 없으면 빈 객체 반환 (defaultContent는 클라이언트에서 처리)
+      return {};
+    } catch (error) {
+      console.error('Error getting content:', error);
+      throw error;
+    }
+  },
+
+  async updateContent(contentData, userId) {
+    try {
+      const docRef = doc(db, 'siteContent', 'main');
+      
+      // setDoc을 사용하여 문서가 없으면 생성, 있으면 업데이트
+      await setDoc(docRef, {
+        content: contentData,
+        updatedAt: serverTimestamp(),
+        updatedBy: userId || 'anonymous'
+      }, { merge: true });
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating content:', error);
+      throw error;
+    }
+  },
+
+  subscribeContent(callback) {
+    const docRef = doc(db, 'siteContent', 'main');
+    return onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        callback(docSnap.data().content || {});
+      } else {
+        callback({});
+      }
+    });
   }
 };
 

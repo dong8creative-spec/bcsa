@@ -58,7 +58,7 @@ const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d
 // View 컴포넌트들
 // ==========================================
 
-const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotifyAdmin, seminars, setShowLoginModal, pageTitles, menuNames }) => {
+const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotifyAdmin, seminars, setShowLoginModal, pageTitles, menuNames, reviewSeminar, onReviewComplete }) => {
     const [selectedCategory, setSelectedCategory] = useState('전체');
     const [selectedPost, setSelectedPost] = useState(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -98,6 +98,23 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
         seminarTitle: null
     });
     const [uploadingImages, setUploadingImages] = useState(false);
+    
+    // reviewSeminar가 전달되면 자동으로 후기 작성 모달 열기
+    useEffect(() => {
+        if (reviewSeminar) {
+            setFormData(prev => ({
+                ...prev,
+                category: '프로그램 후기',
+                seminarId: reviewSeminar.id,
+                seminarTitle: reviewSeminar.title,
+                title: `[${reviewSeminar.title}] 후기`,
+                rating: 0,
+                reviewImages: []
+            }));
+            setSelectedCategory('프로그램 후기');
+            setIsCreateModalOpen(true);
+        }
+    }, [reviewSeminar]);
     
     // 신청한 프로그램 목록 가져오기
     const getAppliedSeminars = () => {
@@ -5503,21 +5520,21 @@ const App = () => {
         }
     }, []);
     
-    // Settings 실시간 구독 (메인 페이지 텍스트 실시간 업데이트)
+    // Content 실시간 구독 (메인 페이지 텍스트 실시간 업데이트)
     useEffect(() => {
-        if (firebaseService && firebaseService.subscribeSettings) {
-            const unsubscribe = firebaseService.subscribeSettings((settings) => {
-                if (settings && Object.keys(settings).length > 0) {
-                    // 기본값과 Firebase Settings 병합 (기본값을 기준으로 Firebase 설정으로 덮어쓰기)
+        if (firebaseService && firebaseService.subscribeContent) {
+            const unsubscribe = firebaseService.subscribeContent((contentData) => {
+                if (contentData && Object.keys(contentData).length > 0) {
+                    // 기본값과 Firebase Content 병합 (기본값을 기준으로 Firebase 설정으로 덮어쓰기)
                     setContent(prevContent => {
                         // prevContent가 이미 defaultContent를 포함하고 있을 수 있으므로,
                         // 기본값부터 시작하여 Firebase 설정으로 덮어쓰기
-                        return { ...defaultContent, ...settings };
+                        return { ...defaultContent, ...contentData };
                     });
                     
                     // menuNames도 Firebase에서 가져오기 (우선 사용)
-                    if (settings.menuNames) {
-                        setMenuNames(prev => ({ ...defaultMenuNames, ...settings.menuNames }));
+                    if (contentData.menuNames) {
+                        setMenuNames(prev => ({ ...defaultMenuNames, ...contentData.menuNames }));
                     } else {
                         // Firebase에 menuNames가 없으면 localStorage 사용 (폴백)
                         const localMenuNames = loadMenuNamesFromStorage();
@@ -5525,26 +5542,26 @@ const App = () => {
                     }
                     
                     // menuEnabled도 Firebase에서 가져오기 (우선 사용)
-                    if (settings.menuEnabled) {
-                        setMenuEnabled(prev => ({ ...loadMenuEnabledFromStorage(), ...settings.menuEnabled }));
+                    if (contentData.menuEnabled) {
+                        setMenuEnabled(prev => ({ ...loadMenuEnabledFromStorage(), ...contentData.menuEnabled }));
                     }
                 }
             });
             
             return () => unsubscribe();
         } else {
-            // Firebase Service가 없으면 초기 로드 시 Settings 가져오기
-            const loadSettings = async () => {
-                        if (firebaseService && firebaseService.getSettings) {
+            // Firebase Service가 없으면 초기 로드 시 Content 가져오기
+            const loadContent = async () => {
+                        if (firebaseService && firebaseService.getContent) {
                     try {
-                                const settings = await firebaseService.getSettings();
-                        if (settings && Object.keys(settings).length > 0) {
-                            // 기본값과 Firebase Settings 병합 (기본값을 기준으로 Firebase 설정으로 덮어쓰기)
-                            setContent(prevContent => ({ ...defaultContent, ...settings }));
+                                const contentData = await firebaseService.getContent();
+                        if (contentData && Object.keys(contentData).length > 0) {
+                            // 기본값과 Firebase Content 병합 (기본값을 기준으로 Firebase 설정으로 덮어쓰기)
+                            setContent(prevContent => ({ ...defaultContent, ...contentData }));
                             
                             // menuNames도 Firebase에서 가져오기
-                            if (settings.menuNames) {
-                                setMenuNames(prev => ({ ...defaultMenuNames, ...settings.menuNames }));
+                            if (contentData.menuNames) {
+                                setMenuNames(prev => ({ ...defaultMenuNames, ...contentData.menuNames }));
                             } else {
                                 // Firebase에 없으면 localStorage 사용
                                 const localMenuNames = loadMenuNamesFromStorage();
@@ -5552,16 +5569,16 @@ const App = () => {
                             }
                             
                             // menuEnabled도 Firebase에서 가져오기
-                            if (settings.menuEnabled) {
-                                setMenuEnabled(prev => ({ ...loadMenuEnabledFromStorage(), ...settings.menuEnabled }));
+                            if (contentData.menuEnabled) {
+                                setMenuEnabled(prev => ({ ...loadMenuEnabledFromStorage(), ...contentData.menuEnabled }));
                             }
                         }
                     } catch (error) {
-                        
+                        console.error('Content 로드 오류:', error);
                     }
                 }
             };
-            loadSettings();
+            loadContent();
         }
     }, []);
     
@@ -5585,6 +5602,7 @@ const App = () => {
     const [pendingView, setPendingView] = useState(null); // 로그인 후 이동할 뷰
     const [mySeminars, setMySeminars] = useState([]);
     const [myPosts, setMyPosts] = useState([]);
+    const [reviewSeminar, setReviewSeminar] = useState(null); // 후기 작성할 프로그램
     const [searchKeyword, setSearchKeyword] = useState('');
     const [searchCategory, setSearchCategory] = useState('');
     const [searchStatus, setSearchStatus] = useState('');
@@ -6950,6 +6968,30 @@ const App = () => {
         return true;
     };
 
+    // 후기 작성 핸들러
+    const handleWriteReview = (seminar) => {
+        if (!currentUser) {
+            alert("로그인이 필요한 서비스입니다.");
+            setShowLoginModal(true);
+            return;
+        }
+        
+        // 참여자인지 확인
+        const applications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
+        const hasApplied = applications.some(app => 
+            String(app.seminarId) === String(seminar.id) && String(app.userId) === String(currentUser?.id)
+        );
+        
+        if (!hasApplied) {
+            alert("참여한 프로그램에만 후기를 작성할 수 있습니다.");
+            return;
+        }
+        
+        // 후기 작성할 프로그램 설정 및 커뮤니티 페이지로 이동
+        setReviewSeminar(seminar);
+        setCurrentView('community');
+    };
+
     // 팝업 닫기 및 표시 기록 함수
     const closePopupAndMarkAsShown = () => {
         setPopupPrograms([]);
@@ -7507,6 +7549,8 @@ END:VCALENDAR`;
                     waitForKakaoMap={waitForKakaoMap}
                     openKakaoPlacesSearch={openKakaoPlacesSearch}
                     pageTitles={pageTitles}
+                    onWriteReview={handleWriteReview}
+                    applications={JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]')}
                 />;
             } catch (error) {
                 console.error('프로그램 페이지 렌더링 오류:', error);
@@ -7545,7 +7589,7 @@ END:VCALENDAR`;
             setCurrentView('home');
             return null;
         }
-        if (currentView === 'community') return <CommunityView onBack={() => setCurrentView('home')} posts={communityPosts} onCreate={handleCommunityCreate} onDelete={handleCommunityDelete} currentUser={currentUser} onNotifyAdmin={handleNotifyAdmin} seminars={seminarsData} setShowLoginModal={setShowLoginModal} pageTitles={pageTitles} menuNames={menuNames} />;
+        if (currentView === 'community') return <CommunityView onBack={() => { setReviewSeminar(null); setCurrentView('home'); }} posts={communityPosts} onCreate={handleCommunityCreate} onDelete={handleCommunityDelete} currentUser={currentUser} onNotifyAdmin={handleNotifyAdmin} seminars={seminarsData} setShowLoginModal={setShowLoginModal} pageTitles={pageTitles} menuNames={menuNames} reviewSeminar={reviewSeminar} onReviewComplete={() => setReviewSeminar(null)} />;
         if (currentView === 'notice') return <NoticeView onBack={() => setCurrentView('home')} posts={communityPosts} menuNames={menuNames} pageTitles={pageTitles} />;
         if (currentView === 'bidSearch' && !menuEnabled['입찰공고']) {
             alert('준비중인 서비스입니다.');
@@ -8549,7 +8593,7 @@ END:VCALENDAR`;
                                 onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    window.location.href = 'admin.html';
+                                    window.location.href = '/admin';
                                 }}
                                 className="hover:text-dark opacity-50 hover:opacity-100 transition-opacity"
                                 title="관리자 페이지"

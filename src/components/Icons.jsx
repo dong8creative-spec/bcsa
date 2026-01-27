@@ -7,7 +7,9 @@ import {
   Phone, Map, Camera, MessageCircle, MessageSquare, DollarSign, Zap,
   Shield, User, Briefcase, Target, TrendingUp, Smile, Mail, FileText, AlertCircle,
   FileSearch, Building2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  ExternalLink, ChevronUp, ChevronDown, Instagram
+  ExternalLink, ChevronUp, ChevronDown, Instagram,
+  Home, LogOut, Activity, RefreshCw, Edit2, Trash2,
+  GripVertical, RotateCcw, Save
 } from 'lucide-react';
 import { Google, Apple, Facebook, Youtube } from './CustomIcons';
 
@@ -18,6 +20,8 @@ export const Icons = {
     Shield, User, Briefcase, Target, TrendingUp, Smile, Mail, FileText, AlertCircle,
     FileSearch, Building2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
     ExternalLink, ChevronUp, ChevronDown, Instagram,
+    Home, LogOut, Activity, RefreshCw, Edit2, Trash2,
+    GripVertical, RotateCcw, Save,
     Google, Apple, Facebook, Youtube
 };
 

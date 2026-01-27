@@ -55,9 +55,14 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                         {content.about_hero_desc || "부산 지역 청년 사업가들의 성장과 연결을 돕는 비즈니스 커뮤니티, 부청사입니다."}
                     </p>
                     <div className="w-full h-56 md:h-80 rounded-3xl overflow-hidden shadow-xl relative animate-fade-in-up bg-gray-100 mx-auto" style={{animationDelay: '0.3s'}}>
-                        {/* 이미지가 설정되면 표시 */} 
-                            onError={(e) => {e.target.style.display='none'}}
-                        />
+                        {content.about_hero_image && (
+                            <img 
+                                src={content.about_hero_image} 
+                                alt="부청사 소개" 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {e.target.style.display='none'}}
+                            />
+                        )}
                         <div className="absolute inset-0 bg-brand/20 mix-blend-multiply"></div>
                     </div>
                 </div>

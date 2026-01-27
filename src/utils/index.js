@@ -6,7 +6,7 @@
 /**
  * 세미나 상태 계산 함수
  * @param {string} dateStr - 날짜 문자열 (YYYY.MM.DD 형식)
- * @returns {string} 상태 ('미정' | '모집중' | '마감임박' | '종료')
+ * @returns {string} 상태 ('미정' | '모집중' | '마감임박' | '후기작성가능' | '종료')
  */
 export const calculateStatus = (dateStr) => {
     if (!dateStr) return "미정";
@@ -25,7 +25,8 @@ export const calculateStatus = (dateStr) => {
         const diffTime = seminarDate - today;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
-        if (diffDays < 0) return "종료";
+        if (diffDays < -7) return "종료";           // 1주일 이상 지남: 완전 종료
+        if (diffDays < 0) return "후기작성가능";    // 1주일 이내 지남: 후기 작성 가능
         if (diffDays <= 14) return "마감임박";
         return "모집중";
     } catch (error) {
