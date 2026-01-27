@@ -19,6 +19,7 @@ export const ContentManagement = () => {
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const [currentImageField, setCurrentImageField] = useState('');
   const [currentImageRatio, setCurrentImageRatio] = useState(16 / 9);
+  const [currentImageUrl, setCurrentImageUrl] = useState('');
 
   useEffect(() => {
     loadContent();
@@ -66,6 +67,7 @@ export const ContentManagement = () => {
   const handleImageUpload = (field, ratio = 16 / 9) => {
     setCurrentImageField(field);
     setCurrentImageRatio(ratio);
+    setCurrentImageUrl(content[field] || ''); // 기존 이미지 URL 저장
     setIsCropModalOpen(true);
   };
 
@@ -264,14 +266,14 @@ export const ContentManagement = () => {
       <div className="grid grid-cols-2 gap-4">
         {[1, 2].map((num) => (
           <div key={num}>
-            <label className="block text-sm font-bold text-gray-700 mb-2">이미지 {num} (4:3)</label>
+            <label className="block text-sm font-bold text-gray-700 mb-2">이미지 {num} (1:1)</label>
             <div className="flex flex-col gap-2">
               {content[`features_image_${num}`] && (
                 <img src={content[`features_image_${num}`]} alt={`Feature ${num}`} className="w-full h-32 object-cover rounded-xl" />
               )}
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleImageUpload(`features_image_${num}`, 4 / 3)}
+                  onClick={() => handleImageUpload(`features_image_${num}`, 1)}
                   className="flex-1 px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-sm"
                 >
                   {content[`features_image_${num}`] ? '변경' : '업로드'}
@@ -652,10 +654,14 @@ export const ContentManagement = () => {
       {/* 이미지 크롭 모달 */}
       <ImageCropModal
         isOpen={isCropModalOpen}
-        onClose={() => setIsCropModalOpen(false)}
+        onClose={() => {
+          setIsCropModalOpen(false);
+          setCurrentImageUrl(''); // 모달 닫을 때 초기화
+        }}
         onImageCropped={handleImageCropped}
         aspectRatio={currentImageRatio}
         title="이미지 업로드 및 크롭"
+        initialImage={currentImageUrl || null}
       />
     </div>
   );

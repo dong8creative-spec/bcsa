@@ -11,13 +11,15 @@ import { uploadImageToImgBB, fileToBase64, resizeImage } from '../utils/imageUti
  * @param {Function} props.onImageCropped - 크롭된 이미지 URL 콜백
  * @param {number} props.aspectRatio - 크롭 비율 (16/9, 4/3, 1, null)
  * @param {string} props.title - 모달 제목
+ * @param {string} props.initialImage - 기존 이미지 URL (선택적)
  */
 export const ImageCropModal = ({ 
   isOpen, 
   onClose, 
   onImageCropped, 
   aspectRatio = 16 / 9,
-  title = '이미지 업로드 및 크롭'
+  title = '이미지 업로드 및 크롭',
+  initialImage = null
 }) => {
   const [imageSrc, setImageSrc] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -38,6 +40,43 @@ export const ImageCropModal = ({
   const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
+
+  // 기존 이미지 로드 (initialImage가 제공될 때)
+  useEffect(() => {
+    if (isOpen && initialImage) {
+      // 모달이 열릴 때마다 기존 이미지를 로드
+      const loadInitialImage = async () => {
+        try {
+          const response = await fetch(initialImage, {
+            mode: 'cors',
+            credentials: 'omit'
+          });
+          if (!response.ok) {
+            throw new Error('이미지를 불러올 수 없습니다.');
+          }
+          const blob = await response.blob();
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setImageSrc(reader.result);
+          };
+          reader.onerror = () => {
+            console.error('이미지 변환 오류');
+            // 에러가 발생해도 새 이미지를 선택할 수 있도록 경고만 표시
+            console.warn('기존 이미지를 불러오는 데 실패했습니다.');
+          };
+          reader.readAsDataURL(blob);
+        } catch (error) {
+          console.error('기존 이미지 로드 오류:', error);
+          // CORS 오류 등으로 실패해도 새 이미지를 선택할 수 있도록 경고만 표시
+          console.warn('기존 이미지를 불러올 수 없습니다. 새 이미지를 선택해주세요.');
+        }
+      };
+      loadInitialImage();
+    } else if (isOpen && !initialImage) {
+      // initialImage가 없으면 imageSrc 초기화 (새 이미지 업로드 모드)
+      setImageSrc(null);
+    }
+  }, [isOpen, initialImage]);
 
   // 실시간 미리보기 생성
   useEffect(() => {

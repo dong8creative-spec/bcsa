@@ -54,7 +54,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                     <p className="text-lg text-gray-600 max-w-xl mx-auto break-keep mb-10 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
                         {content.about_hero_desc || "부산 지역 청년 사업가들의 성장과 연결을 돕는 비즈니스 커뮤니티, 부청사입니다."}
                     </p>
-                    <div className="w-full h-56 md:h-80 rounded-3xl overflow-hidden shadow-xl relative animate-fade-in-up bg-gray-100 mx-auto" style={{animationDelay: '0.3s'}}>
+                    <div className="w-full rounded-3xl overflow-hidden shadow-xl relative animate-fade-in-up bg-gray-100 mx-auto" style={{aspectRatio: '16/9', animationDelay: '0.3s'}}>
                         {content.about_hero_image && (
                             <img 
                                 src={content.about_hero_image} 

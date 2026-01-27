@@ -411,7 +411,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                         <span className="text-xs text-gray-500 flex-shrink-0">{post.date}</span>
                                         <span className="text-xs text-gray-500 flex-shrink-0">조회 {post.views || 0}</span>
                                                         </div>
-                                    {isCurrentUserAdmin ? (
+                                    {(isCurrentUserAdmin || (currentUser && (post.authorId === currentUser.id || post.authorId === currentUser.uid || (post.author && post.author === currentUser.name)))) ? (
                                         <div className="flex gap-2 ml-4 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                     <button
                                         type="button"
@@ -451,17 +451,19 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                             >
                                                 <Icons.Edit size={14} />
                                     </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                                    if (confirm('정말 삭제하시겠습니까?')) {
-                                                        onDelete(post.id);
-                                                    }
-                                        }}
-                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
-                                    >
-                                                <Icons.Trash size={14} />
-                                    </button>
+                                    {isCurrentUserAdmin ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                        if (confirm('정말 삭제하시겠습니까?')) {
+                                                            onDelete(post.id);
+                                                        }
+                                            }}
+                                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
+                                        >
+                                                    <Icons.Trash size={14} />
+                                        </button>
+                                    ) : null}
                                 </div>
                                                                     ) : null}
                                                                 </div>
@@ -494,7 +496,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
             </div>
                         </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                        {isCurrentUserAdmin ? (
+                                        {(isCurrentUserAdmin || (currentUser && (post.authorId === currentUser.id || post.authorId === currentUser.uid || (post.author && post.author === currentUser.name)))) ? (
                                             <Fragment>
                                                 <button
                                                     onClick={(e) => {
@@ -507,16 +509,18 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                 >
                                                     <Icons.Edit size={16} />
                                                 </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleCommunityDelete(post.id);
-                                                    }}
-                                                    className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-                                                    title="삭제"
-                                                >
-                                                    <Icons.Trash size={16} />
-                                                </button>
+                                                {isCurrentUserAdmin ? (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleCommunityDelete(post.id);
+                                                        }}
+                                                        className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                                                        title="삭제"
+                                                    >
+                                                        <Icons.Trash size={16} />
+                                                    </button>
+                                                ) : null}
                                             </Fragment>
                                         ) : null}
                                         <Icons.ArrowRight className="w-5 h-5 text-gray-400 cursor-pointer" onClick={() => handleViewPost(post)} />
@@ -922,7 +926,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                 ) : null}
 
                 {/* 게시글 수정 모달 */}
-                {isEditModalOpen && editingPost && isCurrentUserAdmin ? (
+                {isEditModalOpen && editingPost && (isCurrentUserAdmin || (currentUser && (editingPost.authorId === currentUser.id || editingPost.authorId === currentUser.uid || (editingPost.author && editingPost.author === currentUser.name)))) ? (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
                         <div className="bg-white rounded-3xl p-8 max-w-3xl w-full max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll">
                             <div className="flex items-center justify-between mb-6">
@@ -2522,8 +2526,8 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                 endpointPath = 'bid-search'; // 기본값
             }
             
-            // Firebase Functions 사용 여부 확인
-            const isFirebaseFunctions = cleanProxyUrl.includes('cloudfunctions.net');
+            // Firebase Functions 사용 여부 확인 (v1: cloudfunctions.net, v2: run.app)
+            const isFirebaseFunctions = cleanProxyUrl.includes('cloudfunctions.net') || cleanProxyUrl.includes('run.app');
             
             // 로컬 서버인지 확인
             const isLocalServer = cleanProxyUrl.includes('localhost') || cleanProxyUrl.includes('127.0.0.1');
@@ -7789,7 +7793,7 @@ END:VCALENDAR`;
                             </div>
                         </div>
                         <div className="relative w-full">
-                            <div className="relative w-full h-[500px] md:h-[600px] rounded-4xl md:rounded-5xl overflow-hidden shadow-deep-blue group z-0">
+                            <div className="relative w-full rounded-4xl md:rounded-5xl overflow-hidden shadow-deep-blue group z-0" style={{ aspectRatio: '16/9' }}>
                                 {content.hero_image && <img src={content.hero_image} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Hero" />}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
                             </div>
