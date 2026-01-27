@@ -18,11 +18,19 @@ export default defineConfig({
     port: 3000,
     open: true,
   },
+  preview: {
+    port: 4173,
+    // SPA 라우팅을 위한 fallback 설정
+    // 모든 경로를 index.html로 리다이렉트
+    strictPort: false,
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,
     assetsDir: 'assets',
     copyPublicDir: true,
+    // 빌드 시 SPA 라우팅을 위한 rollup 플러그인 설정은 불필요
+    // Vite가 자동으로 처리함
   },
 });
 

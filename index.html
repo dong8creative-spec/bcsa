@@ -34,15 +34,19 @@
     <script>
         // checkFirebaseConfig는 admin.html에서만 사용되는 함수입니다
         // 메인 앱에서는 정의하지 않아도 되지만, 콘솔 오류 방지를 위해 안전하게 처리
-        if (typeof window.checkFirebaseConfig === 'undefined') {
-            window.checkFirebaseConfig = function() {
-                // 경고 제거 (admin 페이지가 아니므로 조용히 처리)
-                return {
-                    initialized: false,
-                    message: 'This function is only available in admin page'
+        // 즉시 실행 함수로 최대한 빨리 정의
+        (function() {
+            if (typeof window === 'undefined') return;
+            if (typeof window.checkFirebaseConfig === 'undefined') {
+                window.checkFirebaseConfig = function() {
+                    // 경고 제거 (admin 페이지가 아니므로 조용히 처리)
+                    return {
+                        initialized: false,
+                        message: 'This function is only available in admin page'
+                    };
                 };
-            };
-        }
+            }
+        })();
     </script>
 </head>
 <body>
