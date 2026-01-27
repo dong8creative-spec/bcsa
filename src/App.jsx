@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, Fragment } from 'react';
 import { firebaseService } from './services/firebaseService';
 import { authService } from './services/authService';
 import { CONFIG } from './config';
@@ -495,7 +495,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                         </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                         {isCurrentUserAdmin ? (
-                                            <React.Fragment>
+                                            <Fragment>
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -517,7 +517,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                 >
                                                     <Icons.Trash size={16} />
                                                 </button>
-                                            </React.Fragment>
+                                            </Fragment>
                                         ) : null}
                                         <Icons.ArrowRight className="w-5 h-5 text-gray-400 cursor-pointer" onClick={() => handleViewPost(post)} />
                                     </div>
@@ -583,7 +583,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
 
                                     {/* 인력구인 추가 필드 */}
                                     {formData.category === '인력구인' ? (
-                                        <React.Fragment>
+                                        <Fragment>
                                                 <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">업무 내용 *</label>
                                                 <textarea className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-32 resize-none" value={formData.jobDetails} onChange={(e) => setFormData({...formData, jobDetails: e.target.value})} placeholder="업무 내용을 상세히 입력해주세요" />
@@ -681,12 +681,12 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                     ) : null}
                             </div>
                                     </div>
-                                </React.Fragment>
+                                </Fragment>
                                     ) : null}
 
                                     {/* 중고거래 추가 필드 */}
                                     {formData.category === '중고거래' ? (
-                                <React.Fragment>
+                                <Fragment>
                                             <div className="grid grid-cols-2 gap-4">
                                     <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">제품명 *</label>
@@ -803,12 +803,12 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                     <p className="text-red-500 text-xs mt-1">회원 정보의 사업자등록번호와 일치하지 않습니다.</p>
             ) : null}
         </div>
-                                </React.Fragment>
+                                </Fragment>
                                     ) : null}
 
                                     {/* 프로그램 후기 추가 필드 */}
                                     {formData.category === '프로그램 후기' ? (
-                                        <React.Fragment>
+                                        <Fragment>
                     <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">프로그램 선택 *</label>
                                                 {appliedSeminars.length === 0 ? (
@@ -896,7 +896,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                     ) : null}
                                                 </div>
                                             </div>
-                                        </React.Fragment>
+                                        </Fragment>
                                     ) : null}
 
                                 <div className="flex items-center gap-4">
@@ -2035,7 +2035,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
     };
     
     // 분류 목록 추출 (메모이제이션)
-    const categories = React.useMemo ? React.useMemo(() => {
+    const categories = useMemo ? useMemo(() => {
         return ['전체', ...new Set(bidList.map(bid => bid.bidNtceInsttClsfNm).filter(Boolean))];
     }, [bidList]) : ['전체', ...new Set(bidList.map(bid => bid.bidNtceInsttClsfNm).filter(Boolean))];
     
@@ -2061,7 +2061,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
     }, []);
     
     // 필터링 및 정렬된 목록 (메모이제이션)
-    const filteredAndSortedList = React.useMemo ? React.useMemo(() => {
+    const filteredAndSortedList = useMemo ? useMemo(() => {
         let filtered = [...bidList];
         
         // 북마크만 보기 필터
@@ -3047,15 +3047,15 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                             className="flex items-center justify-center gap-2 px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading ? (
-                                <React.Fragment>
+                                <Fragment>
                                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                                     검색 중...
-                                </React.Fragment>
+                                </Fragment>
                             ) : (
-                                <React.Fragment>
+                                <Fragment>
                                     <Icons.Search size={20} />
                                     검색
-                                </React.Fragment>
+                                </Fragment>
                             )}
                         </button>
                     </div>
@@ -3593,7 +3593,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
 
                 {/* 결과 테이블 */}
                 {bidList.length > 0 ? (
-                    <React.Fragment>
+                    <Fragment>
                         <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
                             <div className="flex items-center gap-3">
                                 <p className="text-gray-600">
@@ -3874,7 +3874,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                 </button>
                             </div>
                         ) : null}
-                    </React.Fragment>
+                    </Fragment>
             ) : null}
                 
                 {/* 상세 정보 모달 */}
@@ -5510,13 +5510,18 @@ const App = () => {
             
             return () => unsubscribe();
         } else {
-            loadUsersFromStorage().then(users => {
-                if (users && users.length > 0) {
-                    const filteredUsers = filterApprovedMembers(users);
-                    setUsers(filteredUsers);
-                    setMembersData(filteredUsers);
+            (async () => {
+                try {
+                    const users = await loadUsersFromStorage();
+                    if (users && users.length > 0) {
+                        const filteredUsers = filterApprovedMembers(users);
+                        setUsers(filteredUsers);
+                        setMembersData(filteredUsers);
+                    }
+                } catch (error) {
+                    console.error('사용자 로드 오류:', error);
                 }
-            });
+            })();
         }
     }, []);
     
@@ -5689,8 +5694,9 @@ const App = () => {
             }
             
             // 스크립트가 없으면 동적으로 로드
-            loadKakaoMapScript()
-                .then(() => {
+            (async () => {
+                try {
+                    await loadKakaoMapScript();
                     // 로드 후 kakao 객체 초기화까지 대기
                     let attempts = 0;
                     const maxAttempts = 50; // 5초 대기
@@ -5704,8 +5710,10 @@ const App = () => {
                             reject(new Error('카카오맵 SDK를 로드할 수 없습니다.'));
                         }
                     }, 100);
-                })
-                .catch(reject);
+                } catch (err) {
+                    reject(err);
+                }
+            })();
         });
     };
     
@@ -5949,10 +5957,15 @@ const App = () => {
             return () => unsubscribe();
         } else {
             if (firebaseService && firebaseService.getUsers) {
-                firebaseService.getUsers().then(users => {
-                    const members = filterApprovedMembers(users);
-                    setMembersData(members);
-                });
+                (async () => {
+                    try {
+                        const users = await firebaseService.getUsers();
+                        const members = filterApprovedMembers(users);
+                        setMembersData(members);
+                    } catch (error) {
+                        console.error('사용자 로드 오류:', error);
+                    }
+                })();
             }
         }
     }, []);
@@ -6049,10 +6062,15 @@ const App = () => {
             return () => unsubscribe();
         } else {
             if (firebaseService && firebaseService.getSeminars) {
-                firebaseService.getSeminars().then(seminars => {
-                    const normalizedSeminars = seminars.map(normalizeSeminarImages);
-                    setSeminarsData(normalizedSeminars);
-                });
+                (async () => {
+                    try {
+                        const seminars = await firebaseService.getSeminars();
+                        const normalizedSeminars = seminars.map(normalizeSeminarImages);
+                        setSeminarsData(normalizedSeminars);
+                    } catch (error) {
+                        console.error('세미나 로드 오류:', error);
+                    }
+                })();
             }
         }
     }, []);
@@ -6066,9 +6084,14 @@ const App = () => {
             return () => unsubscribe();
         } else {
             if (firebaseService && firebaseService.getPosts) {
-                firebaseService.getPosts().then(posts => {
-                    setCommunityPosts(posts);
-                });
+                (async () => {
+                    try {
+                        const posts = await firebaseService.getPosts();
+                        setCommunityPosts(posts);
+                    } catch (error) {
+                        console.error('게시글 로드 오류:', error);
+                    }
+                })();
             }
         }
     }, []);
@@ -6082,9 +6105,14 @@ const App = () => {
             return () => unsubscribe();
         } else {
             if (firebaseService && firebaseService.getRestaurants) {
-                firebaseService.getRestaurants().then(restaurants => {
-                    setRestaurantsData(restaurants);
-                });
+                (async () => {
+                    try {
+                        const restaurants = await firebaseService.getRestaurants();
+                        setRestaurantsData(restaurants);
+                    } catch (error) {
+                        console.error('맛집 로드 오류:', error);
+                    }
+                })();
             }
         }
     }, []);
@@ -7285,7 +7313,7 @@ END:VCALENDAR`;
         setIsSearchExpanded(true);
     };
 
-    const handleCommunityCreate = (newPost) => {
+    const handleCommunityCreate = async (newPost) => {
         // 글 작성 시 로그인 확인
         if (!currentUser) {
             alert("로그인이 필요합니다.");
@@ -7320,17 +7348,17 @@ END:VCALENDAR`;
         
         // Save to Firebase
         if (firebaseService && firebaseService.createPost) {
-            firebaseService.createPost(post).then((postId) => {
+            try {
+                const postId = await firebaseService.createPost(post);
                 // Firebase에서 반환된 ID를 사용하여 게시글 업데이트
                 const savedPost = { ...post, id: postId };
                 setCommunityPosts([savedPost, ...communityPosts]);
                 if(currentUser) setMyPosts([savedPost, ...myPosts]);
                 alert('게시글이 등록되었습니다.');
-            }).catch(error => {
-                
+            } catch (error) {
                 const errorMessage = translateFirebaseError(error);
                 alert(`게시글 저장에 실패했습니다.\n${errorMessage}`);
-            });
+            }
         } else {
             // Firebase service not available, use local ID
             const maxId = communityPosts.length > 0 ? Math.max(...communityPosts.map(p => p.id || 0)) : 0;
@@ -7732,7 +7760,7 @@ END:VCALENDAR`;
         
         // currentView가 'home'이거나 null/undefined인 경우 홈 화면 렌더링
         const homeView = (
-            <React.Fragment>
+            <Fragment>
                 {/* ============================================
                     📍 섹션 1: HERO & SEARCH (메인 히어로 + 검색)
                     ============================================
@@ -7750,11 +7778,11 @@ END:VCALENDAR`;
                                             {idx === content.hero_title.split('\n').length - 1 ? (
                                                 <span className="text-brand">{line}</span>
                                             ) : (
-                                                <React.Fragment>{line}<br/></React.Fragment>
+                                                <Fragment>{line}<br/></Fragment>
                                             )}
                                         </span>
                                     )) : (
-                                        <React.Fragment>함께 성장하는<br/>청년 사업가 커뮤니티<br/><span className="text-brand">부산청년사업가들</span></React.Fragment>
+                                        <Fragment>함께 성장하는<br/>청년 사업가 커뮤니티<br/><span className="text-brand">부산청년사업가들</span></Fragment>
                                     )}
                                 </h1>
                                 <p className="text-gray-500 text-base sm:text-lg md:text-left max-w-md mt-4 break-keep">{content.hero_desc}</p>
@@ -7810,14 +7838,14 @@ END:VCALENDAR`;
                     }
                     
                     const ReviewSlider = () => {
-                        const [currentIndex, setCurrentIndex] = React.useState(0);
-                        const [nextIndex, setNextIndex] = React.useState(null);
-                        const [isTransitioning, setIsTransitioning] = React.useState(false);
-                        const [animationKey, setAnimationKey] = React.useState(0); // animation 재시작을 위한 키
-                        const [nextOpacity, setNextOpacity] = React.useState(0); // 다음 슬라이드의 opacity
-                        const [currentOpacity, setCurrentOpacity] = React.useState(1); // 현재 슬라이드의 opacity
+                        const [currentIndex, setCurrentIndex] = useState(0);
+                        const [nextIndex, setNextIndex] = useState(null);
+                        const [isTransitioning, setIsTransitioning] = useState(false);
+                        const [animationKey, setAnimationKey] = useState(0); // animation 재시작을 위한 키
+                        const [nextOpacity, setNextOpacity] = useState(0); // 다음 슬라이드의 opacity
+                        const [currentOpacity, setCurrentOpacity] = useState(1); // 현재 슬라이드의 opacity
                         
-                        React.useEffect(() => {
+                        useEffect(() => {
                             const interval = setInterval(() => {
                                 setCurrentIndex((prev) => {
                                     const newNextIndex = (prev + 1) % reviewPosts.length;
@@ -7925,9 +7953,9 @@ END:VCALENDAR`;
                     };
                     
                     // 모바일 감지
-                    const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
+                    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
                     
-                    React.useEffect(() => {
+                    useEffect(() => {
                         const handleResize = () => setIsMobile(window.innerWidth < 768);
                         window.addEventListener('resize', handleResize);
                         return () => window.removeEventListener('resize', handleResize);
@@ -8165,7 +8193,7 @@ END:VCALENDAR`;
                         </div>
                     </div>
                 </section>
-            </React.Fragment>
+            </Fragment>
         );
         return homeView || null;
         } catch (error) {

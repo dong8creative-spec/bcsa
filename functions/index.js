@@ -1,8 +1,8 @@
-const { onRequest } = require('firebase-functions/v2/https');
-const express = require('express');
-const cors = require('cors');
-const fetch = require('node-fetch');
-const admin = require('firebase-admin');
+import { onRequest } from 'firebase-functions/v2/https';
+import express from 'express';
+import cors from 'cors';
+import fetch from 'node-fetch';
+import admin from 'firebase-admin';
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
@@ -568,7 +568,7 @@ app.use((err, req, res, next) => {
 // Express 앱을 Firebase Functions로 내보내기
 // asia-northeast3 (서울) 지역 사용
 // 1,000명 동시 접속 대비: memory 256MiB 설정으로 과금 방지
-exports.apiBid = onRequest({ 
+export const apiBid = onRequest({ 
   region: 'asia-northeast3',
   invoker: 'public',  // 공개 접근 허용, cors는 Express에서 처리
   memory: '256MiB'    // 동시 접속 대비 최소 메모리 설정

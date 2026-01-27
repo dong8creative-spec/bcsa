@@ -66,18 +66,19 @@ export const useKakaoMap = () => {
       });
     };
 
-    loadKakaoMapScript()
-      .then((kakaoObj) => {
+    (async () => {
+      try {
+        const kakaoObj = await loadKakaoMapScript();
         setKakao(kakaoObj);
         setIsLoaded(true);
         setIsError(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error('카카오맵 로드 오류:', err);
         setError(err);
         setIsError(true);
         setIsLoaded(false);
-      });
+      }
+    })();
   }, []);
 
   /**

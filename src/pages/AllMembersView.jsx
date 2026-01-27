@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 import { firebaseService } from '../services/firebaseService';
@@ -173,7 +173,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                         {gradeMembers.map((member, idx) => (
                                             <div key={idx} className={`bg-white rounded-3xl shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 ${member.memberGrade === '파트너사' && member.hasDonated ? 'flex flex-row items-start gap-4 p-4' : 'flex flex-col items-center text-center p-6'} group cursor-pointer`} onClick={() => setSelectedMember(member)}>
                                                 {member.memberGrade === '파트너사' && member.hasDonated ? (
-                                                    <React.Fragment>
+                                                    <Fragment>
                                                         <div className="flex-shrink-0">
                                                             <div className="w-20 h-20 rounded-full overflow-hidden mb-2 border-4 border-soft group-hover:border-brand/20 transition-colors">
                                                                 <img src={member.img} alt={member.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
@@ -210,9 +210,9 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                                 <p className="text-xs text-gray-400">회사 소개가 등록되지 않았습니다.</p>
                                                             )}
                                                         </div>
-                                                    </React.Fragment>
+                                                    </Fragment>
                                                 ) : (
-                                                    <React.Fragment>
+                                                    <Fragment>
                                                         <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-soft group-hover:border-brand/20 transition-colors">
                                                             <img src={member.img} alt={member.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
                                                         </div>
@@ -251,7 +251,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                                 </button>
                                                             )}
                                                         </div>
-                                                    </React.Fragment>
+                                                    </Fragment>
                                                 )}
                                             </div>
                                         ))}
@@ -265,7 +265,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                         {filteredMembers.map((member, idx) => (
                             <div key={idx} className={`bg-white rounded-3xl shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 ${member.memberGrade === '파트너사' && member.hasDonated ? 'flex flex-row items-start gap-4 p-4' : 'flex flex-col items-center text-center p-6'} group cursor-pointer`} onClick={() => setSelectedMember(member)}>
                                 {member.memberGrade === '파트너사' && member.hasDonated ? (
-                                    <React.Fragment>
+                                    <Fragment>
                                         <div className="flex-shrink-0">
                                             <div className="w-20 h-20 rounded-full overflow-hidden mb-2 border-4 border-soft group-hover:border-brand/20 transition-colors">
                                                 <img src={member.img} alt={member.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
@@ -302,9 +302,9 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                 <p className="text-xs text-gray-400">회사 소개가 등록되지 않았습니다.</p>
                                             )}
                                         </div>
-                                    </React.Fragment>
+                                    </Fragment>
                                 ) : (
-                                    <React.Fragment>
+                                    <Fragment>
                                         <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-soft group-hover:border-brand/20 transition-colors">
                                             <img src={member.img} alt={member.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
                                         </div>
@@ -329,7 +329,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                             <span className="text-xs text-gray-400">(12)</span>
                                         </div>
                                         <button className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-brand hover:text-white hover:border-brand transition-all">프로필 보기</button>
-                                    </React.Fragment>
+                                    </Fragment>
                                 )}
                             </div>
                         ))}

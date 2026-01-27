@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Fragment } from 'react';
 import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 
@@ -91,7 +91,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     </div>
                                 </div>
                             ) : (
-                                <React.Fragment>
+                                <Fragment>
                                     <h3 className="text-2xl font-bold text-dark">{user.name} <span className="text-base font-normal text-gray-500">({user.id})</span></h3>
                                     <p className="text-gray-600 mt-1">{user.company} | {user.role}</p>
                                     <span className="inline-block px-3 py-1 bg-brand/10 text-brand text-xs font-bold rounded-full mt-2">{user.industry}</span>
@@ -163,7 +163,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                             )}
                                         </div>
                                     )}
-                                </React.Fragment>
+                                </Fragment>
                             )}
                         </div>
                     </div>
@@ -304,7 +304,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                     {activeTab === 'verification' && (
                         <div className="space-y-6">
                             {user.isIdentityVerified ? (
-                                <React.Fragment>
+                                <Fragment>
                                     {/* 인증 상태 카드 */}
                                     <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg">
                                         <div className="flex items-center gap-4 mb-4">
@@ -389,7 +389,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                             </div>
                                         </div>
                                     )}
-                                </React.Fragment>
+                                </Fragment>
                             ) : (
                                 <div className="text-center py-20">
                                     <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">

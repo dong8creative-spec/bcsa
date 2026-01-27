@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Fragment } from 'react';
 import { Icons } from '../components/Icons';
 
 const AboutView = ({ onBack, content, pageTitles }) => {
@@ -38,7 +38,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                     </div>
                     <h1 className="text-4xl md:text-5xl font-black text-dark mb-6 leading-tight break-keep animate-fade-in-up" style={{animationDelay: '0.1s'}}>
                         {content.about_hero_title ? (
-                            <React.Fragment>
+                            <Fragment>
                                 {content.about_hero_title.split(' ').map((word, idx, arr) => (
                                     <span key={idx}>
                                         {word.includes('사업가') || word.includes('네트워크') ? <span className="text-brand">{word}</span> : word}
@@ -46,9 +46,9 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                                         {word === '함께' && <br className="md:hidden"/>}
                                     </span>
                                 ))}
-                            </React.Fragment>
+                            </Fragment>
                         ) : (
-                            <React.Fragment>함께 성장하는 <br className="md:hidden"/> <span className="text-brand">사업가 네트워크</span></React.Fragment>
+                            <Fragment>함께 성장하는 <br className="md:hidden"/> <span className="text-brand">사업가 네트워크</span></Fragment>
                         )}
                     </h1>
                     <p className="text-lg text-gray-600 max-w-xl mx-auto break-keep mb-10 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
@@ -75,7 +75,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                         <div className="flex-1">
                             <h2 className="text-3xl font-bold text-dark mb-6">
                                 {content.about_mission_title ? (
-                                    <React.Fragment>
+                                    <Fragment>
                                         {content.about_mission_title.split(' ').map((word, idx) => (
                                             <span key={idx}>
                                                 {word === 'Businessmen' ? <span className="text-brand">{word}</span> : word}
@@ -83,9 +83,9 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                                                 {word === 'for' && <br/>}
                                             </span>
                                         ))}
-                                    </React.Fragment>
+                                    </Fragment>
                                 ) : (
-                                    <React.Fragment>Platform for <br/><span className="text-brand">Businessmen</span></React.Fragment>
+                                    <Fragment>Platform for <br/><span className="text-brand">Businessmen</span></Fragment>
                                 )}
                             </h2>
                             <div className="space-y-4 text-gray-600 leading-relaxed text-justify break-keep text-sm md:text-base">
@@ -126,16 +126,16 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold text-dark mb-2">
                             {content.about_why_title ? (
-                                <React.Fragment>
+                                <Fragment>
                                     {content.about_why_title.split(' ').map((word, idx) => (
                                         <span key={idx}>
                                             {word === '필요한' ? <span className="text-brand">{word}</span> : word}
                                             {idx < content.about_why_title.split(' ').length - 1 && ' '}
                                         </span>
                                     ))}
-                                </React.Fragment>
+                                </Fragment>
                             ) : (
-                                <React.Fragment>'부청사'가 <span className="text-brand">필요한 이유</span></React.Fragment>
+                                <Fragment>'부청사'가 <span className="text-brand">필요한 이유</span></Fragment>
                             )}
                         </h2>
                         <p className="text-gray-500 text-sm">{content.about_why_subtitle || "혼자 고민하지 마세요. 함께하면 답이 보입니다."}</p>

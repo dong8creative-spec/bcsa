@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 
@@ -9,10 +9,10 @@ import { authService } from '../services/authService';
  * @param {string} props.redirectTo - 인증되지 않은 경우 리다이렉트할 경로
  */
 export const ProtectedRoute = ({ children, redirectTo = '/' }) => {
-  const [isAuthenticated, setIsAuthenticated] = React.useState(null);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const checkAuth = async () => {
       try {
         const user = await authService.getCurrentUser();
