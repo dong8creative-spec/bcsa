@@ -6036,7 +6036,8 @@ const App = () => {
                 // 호환성을 위해 img 필드도 유지 (첫 번째 이미지)
                 img: images.length > 0 ? images[0] : (seminar.img && typeof seminar.img === 'string' && seminar.img.trim() !== '' ? seminar.img : ''),
                 date: seminar.date || '',
-                status: seminar.status || calculateStatus(seminar.date || '')
+                // 항상 최신 상태로 재계산 (Firestore의 오래된 status 무시)
+                status: calculateStatus(seminar.date || '')
             };
         };
         
@@ -6961,6 +6962,18 @@ const App = () => {
             }
         } catch (error) {
             
+        }
+        
+        // Firestore의 seminar 문서 업데이트 (currentParticipants 증가)
+        try {
+            if (firebaseService && firebaseService.updateSeminar) {
+                await firebaseService.updateSeminar(seminar.id, {
+                    currentParticipants: (seminar.currentParticipants || 0) + 1
+                });
+            }
+        } catch (error) {
+            console.error('참가자 수 업데이트 실패:', error);
+            // 실패해도 신청은 완료된 것으로 처리
         }
         
         setMySeminars([...mySeminars, seminar]);
