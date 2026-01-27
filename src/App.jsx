@@ -416,7 +416,12 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                     <button
                                         type="button"
                                         onClick={() => {
-                                                    setEditingPost(post);
+                                                    setEditingPost({
+                                                        ...post,
+                                                        storeImages: post.storeImages || [],
+                                                        itemImages: post.itemImages || [],
+                                                        reviewImages: post.reviewImages || post.images || []
+                                                    });
                                                     setFormData({ 
                                                         category: post.category, 
                                                         title: post.title, 
@@ -443,6 +448,12 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                             tradeLocation: post.tradeLocation,
                                                             itemImages: post.itemImages || [],
                                                             businessNumber: post.businessNumber || ''
+                                                        }),
+                                                        ...(post.category === '프로그램 후기' && {
+                                                            reviewImages: post.reviewImages || post.images || [],
+                                                            rating: post.rating || 0,
+                                                            seminarId: post.seminarId || null,
+                                                            seminarTitle: post.seminarTitle || null
                                                         })
                                                     });
                                                     setIsEditModalOpen(true);
@@ -953,6 +964,228 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                         onChange={(e) => setEditingPost({...editingPost, content: e.target.value})} 
                                     />
                                 </div>
+                                
+                                {/* 이미지 수정 섹션 */}
+                                {editingPost.category === '인력구인' && editingPost.storeImages !== undefined ? (
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">매장 사진 (최대 3장)</label>
+                                        <div className="flex gap-4 flex-wrap">
+                                            {(editingPost.storeImages || []).map((img, idx) => (
+                                                <div key={idx} className="relative">
+                                                    <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => {
+                                                            const newImages = [...(editingPost.storeImages || [])];
+                                                            newImages.splice(idx, 1);
+                                                            setEditingPost({...editingPost, storeImages: newImages});
+                                                        }} 
+                                                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {(editingPost.storeImages || []).length < 3 ? (
+                                                <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                                    {uploadingImages ? (
+                                                        <div className="text-center">
+                                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
+                                                            <span className="text-xs text-gray-500">업로드 중...</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center">
+                                                            <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
+                                                            <span className="text-xs text-gray-500">사진 추가</span>
+                                                        </div>
+                                                    )}
+                                                    <input 
+                                                        type="file" 
+                                                        accept="image/*" 
+                                                        multiple 
+                                                        className="hidden" 
+                                                        onChange={async (e) => {
+                                                            const files = Array.from(e.target.files);
+                                                            if (files.length > 3) {
+                                                                alert('최대 3장까지만 선택할 수 있습니다.');
+                                                                return;
+                                                            }
+                                                            const currentImages = editingPost.storeImages || [];
+                                                            if (currentImages.length + files.length > 3) {
+                                                                alert(`최대 3장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
+                                                                return;
+                                                            }
+                                                            setUploadingImages(true);
+                                                            const uploadPromises = files.map(async (file) => {
+                                                                try {
+                                                                    const base64Image = await fileToBase64(file);
+                                                                    const resizedImage = await resizeImage(file, 1200, 800, 0.9);
+                                                                    const result = await uploadImageToImgBB(resizedImage, file.name);
+                                                                    return result.url;
+                                                                } catch (error) {
+                                                                    alert(`${file.name} 업로드에 실패했습니다.`);
+                                                                    return null;
+                                                                }
+                                                            });
+                                                            const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                            setEditingPost({...editingPost, storeImages: [...currentImages, ...uploadedUrls]});
+                                                            setUploadingImages(false);
+                                                            e.target.value = '';
+                                                        }} 
+                                                    />
+                                                </label>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                ) : null}
+                                
+                                {editingPost.category === '중고거래' && editingPost.itemImages !== undefined ? (
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">제품 사진 (최대 3장)</label>
+                                        <div className="flex gap-4 flex-wrap">
+                                            {(editingPost.itemImages || []).map((img, idx) => (
+                                                <div key={idx} className="relative">
+                                                    <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => {
+                                                            const newImages = [...(editingPost.itemImages || [])];
+                                                            newImages.splice(idx, 1);
+                                                            setEditingPost({...editingPost, itemImages: newImages});
+                                                        }} 
+                                                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {(editingPost.itemImages || []).length < 3 ? (
+                                                <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                                    {uploadingImages ? (
+                                                        <div className="text-center">
+                                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
+                                                            <span className="text-xs text-gray-500">업로드 중...</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center">
+                                                            <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
+                                                            <span className="text-xs text-gray-500">사진 추가</span>
+                                                        </div>
+                                                    )}
+                                                    <input 
+                                                        type="file" 
+                                                        accept="image/*" 
+                                                        multiple 
+                                                        className="hidden" 
+                                                        onChange={async (e) => {
+                                                            const files = Array.from(e.target.files);
+                                                            if (files.length > 3) {
+                                                                alert('최대 3장까지만 선택할 수 있습니다.');
+                                                                return;
+                                                            }
+                                                            const currentImages = editingPost.itemImages || [];
+                                                            if (currentImages.length + files.length > 3) {
+                                                                alert(`최대 3장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
+                                                                return;
+                                                            }
+                                                            setUploadingImages(true);
+                                                            const uploadPromises = files.map(async (file) => {
+                                                                try {
+                                                                    const base64Image = await fileToBase64(file);
+                                                                    const resizedImage = await resizeImage(file, 1200, 800, 0.9);
+                                                                    const result = await uploadImageToImgBB(resizedImage, file.name);
+                                                                    return result.url;
+                                                                } catch (error) {
+                                                                    alert(`${file.name} 업로드에 실패했습니다.`);
+                                                                    return null;
+                                                                }
+                                                            });
+                                                            const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                            setEditingPost({...editingPost, itemImages: [...currentImages, ...uploadedUrls]});
+                                                            setUploadingImages(false);
+                                                            e.target.value = '';
+                                                        }} 
+                                                    />
+                                                </label>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                ) : null}
+                                
+                                {editingPost.category === '프로그램 후기' && (editingPost.reviewImages !== undefined || editingPost.images !== undefined) ? (
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">후기 사진 (최대 3장)</label>
+                                        <div className="flex gap-4 flex-wrap">
+                                            {(editingPost.reviewImages || editingPost.images || []).map((img, idx) => (
+                                                <div key={idx} className="relative">
+                                                    <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => {
+                                                            const currentImages = editingPost.reviewImages || editingPost.images || [];
+                                                            const newImages = [...currentImages];
+                                                            newImages.splice(idx, 1);
+                                                            setEditingPost({...editingPost, reviewImages: newImages, images: newImages});
+                                                        }} 
+                                                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {((editingPost.reviewImages || editingPost.images || []).length < 3) ? (
+                                                <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                                    {uploadingImages ? (
+                                                        <div className="text-center">
+                                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
+                                                            <span className="text-xs text-gray-500">업로드 중...</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center">
+                                                            <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
+                                                            <span className="text-xs text-gray-500">사진 추가</span>
+                                                        </div>
+                                                    )}
+                                                    <input 
+                                                        type="file" 
+                                                        accept="image/*" 
+                                                        multiple 
+                                                        className="hidden" 
+                                                        onChange={async (e) => {
+                                                            const files = Array.from(e.target.files);
+                                                            if (files.length > 3) {
+                                                                alert('최대 3장까지만 선택할 수 있습니다.');
+                                                                return;
+                                                            }
+                                                            const currentImages = editingPost.reviewImages || editingPost.images || [];
+                                                            if (currentImages.length + files.length > 3) {
+                                                                alert(`최대 3장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
+                                                                return;
+                                                            }
+                                                            setUploadingImages(true);
+                                                            const uploadPromises = files.map(async (file) => {
+                                                                try {
+                                                                    const base64Image = await fileToBase64(file);
+                                                                    const resizedImage = await resizeImage(file, 1200, 800, 0.9);
+                                                                    const result = await uploadImageToImgBB(resizedImage, file.name);
+                                                                    return result.url;
+                                                                } catch (error) {
+                                                                    alert(`${file.name} 업로드에 실패했습니다.`);
+                                                                    return null;
+                                                                }
+                                                            });
+                                                            const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                            setEditingPost({...editingPost, reviewImages: [...currentImages, ...uploadedUrls], images: [...currentImages, ...uploadedUrls]});
+                                                            setUploadingImages(false);
+                                                            e.target.value = '';
+                                                        }} 
+                                                    />
+                                                </label>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                ) : null}
+                                
                                 <div className="flex gap-4 mt-8">
                                     <button 
                                         type="button" 
@@ -8139,9 +8372,9 @@ END:VCALENDAR`;
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors">{content.activities_view_all || '전체 프로그램 보기'} <Icons.ArrowRight size={16} /></button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative h-64 rounded-2xl overflow-hidden mb-4 card-zoom">{content.activity_seminar_image && <img src={content.activity_seminar_image} className="w-full h-full object-cover" alt="비즈니스 세미나"/>}<div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-brand shadow-sm">SEMINAR</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">{content.activity_seminar_title || '비즈니스 세미나'}</h3></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">{content.activity_seminar_desc || '매월 진행되는 창업 트렌드 및 마케팅 실무 세미나'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_seminar_schedule || '매월 2째주 목요일'}</span></div></div></button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative h-64 rounded-2xl overflow-hidden mb-4 card-zoom">{content.activity_investment_image && <img src={content.activity_investment_image} className="w-full h-full object-cover" alt="투자 & 지원사업"/>}<div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-green-600 shadow-sm">INVESTMENT</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">{content.activity_investment_title || '투자 & 지원사업'}</h3></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">{content.activity_investment_desc || '최신 정부 지원사업 큐레이션 및 IR 피칭 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_investment_schedule || '수시 모집'}</span></div></div></button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative h-64 rounded-2xl overflow-hidden mb-4 card-zoom">{content.activity_networking_image && <img src={content.activity_networking_image} className="w-full h-full object-cover" alt="사업가 네트워킹"/>}<div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-accent shadow-sm">NETWORK</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">{content.activity_networking_title || '사업가 네트워킹'}</h3></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">{content.activity_networking_desc || '다양한 업종의 대표님들과 교류하며 비즈니스 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_networking_schedule || '매주 금요일'}</span></div></div></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_seminar_image && <img src={content.activity_seminar_image} className="w-full h-full object-cover" alt="비즈니스 세미나"/>}<div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-brand shadow-sm">SEMINAR</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">{content.activity_seminar_title || '비즈니스 세미나'}</h3></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">{content.activity_seminar_desc || '매월 진행되는 창업 트렌드 및 마케팅 실무 세미나'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_seminar_schedule || '매월 2째주 목요일'}</span></div></div></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_investment_image && <img src={content.activity_investment_image} className="w-full h-full object-cover" alt="투자 & 지원사업"/>}<div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-green-600 shadow-sm">INVESTMENT</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">{content.activity_investment_title || '투자 & 지원사업'}</h3></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">{content.activity_investment_desc || '최신 정부 지원사업 큐레이션 및 IR 피칭 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_investment_schedule || '수시 모집'}</span></div></div></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_networking_image && <img src={content.activity_networking_image} className="w-full h-full object-cover" alt="사업가 네트워킹"/>}<div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-accent shadow-sm">NETWORK</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">{content.activity_networking_title || '사업가 네트워킹'}</h3></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">{content.activity_networking_desc || '다양한 업종의 대표님들과 교류하며 비즈니스 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_networking_schedule || '매주 금요일'}</span></div></div></button>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-soft rounded-3xl p-6 flex flex-col justify-center items-center text-center hover:bg-brand hover:text-white transition-colors duration-300 cursor-pointer group shadow-deep-blue border-none w-full"><div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-brand mb-4 shadow-sm group-hover:scale-110 transition-transform"><Icons.ArrowRight size={24} /></div><h3 className="text-lg font-bold mb-2">{content.activity_more_title || 'More Programs'}</h3><p className="text-sm opacity-70 group-hover:opacity-90 break-keep">{content.activity_more_desc || '멘토링, 워크샵 등 더 많은 활동 보기'}</p></button>
                         </div>
                     </div>
@@ -8157,7 +8390,7 @@ END:VCALENDAR`;
                 {menuEnabled['후원'] ? (
                 <section className="py-24 px-6 bg-gradient-to-br from-green-50 to-emerald-50">
                     <div className="container mx-auto max-w-6xl">
-                        <div className="relative rounded-4xl overflow-hidden bg-gradient-to-br from-green-600 to-emerald-600 h-[350px] flex items-center justify-center text-center px-6 shadow-2xl shadow-green-500/40">
+                        <div className="relative rounded-4xl overflow-hidden bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center text-center px-6 shadow-2xl shadow-green-500/40" style={{ aspectRatio: '16/9' }}>
                             {content.donation_image && <div className="absolute inset-0"><img src={content.donation_image} className="w-full h-full object-cover opacity-20 mix-blend-overlay" alt="Support"/></div>}
                             <div className="relative z-10 max-w-2xl">
                                 <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 leading-tight break-keep">{content.donation_title || '부청사와 함께 성장하세요'}</h2>

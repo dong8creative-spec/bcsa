@@ -9,7 +9,7 @@ import {
   FileSearch, Building2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   ExternalLink, ChevronUp, ChevronDown, Instagram,
   Home, LogOut, Activity, RefreshCw, Edit2, Trash2,
-  GripVertical, RotateCcw, Save
+  GripVertical, RotateCcw, Save, Image
 } from 'lucide-react';
 import { Google, Apple, Facebook, Youtube } from './CustomIcons';
 
@@ -21,7 +21,7 @@ export const Icons = {
     FileSearch, Building2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
     ExternalLink, ChevronUp, ChevronDown, Instagram,
     Home, LogOut, Activity, RefreshCw, Edit2, Trash2,
-    GripVertical, RotateCcw, Save,
+    GripVertical, RotateCcw, Save, Image,
     Google, Apple, Facebook, Youtube
 };
 

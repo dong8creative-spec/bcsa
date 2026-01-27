@@ -12,6 +12,7 @@ import { uploadImageToImgBB, fileToBase64, resizeImage } from '../utils/imageUti
  * @param {number} props.aspectRatio - 크롭 비율 (16/9, 4/3, 1, null)
  * @param {string} props.title - 모달 제목
  * @param {string} props.initialImage - 기존 이미지 URL (선택적)
+ * @param {boolean} props.fixedRatio - 비율 고정 여부 (true일 경우 비율 선택 비활성화)
  */
 export const ImageCropModal = ({ 
   isOpen, 
@@ -19,7 +20,8 @@ export const ImageCropModal = ({
   onImageCropped, 
   aspectRatio = 16 / 9,
   title = '이미지 업로드 및 크롭',
-  initialImage = null
+  initialImage = null,
+  fixedRatio = false
 }) => {
   const [imageSrc, setImageSrc] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -27,6 +29,13 @@ export const ImageCropModal = ({
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedRatio, setSelectedRatio] = useState(aspectRatio);
+
+  // fixedRatio가 true일 때는 aspectRatio를 강제로 사용
+  useEffect(() => {
+    if (fixedRatio) {
+      setSelectedRatio(aspectRatio);
+    }
+  }, [fixedRatio, aspectRatio]);
   const [previewImage, setPreviewImage] = useState(null);
   const timeoutRef = useRef(null);
 
@@ -275,26 +284,35 @@ export const ImageCropModal = ({
               {/* 왼쪽: 크롭 영역 */}
               <div>
                 {/* 비율 선택 */}
-                <div className="mb-4">
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    크롭 비율
-                  </label>
-                  <div className="flex gap-2 flex-wrap">
-                    {ratioOptions.map((option) => (
-                      <button
-                        key={option.label}
-                        onClick={() => setSelectedRatio(option.value)}
-                        className={`px-4 py-2 rounded-xl font-bold transition-colors ${
-                          selectedRatio === option.value
-                            ? 'bg-brand text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
+                {!fixedRatio && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      크롭 비율
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      {ratioOptions.map((option) => (
+                        <button
+                          key={option.label}
+                          onClick={() => setSelectedRatio(option.value)}
+                          className={`px-4 py-2 rounded-xl font-bold transition-colors ${
+                            selectedRatio === option.value
+                              ? 'bg-brand text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
+                {fixedRatio && (
+                  <div className="mb-4">
+                    <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm font-bold">
+                      고정 비율: {aspectRatio === 16 / 9 ? '16:9' : aspectRatio === 4 / 3 ? '4:3' : aspectRatio === 1 ? '1:1' : 'Free'}
+                    </div>
+                  </div>
+                )}
 
                 {/* 크롭 영역 */}
                 <div className="relative w-full h-96 bg-gray-900 rounded-2xl overflow-hidden mb-4">
@@ -302,7 +320,7 @@ export const ImageCropModal = ({
                     image={imageSrc}
                     crop={crop}
                     zoom={zoom}
-                    aspect={selectedRatio || undefined}
+                    aspect={fixedRatio ? (aspectRatio || undefined) : (selectedRatio || undefined)}
                     onCropChange={setCrop}
                     onZoomChange={setZoom}
                     onCropComplete={onCropComplete}

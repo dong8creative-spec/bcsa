@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { authService } from '../../../services/authService';
 import { defaultContent } from '../../../constants/content';
+import { imageMetadata } from '../../../constants/imageMetadata';
 import { Icons } from '../../../components/Icons';
 import { ImageCropModal } from '../../../components/ImageCropModal';
 
@@ -20,6 +21,7 @@ export const ContentManagement = () => {
   const [currentImageField, setCurrentImageField] = useState('');
   const [currentImageRatio, setCurrentImageRatio] = useState(16 / 9);
   const [currentImageUrl, setCurrentImageUrl] = useState('');
+  const [previewImageUrl, setPreviewImageUrl] = useState(null);
 
   useEffect(() => {
     loadContent();
@@ -86,6 +88,7 @@ export const ContentManagement = () => {
   };
 
   const sections = [
+    { id: 'images', label: '이미지 관리', icon: Icons.Image },
     { id: 'hero', label: 'Hero 섹션', icon: Icons.Star },
     { id: 'stats', label: '통계 섹션', icon: Icons.TrendingUp },
     { id: 'features', label: 'Features 섹션', icon: Icons.CheckCircle },
@@ -352,7 +355,12 @@ export const ContentManagement = () => {
             <label className="block text-sm font-bold text-gray-700 mb-2">이미지 (4:3)</label>
             <div className="flex items-center gap-4">
               {content[`activity_${type}_image`] && (
-                <img src={content[`activity_${type}_image`]} alt={type} className="w-32 h-24 object-cover rounded-xl" />
+                <div 
+                  onClick={() => setPreviewImageUrl(content[`activity_${type}_image`])} 
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                  <img src={content[`activity_${type}_image`]} alt={type} className="w-32 h-24 object-cover rounded-xl border-2 border-gray-200" />
+                </div>
               )}
               <button
                 onClick={() => handleImageUpload(`activity_${type}_image`, 4 / 3)}
@@ -434,6 +442,126 @@ export const ContentManagement = () => {
       </div>
     </div>
   );
+
+  const renderImagesSection = () => {
+    // 페이지별로 그룹화
+    const mainPageImages = imageMetadata.filter(img => img.page === '메인페이지');
+    const aboutPageImages = imageMetadata.filter(img => img.page === '소개페이지');
+
+    const renderImageItem = (imageMeta) => {
+      const imageUrl = content[imageMeta.field] || '';
+      const ratioLabel = imageMeta.aspectRatio === 16 / 9 ? '16:9' : 
+                        imageMeta.aspectRatio === 4 / 3 ? '4:3' : 
+                        imageMeta.aspectRatio === 1 ? '1:1' : 'Free';
+
+      return (
+        <div key={imageMeta.id} className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:shadow-lg transition-shadow">
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* 이미지 정보 */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <h4 className="text-lg font-bold text-dark">{imageMeta.name}</h4>
+                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold">
+                  {ratioLabel}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600 mb-2">{imageMeta.description}</p>
+              <p className="text-xs text-gray-500">
+                {imageMeta.page} · {imageMeta.section}
+              </p>
+            </div>
+            
+            {/* 이미지 미리보기 및 관리 */}
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+              {imageUrl ? (
+                <div 
+                  onClick={() => setPreviewImageUrl(imageUrl)} 
+                  className="cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                  <div 
+                    className="border-2 border-gray-200 rounded-xl overflow-hidden bg-gray-100"
+                    style={{ 
+                      width: '120px', 
+                      aspectRatio: imageMeta.aspectRatio || '16/9' 
+                    }}
+                  >
+                    <img 
+                      src={imageUrl} 
+                      alt={imageMeta.name} 
+                      className="w-full h-full object-cover" 
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div 
+                  className="border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center bg-gray-50"
+                  style={{ 
+                    width: '120px', 
+                    aspectRatio: imageMeta.aspectRatio || '16/9' 
+                  }}
+                >
+                  <Icons.Image size={24} className="text-gray-400" />
+                </div>
+              )}
+              
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => handleImageUpload(imageMeta.field, imageMeta.aspectRatio)}
+                  className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
+                >
+                  <Icons.Camera size={16} />
+                  {imageUrl ? '변경' : '업로드'}
+                </button>
+                {imageUrl && (
+                  <button
+                    onClick={() => handleInputChange(imageMeta.field, '')}
+                    className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
+                  >
+                    <Icons.Trash2 size={16} />
+                    삭제
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="mb-6">
+          <h3 className="text-xl font-bold text-dark mb-2">이미지 관리</h3>
+          <p className="text-sm text-gray-600">
+            메인페이지와 소개페이지에 사용되는 모든 이미지를 한 곳에서 관리할 수 있습니다.
+            각 이미지는 표시되는 비율에 맞춰 크롭됩니다.
+          </p>
+        </div>
+
+        {/* 메인페이지 이미지 */}
+        <div>
+          <h4 className="text-lg font-bold text-dark mb-4 flex items-center gap-2">
+            <Icons.Home size={20} />
+            메인페이지 이미지
+          </h4>
+          <div className="space-y-3">
+            {mainPageImages.map(renderImageItem)}
+          </div>
+        </div>
+
+        {/* 소개페이지 이미지 */}
+        <div>
+          <h4 className="text-lg font-bold text-dark mb-4 flex items-center gap-2">
+            <Icons.Info size={20} />
+            소개페이지 이미지
+          </h4>
+          <div className="space-y-3">
+            {aboutPageImages.map(renderImageItem)}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderAboutSection = () => (
     <div className="space-y-6">
@@ -571,6 +699,8 @@ export const ContentManagement = () => {
 
   const renderSection = () => {
     switch (activeSection) {
+      case 'images':
+        return renderImagesSection();
       case 'hero':
         return renderHeroSection();
       case 'stats':
@@ -584,7 +714,7 @@ export const ContentManagement = () => {
       case 'about':
         return renderAboutSection();
       default:
-        return renderHeroSection();
+        return renderImagesSection();
     }
   };
 
@@ -662,7 +792,31 @@ export const ContentManagement = () => {
         aspectRatio={currentImageRatio}
         title="이미지 업로드 및 크롭"
         initialImage={currentImageUrl || null}
+        fixedRatio={true}
       />
+
+      {/* 이미지 미리보기 모달 */}
+      {previewImageUrl && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <div className="relative max-w-5xl w-full max-h-[90vh]">
+            <button
+              onClick={() => setPreviewImageUrl(null)}
+              className="absolute top-4 right-4 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center z-10 transition-colors"
+            >
+              <Icons.X size={24} className="text-gray-700" />
+            </button>
+            <img 
+              src={previewImageUrl} 
+              alt="미리보기" 
+              className="w-full h-full object-contain rounded-xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
