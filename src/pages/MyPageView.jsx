@@ -1,10 +1,14 @@
 import React, { useState, Fragment } from 'react';
 import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
+import { fileToBase64, resizeImage, uploadImageToImgBB } from '../utils/imageUtils';
 
-const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, pageTitles }) => {
+const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, pageTitles, onUpdatePost }) => {
     const [activeTab, setActiveTab] = useState('seminars');
     const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingPost, setEditingPost] = useState(null);
+    const [uploadingImages, setUploadingImages] = useState(false);
     const [companyIntro, setCompanyIntro] = useState({
         companyMainImage: user.companyMainImage || '',
         companyDescription: user.companyDescription || '',
@@ -207,14 +211,32 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                         <ul className="space-y-4">
                             {myPosts.length > 0 ? myPosts.map((p, idx) => (
                                 <li key={idx} className="flex justify-between items-center p-4 border rounded-xl hover:bg-gray-50">
-                                    <div>
+                                    <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded text-gray-600">{p.category}</span>
                                             <div className="font-bold text-dark">{p.title}</div>
                                         </div>
                                         <div className="text-xs text-gray-400">{p.date}</div>
                                     </div>
-                                    <span className={`text-xs px-2 py-1 rounded font-bold ${p.reply ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{p.reply ? '답변완료' : '답변대기'}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-xs px-2 py-1 rounded font-bold ${p.reply ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{p.reply ? '답변완료' : '답변대기'}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setEditingPost({
+                                                    ...p,
+                                                    storeImages: p.storeImages || [],
+                                                    itemImages: p.itemImages || [],
+                                                    reviewImages: p.reviewImages || p.images || []
+                                                });
+                                                setIsEditModalOpen(true);
+                                            }}
+                                            className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                                            title="수정"
+                                        >
+                                            <Icons.Edit size={16} />
+                                        </button>
+                                    </div>
                                 </li>
                             )) : <li className="text-center text-gray-400 py-10">작성한 게시글이 없습니다.</li>}
                         </ul>
@@ -412,6 +434,285 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleWithdrawClick(); }} className="text-xs text-red-400 hover:text-red-600 underline">회원 탈퇴하기</button>
                 </div>
             </div>
+
+            {/* 게시글 수정 모달 */}
+            {isEditModalOpen && editingPost ? (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
+                    <div className="bg-white rounded-3xl p-8 max-w-3xl w-full max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-2xl font-bold text-dark">게시글 수정</h3>
+                            <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} className="p-2 hover:bg-gray-100 rounded-lg">
+                                <Icons.X size={24} />
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
+                                <input 
+                                    type="text" 
+                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" 
+                                    value={editingPost.title || ''} 
+                                    onChange={(e) => setEditingPost({...editingPost, title: e.target.value})} 
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">내용 *</label>
+                                <textarea 
+                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-48 resize-none" 
+                                    value={editingPost.content || ''} 
+                                    onChange={(e) => setEditingPost({...editingPost, content: e.target.value})} 
+                                />
+                            </div>
+                            
+                            {/* 이미지 수정 섹션 */}
+                            {editingPost.category === '인력구인' && editingPost.storeImages !== undefined ? (
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">매장 사진 (최대 3장)</label>
+                                    <div className="flex gap-4 flex-wrap">
+                                        {(editingPost.storeImages || []).map((img, idx) => (
+                                            <div key={idx} className="relative">
+                                                <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => {
+                                                        const newImages = [...(editingPost.storeImages || [])];
+                                                        newImages.splice(idx, 1);
+                                                        setEditingPost({...editingPost, storeImages: newImages});
+                                                    }} 
+                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {(editingPost.storeImages || []).length < 3 ? (
+                                            <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                                {uploadingImages ? (
+                                                    <div className="text-center">
+                                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
+                                                        <span className="text-xs text-gray-500">업로드 중...</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-center">
+                                                        <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
+                                                        <span className="text-xs text-gray-500">사진 추가</span>
+                                                    </div>
+                                                )}
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    multiple 
+                                                    className="hidden" 
+                                                    onChange={async (e) => {
+                                                        const files = Array.from(e.target.files);
+                                                        if (files.length > 3) {
+                                                            alert('최대 3장까지만 선택할 수 있습니다.');
+                                                            return;
+                                                        }
+                                                        const currentImages = editingPost.storeImages || [];
+                                                        if (currentImages.length + files.length > 3) {
+                                                            alert(`최대 3장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
+                                                            return;
+                                                        }
+                                                        setUploadingImages(true);
+                                                        const uploadPromises = files.map(async (file) => {
+                                                            try {
+                                                                const base64Image = await fileToBase64(file);
+                                                                const resizedImage = await resizeImage(file, 1200, 800, 0.9);
+                                                                const result = await uploadImageToImgBB(resizedImage, file.name);
+                                                                return result.url;
+                                                            } catch (error) {
+                                                                alert(`${file.name} 업로드에 실패했습니다.`);
+                                                                return null;
+                                                            }
+                                                        });
+                                                        const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                        setEditingPost({...editingPost, storeImages: [...currentImages, ...uploadedUrls]});
+                                                        setUploadingImages(false);
+                                                        e.target.value = '';
+                                                    }} 
+                                                />
+                                            </label>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            ) : null}
+                            
+                            {editingPost.category === '중고거래' && editingPost.itemImages !== undefined ? (
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">제품 사진 (최대 3장)</label>
+                                    <div className="flex gap-4 flex-wrap">
+                                        {(editingPost.itemImages || []).map((img, idx) => (
+                                            <div key={idx} className="relative">
+                                                <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => {
+                                                        const newImages = [...(editingPost.itemImages || [])];
+                                                        newImages.splice(idx, 1);
+                                                        setEditingPost({...editingPost, itemImages: newImages});
+                                                    }} 
+                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {(editingPost.itemImages || []).length < 3 ? (
+                                            <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                                {uploadingImages ? (
+                                                    <div className="text-center">
+                                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
+                                                        <span className="text-xs text-gray-500">업로드 중...</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-center">
+                                                        <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
+                                                        <span className="text-xs text-gray-500">사진 추가</span>
+                                                    </div>
+                                                )}
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    multiple 
+                                                    className="hidden" 
+                                                    onChange={async (e) => {
+                                                        const files = Array.from(e.target.files);
+                                                        if (files.length > 3) {
+                                                            alert('최대 3장까지만 선택할 수 있습니다.');
+                                                            return;
+                                                        }
+                                                        const currentImages = editingPost.itemImages || [];
+                                                        if (currentImages.length + files.length > 3) {
+                                                            alert(`최대 3장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
+                                                            return;
+                                                        }
+                                                        setUploadingImages(true);
+                                                        const uploadPromises = files.map(async (file) => {
+                                                            try {
+                                                                const base64Image = await fileToBase64(file);
+                                                                const resizedImage = await resizeImage(file, 1200, 800, 0.9);
+                                                                const result = await uploadImageToImgBB(resizedImage, file.name);
+                                                                return result.url;
+                                                            } catch (error) {
+                                                                alert(`${file.name} 업로드에 실패했습니다.`);
+                                                                return null;
+                                                            }
+                                                        });
+                                                        const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                        setEditingPost({...editingPost, itemImages: [...currentImages, ...uploadedUrls]});
+                                                        setUploadingImages(false);
+                                                        e.target.value = '';
+                                                    }} 
+                                                />
+                                            </label>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            ) : null}
+                            
+                            {editingPost.category === '프로그램 후기' && (editingPost.reviewImages !== undefined || editingPost.images !== undefined) ? (
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">후기 사진 (최대 3장)</label>
+                                    <div className="flex gap-4 flex-wrap">
+                                        {(editingPost.reviewImages || editingPost.images || []).map((img, idx) => (
+                                            <div key={idx} className="relative">
+                                                <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => {
+                                                        const currentImages = editingPost.reviewImages || editingPost.images || [];
+                                                        const newImages = [...currentImages];
+                                                        newImages.splice(idx, 1);
+                                                        setEditingPost({...editingPost, reviewImages: newImages, images: newImages});
+                                                    }} 
+                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {((editingPost.reviewImages || editingPost.images || []).length < 3) ? (
+                                            <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                                {uploadingImages ? (
+                                                    <div className="text-center">
+                                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
+                                                        <span className="text-xs text-gray-500">업로드 중...</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-center">
+                                                        <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
+                                                        <span className="text-xs text-gray-500">사진 추가</span>
+                                                    </div>
+                                                )}
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    multiple 
+                                                    className="hidden" 
+                                                    onChange={async (e) => {
+                                                        const files = Array.from(e.target.files);
+                                                        if (files.length > 3) {
+                                                            alert('최대 3장까지만 선택할 수 있습니다.');
+                                                            return;
+                                                        }
+                                                        const currentImages = editingPost.reviewImages || editingPost.images || [];
+                                                        if (currentImages.length + files.length > 3) {
+                                                            alert(`최대 3장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
+                                                            return;
+                                                        }
+                                                        setUploadingImages(true);
+                                                        const uploadPromises = files.map(async (file) => {
+                                                            try {
+                                                                const base64Image = await fileToBase64(file);
+                                                                const resizedImage = await resizeImage(file, 1200, 800, 0.9);
+                                                                const result = await uploadImageToImgBB(resizedImage, file.name);
+                                                                return result.url;
+                                                            } catch (error) {
+                                                                alert(`${file.name} 업로드에 실패했습니다.`);
+                                                                return null;
+                                                            }
+                                                        });
+                                                        const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                        setEditingPost({...editingPost, reviewImages: [...currentImages, ...uploadedUrls], images: [...currentImages, ...uploadedUrls]});
+                                                        setUploadingImages(false);
+                                                        e.target.value = '';
+                                                    }} 
+                                                />
+                                            </label>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            ) : null}
+                            
+                            <div className="flex gap-4 mt-8">
+                                <button 
+                                    type="button" 
+                                    onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} 
+                                    className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200"
+                                >
+                                    취소
+                                </button>
+                                <button 
+                                    type="button" 
+                                    onClick={async () => {
+                                        if (onUpdatePost) {
+                                            await onUpdatePost(editingPost.id, editingPost);
+                                            setIsEditModalOpen(false);
+                                            setEditingPost(null);
+                                        } else {
+                                            alert('게시글 수정 기능이 준비되지 않았습니다.');
+                                        }
+                                    }} 
+                                    className="flex-1 py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700"
+                                >
+                                    수정
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 };

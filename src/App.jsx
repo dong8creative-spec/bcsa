@@ -7760,7 +7760,7 @@ END:VCALENDAR`;
     const renderView = () => {
         try {
             if (currentView === 'myPage') {
-                const result = <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} pageTitles={pageTitles} />;
+                const result = <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} />;
                 return result || null;
             }
         if (currentView === 'allMembers' && !menuEnabled['부청사 회원']) {
