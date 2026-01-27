@@ -227,7 +227,32 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                     ...p,
                                                     storeImages: p.storeImages || [],
                                                     itemImages: p.itemImages || [],
-                                                    reviewImages: p.reviewImages || p.images || []
+                                                    reviewImages: p.reviewImages || p.images || [],
+                                                    // 카테고리별 필드도 함께 초기화
+                                                    ...(p.category === '인력구인' && {
+                                                        jobDetails: p.jobDetails || '',
+                                                        recruitCount: p.recruitCount || '',
+                                                        workHours: p.workHours || '',
+                                                        salary: p.salary || '',
+                                                        preferred: p.preferred || '',
+                                                        deadline: p.deadline || '',
+                                                        storeLocation: p.storeLocation || '',
+                                                        storePhone: p.storePhone || ''
+                                                    }),
+                                                    ...(p.category === '중고거래' && {
+                                                        itemName: p.itemName || '',
+                                                        itemCategory: p.itemCategory || '',
+                                                        price: p.price || '',
+                                                        itemCondition: p.itemCondition || '',
+                                                        tradeMethod: p.tradeMethod || '',
+                                                        tradeLocation: p.tradeLocation || '',
+                                                        businessNumber: p.businessNumber || ''
+                                                    }),
+                                                    ...(p.category === '프로그램 후기' && {
+                                                        rating: p.rating || 0,
+                                                        seminarId: p.seminarId || null,
+                                                        seminarTitle: p.seminarTitle || null
+                                                    })
                                                 });
                                                 setIsEditModalOpen(true);
                                             }}

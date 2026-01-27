@@ -512,7 +512,12 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        setEditingPost(post);
+                                                        setEditingPost({
+                                                            ...post,
+                                                            storeImages: post.storeImages || [],
+                                                            itemImages: post.itemImages || [],
+                                                            reviewImages: post.reviewImages || post.images || []
+                                                        });
                                                         setIsEditModalOpen(true);
                                                     }}
                                                     className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
@@ -2921,27 +2926,57 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
 
             let data = await response.json();
 
-            // 프록시 서버 응답 형식 처리 (Firebase Functions, 로컬 서버 모두 동일한 형식)
-            if (data.success && data.data) {
-                let items = data.data.items || [];
-                
+            // 응답 정규화 (Functions 응답, 로컬 프록시, 직접 API 응답 모두 지원)
+            const normalizeBidResponse = (payload) => {
+                if (payload?.success && payload?.data) {
+                    return {
+                        items: payload.data.items || [],
+                        totalCount: payload.data.totalCount || 0,
+                        error: payload.error || null
+                    };
+                }
+                if (Array.isArray(payload?.items)) {
+                    return {
+                        items: payload.items,
+                        totalCount: payload.totalCount || payload.items.length || 0,
+                        error: payload.error || null
+                    };
+                }
+                if (payload?.response?.body) {
+                    const body = payload.response.body;
+                    const rawItems = body.items || [];
+                    const items = Array.isArray(rawItems) ? rawItems : (rawItems.item ? (Array.isArray(rawItems.item) ? rawItems.item : [rawItems.item]) : []);
+                    return {
+                        items,
+                        totalCount: body.totalCount || items.length || 0,
+                        error: null
+                    };
+                }
+                return { items: [], totalCount: 0, error: payload?.error || '검색 결과를 불러오는데 실패했습니다.' };
+            };
+
+            const normalized = normalizeBidResponse(data);
+
+            if (!normalized.error) {
+                let items = normalized.items || [];
+
                 // 검색 결과를 항상 등록일 기준 내림차순(최신순)으로 정렬
                 items.sort((a, b) => {
                     const aDate = parseDate(a.bidNtceDt) || new Date(0);
                     const bDate = parseDate(b.bidNtceDt) || new Date(0);
                     return bDate - aDate; // 내림차순 (최신순)
                 });
-                
+
                 setBidList(items);
-                setTotalCount(data.data.totalCount || 0);
+                setTotalCount(normalized.totalCount || 0);
                 setCurrentPage(page);
                 setError(null);
-                
+
                 // 검색 후 정렬을 기본값(등록일 내림차순)으로 설정
                 setSortField('등록일');
                 setSortOrder('desc');
             } else {
-                throw new Error(data.error || '검색 결과를 불러오는데 실패했습니다.');
+                throw new Error(normalized.error);
             }
 
         } catch (err) {
@@ -7610,21 +7645,26 @@ END:VCALENDAR`;
         if (firebaseService && firebaseService.updatePost) {
             try {
                 await firebaseService.updatePost(id, updatedPost);
-                setCommunityPosts(communityPosts.map(p => p.id === id ? { ...p, ...updatedPost } : p));
-                setMyPosts(myPosts.map(p => p.id === id ? { ...p, ...updatedPost } : p));
+                // 상태 업데이트: 기존 데이터와 병합하여 업데이트
+                const updatedPostData = { ...updatedPost };
+                setCommunityPosts(communityPosts.map(p => p.id === id ? { ...p, ...updatedPostData } : p));
+                setMyPosts(myPosts.map(p => p.id === id ? { ...p, ...updatedPostData } : p));
                 alert('게시글이 수정되었습니다.');
+                // 모달 닫기 (CommunityView에서 사용, MyPageView는 자체적으로 처리)
                 setIsEditModalOpen(false);
                 setEditingPost(null);
             } catch (error) {
-                
+                console.error('게시글 수정 오류:', error);
                 const errorMessage = translateFirebaseError(error);
                 alert(`게시글 수정에 실패했습니다.\n${errorMessage}`);
             }
         } else {
             // Firebase service not available, update locally
-            setCommunityPosts(communityPosts.map(p => p.id === id ? { ...p, ...updatedPost } : p));
-            setMyPosts(myPosts.map(p => p.id === id ? { ...p, ...updatedPost } : p));
+            const updatedPostData = { ...updatedPost };
+            setCommunityPosts(communityPosts.map(p => p.id === id ? { ...p, ...updatedPostData } : p));
+            setMyPosts(myPosts.map(p => p.id === id ? { ...p, ...updatedPostData } : p));
             alert('게시글이 수정되었습니다.');
+            // 모달 닫기 (CommunityView에서 사용, MyPageView는 자체적으로 처리)
             setIsEditModalOpen(false);
             setEditingPost(null);
         }

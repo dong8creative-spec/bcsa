@@ -288,9 +288,20 @@ export const firebaseService = {
 
   async updatePost(postId, postData) {
     try {
+      // undefined 및 null 필드 제거 및 데이터 정제
+      const cleanedData = Object.keys(postData).reduce((acc, key) => {
+        const value = postData[key];
+        // undefined, null이 아니고, 빈 배열이 아닌 경우만 포함
+        if (value !== undefined && value !== null) {
+          // 빈 배열도 유효한 값으로 처리 (이미지 삭제 시 빈 배열이 될 수 있음)
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+      
       const docRef = doc(db, 'posts', postId);
       await updateDoc(docRef, {
-        ...postData,
+        ...cleanedData,
         updatedAt: serverTimestamp()
       });
     } catch (error) {

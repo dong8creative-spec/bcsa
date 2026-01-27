@@ -58,6 +58,7 @@ const CalendarSection = ({ seminars, onSelectSeminar, currentUser, onWriteReview
             const dayOfWeek = date.getDay();
             const isToday = date.toDateString() === today.toDateString();
             const hasEvents = events.length > 0;
+            const isPastDate = date < today;
             let textColor = 'text-gray-700';
             if (dayOfWeek === 0) textColor = 'text-red-600';
             if (dayOfWeek === 6) textColor = 'text-blue-600';
@@ -66,21 +67,21 @@ const CalendarSection = ({ seminars, onSelectSeminar, currentUser, onWriteReview
                 <div 
                     key={index} 
                     onClick={() => hasEvents && setSelectedDate(date)} 
-                    className={`h-[120px] border-r border-b border-[#0045a5] p-2 relative transition-colors bg-white ${hasEvents ? 'cursor-pointer hover:bg-brand/5' : ''}`}
+                    className={`h-[120px] border-r border-b border-[#0045a5] p-2 relative transition-colors ${isPastDate ? 'bg-gray-50' : 'bg-white'} ${hasEvents ? 'cursor-pointer hover:bg-brand/5' : ''}`}
                 >
                     {hasEvents ? (
-                        <div className="absolute inset-0 bg-brand/5 p-2 flex flex-col justify-between h-full w-full">
+                        <div className={`absolute inset-0 p-2 flex flex-col justify-between h-full w-full ${isPastDate ? 'bg-gray-100' : 'bg-brand/5'}`}>
                             <div className="flex justify-between items-start">
-                                <span className={`text-sm font-bold ${isToday ? 'bg-brand text-white w-6 h-6 rounded-full flex items-center justify-center' : textColor}`}>
+                                <span className={`text-sm font-bold ${isToday ? 'bg-brand text-white w-6 h-6 rounded-full flex items-center justify-center' : textColor} ${isPastDate ? 'opacity-70' : ''}`}>
                                     {date.getDate()}
                                 </span>
-                                <span className="text-[10px] font-bold text-brand bg-white px-1.5 py-0.5 rounded-full border border-brand/20">
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${isPastDate ? 'text-gray-500 bg-white border-gray-200' : 'text-brand bg-white border-brand/20'}`}>
                                     +{events.length}
                                 </span>
                             </div>
                             <div className="flex flex-col gap-1 mt-1 flex-1 justify-end">
                                 {events.slice(0, 2).map((ev, idx) => (
-                                    <div key={idx} className="text-[10px] px-1.5 py-1 rounded truncate font-bold bg-brand text-white shadow-sm w-full text-center">
+                                    <div key={idx} className={`text-[10px] px-1.5 py-1 rounded truncate font-bold shadow-sm w-full text-center ${isPastDate ? 'bg-gray-500 text-white' : 'bg-brand text-white'}`}>
                                         {ev.title}
                                     </div>
                                 ))}
@@ -88,7 +89,7 @@ const CalendarSection = ({ seminars, onSelectSeminar, currentUser, onWriteReview
                         </div>
                     ) : (
                         <div className="p-2 h-full flex flex-col">
-                            <span className={`text-sm font-bold ${isToday ? 'bg-brand text-white w-6 h-6 rounded-full flex items-center justify-center' : textColor}`}>
+                            <span className={`text-sm font-bold ${isToday ? 'bg-brand text-white w-6 h-6 rounded-full flex items-center justify-center' : textColor} ${isPastDate ? 'opacity-70' : ''}`}>
                                 {date.getDate()}
                             </span>
                         </div>

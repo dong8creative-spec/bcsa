@@ -430,6 +430,14 @@ app.get('/api/bid-search', async (req, res) => {
       });
     }
 
+    // 모든 API가 실패하고 결과가 없는 경우 명확한 에러 반환
+    if (filteredItems.length === 0 && errors.length === apiPaths.length) {
+      return res.status(502).json({
+        success: false,
+        error: `조달청 API 호출 실패: ${errors.join(' | ')}`
+      });
+    }
+
     // 페이지네이션 적용
     const startIndex = (pageNo - 1) * numOfRows;
     const endIndex = startIndex + numOfRows;
