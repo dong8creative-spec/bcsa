@@ -11,29 +11,33 @@ const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d
  */
 export const uploadImageToImgBB = async (base64Image, fileName) => {
     try {
-        // base64 데이터 추출
+        // base64 데이터 추출 (data:image/jpeg;base64, 부분 제거)
         const base64Data = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
         
-        // Blob으로 변환하여 FormData에 추가
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'image/jpeg' });
-        
+        // ImgBB API는 base64 문자열을 직접 받을 수 있음
         const formData = new FormData();
         formData.append('key', IMGBB_API_KEY);
-        formData.append('image', blob, fileName || 'image.jpg');
+        formData.append('image', base64Data);
 
         const response = await fetch('https://api.imgbb.com/1/upload', {
             method: 'POST',
             body: formData
         });
 
+        // 응답 상태 확인
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('ImgBB API 응답 오류:', response.status, errorText);
+            throw new Error(`이미지 업로드 실패 (HTTP ${response.status})`);
+        }
+
         const data = await response.json();
         
+        // 응답 데이터 확인
+        if (!data) {
+            throw new Error('서버 응답이 비어있습니다.');
+        }
+
         if (data.success && data.data && data.data.url) {
             return {
                 success: true,
@@ -42,11 +46,25 @@ export const uploadImageToImgBB = async (base64Image, fileName) => {
                 id: data.data.id
             };
         } else {
-            throw new Error(data.error?.message || data.error || '이미지 업로드 실패');
+            // 에러 메시지 추출
+            const errorMessage = data.error?.message || 
+                                data.error || 
+                                (typeof data.error === 'string' ? data.error : null) ||
+                                '이미지 업로드 실패';
+            console.error('ImgBB API 에러 응답:', data);
+            throw new Error(errorMessage);
         }
     } catch (error) {
         console.error('이미지 업로드 오류:', error);
-        throw error;
+        // 네트워크 오류인 경우
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+            throw new Error('네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.');
+        }
+        // 이미 에러 메시지가 있는 경우 그대로 전달
+        if (error.message) {
+            throw error;
+        }
+        throw new Error('이미지 업로드 중 알 수 없는 오류가 발생했습니다.');
     }
 };
 
@@ -63,12 +81,17 @@ export const fileToBase64 = (file) => {
 };
 
 /**
- * 이미지 리사이징
+ * 이미지 리사이징 (base64 문자열 또는 File 객체 모두 지원)
  */
-export const resizeImage = (file, maxWidth, maxHeight, quality = 0.9) => {
+export const resizeImage = (input, maxWidth, maxHeight = null, quality = 0.9) => {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
+        // maxHeight가 없으면 maxWidth와 동일하게 설정
+        const maxH = maxHeight || maxWidth;
+        
+        // input이 base64 문자열인지 File 객체인지 확인
+        const isBase64 = typeof input === 'string' && (input.startsWith('data:') || !input.includes('/'));
+        
+        const processImage = (imageSrc, mimeType = 'image/jpeg') => {
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
@@ -76,8 +99,8 @@ export const resizeImage = (file, maxWidth, maxHeight, quality = 0.9) => {
                 let height = img.height;
                 
                 // 비율 유지하면서 리사이징
-                if (width > maxWidth || height > maxHeight) {
-                    const ratio = Math.min(maxWidth / width, maxHeight / height);
+                if (width > maxWidth || height > maxH) {
+                    const ratio = Math.min(maxWidth / width, maxH / height);
                     width = width * ratio;
                     height = height * ratio;
                 }
@@ -96,13 +119,27 @@ export const resizeImage = (file, maxWidth, maxHeight, quality = 0.9) => {
                     } else {
                         reject(new Error('이미지 리사이징 실패'));
                     }
-                }, file.type || 'image/png', quality);
+                }, mimeType, quality);
             };
             img.onerror = reject;
-            img.src = e.target.result;
+            img.src = imageSrc;
         };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+        
+        if (isBase64) {
+            // base64 문자열인 경우
+            const mimeType = input.startsWith('data:') 
+                ? input.split(',')[0].split(':')[1].split(';')[0] 
+                : 'image/jpeg';
+            processImage(input, mimeType);
+        } else {
+            // File 객체인 경우
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                processImage(e.target.result, input.type || 'image/jpeg');
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(input);
+        }
     });
 };
 
