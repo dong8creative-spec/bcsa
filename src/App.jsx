@@ -2720,10 +2720,10 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                 
                 // 2. 로컬 개발 환경
                 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                    // Firebase Emulator 확인 (포트 5001 또는 5173에서 실행 중일 때)
-                    // Emulator는 별도 포트에서 실행되므로, Vite 개발 서버(3000, 5173)에서도 Emulator 사용 가능
-                    // 로컬 개발 시 Emulator 사용 (포트 5001)
-                    return 'http://localhost:5001/bcsa-b190f/asia-northeast3';
+                    // 로컬 개발 시 프로덕션 Firebase Functions URL 사용 (Emulator 대신)
+                    // Emulator를 사용하려면 'npm run emulators' 실행 후 아래 주석 해제
+                    // return 'http://localhost:5001/bcsa-b190f/asia-northeast3';
+                    return 'https://apibid-oytjv32jna-du.a.run.app';
                 }
                 
                 // 3. 프로덕션 환경 - v2 Cloud Run URL 사용
@@ -2786,11 +2786,12 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                 throw new Error('지원하지 않는 프록시 서버입니다.');
             }
             
-            // 프록시 서버 상태 확인 (로컬 개발 환경만)
-            if (isLocalServer) {
+            // 프록시 서버 상태 확인 (로컬 개발 환경에서 Emulator 사용 시만)
+            // 프로덕션 URL 사용 시에는 체크하지 않음
+            if (isLocalServer && cleanProxyUrl.includes('localhost:5001')) {
                 const isServerRunning = await checkProxyServer(baseUrl);
                 if (!isServerRunning) {
-                    throw new Error(`프록시 서버가 실행되지 않았습니다.\n\n로컬 개발 서버를 시작하려면:\n1. 터미널에서 "npm run server" 실행\n2. 서버가 포트 3001에서 실행되는지 확인`);
+                    throw new Error(`Firebase Emulator가 실행되지 않았습니다.\n\n로컬 Emulator를 사용하려면:\n1. 터미널에서 "npm run emulators" 실행\n2. 또는 프로덕션 URL을 사용합니다 (현재 자동 사용 중)`);
                 }
             }
 
@@ -7914,13 +7915,10 @@ END:VCALENDAR`;
             setCurrentView('home');
             return null;
         }
-        if (currentView === 'bidSearch' && !currentUser) {
-            alert('로그인이 필요한 서비스입니다.');
-            setShowLoginModal(true);
-                setCurrentView('home');
-                return null;
-            }
-        if (currentView === 'bidSearch') return <BidSearchView onBack={() => setCurrentView('home')} currentUser={currentUser} pageTitles={pageTitles} />;
+        if (currentView === 'bidSearch') {
+            // 로그인 없이도 검색 가능하도록 수정 (로그인은 북마크 기능에만 필요)
+            return <BidSearchView onBack={() => setCurrentView('home')} currentUser={currentUser} pageTitles={pageTitles} />;
+        }
         if (currentView === 'donation' && !menuEnabled['후원']) {
             alert('준비중인 서비스입니다.');
             setCurrentView('home');
