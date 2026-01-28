@@ -3,7 +3,7 @@ import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 import CalendarSection from '../components/CalendarSection';
 
-const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuNames = {}, onAddProgram, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [] }) => {
+const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [] }) => {
     // props 안전성 검증
     const safeSeminars = Array.isArray(seminars) ? seminars : [];
     const safeApplications = Array.isArray(applications) ? applications : [];
@@ -17,7 +17,6 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
     const [applySeminar, setApplySeminar] = useState(null);
     const [applicationData, setApplicationData] = useState({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     
     const ITEMS_PER_PAGE = 3;
@@ -26,24 +25,6 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
     useEffect(() => {
         setCurrentImageIndex(0);
     }, [selectedSeminar?.id]);
-    
-    const [addFormData, setAddFormData] = useState({
-        title: '',
-        desc: '',
-        description: '',
-        date: '',
-        location: '',
-        images: [], // 이미지 배열 (최대 5장)
-        img: '', // 호환성을 위해 유지 (기존 데이터 대응)
-        category: '',
-        status: '모집중',
-        price: 0,
-        requiresPayment: false,
-        maxParticipants: 0,
-        currentParticipants: 0,
-        deadline: ''
-    });
-    const [uploadingImage, setUploadingImage] = useState(false);
     
     const categories = ['전체', ...new Set(safeSeminars.map(s => s.category).filter(Boolean))];
     const statuses = ['전체', '모집중', '마감임박', '후기작성가능', '종료'];
@@ -199,15 +180,6 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                         <p className="text-gray-500 text-sm">비즈니스 세미나 및 네트워킹</p>
                                 </div>
                     <div className="flex items-center gap-3">
-                        {currentUser && onAddProgram && (
-                            <button 
-                                type="button" 
-                                onClick={() => setIsAddModalOpen(true)} 
-                                className="flex items-center gap-2 px-4 py-2 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
-                            >
-                                <Icons.Plus size={20} /> 프로그램 등록
-                            </button>
-                        )}
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
                             <Icons.ArrowLeft size={20} /> 메인으로
                         </button>

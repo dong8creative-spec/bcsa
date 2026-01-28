@@ -63,14 +63,46 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
     // 주 범위 표시 문자열
     const weekRangeText = `${formatDate(weekDays[0])} ~ ${formatDate(weekDays[6])}`;
     
+    // 날짜 문자열을 표준 형식(YYYY.MM.DD)으로 변환하는 함수
+    const normalizeDateString = (dateStr) => {
+        if (!dateStr) return null;
+        
+        // 시간 부분 제거 (예: "2024.01.15 14:00" -> "2024.01.15")
+        let dateOnly = dateStr.trim();
+        if (dateOnly.includes(' ')) {
+            dateOnly = dateOnly.split(' ')[0];
+        }
+        if (dateOnly.includes('T')) {
+            dateOnly = dateOnly.split('T')[0];
+        }
+        
+        // 다양한 구분자 처리 (., -, /)
+        dateOnly = dateOnly.replace(/-/g, '.').replace(/\//g, '.');
+        
+        // 날짜 파싱
+        const parts = dateOnly.split('.');
+        if (parts.length < 3) {
+            // 다른 형식 시도 (예: "20240115")
+            if (dateOnly.length === 8 && /^\d+$/.test(dateOnly)) {
+                return `${dateOnly.substring(0, 4)}.${dateOnly.substring(4, 6)}.${dateOnly.substring(6, 8)}`;
+            }
+            return null;
+        }
+        
+        const year = parts[0];
+        const month = parts[1].padStart(2, '0');
+        const day = parts[2].padStart(2, '0');
+        
+        return `${year}.${month}.${day}`;
+    };
+    
     // 특정 날짜의 이벤트 가져오기 (시간대별 정렬)
     const getEventsForDate = (date) => {
         const dateStr = formatDate(date);
         const events = safeSeminars.filter(s => {
-            const parts = s.date.replace(/-/g, '.').split('.'); 
-            if (parts.length < 3) return false;
-            const eventDateStr = `${parts[0]}.${parts[1].padStart(2, '0')}.${parts[2].padStart(2, '0')}`;
-            return eventDateStr === dateStr;
+            if (!s.date) return false;
+            const normalizedDate = normalizeDateString(s.date);
+            return normalizedDate === dateStr;
         });
         
         // 시간대별로 정렬
@@ -83,6 +115,23 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
         });
     };
     
+    // 날짜 문자열을 Date 객체로 변환하는 함수
+    const parseDateString = (dateStr) => {
+        if (!dateStr) return null;
+        const normalized = normalizeDateString(dateStr);
+        if (!normalized) return null;
+        
+        // "YYYY.MM.DD" 형식을 Date 객체로 변환
+        const parts = normalized.split('.');
+        if (parts.length !== 3) return null;
+        
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // 월은 0부터 시작
+        const day = parseInt(parts[2], 10);
+        
+        return new Date(year, month, day);
+    };
+    
     // 통계 계산 (이번 주)
     const weekStats = useMemo(() => {
         const today = new Date();
@@ -91,12 +140,14 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
         const weekEvents = weekDays.flatMap(date => getEventsForDate(date));
         const totalEvents = weekEvents.length;
         const ongoingEvents = weekEvents.filter(ev => {
-            const eventDate = new Date(ev.date.replace(/\./g, '-'));
+            const eventDate = parseDateString(ev.date);
+            if (!eventDate) return false;
             eventDate.setHours(0, 0, 0, 0);
             return eventDate >= today && (ev.status === '모집중' || ev.status === '마감임박');
         }).length;
         const endedEvents = weekEvents.filter(ev => {
-            const eventDate = new Date(ev.date.replace(/\./g, '-'));
+            const eventDate = parseDateString(ev.date);
+            if (!eventDate) return false;
             eventDate.setHours(0, 0, 0, 0);
             return eventDate < today || ev.status === '종료';
         }).length;

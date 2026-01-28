@@ -341,6 +341,21 @@ export const firebaseService = {
     }
   },
 
+  async getApplicationsByUserId(userId) {
+    try {
+      const q = query(
+        collection(db, 'applications'), 
+        where('userId', '==', userId),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+      console.error('Error getting applications by userId:', error);
+      throw error;
+    }
+  },
+
   async getApplication(applicationId) {
     try {
       const docRef = doc(db, 'applications', applicationId);
@@ -845,6 +860,76 @@ export const firebaseService = {
       } else {
         callback({});
       }
+    });
+  },
+
+  // ==========================================
+  // Bookmarks Collection (users/{userId}/bookmarks/)
+  // ==========================================
+  async getBookmarks(userId) {
+    try {
+      const bookmarksRef = collection(db, 'users', userId, 'bookmarks');
+      const snapshot = await getDocs(bookmarksRef);
+      return snapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        bidNtceNo: doc.data().bidNtceNo,
+        createdAt: doc.data().createdAt 
+      }));
+    } catch (error) {
+      console.error('Error getting bookmarks:', error);
+      throw error;
+    }
+  },
+
+  async addBookmark(userId, bidNtceNo) {
+    try {
+      // 중복 체크
+      const bookmarksRef = collection(db, 'users', userId, 'bookmarks');
+      const bookmarkQuery = query(bookmarksRef, where('bidNtceNo', '==', bidNtceNo));
+      const snapshot = await getDocs(bookmarkQuery);
+      
+      if (!snapshot.empty) {
+        throw new Error('이미 즐겨찾기에 추가된 공고입니다.');
+      }
+      
+      const docRef = await addDoc(bookmarksRef, {
+        bidNtceNo: bidNtceNo,
+        createdAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error adding bookmark:', error);
+      throw error;
+    }
+  },
+
+  async removeBookmark(userId, bidNtceNo) {
+    try {
+      const bookmarksRef = collection(db, 'users', userId, 'bookmarks');
+      const bookmarkQuery = query(bookmarksRef, where('bidNtceNo', '==', bidNtceNo));
+      const snapshot = await getDocs(bookmarkQuery);
+      
+      if (snapshot.empty) {
+        throw new Error('즐겨찾기에 없는 공고입니다.');
+      }
+      
+      const docId = snapshot.docs[0].id;
+      await deleteDoc(doc(db, 'users', userId, 'bookmarks', docId));
+    } catch (error) {
+      console.error('Error removing bookmark:', error);
+      throw error;
+    }
+  },
+
+  subscribeBookmarks(userId, callback) {
+    const bookmarksRef = collection(db, 'users', userId, 'bookmarks');
+    return onSnapshot(bookmarksRef, (snapshot) => {
+      const bookmarks = snapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        bidNtceNo: doc.data().bidNtceNo,
+        createdAt: doc.data().createdAt 
+      }));
+      callback(bookmarks);
     });
   }
 };

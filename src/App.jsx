@@ -115,10 +115,23 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
         }
     }, [reviewSeminar]);
     
-    // 신청한 프로그램 목록 가져오기
-    const getAppliedSeminars = () => {
+    // 신청한 프로그램 목록 가져오기 (Firestore 우선, localStorage 폴백)
+    const getAppliedSeminars = async () => {
         if (!currentUser || !seminars) return [];
         try {
+            // Firestore에서 먼저 시도
+            if (firebaseService && firebaseService.getApplicationsByUserId) {
+                try {
+                    const applications = await firebaseService.getApplicationsByUserId(currentUser.id);
+                    const appliedSeminarIds = applications.map(app => app.seminarId);
+                    return seminars.filter(seminar => appliedSeminarIds.includes(seminar.id));
+                } catch (firestoreError) {
+                    console.error('Firestore에서 신청 목록 가져오기 실패:', firestoreError);
+                    // Firestore 실패 시 localStorage 폴백
+                }
+            }
+            
+            // localStorage 폴백
             if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
                 const applications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
                 const appliedSeminarIds = applications
@@ -128,12 +141,13 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
             }
             return [];
         } catch (error) {
-            
+            console.error('신청한 프로그램 목록 가져오기 실패:', error);
             return [];
         }
     };
     
-    const appliedSeminars = getAppliedSeminars();
+    // mySeminars 상태를 사용 (비동기 로딩은 useEffect에서 처리)
+    const appliedSeminars = mySeminars;
     
     // 관리자 여부 확인 (localStorage에서 adminAuthenticated 확인)
     const isCurrentUserAdmin = typeof localStorage !== 'undefined' && localStorage.getItem('adminAuthenticated') === 'true';
@@ -3735,6 +3749,8 @@ const App = () => {
     const [mySeminars, setMySeminars] = useState([]);
     const [myPosts, setMyPosts] = useState([]);
     const [reviewSeminar, setReviewSeminar] = useState(null); // 후기 작성할 프로그램
+    const [programAlerts, setProgramAlerts] = useState([]); // 프로그램 알람 목록
+    const [showProgramAlertModal, setShowProgramAlertModal] = useState(false); // 알람 모달 표시 여부
     const [searchKeyword, setSearchKeyword] = useState('');
     const [searchCategory, setSearchCategory] = useState('');
     const [searchStatus, setSearchStatus] = useState('');
@@ -4108,6 +4124,40 @@ const App = () => {
                         if (userDoc) {
                             setCurrentUser(userDoc);
                             setMyPosts(communityPosts.filter(p => p.author === userDoc.name));
+                            
+                            // Firestore에서 신청한 프로그램 목록 가져오기
+                            try {
+                                if (firebaseService && firebaseService.getApplicationsByUserId) {
+                                    const applications = await firebaseService.getApplicationsByUserId(userDoc.id);
+                                    // applications에서 seminarId를 추출하여 해당 seminar 찾기
+                                    const appliedSeminarIds = applications.map(app => app.seminarId);
+                                    const appliedSeminars = seminars.filter(seminar => 
+                                        appliedSeminarIds.includes(seminar.id)
+                                    );
+                                    setMySeminars(appliedSeminars);
+                                    
+                                    // 프로그램 알람 체크 (시작 3일 전)
+                                    checkProgramAlerts(appliedSeminars, userDoc.id);
+                                }
+                            } catch (error) {
+                                console.error('신청한 프로그램 목록 로드 실패:', error);
+                                // 실패 시 localStorage에서 가져오기 (폴백)
+                                try {
+                                    const localApplications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
+                                    const localAppliedSeminarIds = localApplications
+                                        .filter(app => app.userId === userDoc.id)
+                                        .map(app => app.seminarId);
+                                    const localAppliedSeminars = seminars.filter(seminar => 
+                                        localAppliedSeminarIds.includes(seminar.id)
+                                    );
+                                    setMySeminars(localAppliedSeminars);
+                                    
+                                    // 프로그램 알람 체크 (시작 3일 전)
+                                    checkProgramAlerts(localAppliedSeminars, userDoc.id);
+                                } catch (localError) {
+                                    console.error('localStorage에서 프로그램 목록 로드 실패:', localError);
+                                }
+                            }
                         }
                     } catch (error) {
                     }
@@ -4115,12 +4165,112 @@ const App = () => {
                     // 사용자가 로그아웃했으면 상태 초기화
                     setCurrentUser(null);
                     setMyPosts([]);
+                    setMySeminars([]);
+                    setProgramAlerts([]);
+                    setShowProgramAlertModal(false);
                 }
             });
             
             return () => unsubscribe();
         }
-    }, [communityPosts]);
+    }, [communityPosts, seminars]);
+    
+    // 프로그램 알람 체크 함수 (시작 3일 전)
+    const checkProgramAlerts = (appliedSeminars, userId) => {
+        if (!appliedSeminars || appliedSeminars.length === 0) return;
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // 이미 확인한 알람 목록 가져오기
+        const checkedAlertsKey = `program_alerts_checked_${userId}`;
+        const checkedAlerts = JSON.parse(localStorage.getItem(checkedAlertsKey) || '[]');
+        
+        // 날짜 문자열을 Date 객체로 변환하는 함수
+        const parseDateString = (dateStr) => {
+            if (!dateStr) return null;
+            
+            // 시간 부분 제거
+            let dateOnly = dateStr.trim();
+            if (dateOnly.includes(' ')) {
+                dateOnly = dateOnly.split(' ')[0];
+            }
+            if (dateOnly.includes('T')) {
+                dateOnly = dateOnly.split('T')[0];
+            }
+            
+            // 다양한 구분자 처리
+            dateOnly = dateOnly.replace(/-/g, '.').replace(/\//g, '.');
+            const parts = dateOnly.split('.');
+            if (parts.length < 3) {
+                if (dateOnly.length === 8 && /^\d+$/.test(dateOnly)) {
+                    return new Date(
+                        parseInt(dateOnly.substring(0, 4), 10),
+                        parseInt(dateOnly.substring(4, 6), 10) - 1,
+                        parseInt(dateOnly.substring(6, 8), 10)
+                    );
+                }
+                return null;
+            }
+            
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const day = parseInt(parts[2], 10);
+            
+            return new Date(year, month, day);
+        };
+        
+        // 시작일이 3일 이내인 프로그램 찾기
+        const alerts = appliedSeminars.filter(seminar => {
+            if (!seminar.date) return false;
+            
+            const programDate = parseDateString(seminar.date);
+            if (!programDate) return false;
+            
+            programDate.setHours(0, 0, 0, 0);
+            
+            // 프로그램 시작일이 오늘 이후이고 3일 이내인지 확인
+            const diffTime = programDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            // 0일 이상 3일 이하 (오늘부터 3일 후까지)
+            if (diffDays >= 0 && diffDays <= 3) {
+                // 이미 확인한 알람인지 체크
+                const alertKey = `${seminar.id}_${programDate.toISOString().split('T')[0]}`;
+                return !checkedAlerts.includes(alertKey);
+            }
+            
+            return false;
+        });
+        
+        if (alerts.length > 0) {
+            setProgramAlerts(alerts);
+            setShowProgramAlertModal(true);
+        }
+    };
+    
+    // 알람 확인 처리 함수
+    const handleProgramAlertConfirm = (userId) => {
+        if (!userId) return;
+        
+        const checkedAlertsKey = `program_alerts_checked_${userId}`;
+        const checkedAlerts = JSON.parse(localStorage.getItem(checkedAlertsKey) || '[]');
+        
+        // 오늘 확인한 알람들을 기록
+        const today = new Date().toISOString().split('T')[0];
+        programAlerts.forEach(seminar => {
+            if (seminar.date) {
+                const alertKey = `${seminar.id}_${today}`;
+                if (!checkedAlerts.includes(alertKey)) {
+                    checkedAlerts.push(alertKey);
+                }
+            }
+        });
+        
+        localStorage.setItem(checkedAlertsKey, JSON.stringify(checkedAlerts));
+        setShowProgramAlertModal(false);
+        setProgramAlerts([]);
+    };
     
     // Load seminars from Firebase
     useEffect(() => {
@@ -5116,6 +5266,25 @@ const App = () => {
             
         }
         
+        // Firestore에 신청 정보 저장
+        try {
+            if (firebaseService && firebaseService.createApplication) {
+                await firebaseService.createApplication({
+                    seminarId: seminar.id,
+                    userId: currentUser.id,
+                    userName: currentUser.name,
+                    userEmail: currentUser.email,
+                    userPhone: currentUser.phone || '',
+                    reason: applicationData?.reason || '',
+                    questions: applicationData?.questions || ['', ''],
+                    appliedAt: new Date().toISOString()
+                });
+            }
+        } catch (error) {
+            console.error('Firestore 신청 저장 실패:', error);
+            // 실패해도 다른 저장소에 저장은 완료된 것으로 처리
+        }
+        
         // Firestore의 seminar 문서 업데이트 (currentParticipants 증가)
         try {
             if (firebaseService && firebaseService.updateSeminar) {
@@ -5128,7 +5297,14 @@ const App = () => {
             // 실패해도 신청은 완료된 것으로 처리
         }
         
-        setMySeminars([...mySeminars, seminar]);
+        const updatedMySeminars = [...mySeminars, seminar];
+        setMySeminars(updatedMySeminars);
+        
+        // 신청 후 알람 체크
+        if (currentUser && currentUser.id) {
+            checkProgramAlerts(updatedMySeminars, currentUser.id);
+        }
+        
         alert("신청이 완료되었습니다.");
         return true;
     };
@@ -5597,6 +5773,15 @@ END:VCALENDAR`;
     };
 
     const handleNavigation = (item) => {
+        // 개발 모드 디버깅 로깅
+        if (import.meta.env.MODE === 'development') {
+            console.log(`[Navigation] 메뉴 클릭: "${item}"`, {
+                menuEnabled: menuEnabled[item],
+                menuOrder: menuOrder,
+                currentView: currentView
+            });
+        }
+        
         // 비활성화된 메뉴 클릭 시 준비중 알림
         if (!menuEnabled[item]) {
             alert('준비중인 서비스입니다.');
@@ -5630,6 +5815,12 @@ END:VCALENDAR`;
         } else if (item === '부산맛집') { 
             setCurrentView('restaurants'); 
             setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+        } else {
+            // 처리되지 않는 메뉴 항목에 대한 fallback
+            console.error(`[Navigation] 처리되지 않는 메뉴 항목: "${item}"`);
+            console.warn('[Navigation] 사용 가능한 메뉴:', defaultMenuOrder);
+            alert(`"${item}" 메뉴는 아직 준비 중입니다.`);
+            return;
         }
     };
 
@@ -5647,6 +5838,14 @@ END:VCALENDAR`;
     }
 
     const renderView = () => {
+        // 개발 모드 디버깅 로깅
+        if (import.meta.env.MODE === 'development') {
+            console.log(`[RenderView] 현재 뷰 렌더링: "${currentView}"`, {
+                menuEnabled: menuEnabled,
+                currentUser: currentUser ? 'logged in' : 'not logged in'
+            });
+        }
+        
         try {
             if (currentView === 'myPage') {
                 if (!currentUser) {
@@ -5713,26 +5912,6 @@ END:VCALENDAR`;
                         }
                     }} 
                     currentUser={currentUser}
-                    onAddProgram={async (programData) => {
-                        if (!currentUser) {
-                            alert('로그인이 필요한 서비스입니다.');
-                            return false;
-                        }
-                        try {
-                            if (firebaseService && firebaseService.createSeminar) {
-                                await firebaseService.createSeminar(programData);
-                                alert('프로그램이 등록되었습니다.');
-                                return true;
-                            } else {
-                                alert('서비스에 연결할 수 없습니다.');
-                                return false;
-                            }
-                        } catch (error) {
-                            console.error('프로그램 등록 오류:', error);
-                            alert('프로그램 등록에 실패했습니다.');
-                            return false;
-                        }
-                    }}
                     waitForKakaoMap={waitForKakaoMap}
                     openKakaoPlacesSearch={openKakaoPlacesSearch}
                     pageTitles={pageTitles}
@@ -5888,9 +6067,32 @@ END:VCALENDAR`;
         // 예상치 못한 currentView 값에 대한 fallback (항상 유효한 React 요소 반환 보장)
         // currentView가 'home'이 아니고 위의 모든 조건에 맞지 않으면 홈으로 리다이렉트
         if (currentView && currentView !== 'home') {
-            console.warn(`알 수 없는 뷰: ${currentView}, 홈으로 리다이렉트`);
-            setCurrentView('home');
-            return null;
+            console.error(`[RenderView] 알 수 없는 뷰: "${currentView}"`);
+            console.warn('[RenderView] 사용 가능한 뷰:', [
+                'home', 'myPage', 'allMembers', 'allSeminars', 
+                'community', 'notice', 'donation', 'restaurants',
+                'restaurantDetail', 'restaurantForm', 'about', 'tenderTest'
+            ]);
+            
+            // 사용자에게 명확한 피드백 제공
+            return (
+                <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+                    <div className="container mx-auto max-w-7xl">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+                            <Icons.AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                            <h2 className="text-2xl font-bold text-dark mb-2">페이지를 찾을 수 없습니다</h2>
+                            <p className="text-gray-600 mb-6">요청하신 페이지가 존재하지 않거나 준비 중입니다.</p>
+                            <button
+                                type="button"
+                                onClick={() => setCurrentView('home')}
+                                className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                            >
+                                홈으로 돌아가기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
         }
         
         // currentView가 'home'이거나 null/undefined인 경우 홈 화면 렌더링
@@ -6831,6 +7033,95 @@ END:VCALENDAR`;
                     currentUser={currentUser}
                     onSubmit={handleInquirySubmit}
                 />
+            ) : null}
+            
+            {/* 프로그램 알람 모달 */}
+            {showProgramAlertModal && programAlerts.length > 0 && currentUser ? (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={(e) => { if (e.target === e.currentTarget) handleProgramAlertConfirm(currentUser.id); }}>
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                                    <Icons.AlertCircle className="w-6 h-6 text-orange-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-dark">프로그램 시작 알림</h3>
+                                    <p className="text-sm text-gray-500">곧 시작되는 프로그램이 있습니다</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button" 
+                                onClick={() => handleProgramAlertConfirm(currentUser.id)} 
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <Icons.X size={20} />
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-4 mb-6">
+                            {programAlerts.map((seminar, idx) => {
+                                // 날짜 파싱
+                                const parseDateString = (dateStr) => {
+                                    if (!dateStr) return null;
+                                    let dateOnly = dateStr.trim();
+                                    if (dateOnly.includes(' ')) dateOnly = dateOnly.split(' ')[0];
+                                    if (dateOnly.includes('T')) dateOnly = dateOnly.split('T')[0];
+                                    dateOnly = dateOnly.replace(/-/g, '.').replace(/\//g, '.');
+                                    const parts = dateOnly.split('.');
+                                    if (parts.length < 3) return null;
+                                    const year = parseInt(parts[0], 10);
+                                    const month = parseInt(parts[1], 10) - 1;
+                                    const day = parseInt(parts[2], 10);
+                                    return new Date(year, month, day);
+                                };
+                                
+                                const programDate = parseDateString(seminar.date);
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const diffTime = programDate ? programDate - today : 0;
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                
+                                return (
+                                    <div key={seminar.id || idx} className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Icons.Calendar className="w-4 h-4 text-orange-600" />
+                                                    <span className="text-xs font-bold text-orange-700">
+                                                        {diffDays === 0 ? '오늘' : diffDays === 1 ? '내일' : `${diffDays}일 후`}
+                                                    </span>
+                                                </div>
+                                                <h4 className="font-bold text-lg text-dark mb-1">{seminar.title}</h4>
+                                                <div className="text-sm text-gray-600 space-y-1">
+                                                    {seminar.date && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Icons.Calendar size={14} />
+                                                            <span>{seminar.date}</span>
+                                                        </div>
+                                                    )}
+                                                    {seminar.location && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Icons.MapPin size={14} />
+                                                            <span>{seminar.location}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        
+                        <button
+                            type="button"
+                            onClick={() => handleProgramAlertConfirm(currentUser.id)}
+                            className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                        >
+                            확인
+                        </button>
+                    </div>
+                </div>
             ) : null}
             {/* 🌟 모바일 메뉴 오버레이 */}
             <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onNavigate={handleNavigation} menuEnabled={menuEnabled} menuNames={menuNames} menuOrder={menuOrder} />

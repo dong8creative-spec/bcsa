@@ -1,7 +1,9 @@
-import React, { useState, Fragment } from 'react';
+import React, { useState, Fragment, useEffect } from 'react';
 import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 import { fileToBase64, resizeImage, uploadImageToImgBB } from '../utils/imageUtils';
+import { firebaseService } from '../services/firebaseService';
+import { apiGet } from '../utils/api';
 
 const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, pageTitles, onUpdatePost }) => {
     const [activeTab, setActiveTab] = useState('seminars');
@@ -23,6 +25,78 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
         phone: user.phone || '',
         img: user.img || ''
     });
+    
+    // 즐겨찾기 관련 상태
+    const [bookmarks, setBookmarks] = useState([]);
+    const [bookmarksLoading, setBookmarksLoading] = useState(false);
+    const [bookmarkDetails, setBookmarkDetails] = useState([]);
+    
+    // 즐겨찾기 로드
+    useEffect(() => {
+        if (user && user.id && activeTab === 'bookmarks') {
+            loadBookmarks();
+        }
+    }, [user, activeTab]);
+    
+    const loadBookmarks = async () => {
+        if (!user || !user.id) return;
+        
+        setBookmarksLoading(true);
+        try {
+            // Firestore에서 즐겨찾기 목록 가져오기
+            const bookmarkList = await firebaseService.getBookmarks(user.id);
+            setBookmarks(bookmarkList);
+            
+            // 각 bidNtceNo로 API 호출하여 상세 정보 가져오기
+            if (bookmarkList.length > 0) {
+                const details = await Promise.all(
+                    bookmarkList.map(async (bookmark) => {
+                        try {
+                            const response = await apiGet('/api/bid-search', {
+                                inqryDiv: '2',
+                                bidNtceNo: bookmark.bidNtceNo,
+                                pageNo: 1,
+                                numOfRows: 1
+                            });
+                            
+                            const items = response.data?.data?.items || response.data?.response?.body?.items?.item || [];
+                            const item = Array.isArray(items) ? items[0] : items;
+                            
+                            return {
+                                ...bookmark,
+                                details: item || { bidNtceNo: bookmark.bidNtceNo, bidNtceNm: '공고 정보를 불러올 수 없습니다.' }
+                            };
+                        } catch (error) {
+                            console.error('❌ 즐겨찾기 상세 정보 로드 실패:', bookmark.bidNtceNo, error);
+                            return {
+                                ...bookmark,
+                                details: { bidNtceNo: bookmark.bidNtceNo, bidNtceNm: '공고 정보를 불러올 수 없습니다.' }
+                            };
+                        }
+                    })
+                );
+                setBookmarkDetails(details);
+            }
+        } catch (error) {
+            console.error('❌ 즐겨찾기 로드 실패:', error);
+            alert('즐겨찾기를 불러오는데 실패했습니다.');
+        } finally {
+            setBookmarksLoading(false);
+        }
+    };
+    
+    const handleRemoveBookmark = async (bidNtceNo) => {
+        if (!confirm('즐겨찾기에서 삭제하시겠습니까?')) return;
+        
+        try {
+            await firebaseService.removeBookmark(user.id, bidNtceNo);
+            // 목록 새로고침
+            loadBookmarks();
+        } catch (error) {
+            console.error('❌ 즐겨찾기 삭제 실패:', error);
+            alert('즐겨찾기 삭제에 실패했습니다.');
+        }
+    };
     
     const handleWithdrawClick = () => {
         if(confirm("정말로 탈퇴하시겠습니까? 모든 정보가 삭제됩니다.")) {
@@ -186,6 +260,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                     <div className="flex gap-8 overflow-x-auto">
                         <button onClick={() => setActiveTab('seminars')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'seminars' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>신청한 모임</button>
                         <button onClick={() => setActiveTab('posts')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'posts' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>내 게시글</button>
+                        <button onClick={() => setActiveTab('bookmarks')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'bookmarks' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>즐겨찾기</button>
                         <button onClick={() => setActiveTab('verification')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'verification' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>본인인증 정보</button>
                         {user.hasDonated && (
                             <button onClick={() => setActiveTab('company')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'company' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>회사 소개</button>
@@ -275,6 +350,47 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                 </li>
                             )) : <li className="text-center text-gray-500 py-16 text-sm">작성한 게시글이 없습니다.</li>}
                         </ul>
+                    )}
+                    {activeTab === 'bookmarks' && (
+                        <div>
+                            {bookmarksLoading ? (
+                                <div className="text-center py-16">
+                                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-brand border-r-transparent"></div>
+                                    <p className="text-sm text-gray-500 mt-4">즐겨찾기를 불러오는 중...</p>
+                                </div>
+                            ) : bookmarkDetails.length > 0 ? (
+                                <ul className="space-y-3">
+                                    {bookmarkDetails.map((bookmark, idx) => (
+                                        <li key={bookmark.id || idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:bg-gray-50 transition-all">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Icons.Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                                                    <div className="font-medium text-gray-900 text-base">{bookmark.details?.bidNtceNm || '-'}</div>
+                                                </div>
+                                                <div className="text-xs text-gray-500 space-y-1">
+                                                    <div>공고번호: {bookmark.details?.bidNtceNo || bookmark.bidNtceNo}</div>
+                                                    <div>공고기관: {bookmark.details?.ntceInsttNm || '-'}</div>
+                                                    <div>게시일시: {bookmark.details?.bidNtceDt || '-'} | 마감일시: {bookmark.details?.bidClseDt || '-'}</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveBookmark(bookmark.bidNtceNo)}
+                                                    className="text-xs text-red-600 hover:text-red-900 px-3 py-1 border border-red-300 hover:bg-red-50 transition-colors"
+                                                >
+                                                    삭제
+                                                </button>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <div className="text-center text-gray-500 py-16 text-sm">
+                                    즐겨찾기한 공고가 없습니다.
+                                </div>
+                            )}
+                        </div>
                     )}
                     {activeTab === 'company' && user.hasDonated && (
                         <div className="space-y-6">

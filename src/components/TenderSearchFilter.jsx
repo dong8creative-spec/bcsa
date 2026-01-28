@@ -1,6 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import * as Icons from 'lucide-react';
 import { getApiBaseUrl, apiGet } from '../utils/api';
+import { collection, getDocs, addDoc, deleteDoc, query, where, serverTimestamp, doc } from 'firebase/firestore';
+import { db, auth } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const BUSINESS_TYPE_OPTIONS = ['전체', '물품', '일반용역', '기술용역', '공사', '기타', '민간'];
 const BUSINESS_STATUS_OPTIONS = ['전체', '외자', '비축', '리스'];
@@ -148,6 +151,80 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [results, setResults] = useState([]);
+  
+  // 즐겨찾기 관련 상태
+  const [currentUser, setCurrentUser] = useState(null);
+  const [bookmarks, setBookmarks] = useState([]); // bidNtceNo 배열
+  
+  // Firebase Auth 체크
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      if (user) {
+        loadBookmarks(user.uid);
+      } else {
+        setBookmarks([]);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+  
+  // 즐겨찾기 로드 함수
+  const loadBookmarks = async (userId) => {
+    try {
+      const bookmarksRef = collection(db, 'users', userId, 'bookmarks');
+      const snapshot = await getDocs(bookmarksRef);
+      const bidNtceNos = snapshot.docs.map(doc => doc.data().bidNtceNo);
+      setBookmarks(bidNtceNos);
+      console.log('✅ [TenderSearchFilter] 즐겨찾기 로드:', bidNtceNos.length, '개');
+    } catch (error) {
+      console.error('❌ [TenderSearchFilter] 즐겨찾기 로드 실패:', error);
+    }
+  };
+  
+  // 즐겨찾기 여부 확인
+  const isBookmarked = (bidNtceNo) => {
+    return bookmarks.includes(bidNtceNo);
+  };
+  
+  // 즐겨찾기 토글 함수
+  const handleToggleBookmark = async (item) => {
+    if (!currentUser) {
+      alert('로그인이 필요한 기능입니다.');
+      return;
+    }
+    
+    const bidNtceNo = item.bidNtceNo;
+    if (!bidNtceNo) {
+      console.warn('⚠️ [TenderSearchFilter] bidNtceNo가 없습니다.');
+      return;
+    }
+    
+    try {
+      const bookmarksRef = collection(db, 'users', currentUser.uid, 'bookmarks');
+      const bookmarkQuery = query(bookmarksRef, where('bidNtceNo', '==', bidNtceNo));
+      const snapshot = await getDocs(bookmarkQuery);
+      
+      if (snapshot.empty) {
+        // 추가
+        await addDoc(bookmarksRef, {
+          bidNtceNo: bidNtceNo,
+          createdAt: serverTimestamp()
+        });
+        setBookmarks(prev => [...prev, bidNtceNo]);
+        console.log('⭐ [TenderSearchFilter] 즐겨찾기 추가:', bidNtceNo);
+      } else {
+        // 삭제
+        const docId = snapshot.docs[0].id;
+        await deleteDoc(doc(db, 'users', currentUser.uid, 'bookmarks', docId));
+        setBookmarks(prev => prev.filter(no => no !== bidNtceNo));
+        console.log('☆ [TenderSearchFilter] 즐겨찾기 제거:', bidNtceNo);
+      }
+    } catch (error) {
+      console.error('❌ [TenderSearchFilter] 즐겨찾기 토글 실패:', error);
+      alert('즐겨찾기 처리에 실패했습니다.');
+    }
+  };
 
   const handleInputChange = (key) => (event) => {
     const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
@@ -200,8 +277,20 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
         throw new Error('API URL이 설정되지 않았습니다.');
       }
 
+      console.log('🔍 [TenderSearchFilter] === API 요청 파라미터 상세 ===');
+      console.log('📋 원본 searchParams:', JSON.stringify(searchParams, null, 2));
+      console.log('📋 변환된 mappedParams:', JSON.stringify(mappedParams, null, 2));
+      console.log('📋 필터링된 파라미터 (API 전송용):', Object.keys(mappedParams));
+      
+      // '전체' 값 필터링 검증 로그
+      const filteredKeys = Object.keys(mappedParams);
+      const originalKeys = Object.keys(searchParams);
+      const removedKeys = originalKeys.filter(k => !filteredKeys.includes(k));
+      if (removedKeys.length > 0) {
+        console.log('⚠️ [TenderSearchFilter] 제외된 파라미터 (전체/빈값):', removedKeys);
+      }
+      
       console.log('📤 [TenderSearchFilter] API 요청 시작');
-      console.log('📤 [TenderSearchFilter] 요청 파라미터:', mappedParams);
 
       // axios의 apiGet을 사용하여 요청 (params가 자동으로 쿼리 스트링으로 변환됨)
       const response = await apiGet('/api/bid-search', mappedParams);
@@ -634,6 +723,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               <thead className="bg-brand text-white">
                 <tr>
                   <th className="px-4 py-3 text-left font-bold">No</th>
+                  <th className="px-4 py-3 text-left font-bold">즐겨찾기</th>
                   <th className="px-4 py-3 text-left font-bold">공고번호</th>
                   <th className="px-4 py-3 text-left font-bold">공고명</th>
                   <th className="px-4 py-3 text-left font-bold">공고기관</th>
@@ -646,6 +736,18 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                 {results.map((item, index) => (
                   <tr key={`${item?.bidNtceNo || 'item'}-${index}`} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-gray-500">{index + 1}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleToggleBookmark(item)}
+                        className="p-1 hover:bg-gray-100 rounded"
+                        disabled={!currentUser}
+                        title={currentUser ? '즐겨찾기 추가/제거' : '로그인 필요'}
+                      >
+                        <Icons.Star 
+                          className={`w-5 h-5 ${isBookmarked(item.bidNtceNo) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                        />
+                      </button>
+                    </td>
                     <td className="px-4 py-3 text-gray-700">{item?.bidNtceNo || '-'}</td>
                     <td className="px-4 py-3 text-gray-700">{item?.bidNtceNm || '-'}</td>
                     <td className="px-4 py-3 text-gray-700">{item?.ntceInsttNm || '-'}</td>

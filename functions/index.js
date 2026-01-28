@@ -145,6 +145,11 @@ app.get('/api/bid-search', async (req, res) => {
   fromBidDt = validateDateFormat(fromBidDt);
   toBidDt = validateDateFormat(toBidDt);
   
+  // 🔍 수신 파라미터 로깅
+  console.log('🔍 [Bid Search] === 수신 파라미터 ===');
+  console.log('📥 req.query 전체:', JSON.stringify(req.query, null, 2));
+  console.log('📥 검증 후 날짜:', { fromBidDt, toBidDt });
+  
   // 기타 필터 파라미터
   const bidNtceNo = req.query.bidNtceNo || '';
   const bidNtceDtlClsfCd = req.query.bidNtceDtlClsfCd || '';
@@ -288,6 +293,8 @@ app.get('/api/bid-search', async (req, res) => {
 
   const inqryBgnDt = formatDate(startDate) + '0000';
   const inqryEndDt = formatDate(endDate) + '2359';
+  
+  console.log('📥 inqryBgnDt/inqryEndDt:', { inqryBgnDt, inqryEndDt });
 
   // 파라미터 검증 및 정제 함수
   const validateAndSanitizeParam = (value, maxLength = 200) => {
