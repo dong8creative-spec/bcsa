@@ -1,7 +1,8 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import express from 'express';
 import cors from 'cors';
-import fetch from 'node-fetch';
+import axios from 'axios';
+import { parseStringPromise } from 'xml2js';
 import admin from 'firebase-admin';
 
 // Firebase Admin 초기화
@@ -12,35 +13,9 @@ if (!admin.apps.length) {
 const app = express();
 const db = admin.firestore();
 
-// CORS 설정
-// Firebase Functions는 환경 변수로 허용 도메인 관리
-// Firebase Console > Functions > 환경 변수에서 ALLOWED_ORIGINS 설정
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : [
-      'https://bcsa.co.kr',
-      'https://bcsa-b190f.web.app', 
-      'https://bcsa-b190f.firebaseapp.com',
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:5173',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001',
-      'http://127.0.0.1:5173'
-    ];
-
+// CORS 설정 - 모든 오리진 허용
 app.use(cors({
-  origin: function (origin, callback) {
-    // origin이 없는 경우 (같은 origin 요청) 허용
-    if (!origin) return callback(null, true);
-    
-    // 허용된 origin인지 확인
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS policy: Origin not allowed'));
-    }
-  },
+  origin: true,
   credentials: true
 }));
 app.use(express.json());
@@ -53,9 +28,81 @@ app.use((req, res, next) => {
   next();
 });
 
+const truncateLog = (value, maxLength = 2000) => {
+  if (value === null || value === undefined) return value;
+  const text = typeof value === 'string' ? value : JSON.stringify(value);
+  return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
+};
+
+const parseApiResponse = async (rawData, contentType) => {
+  if (rawData === null || rawData === undefined) {
+    return { parsed: null, rawText: '' };
+  }
+
+  if (typeof rawData === 'object') {
+    return { parsed: rawData, rawText: '' };
+  }
+
+  const rawText = String(rawData).trim();
+  if (!rawText) {
+    return { parsed: null, rawText: '' };
+  }
+
+  const isXml = contentType?.includes('xml') || rawText.startsWith('<');
+  const isJson = contentType?.includes('json');
+
+  const tryJson = () => JSON.parse(rawText);
+  const tryXml = () =>
+    parseStringPromise(rawText, {
+      explicitArray: false,
+      trim: true,
+      mergeAttrs: true
+    });
+
+  try {
+    if (isJson && !isXml) {
+      return { parsed: tryJson(), rawText };
+    }
+    if (isXml && !isJson) {
+      return { parsed: await tryXml(), rawText };
+    }
+    try {
+      return { parsed: tryJson(), rawText };
+    } catch (jsonErr) {
+      return { parsed: await tryXml(), rawText };
+    }
+  } catch (parseError) {
+    return { parsed: null, rawText, parseError };
+  }
+};
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'API Proxy is running' });
+});
+
+// Blaze 플랜 외부 네트워크 접속 테스트 엔드포인트
+app.get('/api/network-test', async (req, res, next) => {
+  const testUrl = 'https://www.google.com/generate_204';
+
+  try {
+    const response = await axios.get(testUrl, {
+      timeout: 5000,
+      responseType: 'text',
+      validateStatus: () => true
+    });
+
+    res.status(200).json({
+      ok: response.status >= 200 && response.status < 400,
+      status: response.status,
+      url: testUrl,
+      contentType: response.headers['content-type'] || null,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    error.context = { endpoint: 'network-test', url: testUrl };
+    next(error);
+  }
 });
 
 // 조달청 입찰공고 검색 API 프록시 엔드포인트
@@ -63,12 +110,14 @@ app.get('/api/bid-search', async (req, res) => {
   // 한글 파라미터 명시적 디코딩 및 검증
   let keyword = '';
   try {
-    keyword = req.query.keyword 
-      ? decodeURIComponent(String(req.query.keyword)) 
-      : '';
+    // keyword 또는 bidNtceNm 둘 다 확인 (프론트엔드 호환성)
+    keyword = req.query.keyword || req.query.bidNtceNm || '';
+    if (keyword) {
+      keyword = decodeURIComponent(String(keyword));
+    }
   } catch (decodeError) {
     console.warn('[Decode] Keyword decode error:', decodeError);
-    keyword = req.query.keyword || '';
+    keyword = req.query.keyword || req.query.bidNtceNm || '';
   }
   
   console.log(`[Bid Search] Decoded keyword: "${keyword}"`);
@@ -83,8 +132,18 @@ app.get('/api/bid-search', async (req, res) => {
   const type = req.query.type || 'bid-search';
   
   // 날짜 범위 파라미터 (사용자 선택)
-  const fromBidDt = req.query.fromBidDt || ''; // YYYYMMDD 형식
-  const toBidDt = req.query.toBidDt || ''; // YYYYMMDD 형식
+  let fromBidDt = req.query.fromBidDt || ''; // YYYYMMDD 형식
+  let toBidDt = req.query.toBidDt || ''; // YYYYMMDD 형식
+  
+  // YYYYMMDD 형식 검증 (8자리 숫자)
+  const validateDateFormat = (dateStr) => {
+    if (!dateStr) return '';
+    const cleaned = String(dateStr).replace(/-/g, '').replace(/\s/g, '');
+    return /^\d{8}$/.test(cleaned) ? cleaned : '';
+  };
+  
+  fromBidDt = validateDateFormat(fromBidDt);
+  toBidDt = validateDateFormat(toBidDt);
   
   // 기타 필터 파라미터
   const bidNtceNo = req.query.bidNtceNo || '';
@@ -103,26 +162,36 @@ app.get('/api/bid-search', async (req, res) => {
   const contractLawType = req.query.contractLawType || '';
   const contractMethod = req.query.contractMethod || '';
   const awardMethod = req.query.awardMethod || '';
-  // inqryDiv: 조회구분 (1: 입찰공고, 2: 개찰결과, 3: 계약, 4: 변경계약 등)
-  // type 파라미터에 따라 자동 설정
+  
+  // inqryDiv: 조회 방식 기준 (조달청 공식 문서 기준)
+  // - 1: 등록일시 기준 조회 (inqryBgnDt, inqryEndDt 필수)
+  // - 2: 입찰공고번호 기준 조회 (bidNtceNo 필수)
+  // - 3: 변경일시 기준 조회 (inqryBgnDt, inqryEndDt 필수)
   let inqryDiv = req.query.inqryDiv;
   if (!inqryDiv) {
-    switch (type) {
-      case 'bid-openg-result':
-        inqryDiv = '2'; // 개찰결과
-        break;
-      case 'bid-award':
-        inqryDiv = '1'; // 최종낙찰자 (입찰공고와 동일)
-        break;
-      case 'bid-search':
-      default:
-        inqryDiv = '1'; // 입찰공고
-        break;
+    // bidNtceNo가 있으면 입찰공고번호 기준 조회
+    if (bidNtceNo && bidNtceNo.trim()) {
+      inqryDiv = '2';
+    } else {
+      // 기본값: 등록일시 기준 조회
+      inqryDiv = '1';
+    }
+  }
+  
+  // 조건부 필수 파라미터 검증
+  if (inqryDiv === '2') {
+    // 입찰공고번호 기준 조회: bidNtceNo 필수
+    if (!bidNtceNo || !bidNtceNo.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: '입찰공고번호 기준 조회 시 bidNtceNo는 필수 파라미터입니다.',
+        errorCode: 'MISSING_REQUIRED_PARAM'
+      });
     }
   }
 
   // ServiceKey는 환경 변수에서 가져오기
-  const serviceKey = process.env.G2B_API_KEY || '05dcc05a47307238cfb74ee633e72290510530f6628b5c1dfd43d11cc421b16b';
+  const serviceKey = process.env.G2B_API_KEY || process.env.G2B_SERVICE_KEY;
   
   if (!serviceKey || serviceKey.trim() === '') {
     return res.status(500).json({ 
@@ -203,10 +272,11 @@ app.get('/api/bid-search', async (req, res) => {
       endDate = today;
     }
   } else {
-    // 기본값: 최근 30일
+    // 기본값: 최근 7일 (더 최신 데이터 조회)
     startDate = new Date(today);
-    startDate.setDate(today.getDate() - 30);
-    endDate = today;
+    startDate.setDate(today.getDate() - 7);
+    endDate = new Date(today);
+    endDate.setHours(23, 59, 59, 999); // 오늘 23:59:59까지 포함
   }
   
   const formatDate = (date) => {
@@ -221,29 +291,55 @@ app.get('/api/bid-search', async (req, res) => {
 
   // 파라미터 검증 및 정제 함수
   const validateAndSanitizeParam = (value, maxLength = 200) => {
-    if (!value) return '';
+    if (!value || value === '전체') return ''; // '전체' 값 필터링
     const sanitized = String(value).trim();
+    if (sanitized === '전체') return ''; // trim 후에도 '전체' 체크
     return sanitized.length > maxLength ? sanitized.substring(0, maxLength) : sanitized;
   };
 
   // 공통 파라미터 구성 함수 (개선된 버전)
   const buildApiUrl = (apiPath) => {
     try {
-      const apiUrl = new URL(`${baseUrl}/${apiPath}`);
+      // ServiceKey 인코딩 감지 및 처리
+      // Encoding 키: %, =, + 등 특수문자 포함 (이미 URL 인코딩됨)
+      // Decoding 키: 원본 키 값
+      const isEncodedKey = /[%=\+]/g.test(serviceKey);
+      
+      // Encoding 키는 수동으로 URL 구성, Decoding 키는 URLSearchParams 사용
+      let baseUrlWithKey;
+      if (isEncodedKey) {
+        // Encoding 키: 그대로 사용 (재인코딩 방지)
+        baseUrlWithKey = `${baseUrl}/${apiPath}?ServiceKey=${serviceKey}`;
+      } else {
+        // Decoding 키: URL 인코딩 필요
+        baseUrlWithKey = `${baseUrl}/${apiPath}?ServiceKey=${encodeURIComponent(serviceKey)}`;
+      }
+      
+      const apiUrl = new URL(baseUrlWithKey);
       
       // 필수 파라미터
-      apiUrl.searchParams.append('ServiceKey', serviceKey);
       apiUrl.searchParams.append('pageNo', Math.max(1, pageNo).toString());
       apiUrl.searchParams.append('numOfRows', Math.min(Math.max(1, numOfRows), 100).toString()); // 1-100 범위
       apiUrl.searchParams.append('inqryDiv', inqryDiv);
-      apiUrl.searchParams.append('inqryBgnDt', inqryBgnDt);
-      apiUrl.searchParams.append('inqryEndDt', inqryEndDt);
+      
+      // 조건부 필수 파라미터: inqryDiv에 따라 날짜 또는 공고번호 추가
+      if (inqryDiv === '1' || inqryDiv === '3') {
+        // 등록일시 또는 변경일시 기준: 날짜 필수
+        apiUrl.searchParams.append('inqryBgnDt', inqryBgnDt);
+        apiUrl.searchParams.append('inqryEndDt', inqryEndDt);
+      } else if (inqryDiv === '2') {
+        // 입찰공고번호 기준: bidNtceNo 필수 (이미 검증됨)
+        apiUrl.searchParams.append('bidNtceNo', bidNtceNo);
+      }
+      
+      // JSON 응답 요청 (조달청 공식 문서 권장)
       apiUrl.searchParams.append('type', 'json');
       
       // 선택적 검색 파라미터 (검증 및 정제 후 추가)
       const optionalParams = {
         bidNtceNm: validateAndSanitizeParam(keyword, 100),
-        bidNtceNo: validateAndSanitizeParam(bidNtceNo, 50),
+        // bidNtceNo는 inqryDiv='2'일 때 이미 필수로 추가되므로 조건부 처리
+        ...(inqryDiv !== '2' && bidNtceNo ? { bidNtceNo: validateAndSanitizeParam(bidNtceNo, 50) } : {}),
         bidNtceDtlClsfCd: validateAndSanitizeParam(bidNtceDtlClsfCd, 20),
         insttNm: validateAndSanitizeParam(insttNm, 100),
         refNo: validateAndSanitizeParam(refNo, 50),
@@ -259,17 +355,33 @@ app.get('/api/bid-search', async (req, res) => {
         awardMethod: validateAndSanitizeParam(awardMethod, 50)
       };
       
-      // 숫자 파라미터 검증
-      if (fromEstPrice && !isNaN(Number(fromEstPrice))) {
-        apiUrl.searchParams.append('fromEstPrice', Math.max(0, Number(fromEstPrice)).toString());
+      // 금액 파라미터 검증 및 정제 (콤마 등 제거)
+      const sanitizePriceParam = (priceStr) => {
+        if (!priceStr) return null;
+        // 콤마, 공백 제거
+        const cleaned = String(priceStr).replace(/[,\s]/g, '');
+        const num = Number(cleaned);
+        // 유효한 양수인지 확인
+        if (!isNaN(num) && num >= 0 && isFinite(num)) {
+          return Math.floor(num); // 정수로 변환
+        }
+        return null;
+      };
+      
+      const fromEstPriceNum = sanitizePriceParam(fromEstPrice);
+      const toEstPriceNum = sanitizePriceParam(toEstPrice);
+      
+      if (fromEstPriceNum !== null) {
+        apiUrl.searchParams.append('fromEstPrice', fromEstPriceNum.toString());
       }
-      if (toEstPrice && !isNaN(Number(toEstPrice))) {
-        apiUrl.searchParams.append('toEstPrice', Math.max(0, Number(toEstPrice)).toString());
+      if (toEstPriceNum !== null) {
+        apiUrl.searchParams.append('toEstPrice', toEstPriceNum.toString());
       }
       
       // 비어있지 않은 선택적 파라미터만 추가
       Object.entries(optionalParams).forEach(([key, value]) => {
-        if (value && value.length > 0) {
+        // '전체' 값과 빈 값 필터링
+        if (value && value.length > 0 && value !== '전체') {
           apiUrl.searchParams.append(key, value);
         }
       });
@@ -285,70 +397,69 @@ app.get('/api/bid-search', async (req, res) => {
   const callBidApi = async (apiPath, retryCount = 0) => {
     const maxRetries = 2;
     const apiUrl = buildApiUrl(apiPath);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30초 타임아웃
 
     try {
       console.log(`[Bid Search] Calling API: ${apiPath} (attempt ${retryCount + 1})`);
-      
-      const apiResponse = await fetch(apiUrl.toString(), {
-        method: 'GET',
-        signal: controller.signal,
-        headers: { 
-          'Accept': 'application/json',
+
+      const apiResponse = await axios.get(apiUrl.toString(), {
+        timeout: 30000,
+        responseType: 'text',
+        headers: {
+          'Accept': 'application/xml, text/xml, application/json',
           'User-Agent': 'Mozilla/5.0 (compatible; BCSABot/1.0)'
-        }
+        },
+        validateStatus: () => true
       });
-      clearTimeout(timeoutId);
 
       // HTTP 에러 처리
-      if (!apiResponse.ok) {
-        const errorText = await apiResponse.text();
+      if (apiResponse.status < 200 || apiResponse.status >= 300) {
         const errorMsg = `HTTP ${apiResponse.status}: ${apiResponse.statusText}`;
-        console.error(`[Bid Search] API Error (${apiPath}): ${errorMsg} - ${errorText.substring(0, 200)}`);
-        
+        console.error(
+          `[Bid Search] API Error (${apiPath}): ${errorMsg} - ${truncateLog(apiResponse.data)}`
+        );
+
         // 5xx 에러는 재시도 가능
         if (apiResponse.status >= 500 && retryCount < maxRetries) {
           console.log(`[Bid Search] Retrying ${apiPath} due to server error...`);
-          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // 1초, 2초 대기
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
           return await callBidApi(apiPath, retryCount + 1);
         }
-        
-        return { 
-          success: false, 
-          items: [], 
-          totalCount: 0, 
+
+        return {
+          success: false,
+          items: [],
+          totalCount: 0,
           error: errorMsg,
           errorType: 'HTTP_ERROR'
         };
       }
 
-      // 응답 텍스트 읽기
-      const responseText = await apiResponse.text();
-      
-      // JSON 파싱
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseErr) {
-        console.error(`[Bid Search] JSON Parse Error (${apiPath}): ${parseErr.message}`);
-        console.error(`[Bid Search] Response (first 500 chars): ${responseText.substring(0, 500)}`);
-        return { 
-          success: false, 
-          items: [], 
-          totalCount: 0, 
-          error: 'JSON 파싱 실패 - API 응답이 올바르지 않습니다',
+      const { parsed, rawText, parseError } = await parseApiResponse(
+        apiResponse.data,
+        apiResponse.headers['content-type']
+      );
+
+      if (parseError || !parsed) {
+        console.error(`[Bid Search] Parse Error (${apiPath}):`, parseError?.message || 'Unknown');
+        console.error(`[Bid Search] Response (first 500 chars): ${truncateLog(rawText, 500)}`);
+        return {
+          success: false,
+          items: [],
+          totalCount: 0,
+          error: 'XML/JSON 파싱 실패 - API 응답이 올바르지 않습니다',
           errorType: 'PARSE_ERROR'
         };
       }
 
+      const data = parsed;
+
       // 응답 구조 검증 및 파싱
       if (!data || typeof data !== 'object') {
         console.error(`[Bid Search] Invalid response structure (${apiPath}): response is not an object`);
-        return { 
-          success: false, 
-          items: [], 
-          totalCount: 0, 
+        return {
+          success: false,
+          items: [],
+          totalCount: 0,
           error: '잘못된 응답 형식',
           errorType: 'INVALID_RESPONSE'
         };
@@ -359,24 +470,55 @@ app.get('/api/bid-search', async (req, res) => {
         const header = data.response.header;
         const resultCode = header.resultCode || header.code;
         const resultMsg = header.resultMsg || header.message || '알 수 없는 오류';
-        
-        // 성공 코드가 아닌 경우
-        if (resultCode !== '00' && resultCode !== '0000' && resultCode !== 'INFO-000') {
+
+        // 성공 코드 체크
+        if (resultCode === '00') {
+          // 정상 처리 계속
+        } else if (resultCode === '03') {
+          // 에러 03: No Data - 정상 케이스 (데이터 없음)
+          console.log(`[Bid Search] API Success (${apiPath}): No data available (resultCode: 03)`);
+          return {
+            success: true,
+            items: [],
+            totalCount: 0,
+            noData: true
+          };
+        } else {
+          // 에러 발생
           console.error(`[Bid Search] API Error (${apiPath}): ${resultCode} - ${resultMsg}`);
+
+          // 재시도 가능한 에러 코드
+          const retryableErrors = ['01']; // 제공기관 서비스 불안정
           
-          // 일시적 오류는 재시도
-          if (resultCode === 'SERVICE_TIMEOUT_ERROR' && retryCount < maxRetries) {
-            console.log(`[Bid Search] Retrying ${apiPath} due to timeout...`);
+          if (retryableErrors.includes(resultCode) && retryCount < maxRetries) {
+            console.log(`[Bid Search] Retrying ${apiPath} due to error ${resultCode}...`);
             await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
             return await callBidApi(apiPath, retryCount + 1);
           }
-          
-          return { 
-            success: false, 
-            items: [], 
-            totalCount: 0, 
-            error: `${resultCode}: ${resultMsg}`,
-            errorType: 'API_ERROR'
+
+          // 에러 코드별 사용자 친화적 메시지
+          const errorMessages = {
+            '01': '제공기관 서비스가 불안정합니다. 잠시 후 다시 시도해주세요.',
+            '06': '날짜 형식이 올바르지 않습니다. (YYYYMMDDHHMM 형식 필요)',
+            '08': '필수 파라미터가 누락되었습니다.',
+            '12': 'API URL이 잘못되었습니다.',
+            '20': 'API 활용 승인이 완료되지 않았습니다.',
+            '22': '일일 트래픽 제한을 초과했습니다.',
+            '30': 'API 키가 등록되지 않았거나 URL 인코딩 문제가 있습니다.',
+            '31': 'API 키의 사용 기한이 만료되었습니다.',
+            '32': '등록되지 않은 도메인 또는 IP에서 호출했습니다.'
+          };
+
+          const userFriendlyMsg = errorMessages[resultCode] || resultMsg;
+
+          return {
+            success: false,
+            items: [],
+            totalCount: 0,
+            error: userFriendlyMsg,
+            errorCode: resultCode,
+            errorType: 'API_ERROR',
+            originalMsg: resultMsg
           };
         }
       }
@@ -386,27 +528,25 @@ app.get('/api/bid-search', async (req, res) => {
         const body = data.response.body;
         const items = body.items || [];
         const totalCnt = parseInt(body.totalCount || body.total || 0);
-        
+
         // items 배열 정규화
         let bidItems = [];
         if (Array.isArray(items)) {
           bidItems = items;
         } else if (items && items.item) {
-          // items.item이 배열이거나 단일 객체일 수 있음
           bidItems = Array.isArray(items.item) ? items.item : [items.item];
         } else if (items && typeof items === 'object') {
-          // items가 객체이면 배열로 변환
           bidItems = [items];
         }
 
         console.log(`[Bid Search] API Success (${apiPath}): ${bidItems.length} items retrieved`);
-        return { 
-          success: true, 
-          items: bidItems, 
-          totalCount: totalCnt || bidItems.length 
+        return {
+          success: true,
+          items: bidItems,
+          totalCount: totalCnt || bidItems.length
         };
       }
-      
+
       // body가 없지만 header는 성공인 경우 (결과 없음)
       if (data.response && data.response.header) {
         console.log(`[Bid Search] API Success (${apiPath}): No items (empty result)`);
@@ -414,59 +554,63 @@ app.get('/api/bid-search', async (req, res) => {
       }
 
       // 예상하지 못한 응답 구조
-      console.error(`[Bid Search] Unexpected response structure (${apiPath}):`, JSON.stringify(data).substring(0, 500));
-      return { 
-        success: false, 
-        items: [], 
-        totalCount: 0, 
+      console.error(
+        `[Bid Search] Unexpected response structure (${apiPath}):`,
+        truncateLog(data, 500)
+      );
+      return {
+        success: false,
+        items: [],
+        totalCount: 0,
         error: '예상하지 못한 API 응답 구조',
         errorType: 'UNEXPECTED_STRUCTURE'
       };
-
     } catch (fetchError) {
-      clearTimeout(timeoutId);
-      
       // 타임아웃 에러
-      if (fetchError.name === 'AbortError') {
+      if (fetchError.code === 'ECONNABORTED') {
         console.error(`[Bid Search] Timeout (${apiPath})`);
-        
-        // 타임아웃 시 재시도
+
         if (retryCount < maxRetries) {
           console.log(`[Bid Search] Retrying ${apiPath} after timeout...`);
           await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
           return await callBidApi(apiPath, retryCount + 1);
         }
-        
-        return { 
-          success: false, 
-          items: [], 
-          totalCount: 0, 
+
+        return {
+          success: false,
+          items: [],
+          totalCount: 0,
           error: '요청 시간 초과 (30초) - 조달청 API 응답이 느립니다',
           errorType: 'TIMEOUT'
         };
       }
-      
-      // 네트워크 에러
-      console.error(`[Bid Search] Network Error (${apiPath}):`, fetchError.message);
-      
-      // 네트워크 에러는 재시도
+
+      const responseData = fetchError.response?.data;
+      console.error(
+        `[Bid Search] Network Error (${apiPath}):`,
+        fetchError.message,
+        responseData ? `- ${truncateLog(responseData)}` : ''
+      );
+
       if (retryCount < maxRetries) {
         console.log(`[Bid Search] Retrying ${apiPath} after network error...`);
         await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
         return await callBidApi(apiPath, retryCount + 1);
       }
-      
-      return { 
-        success: false, 
-        items: [], 
-        totalCount: 0, 
+
+      return {
+        success: false,
+        items: [],
+        totalCount: 0,
         error: `네트워크 오류: ${fetchError.message}`,
         errorType: 'NETWORK_ERROR'
       };
     }
   };
 
-  console.log(`[Bid Search] Request: keyword="${keyword}", pageNo=${pageNo}, userId=${userId}, businessTypes=${JSON.stringify(businessTypes)}, apiPaths=${JSON.stringify(apiPaths)}`);
+  console.log(`[Bid Search] Request: keyword="${keyword}", pageNo=${pageNo}, userId=${userId}`);
+  console.log(`[Bid Search] Filters: area="${area}", insttNm="${insttNm}", bidNtceDtlClsfCd="${bidNtceDtlClsfCd}", contractType="${contractType}", contractMethod="${contractMethod}"`);
+  console.log(`[Bid Search] BusinessTypes: ${JSON.stringify(businessTypes)}, apiPaths=${JSON.stringify(apiPaths)}`);
 
   try {
     // 캐시 확인 (키워드 검색 시에만)
@@ -632,11 +776,14 @@ app.get('/api/bid-search', async (req, res) => {
     res.status(200).json(response);
 
   } catch (error) {
-    console.error('[Bid Search] Error:', error.message);
-    res.status(500).json({ 
-      error: `서버 오류: ${error.message}`,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    error.context = {
+      endpoint: 'bid-search',
+      keyword,
+      pageNo,
+      numOfRows,
+      type
+    };
+    next(error);
   }
 });
 
@@ -777,10 +924,24 @@ async function saveSearchLog(userId, userEmail, userName, keyword, resultCount) 
   }
 }
 
-// 전역 에러 핸들링 미들웨어
+// 에러 로깅 미들웨어 (상세 디버깅용)
 app.use((err, req, res, next) => {
-  console.error('[Global Error]', err);
-  res.status(500).json({ 
+  const status = err.status || err.response?.status || 500;
+  const responseData = err.response?.data;
+  console.error('[API Error]', {
+    method: req.method,
+    url: req.originalUrl,
+    status,
+    message: err.message,
+    context: err.context || null,
+    responseData: responseData ? truncateLog(responseData) : null
+  });
+  next(err);
+});
+
+// 전역 에러 응답 미들웨어
+app.use((err, req, res, next) => {
+  res.status(500).json({
     error: err.message || 'Internal Server Error',
     details: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });

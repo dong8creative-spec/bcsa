@@ -108,7 +108,6 @@ export const defaultContent = {
         community: { text: "커뮤니티", fontSize: "text-3xl", fontWeight: "font-bold" },
         restaurants: { text: "부산맛집", fontSize: "text-3xl", fontWeight: "font-bold" },
         donation: { text: "후원", fontSize: "text-3xl", fontWeight: "font-bold" },
-        bidSearch: { text: "조달청 입찰공고 검색", fontSize: "text-3xl", fontWeight: "font-bold" },
         myPage: { text: "마이페이지", fontSize: "text-3xl", fontWeight: "font-bold" }
     }
 };
