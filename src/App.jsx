@@ -4411,6 +4411,7 @@ const App = () => {
                     '커뮤니티': parsed['커뮤니티'] !== undefined ? parsed['커뮤니티'] : true,
                     '후원': parsed['후원'] !== undefined ? parsed['후원'] : true,
                     '부산맛집': parsed['부산맛집'] !== undefined ? parsed['부산맛집'] : true,
+                    '입찰공고': parsed['입찰공고'] !== undefined ? parsed['입찰공고'] : true,
                     ...parsed
                 };
             }
@@ -4424,7 +4425,8 @@ const App = () => {
             '부청사 회원': true,
             '커뮤니티': true,
             '후원': true,
-            '부산맛집': true
+            '부산맛집': true,
+            '입찰공고': true
         };
     };
 
@@ -4438,7 +4440,8 @@ const App = () => {
         '부청사 회원': '부청사 회원',
         '커뮤니티': '커뮤니티',
         '후원': '후원',
-        '부산맛집': '부산맛집'
+        '부산맛집': '부산맛집',
+        '입찰공고': '입찰공고'
     };
 
     // 로컬 스토리지에서 메뉴 명칭 로드
@@ -4508,7 +4511,7 @@ const App = () => {
     }, []);
 
     // 메뉴 순서 관리
-    const defaultMenuOrder = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '후원', '부산맛집'];
+    const defaultMenuOrder = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '후원', '부산맛집', '입찰공고'];
     
     const loadMenuOrderFromStorage = () => {
         try {
@@ -5815,6 +5818,9 @@ END:VCALENDAR`;
         } else if (item === '부산맛집') { 
             setCurrentView('restaurants'); 
             setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+        } else if (item === '입찰공고') { 
+            setCurrentView('tenderTest'); 
+            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
         } else {
             // 처리되지 않는 메뉴 항목에 대한 fallback
             console.error(`[Navigation] 처리되지 않는 메뉴 항목: "${item}"`);
@@ -5834,6 +5840,7 @@ END:VCALENDAR`;
         else if (item === '커뮤니티' && (currentView === 'community' || currentView === 'notice')) isActive = true;
         else if (item === '후원' && currentView === 'donation') isActive = true;
         else if (item === '부산맛집' && (currentView === 'restaurants' || currentView === 'restaurantDetail' || currentView === 'restaurantForm')) isActive = true;
+        else if (item === '입찰공고' && currentView === 'tenderTest') isActive = true;
         return `${baseClass} ${isActive ? 'active' : ''}`;
     }
 
@@ -6062,6 +6069,11 @@ END:VCALENDAR`;
             return null;
         }
         if (currentView === 'about') return <AboutView onBack={() => setCurrentView('home')} content={content} pageTitles={pageTitles} />;
+        if (currentView === 'tenderTest' && !menuEnabled['입찰공고']) {
+            alert('준비중인 서비스입니다.');
+            setCurrentView('home');
+            return null;
+        }
         if (currentView === 'tenderTest') return <TenderTestView onBack={() => setCurrentView('home')} pageTitles={pageTitles} />;
         
         // 예상치 못한 currentView 값에 대한 fallback (항상 유효한 React 요소 반환 보장)
@@ -7126,21 +7138,6 @@ END:VCALENDAR`;
             {/* 🌟 모바일 메뉴 오버레이 */}
             <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onNavigate={handleNavigation} menuEnabled={menuEnabled} menuNames={menuNames} menuOrder={menuOrder} />
 
-            {/* 개발 모드: 나라장터 테스트 버튼 */}
-            {import.meta.env.MODE === 'development' && (
-                <button
-                    type="button"
-                    onClick={() => setCurrentView('tenderTest')}
-                    className="fixed left-6 bottom-6 z-50 w-14 h-14 bg-purple-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
-                    title="나라장터 테스트 페이지"
-                >
-                    <Icons.Search className="w-6 h-6 text-white" />
-                    <span className="absolute right-full mr-3 px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
-                        나라장터 테스트
-                        <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-purple-600"></span>
-                    </span>
-                </button>
-            )}
 
             {/* 플로팅 소셜 아이콘 (오른쪽 고정, 스크롤 따라다님) */}
             <div className="fixed right-6 bottom-6 z-50 flex flex-col gap-3">
