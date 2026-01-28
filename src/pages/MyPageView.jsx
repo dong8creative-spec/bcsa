@@ -57,111 +57,119 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
     };
 
     return (
-        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
-            <div className="container mx-auto max-w-4xl">
-                <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-                    <PageTitle pageKey="myPage" pageTitles={pageTitles} defaultText="마이페이지" />
-                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
-                        <Icons.ArrowLeft size={20} /> 메인으로
+        <div className="pt-32 pb-20 px-6 md:px-8 min-h-screen bg-white animate-fade-in">
+            <div className="container mx-auto max-w-5xl">
+                {/* 헤더 */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-6">
+                    <div>
+                        <PageTitle pageKey="myPage" pageTitles={pageTitles} defaultText="마이페이지" />
+                        <p className="text-sm text-gray-500 mt-2">회원 정보와 활동 내역을 확인하세요</p>
+                    </div>
+                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-gray-600 text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                        <Icons.ArrowLeft size={18} /> 메인으로
                     </button>
                 </div>
                 
                 {/* 프로필 섹션 */}
-                <div className="bg-white rounded-3xl p-8 shadow-card mb-8">
-                    <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="bg-gray-50 border border-gray-100 p-10 mb-20">
+                    <div className="flex flex-col md:flex-row items-start gap-8">
                         <div className="relative">
-                            <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center text-4xl overflow-hidden">
+                            <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-5xl overflow-hidden border border-gray-300">
                                 {editFormData.img ? <img src={editFormData.img} className="w-full h-full object-cover"/> : "👤"}
                             </div>
                             {isEditingProfile && (
-                                <label className="absolute bottom-0 right-0 w-8 h-8 bg-brand text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-700 transition-colors">
-                                    <Icons.Camera size={16} />
+                                <label className="absolute bottom-0 right-0 w-10 h-10 bg-gray-800 text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-700 transition-colors border-2 border-white">
+                                    <Icons.Camera size={18} />
                                     <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                                 </label>
                             )}
                         </div>
-                        <div className="text-center md:text-left flex-1">
+                        <div className="flex-1">
                             {isEditingProfile ? (
-                                <div className="space-y-3">
-                                    <input type="text" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none" placeholder="이름" />
-                                    <input type="text" value={editFormData.company} onChange={e => setEditFormData({...editFormData, company: e.target.value})} className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none" placeholder="회사명" />
-                                    <input type="text" value={editFormData.role} onChange={e => setEditFormData({...editFormData, role: e.target.value})} className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none" placeholder="직책" />
-                                    <input type="text" value={editFormData.industry} onChange={e => setEditFormData({...editFormData, industry: e.target.value})} className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none" placeholder="업종" />
-                                    <input type="text" value={editFormData.address} onChange={e => setEditFormData({...editFormData, address: e.target.value})} className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none" placeholder="주소" />
-                                    <input type="text" value={editFormData.phone} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} className="w-full p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none" placeholder="전화번호" />
-                                    <div className="flex gap-2">
-                                        <button type="button" onClick={handleSaveProfile} className="flex-1 py-2 bg-brand text-white font-bold rounded-lg hover:bg-blue-700">저장</button>
-                                        <button type="button" onClick={() => { setIsEditingProfile(false); setEditFormData({name: user.name || '', company: user.company || '', role: user.role || '', industry: user.industry || user.businessCategory || '', address: user.address || '', phone: user.phone || '', img: user.img || ''}); }} className="flex-1 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300">취소</button>
+                                <div className="space-y-4">
+                                    <input type="text" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} className="w-full px-4 py-3 border border-gray-200 focus:border-gray-400 focus:outline-none text-sm" placeholder="이름" />
+                                    <input type="text" value={editFormData.company} onChange={e => setEditFormData({...editFormData, company: e.target.value})} className="w-full px-4 py-3 border border-gray-200 focus:border-gray-400 focus:outline-none text-sm" placeholder="회사명" />
+                                    <input type="text" value={editFormData.role} onChange={e => setEditFormData({...editFormData, role: e.target.value})} className="w-full px-4 py-3 border border-gray-200 focus:border-gray-400 focus:outline-none text-sm" placeholder="직책" />
+                                    <input type="text" value={editFormData.industry} onChange={e => setEditFormData({...editFormData, industry: e.target.value})} className="w-full px-4 py-3 border border-gray-200 focus:border-gray-400 focus:outline-none text-sm" placeholder="업종" />
+                                    <input type="text" value={editFormData.address} onChange={e => setEditFormData({...editFormData, address: e.target.value})} className="w-full px-4 py-3 border border-gray-200 focus:border-gray-400 focus:outline-none text-sm" placeholder="주소" />
+                                    <input type="text" value={editFormData.phone} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} className="w-full px-4 py-3 border border-gray-200 focus:border-gray-400 focus:outline-none text-sm" placeholder="전화번호" />
+                                    <div className="flex gap-3 pt-2">
+                                        <button type="button" onClick={handleSaveProfile} className="px-6 py-3 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors">저장</button>
+                                        <button type="button" onClick={() => { setIsEditingProfile(false); setEditFormData({name: user.name || '', company: user.company || '', role: user.role || '', industry: user.industry || user.businessCategory || '', address: user.address || '', phone: user.phone || '', img: user.img || ''}); }} className="px-6 py-3 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">취소</button>
                                     </div>
                                 </div>
                             ) : (
                                 <Fragment>
-                                    <h3 className="text-2xl font-bold text-dark">{user.name} <span className="text-base font-normal text-gray-500">({user.id})</span></h3>
-                                    <p className="text-gray-600 mt-1">{user.company} | {user.role}</p>
-                                    <span className="inline-block px-3 py-1 bg-brand/10 text-brand text-xs font-bold rounded-full mt-2">{user.industry}</span>
-                                    <button type="button" onClick={() => setIsEditingProfile(true)} className="mt-4 px-4 py-2 bg-brand/10 text-brand font-bold rounded-lg hover:bg-brand/20 transition-colors text-sm">
+                                    <h3 className="text-3xl font-light text-gray-900 mb-2">{user.name} <span className="text-sm font-normal text-gray-400">({user.id})</span></h3>
+                                    <p className="text-sm text-gray-600 mb-3">{user.company} · {user.role}</p>
+                                    <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium mt-1">{user.industry}</span>
+                                    <button type="button" onClick={() => setIsEditingProfile(true)} className="mt-6 px-5 py-2 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
                                         개인정보 수정
                                     </button>
                                     {user.approvalStatus === 'pending' && (
-                                        <div className="mt-4 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-xl">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Icons.Info className="w-5 h-5 text-yellow-600" />
-                                                <span className="font-bold text-yellow-700">승인 대기 중</span>
+                                        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200">
+                                            <div className="flex items-start gap-3">
+                                                <Icons.Info className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                                <div>
+                                                    <span className="text-sm font-medium text-yellow-900 block mb-1">승인 대기 중</span>
+                                                    <p className="text-xs text-yellow-700 leading-relaxed">회원가입 신청이 관리자 승인 대기 중입니다. 승인 후 서비스를 이용하실 수 있습니다.</p>
+                                                </div>
                                             </div>
-                                            <p className="text-xs text-yellow-600">회원가입 신청이 관리자 승인 대기 중입니다. 승인 후 서비스를 이용하실 수 있습니다.</p>
                                         </div>
                                     )}
                                     {user.approvalStatus === 'rejected' && (
-                                        <div className="mt-4 p-4 bg-red-50 border-2 border-red-200 rounded-xl">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Icons.X className="w-5 h-5 text-red-600" />
-                                                <span className="font-bold text-red-700">승인 거절</span>
+                                        <div className="mt-6 p-4 bg-red-50 border border-red-200">
+                                            <div className="flex items-start gap-3">
+                                                <Icons.X className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                                <div>
+                                                    <span className="text-sm font-medium text-red-900 block mb-1">승인 거절</span>
+                                                    <p className="text-xs text-red-700 leading-relaxed">회원가입 신청이 거절되었습니다. 관리자에게 문의하세요.</p>
+                                                </div>
                                             </div>
-                                            <p className="text-xs text-red-600">회원가입 신청이 거절되었습니다. 관리자에게 문의하세요.</p>
                                         </div>
                                     )}
                                     
                                     {/* PortOne 본인인증 정보 시각화 */}
                                     {user.isIdentityVerified && (
-                                        <div className="mt-4 p-5 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                                        <div className="mt-6 p-5 bg-green-50 border border-green-200">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="w-10 h-10 bg-green-600 flex items-center justify-center">
                                                     <Icons.CheckCircle className="w-6 h-6 text-white" />
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-green-700">PortOne 본인인증 완료</h4>
-                                                    <p className="text-xs text-green-600">인증된 개인정보</p>
+                                                    <h4 className="text-sm font-medium text-green-900">PortOne 본인인증 완료</h4>
+                                                    <p className="text-xs text-green-700 mt-0.5">인증된 개인정보</p>
                                                 </div>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3 mt-3">
-                                                <div className="bg-white/80 rounded-lg p-3 border border-green-100">
+                                            <div className="grid grid-cols-2 gap-4 mt-4">
+                                                <div className="bg-white border border-green-100 p-3">
                                                     <div className="text-xs text-gray-500 mb-1">인증된 이름</div>
-                                                    <div className="font-bold text-sm text-dark">{user.verifiedName || user.name}</div>
+                                                    <div className="font-medium text-sm text-gray-900">{user.verifiedName || user.name}</div>
                                                 </div>
-                                                <div className="bg-white/80 rounded-lg p-3 border border-green-100">
+                                                <div className="bg-white border border-green-100 p-3">
                                                     <div className="text-xs text-gray-500 mb-1">인증된 전화번호</div>
-                                                    <div className="font-bold text-sm text-dark">{user.verifiedPhone || user.phone || '-'}</div>
+                                                    <div className="font-medium text-sm text-gray-900">{user.verifiedPhone || user.phone || '-'}</div>
                                                 </div>
                                                 {user.verifiedBirthday && (
-                                                    <div className="bg-white/80 rounded-lg p-3 border border-green-100">
+                                                    <div className="bg-white border border-green-100 p-3">
                                                         <div className="text-xs text-gray-500 mb-1">생년월일</div>
-                                                        <div className="font-bold text-sm text-dark">
+                                                        <div className="font-medium text-sm text-gray-900">
                                                             {user.verifiedBirthday.replace(/(\d{4})(\d{2})(\d{2})/, '$1년 $2월 $3일')}
                                                         </div>
                                                     </div>
                                                 )}
                                                 {user.verifiedGender && (
-                                                    <div className="bg-white/80 rounded-lg p-3 border border-green-100">
+                                                    <div className="bg-white border border-green-100 p-3">
                                                         <div className="text-xs text-gray-500 mb-1">성별</div>
-                                                        <div className="font-bold text-sm text-dark">{user.verifiedGender === 'M' ? '남성' : '여성'}</div>
+                                                        <div className="font-medium text-sm text-gray-900">{user.verifiedGender === 'M' ? '남성' : '여성'}</div>
                                                     </div>
                                                 )}
                                             </div>
                                             {user.impUid && (
-                                                <div className="mt-3 pt-3 border-t border-green-200">
+                                                <div className="mt-4 pt-4 border-t border-green-200">
                                                     <div className="flex items-center justify-between">
-                                                        <span className="text-xs text-gray-500">인증 거래번호</span>
-                                                        <span className="text-xs font-mono text-gray-600 bg-white px-2 py-1 rounded">{user.impUid.substring(0, 12)}...</span>
+                                                        <span className="text-xs text-gray-600">인증 거래번호</span>
+                                                        <span className="text-xs font-mono text-gray-700 bg-white px-2 py-1 border border-green-100">{user.impUid.substring(0, 12)}...</span>
                                                     </div>
                                                 </div>
                                             )}
@@ -174,52 +182,54 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                 </div>
 
                 {/* 탭 메뉴 */}
-                <div className="flex gap-2 mb-6 border-b border-gray-200 pb-1 overflow-x-auto">
-                    <button onClick={() => setActiveTab('seminars')} className={`px-4 py-2 font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'seminars' ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>신청한 모임</button>
-                    <button onClick={() => setActiveTab('posts')} className={`px-4 py-2 font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'posts' ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>내 게시글</button>
-                    <button onClick={() => setActiveTab('verification')} className={`px-4 py-2 font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'verification' ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>본인인증 정보</button>
-                    {user.hasDonated && (
-                        <button onClick={() => setActiveTab('company')} className={`px-4 py-2 font-bold transition-colors border-b-2 whitespace-nowrap ${activeTab === 'company' ? 'border-brand text-brand' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>회사 소개</button>
-                    )}
+                <div className="border-t border-gray-200 mb-16">
+                    <div className="flex gap-8 overflow-x-auto">
+                        <button onClick={() => setActiveTab('seminars')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'seminars' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>신청한 모임</button>
+                        <button onClick={() => setActiveTab('posts')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'posts' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>내 게시글</button>
+                        <button onClick={() => setActiveTab('verification')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'verification' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>본인인증 정보</button>
+                        {user.hasDonated && (
+                            <button onClick={() => setActiveTab('company')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'company' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>회사 소개</button>
+                        )}
+                    </div>
                 </div>
 
                 {/* 탭 컨텐츠 */}
-                <div className="bg-white rounded-3xl shadow-sm p-6 min-h-[300px] mb-8">
+                <div className="min-h-[400px] mb-20">
                     {activeTab === 'seminars' && (
-                        <ul className="space-y-4">
+                        <ul className="space-y-3">
                             {mySeminars.length > 0 ? mySeminars.map((s, idx) => (
-                                <li key={idx} className="flex justify-between items-center p-4 border rounded-xl hover:bg-gray-50">
+                                <li key={idx} className="flex justify-between items-center p-5 border border-gray-200 hover:bg-gray-50 transition-colors">
                                     <div>
-                                        <div className="font-bold text-dark">{s.title}</div>
-                                        <div className="text-xs text-gray-500 mt-1">{s.date} | {s.location}</div>
+                                        <div className="font-medium text-gray-900 text-base mb-1">{s.title}</div>
+                                        <div className="text-xs text-gray-500">{s.date} · {s.location}</div>
                                     </div>
-                                    <div className="flex gap-2 items-center">
-                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold">신청완료</span>
+                                    <div className="flex gap-3 items-center">
+                                        <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1 font-medium">신청완료</span>
                                         <button type="button" onClick={() => {
                                             if(confirm("세미나 신청을 취소하시겠습니까?")) {
                                                 if (onCancelSeminar) {
                                                     onCancelSeminar(s.id);
                                                 }
                                             }
-                                        }} className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50">취소</button>
+                                        }} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1 border border-gray-300 hover:bg-gray-50 transition-colors">취소</button>
                                     </div>
                                 </li>
-                            )) : <li className="text-center text-gray-400 py-10">신청한 모임이 없습니다.</li>}
+                            )) : <li className="text-center text-gray-500 py-16 text-sm">신청한 모임이 없습니다.</li>}
                         </ul>
                     )}
                     {activeTab === 'posts' && (
-                        <ul className="space-y-4">
+                        <ul className="space-y-3">
                             {myPosts.length > 0 ? myPosts.map((p, idx) => (
-                                <li key={idx} className="flex justify-between items-center p-4 border rounded-xl hover:bg-gray-50">
+                                <li key={idx} className="flex justify-between items-center p-5 border border-gray-200 hover:bg-gray-50 transition-colors">
                                     <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded text-gray-600">{p.category}</span>
-                                            <div className="font-bold text-dark">{p.title}</div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-[10px] bg-gray-100 px-2 py-1 text-gray-600 font-medium">{p.category}</span>
+                                            <div className="font-medium text-gray-900 text-base">{p.title}</div>
                                         </div>
-                                        <div className="text-xs text-gray-400">{p.date}</div>
+                                        <div className="text-xs text-gray-500">{p.date}</div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className={`text-xs px-2 py-1 rounded font-bold ${p.reply ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{p.reply ? '답변완료' : '답변대기'}</span>
+                                    <div className="flex items-center gap-3">
+                                        <span className={`text-xs px-3 py-1 font-medium ${p.reply ? 'bg-gray-100 text-gray-700' : 'bg-gray-50 text-gray-500'}`}>{p.reply ? '답변완료' : '답변대기'}</span>
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -256,36 +266,36 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                 });
                                                 setIsEditModalOpen(true);
                                             }}
-                                            className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                                            className="p-2 border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
                                             title="수정"
                                         >
                                             <Icons.Edit size={16} />
                                         </button>
                                     </div>
                                 </li>
-                            )) : <li className="text-center text-gray-400 py-10">작성한 게시글이 없습니다.</li>}
+                            )) : <li className="text-center text-gray-500 py-16 text-sm">작성한 게시글이 없습니다.</li>}
                         </ul>
                     )}
                     {activeTab === 'company' && user.hasDonated && (
                         <div className="space-y-6">
-                            <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-6">
-                                <h3 className="text-xl font-bold text-yellow-700 mb-4 flex items-center gap-2">
-                                    <Icons.Star className="w-5 h-5" /> 회사 소개 작성
+                            <div className="bg-yellow-50 border border-yellow-200 p-8">
+                                <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center gap-2">
+                                    <Icons.Star className="w-5 h-5 text-yellow-600" /> 회사 소개 작성
                                 </h3>
-                                <p className="text-sm text-yellow-600 mb-6">후원 회원 전용 기능입니다. 회사를 소개해주세요.</p>
+                                <p className="text-sm text-gray-600 mb-8">후원 회원 전용 기능입니다. 회사를 소개해주세요.</p>
                                 
                                 {/* 대표 이미지 */}
                                 <div className="mb-6">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">대표 이미지 (1장)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">대표 이미지 (1장)</label>
                                     <input
                                         type="text"
                                         placeholder="이미지 URL을 입력하세요"
-                                        className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm mb-2"
+                                        className="w-full px-4 py-3 border border-gray-300 focus:border-gray-400 focus:outline-none text-sm mb-3"
                                         value={companyIntro.companyMainImage}
                                         onChange={(e) => setCompanyIntro({...companyIntro, companyMainImage: e.target.value})}
                                     />
                                     {companyIntro.companyMainImage && (
-                                        <div className="relative w-full h-64 rounded-xl overflow-hidden mt-2">
+                                        <div className="relative w-full h-64 overflow-hidden mt-2 border border-gray-200">
                                             <img src={companyIntro.companyMainImage} alt="대표 이미지" className="w-full h-full object-cover" />
                                         </div>
                                     )}
@@ -293,25 +303,25 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                 
                                 {/* 회사 소개 텍스트 */}
                                 <div className="mb-6">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">회사 소개</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">회사 소개</label>
                                     <textarea
                                         placeholder="회사에 대한 소개를 작성해주세요"
-                                        className="w-full p-4 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors h-32 resize-none text-sm"
+                                        className="w-full px-4 py-3 border border-gray-300 focus:border-gray-400 focus:outline-none h-32 resize-none text-sm"
                                         value={companyIntro.companyDescription}
                                         onChange={(e) => setCompanyIntro({...companyIntro, companyDescription: e.target.value})}
                                     />
                                 </div>
                                 
                                 {/* 추가 사진 3장 */}
-                                <div className="mb-6">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">추가 사진 (최대 3장)</label>
-                                    <div className="grid grid-cols-3 gap-3 mb-3">
+                                <div className="mb-8">
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">추가 사진 (최대 3장)</label>
+                                    <div className="grid grid-cols-3 gap-4">
                                         {[0, 1, 2].map((idx) => (
                                             <div key={idx}>
                                                 <input
                                                     type="text"
                                                     placeholder={`사진 ${idx + 1} URL`}
-                                                    className="w-full p-2 border-[0.5px] border-brand/30 rounded-lg focus:border-brand focus:outline-none transition-colors text-xs mb-2"
+                                                    className="w-full px-3 py-2 border border-gray-300 focus:border-gray-400 focus:outline-none text-xs mb-2"
                                                     value={companyIntro.companyImages[idx] || ''}
                                                     onChange={(e) => {
                                                         const newImages = [...companyIntro.companyImages];
@@ -320,7 +330,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                     }}
                                                 />
                                                 {companyIntro.companyImages[idx] && (
-                                                    <div className="relative aspect-square rounded-lg overflow-hidden">
+                                                    <div className="relative aspect-square overflow-hidden border border-gray-200">
                                                         <img src={companyIntro.companyImages[idx]} alt={`추가 사진 ${idx + 1}`} className="w-full h-full object-cover" />
                                                     </div>
                                                 )}
@@ -341,7 +351,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                         await onUpdateProfile(updatedUser);
                                         alert('회사 소개가 저장되었습니다.');
                                     }}
-                                    className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                                    className="w-full py-3 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
                                 >
                                     저장하기
                                 </button>
@@ -349,80 +359,80 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                         </div>
                     )}
                     {activeTab === 'verification' && (
-                        <div className="space-y-6">
+                        <div className="space-y-8">
                             {user.isIdentityVerified ? (
                                 <Fragment>
                                     {/* 인증 상태 카드 */}
-                                    <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg">
-                                        <div className="flex items-center gap-4 mb-4">
-                                            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                                    <div className="bg-green-50 border border-green-200 p-8">
+                                        <div className="flex items-center gap-4 mb-6">
+                                            <div className="w-14 h-14 bg-green-600 flex items-center justify-center">
                                                 <Icons.CheckCircle className="w-8 h-8 text-white" />
                                             </div>
                                             <div>
-                                                <h3 className="text-2xl font-bold mb-1">본인인증 완료</h3>
-                                                <p className="text-green-100 text-sm">PortOne을 통한 본인인증이 완료되었습니다</p>
+                                                <h3 className="text-xl font-light text-gray-900 mb-1">본인인증 완료</h3>
+                                                <p className="text-sm text-gray-600">PortOne을 통한 본인인증이 완료되었습니다</p>
                                             </div>
                                         </div>
                                         {user.impUid && (
-                                            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 mt-4">
-                                                <div className="text-xs text-green-100 mb-1">인증 거래 고유번호</div>
-                                                <div className="font-mono text-sm break-all">{user.impUid}</div>
+                                            <div className="bg-white border border-green-100 p-4 mt-4">
+                                                <div className="text-xs text-gray-600 mb-1">인증 거래 고유번호</div>
+                                                <div className="font-mono text-sm text-gray-900">{user.impUid}</div>
                                             </div>
                                         )}
                                     </div>
 
                                     {/* 인증 정보 상세 */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="bg-white border-2 border-green-200 rounded-xl p-5">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <Icons.Users className="w-5 h-5 text-green-600" />
-                                                <h4 className="font-bold text-dark">인증된 이름</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="bg-gray-50 border border-gray-200 p-6">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <Icons.Users className="w-5 h-5 text-gray-600" />
+                                                <h4 className="text-sm font-medium text-gray-900">인증된 이름</h4>
                                             </div>
-                                            <div className="text-2xl font-bold text-green-600">{user.verifiedName || user.name}</div>
-                                            <div className="text-xs text-gray-500 mt-2">PortOne 본인인증으로 확인된 이름</div>
+                                            <div className="text-2xl font-light text-gray-900">{user.verifiedName || user.name}</div>
+                                            <div className="text-xs text-gray-500 mt-3">PortOne 본인인증으로 확인된 이름</div>
                                         </div>
 
-                                        <div className="bg-white border-2 border-green-200 rounded-xl p-5">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <Icons.Phone className="w-5 h-5 text-green-600" />
-                                                <h4 className="font-bold text-dark">인증된 전화번호</h4>
+                                        <div className="bg-gray-50 border border-gray-200 p-6">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <Icons.Phone className="w-5 h-5 text-gray-600" />
+                                                <h4 className="text-sm font-medium text-gray-900">인증된 전화번호</h4>
                                             </div>
-                                            <div className="text-xl font-bold text-green-600">{user.verifiedPhone || user.phone || '-'}</div>
-                                            <div className="text-xs text-gray-500 mt-2">본인인증으로 확인된 전화번호</div>
+                                            <div className="text-xl font-light text-gray-900">{user.verifiedPhone || user.phone || '-'}</div>
+                                            <div className="text-xs text-gray-500 mt-3">본인인증으로 확인된 전화번호</div>
                                         </div>
 
                                         {user.verifiedBirthday && (
-                                            <div className="bg-white border-2 border-green-200 rounded-xl p-5">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <Icons.Calendar className="w-5 h-5 text-green-600" />
-                                                    <h4 className="font-bold text-dark">생년월일</h4>
+                                            <div className="bg-gray-50 border border-gray-200 p-6">
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <Icons.Calendar className="w-5 h-5 text-gray-600" />
+                                                    <h4 className="text-sm font-medium text-gray-900">생년월일</h4>
                                                 </div>
-                                                <div className="text-xl font-bold text-green-600">
+                                                <div className="text-xl font-light text-gray-900">
                                                     {user.verifiedBirthday.replace(/(\d{4})(\d{2})(\d{2})/, '$1년 $2월 $3일')}
                                                 </div>
-                                                <div className="text-xs text-gray-500 mt-2">본인인증으로 확인된 생년월일</div>
+                                                <div className="text-xs text-gray-500 mt-3">본인인증으로 확인된 생년월일</div>
                                             </div>
                                         )}
 
                                         {user.verifiedGender && (
-                                            <div className="bg-white border-2 border-green-200 rounded-xl p-5">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <Icons.Users className="w-5 h-5 text-green-600" />
-                                                    <h4 className="font-bold text-dark">성별</h4>
+                                            <div className="bg-gray-50 border border-gray-200 p-6">
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <Icons.Users className="w-5 h-5 text-gray-600" />
+                                                    <h4 className="text-sm font-medium text-gray-900">성별</h4>
                                                 </div>
-                                                <div className="text-xl font-bold text-green-600">{user.verifiedGender === 'M' ? '남성' : '여성'}</div>
-                                                <div className="text-xs text-gray-500 mt-2">본인인증으로 확인된 성별</div>
+                                                <div className="text-xl font-light text-gray-900">{user.verifiedGender === 'M' ? '남성' : '여성'}</div>
+                                                <div className="text-xs text-gray-500 mt-3">본인인증으로 확인된 성별</div>
                                             </div>
                                         )}
                                     </div>
 
                                     {/* 인증 일시 */}
                                     {user.createdAt && (
-                                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                                        <div className="bg-gray-50 border border-gray-200 p-6">
                                             <div className="flex items-center justify-between">
                                                 <div>
-                                                    <div className="text-xs text-gray-500 mb-1">인증 완료 일시</div>
-                                                    <div className="font-bold text-dark">
+                                                    <div className="text-xs text-gray-600 mb-2">인증 완료 일시</div>
+                                                    <div className="text-base font-medium text-gray-900">
                                                         {new Date(user.createdAt).toLocaleString('ko-KR', {
                                                             year: 'numeric',
                                                             month: 'long',
@@ -432,20 +442,20 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                         })}
                                                     </div>
                                                 </div>
-                                                <Icons.CheckCircle className="w-8 h-8 text-green-500" />
+                                                <Icons.CheckCircle className="w-8 h-8 text-gray-400" />
                                             </div>
                                         </div>
                                     )}
                                 </Fragment>
                             ) : (
                                 <div className="text-center py-20">
-                                    <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <Icons.Info className="w-12 h-12 text-yellow-600" />
+                                    <div className="w-20 h-20 bg-gray-100 flex items-center justify-center mx-auto mb-6">
+                                        <Icons.Info className="w-10 h-10 text-gray-400" />
                                     </div>
-                                    <h3 className="text-xl font-bold text-dark mb-2">본인인증이 필요합니다</h3>
-                                    <p className="text-gray-500 mb-6">PortOne 본인인증을 통해 개인정보를 확인해주세요</p>
-                                    <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 max-w-md mx-auto">
-                                        <p className="text-sm text-yellow-700">
+                                    <h3 className="text-xl font-light text-gray-900 mb-2">본인인증이 필요합니다</h3>
+                                    <p className="text-sm text-gray-600 mb-8">PortOne 본인인증을 통해 개인정보를 확인해주세요</p>
+                                    <div className="bg-yellow-50 border border-yellow-200 p-6 max-w-md mx-auto">
+                                        <p className="text-sm text-gray-700 leading-relaxed">
                                             본인인증은 회원가입 시 자동으로 진행됩니다.<br/>
                                             인증 정보는 안전하게 보관되며, 서비스 이용을 위해 필수입니다.
                                         </p>
@@ -455,35 +465,35 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                         </div>
                     )}
                 </div>
-                <div className="text-right">
-                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleWithdrawClick(); }} className="text-xs text-red-400 hover:text-red-600 underline">회원 탈퇴하기</button>
+                <div className="border-t border-gray-200 pt-10 text-center">
+                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleWithdrawClick(); }} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">회원 탈퇴하기</button>
                 </div>
             </div>
 
             {/* 게시글 수정 모달 */}
             {isEditModalOpen && editingPost ? (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
-                    <div className="bg-white rounded-3xl p-8 max-w-3xl w-full max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-2xl font-bold text-dark">게시글 수정</h3>
-                            <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} className="p-2 hover:bg-gray-100 rounded-lg">
-                                <Icons.X size={24} />
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
+                    <div className="bg-white max-w-3xl w-full max-h-[calc(90vh-200px)] overflow-y-auto">
+                        <div className="sticky top-0 bg-white border-b border-gray-200 px-8 py-6 flex items-center justify-between">
+                            <h3 className="text-xl font-light text-gray-900">게시글 수정</h3>
+                            <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} className="p-2 hover:bg-gray-100 transition-colors">
+                                <Icons.X size={20} />
                             </button>
                         </div>
-                        <div className="space-y-4">
+                        <div className="p-8 space-y-6">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">제목 *</label>
                                 <input 
                                     type="text" 
-                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" 
+                                    className="w-full px-4 py-3 border border-gray-300 focus:border-gray-400 focus:outline-none text-sm" 
                                     value={editingPost.title || ''} 
                                     onChange={(e) => setEditingPost({...editingPost, title: e.target.value})} 
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">내용 *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">내용 *</label>
                                 <textarea 
-                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-48 resize-none" 
+                                    className="w-full px-4 py-3 border border-gray-300 focus:border-gray-400 focus:outline-none h-48 resize-none text-sm" 
                                     value={editingPost.content || ''} 
                                     onChange={(e) => setEditingPost({...editingPost, content: e.target.value})} 
                                 />
@@ -492,11 +502,11 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                             {/* 이미지 수정 섹션 */}
                             {editingPost.category === '인력구인' && editingPost.storeImages !== undefined ? (
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">매장 사진 (최대 3장)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">매장 사진 (최대 3장)</label>
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.storeImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover border border-gray-200" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -504,14 +514,14 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                         newImages.splice(idx, 1);
                                                         setEditingPost({...editingPost, storeImages: newImages});
                                                     }} 
-                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-gray-900 text-white flex items-center justify-center text-xs hover:bg-gray-700"
                                                 >
                                                     ×
                                                 </button>
                                             </div>
                                         ))}
                                         {(editingPost.storeImages || []).length < 3 ? (
-                                            <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                            <label className="w-32 h-32 border border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors">
                                                 {uploadingImages ? (
                                                     <div className="text-center">
                                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
@@ -710,30 +720,30 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                 </div>
                             ) : null}
                             
-                            <div className="flex gap-4 mt-8">
-                                <button 
-                                    type="button" 
-                                    onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} 
-                                    className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200"
-                                >
-                                    취소
-                                </button>
-                                <button 
-                                    type="button" 
-                                    onClick={async () => {
-                                        if (onUpdatePost) {
-                                            await onUpdatePost(editingPost.id, editingPost);
-                                            setIsEditModalOpen(false);
-                                            setEditingPost(null);
-                                        } else {
-                                            alert('게시글 수정 기능이 준비되지 않았습니다.');
-                                        }
-                                    }} 
-                                    className="flex-1 py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700"
-                                >
-                                    수정
-                                </button>
-                            </div>
+                        </div>
+                        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-8 py-6 flex gap-4">
+                            <button 
+                                type="button" 
+                                onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} 
+                                className="flex-1 py-3 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
+                            >
+                                취소
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={async () => {
+                                    if (onUpdatePost) {
+                                        await onUpdatePost(editingPost.id, editingPost);
+                                        setIsEditModalOpen(false);
+                                        setEditingPost(null);
+                                    } else {
+                                        alert('게시글 수정 기능이 준비되지 않았습니다.');
+                                    }
+                                }} 
+                                className="flex-1 py-3 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+                            >
+                                수정
+                            </button>
                         </div>
                     </div>
                 </div>
