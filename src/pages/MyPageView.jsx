@@ -198,7 +198,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                     {activeTab === 'seminars' && (
                         <ul className="space-y-3">
                             {mySeminars.length > 0 ? mySeminars.map((s, idx) => (
-                                <li key={idx} className="flex justify-between items-center p-5 border border-gray-200 hover:bg-gray-50 transition-colors">
+                                <li key={idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:bg-gray-50 transition-all">
                                     <div>
                                         <div className="font-medium text-gray-900 text-base mb-1">{s.title}</div>
                                         <div className="text-xs text-gray-500">{s.date} · {s.location}</div>
@@ -220,7 +220,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                     {activeTab === 'posts' && (
                         <ul className="space-y-3">
                             {myPosts.length > 0 ? myPosts.map((p, idx) => (
-                                <li key={idx} className="flex justify-between items-center p-5 border border-gray-200 hover:bg-gray-50 transition-colors">
+                                <li key={idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:bg-gray-50 transition-all">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-2">
                                             <span className="text-[10px] bg-gray-100 px-2 py-1 text-gray-600 font-medium">{p.category}</span>

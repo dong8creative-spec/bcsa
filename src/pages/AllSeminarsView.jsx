@@ -211,7 +211,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                     </div>
 
                 {/* 검색 및 필터 */}
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6 mb-8">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
                     <div className="flex flex-col md:flex-row gap-0 items-center">
                         <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
@@ -344,7 +344,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                         <button
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1}
-                            className="px-4 py-2 rounded-xl border-2 border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
+                            className="px-4 py-2 rounded-xl border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
                         >
                             <Icons.ChevronLeft size={20} />
                         </button>
@@ -364,7 +364,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                         <button
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             disabled={currentPage === totalPages}
-                            className="px-4 py-2 rounded-xl border-2 border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
+                            className="px-4 py-2 rounded-xl border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
                         >
                             <Icons.ChevronRight size={20} />
                         </button>
@@ -405,7 +405,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                         }
                     }}>
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl z-10 max-h-[90vh] flex flex-col md:flex-row overflow-hidden relative">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl z-10 max-h-[90vh] flex flex-col md:flex-row overflow-hidden relative">
                             <button type="button" onClick={() => {
                                 setSelectedSeminar(null);
                                 setCurrentImageIndex(0);

@@ -89,7 +89,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                 </div>
 
                 {/* 검색바 */}
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6 mb-8">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
                     <div className="flex flex-col md:flex-row gap-0 items-center">
                         <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
@@ -178,7 +178,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                                         {gradeMembers.map((member, idx) => (
-                                            <div key={idx} className={`bg-white rounded-3xl shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 ${member.memberGrade === '파트너사' && member.hasDonated ? 'flex flex-row items-start gap-4 p-4' : 'flex flex-col items-center text-center p-6'} group cursor-pointer`} onClick={() => setSelectedMember(member)}>
+                                            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-all hover:border-brand/20 ${member.memberGrade === '파트너사' && member.hasDonated ? 'flex flex-row items-start gap-4 p-4' : 'flex flex-col items-center text-center p-6'} group cursor-pointer`} onClick={() => setSelectedMember(member)}>
                                                 {member.memberGrade === '파트너사' && member.hasDonated ? (
                                                     <Fragment>
                                                         <div className="flex-shrink-0">
@@ -270,7 +270,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                 ) : filteredMembers.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                         {filteredMembers.map((member, idx) => (
-                            <div key={idx} className={`bg-white rounded-3xl shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 ${member.memberGrade === '파트너사' && member.hasDonated ? 'flex flex-row items-start gap-4 p-4' : 'flex flex-col items-center text-center p-6'} group cursor-pointer`} onClick={() => setSelectedMember(member)}>
+                            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-all hover:border-brand/20 ${member.memberGrade === '파트너사' && member.hasDonated ? 'flex flex-row items-start gap-4 p-4' : 'flex flex-col items-center text-center p-6'} group cursor-pointer`} onClick={() => setSelectedMember(member)}>
                                 {member.memberGrade === '파트너사' && member.hasDonated ? (
                                     <Fragment>
                                         <div className="flex-shrink-0">
@@ -352,7 +352,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                 {selectedMember && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedMember(null); }}>
                         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-6xl z-10 p-8 max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll relative" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-6xl z-10 p-8 max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll relative" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedMember(null); }} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-all">
                                 <Icons.X size={18}/>
                             </button>

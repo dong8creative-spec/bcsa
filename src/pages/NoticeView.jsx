@@ -24,7 +24,7 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
                     </button>
                 </div>
                 {/* 공지사항 내용 */}
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                 {/* 카테고리 필터 */}
                     <div className="flex flex-wrap gap-2 mb-6">
                         {categories.map((cat) => (
@@ -53,7 +53,7 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
                         {filteredPosts.map((post) => (
                             <div
                                 key={post.id}
-                                    className="p-5 border border-gray-200 rounded-lg hover:shadow-md transition-all cursor-pointer bg-white"
+                                    className="p-5 bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-all cursor-pointer"
                                 onClick={() => setSelectedPost(post)}
                             >
                                     <h3 className="font-bold text-dark mb-2">{post.title}</h3>

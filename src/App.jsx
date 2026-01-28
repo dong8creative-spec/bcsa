@@ -555,7 +555,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                 {/* 게시글 작성 모달 */}
                 {isCreateModalOpen ? (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setIsCreateModalOpen(false); }}>
-                        <div className="bg-white rounded-3xl p-8 max-w-3xl w-full max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-3xl w-full max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-2xl font-bold text-dark">게시글 작성</h3>
                                 <button type="button" onClick={() => setIsCreateModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -944,7 +944,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                 {/* 게시글 수정 모달 */}
                 {isEditModalOpen && editingPost && (isCurrentUserAdmin || (currentUser && (editingPost.authorId === currentUser.id || editingPost.authorId === currentUser.uid || (editingPost.author && editingPost.author === currentUser.name)))) ? (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
-                        <div className="bg-white rounded-3xl p-8 max-w-3xl w-full max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-3xl w-full max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-2xl font-bold text-dark">게시글 수정</h3>
                                 <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} className="p-2 hover:bg-gray-100 rounded-lg">

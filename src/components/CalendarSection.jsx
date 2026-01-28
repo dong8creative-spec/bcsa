@@ -15,14 +15,17 @@ const CalendarSection = ({ seminars, onSelectSeminar, currentUser, onWriteReview
         return weekStart;
     };
     
-    // 주의 7일 배열 생성
-    const weekStart = getWeekStart(currentDate);
-    const weekDays = [];
-    for (let i = 0; i < 7; i++) {
-        const day = new Date(weekStart);
-        day.setDate(weekStart.getDate() + i);
-        weekDays.push(day);
-    }
+    // 주의 7일 배열 생성 (useMemo로 메모이제이션)
+    const weekDays = useMemo(() => {
+        const weekStart = getWeekStart(currentDate);
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+            const day = new Date(weekStart);
+            day.setDate(weekStart.getDate() + i);
+            days.push(day);
+        }
+        return days;
+    }, [currentDate]);
     
     // 이전/다음 주 이동
     const prevWeek = () => setCurrentDate(new Date(currentDate.getTime() - 7 * 24 * 60 * 60 * 1000));
