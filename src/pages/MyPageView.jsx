@@ -1,4 +1,4 @@
-import React, { useState, Fragment, useEffect } from 'react';
+import React, { useState, Fragment, useEffect, useCallback } from 'react';
 import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 import { fileToBase64, resizeImage, uploadImageToImgBB } from '../utils/imageUtils';
@@ -32,14 +32,11 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
     const [bookmarkDetails, setBookmarkDetails] = useState([]);
     
     // 즐겨찾기 로드
-    useEffect(() => {
-        if (user && user.id && activeTab === 'bookmarks') {
-            loadBookmarks();
+    const loadBookmarks = useCallback(async () => {
+        if (!user || !user.id) {
+            setBookmarkDetails([]);
+            return;
         }
-    }, [user, activeTab]);
-    
-    const loadBookmarks = async () => {
-        if (!user || !user.id) return;
         
         setBookmarksLoading(true);
         try {
@@ -76,14 +73,28 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                     })
                 );
                 setBookmarkDetails(details);
+            } else {
+                // 즐겨찾기가 없을 때 빈 배열로 초기화
+                setBookmarkDetails([]);
             }
         } catch (error) {
             console.error('❌ 즐겨찾기 로드 실패:', error);
             alert('즐겨찾기를 불러오는데 실패했습니다.');
+            setBookmarkDetails([]);
         } finally {
             setBookmarksLoading(false);
         }
-    };
+    }, [user]);
+    
+    useEffect(() => {
+        if (user && user.id && activeTab === 'bookmarks') {
+            loadBookmarks();
+        } else if (activeTab !== 'bookmarks') {
+            // 다른 탭으로 전환할 때 즐겨찾기 데이터 초기화
+            setBookmarkDetails([]);
+            setBookmarks([]);
+        }
+    }, [user, activeTab, loadBookmarks]);
     
     const handleRemoveBookmark = async (bidNtceNo) => {
         if (!confirm('즐겨찾기에서 삭제하시겠습니까?')) return;
