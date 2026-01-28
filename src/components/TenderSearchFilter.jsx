@@ -1,8 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import * as Icons from 'lucide-react';
 import { getApiBaseUrl, apiGet } from '../utils/api';
-import { collection, getDocs, addDoc, deleteDoc, query, where, serverTimestamp, doc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { firebaseService } from '../services/firebaseService';
+import { auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
 const BUSINESS_TYPE_OPTIONS = ['전체', '물품', '일반용역', '기술용역', '공사', '기타', '민간'];
@@ -185,13 +185,14 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
   // 즐겨찾기 로드 함수
   const loadBookmarks = async (userId) => {
     try {
-      const bookmarksRef = collection(db, 'users', userId, 'bookmarks');
-      const snapshot = await getDocs(bookmarksRef);
-      const bidNtceNos = snapshot.docs.map(doc => doc.data().bidNtceNo);
+      const bookmarkList = await firebaseService.getBookmarks(userId);
+      const bidNtceNos = bookmarkList.map(bookmark => bookmark.bidNtceNo);
       setBookmarks(bidNtceNos);
       console.log('✅ [TenderSearchFilter] 즐겨찾기 로드:', bidNtceNos.length, '개');
     } catch (error) {
       console.error('❌ [TenderSearchFilter] 즐겨찾기 로드 실패:', error);
+      // 에러 발생 시 빈 배열로 초기화
+      setBookmarks([]);
     }
   };
   
@@ -201,7 +202,12 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
   };
   
   // 즐겨찾기 토글 함수
-  const handleToggleBookmark = async (item) => {
+  const handleToggleBookmark = async (item, e) => {
+    // 이벤트 전파 중지 (행 클릭 이벤트와 충돌 방지)
+    if (e) {
+      e.stopPropagation();
+    }
+    
     if (!currentUser) {
       alert('로그인이 필요한 기능입니다.');
       return;
@@ -210,33 +216,42 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
     const bidNtceNo = item.bidNtceNo;
     if (!bidNtceNo) {
       console.warn('⚠️ [TenderSearchFilter] bidNtceNo가 없습니다.');
+      alert('공고번호가 없어 즐겨찾기를 추가할 수 없습니다.');
       return;
     }
     
     try {
-      const bookmarksRef = collection(db, 'users', currentUser.uid, 'bookmarks');
-      const bookmarkQuery = query(bookmarksRef, where('bidNtceNo', '==', bidNtceNo));
-      const snapshot = await getDocs(bookmarkQuery);
+      const isCurrentlyBookmarked = isBookmarked(bidNtceNo);
       
-      if (snapshot.empty) {
-        // 추가
-        await addDoc(bookmarksRef, {
-          bidNtceNo: bidNtceNo,
-          createdAt: serverTimestamp()
-        });
-        setBookmarks(prev => [...prev, bidNtceNo]);
-        console.log('⭐ [TenderSearchFilter] 즐겨찾기 추가:', bidNtceNo);
-      } else {
+      if (isCurrentlyBookmarked) {
         // 삭제
-        const docId = snapshot.docs[0].id;
-        await deleteDoc(doc(db, 'users', currentUser.uid, 'bookmarks', docId));
+        await firebaseService.removeBookmark(currentUser.uid, bidNtceNo);
         setBookmarks(prev => prev.filter(no => no !== bidNtceNo));
         console.log('☆ [TenderSearchFilter] 즐겨찾기 제거:', bidNtceNo);
+      } else {
+        // 추가
+        await firebaseService.addBookmark(currentUser.uid, bidNtceNo);
+        setBookmarks(prev => [...prev, bidNtceNo]);
+        console.log('⭐ [TenderSearchFilter] 즐겨찾기 추가:', bidNtceNo);
       }
     } catch (error) {
       console.error('❌ [TenderSearchFilter] 즐겨찾기 토글 실패:', error);
-      alert('즐겨찾기 처리에 실패했습니다.');
+      const errorMessage = error.message || '즐겨찾기 처리에 실패했습니다.';
+      alert(errorMessage);
     }
+  };
+  
+  // 나라장터 공식 사이트로 이동하는 함수
+  const handleRowClick = (item) => {
+    if (!item?.bidNtceNo) {
+      console.warn('⚠️ [TenderSearchFilter] 공고번호가 없어 링크를 열 수 없습니다.');
+      return;
+    }
+    
+    // 나라장터 공고 상세 페이지 URL (일반적인 형식)
+    // 실제 URL 형식은 나라장터 사이트 구조에 따라 다를 수 있음
+    const g2bUrl = `https://www.g2b.go.kr/ep/co/coDetail.do?bidNo=${item.bidNtceNo}`;
+    window.open(g2bUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleInputChange = (key) => (event) => {
@@ -747,11 +762,15 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {results.map((item, index) => (
-                  <tr key={`${item?.bidNtceNo || 'item'}-${index}`} className="hover:bg-gray-50">
+                  <tr 
+                    key={`${item?.bidNtceNo || 'item'}-${index}`} 
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => handleRowClick(item)}
+                  >
                     <td className="px-4 py-3 text-gray-500">{index + 1}</td>
                     <td className="px-4 py-3">
                       <button
-                        onClick={() => handleToggleBookmark(item)}
+                        onClick={(e) => handleToggleBookmark(item, e)}
                         className="p-1 hover:bg-gray-100 rounded"
                         disabled={!currentUser}
                         title={currentUser ? '즐겨찾기 추가/제거' : '로그인 필요'}
@@ -761,8 +780,15 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                         />
                       </button>
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{item?.bidNtceNo || '-'}</td>
-                    <td className="px-4 py-3 text-gray-700">{item?.bidNtceNm || '-'}</td>
+                    <td className="px-4 py-3 text-gray-700 hover:text-brand transition-colors">
+                      <span className="flex items-center gap-1">
+                        {item?.bidNtceNo || '-'}
+                        <Icons.ExternalLink className="w-3 h-3 opacity-50" />
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-700 hover:text-brand transition-colors font-medium">
+                      {item?.bidNtceNm || '-'}
+                    </td>
                     <td className="px-4 py-3 text-gray-700">{item?.ntceInsttNm || '-'}</td>
                     <td className="px-4 py-3 text-gray-700">{item?.dminsttNm || '-'}</td>
                     <td className="px-4 py-3 text-gray-700">{item?.bidNtceDt || '-'}</td>
