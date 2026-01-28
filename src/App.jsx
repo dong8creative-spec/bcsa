@@ -7140,7 +7140,7 @@ END:VCALENDAR`;
 
 
             {/* 플로팅 소셜 아이콘 (오른쪽 고정, 스크롤 따라다님) */}
-            <div className="fixed right-6 bottom-6 z-50 flex flex-col gap-3">
+            <div className="fixed right-6 bottom-40 z-50 flex flex-col gap-3">
                 <a
                     href="https://open.kakao.com/o/gMWryRA"
                     target="_blank"

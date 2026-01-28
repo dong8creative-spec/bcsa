@@ -95,8 +95,21 @@ const mapSearchParamsToApiParams = (params) => {
 };
 
 const normalizeItems = (payload) => {
-  const items = payload?.data?.items
-    ?? payload?.response?.body?.items?.item
+  // 1. 최신 API 응답 형식: { success: true, data: { items: [...], totalCount: ... } }
+  if (payload?.data?.items && Array.isArray(payload.data.items)) {
+    return payload.data.items;
+  }
+  
+  // 2. data 객체가 비어있거나 items가 없는 경우
+  if (payload?.data && typeof payload.data === 'object') {
+    // data가 빈 객체 {}인 경우 또는 items가 없는 경우
+    if (!payload.data.items || (Array.isArray(payload.data.items) && payload.data.items.length === 0)) {
+      return [];
+    }
+  }
+  
+  // 3. 레거시 응답 형식: { response: { body: { items: { item: [...] } } } }
+  const items = payload?.response?.body?.items?.item
     ?? payload?.response?.body?.items
     ?? [];
 
