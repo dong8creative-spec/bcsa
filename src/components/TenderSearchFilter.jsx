@@ -9,14 +9,17 @@ const BUSINESS_TYPE_OPTIONS = ['전체', '물품', '일반용역', '기술용역
 const BUSINESS_STATUS_OPTIONS = ['전체', '외자', '비축', '리스'];
 
 const mapSearchParamsToApiParams = (params) => {
-  // 날짜 포맷 강제화: YYYYMMDD 형식으로 정제
-  const formatDateParam = (dateStr) => {
+  // 날짜 포맷 변환: YYYYMMDDHHMM (12자리) 형식으로 변환
+  // 시작일: 0000 추가, 종료일: 2359 추가
+  const formatDateParam = (dateStr, isStartDate = true) => {
     if (!dateStr) return '';
     // 하이픈 제거
     const cleaned = dateStr.replace(/-/g, '').replace(/\s/g, '');
     // YYYYMMDD 형식 검증 (8자리 숫자)
     if (/^\d{8}$/.test(cleaned)) {
-      return cleaned;
+      // 시간 부분 추가 (시작일: 0000, 종료일: 2359)
+      const timePart = isStartDate ? '0000' : '2359';
+      return cleaned + timePart; // YYYYMMDDHHMM (12자리)
     }
     // 형식이 맞지 않으면 빈 문자열 반환 (파라미터에서 제외됨)
     console.warn(`[Date Format] Invalid date format: ${dateStr}, expected YYYYMMDD`);
@@ -42,8 +45,8 @@ const mapSearchParamsToApiParams = (params) => {
     bidNtceNo: params.bidNtceNo?.trim() || '',
     bidNtceNm: params.bidNtceNm?.trim() || '',
     inqryDiv: params.inqryDiv || '1', // 기본값: 등록일시 기준 조회
-    fromBidDt: formatDateParam(params.fromBidDt),
-    toBidDt: formatDateParam(params.toBidDt),
+    fromBidDt: formatDateParam(params.fromBidDt, true),  // 시작일: 0000 추가
+    toBidDt: formatDateParam(params.toBidDt, false),     // 종료일: 2359 추가
     bidNtceDtlClsfCd: params.bidNtceDtlClsfCd || '',
     insttNm: params.insttNm?.trim() || '',
     refNo: params.refNo?.trim() || '',
@@ -63,6 +66,7 @@ const mapSearchParamsToApiParams = (params) => {
     businessStatuses: params.businessStatuses || []
   };
 
+  // ====== 데이터 클렌징: 빈 값, null, undefined, '전체' 완전 제거 ======
   Object.keys(result).forEach((key) => {
     const value = result[key];
     
@@ -71,31 +75,39 @@ const mapSearchParamsToApiParams = (params) => {
       return;
     }
     
-    // 빈 값 및 '전체' 값 필터링 (더 엄격한 검증)
-    if (value === '' || value === null || value === undefined || value === '전체' || String(value).trim() === '') {
+    // 1. null, undefined 제거
+    if (value === null || value === undefined) {
       delete result[key];
       return;
     }
     
-    // 배열 처리: '전체' 제거 및 빈 배열 체크
+    // 2. 문자열 처리: 빈 문자열, '전체', 공백만 있는 경우 제거
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed === '' || trimmed === '전체') {
+        delete result[key];
+        return;
+      }
+    }
+    
+    // 3. 배열 처리: '전체', 빈 문자열, null, undefined 제거
     if (Array.isArray(value)) {
       const filtered = value.filter(v => {
+        if (v === null || v === undefined) return false;
         const str = String(v).trim();
-        return str !== '전체' && str !== '' && v != null && v !== undefined;
+        return str !== '전체' && str !== '';
       });
+      
+      // 필터링 후 빈 배열이면 해당 키 자체 삭제
       if (filtered.length === 0) {
         delete result[key];
       } else {
         result[key] = filtered;
       }
     }
-    
-    // 문자열 값의 trim 처리 (공백만 있는 경우 제거)
-    if (typeof value === 'string' && value.trim() === '') {
-      delete result[key];
-    }
   });
 
+  console.log('✅ [mapSearchParamsToApiParams] 클렌징 완료:', result);
   return result;
 };
 
@@ -321,18 +333,43 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
         throw new Error('API URL이 설정되지 않았습니다.');
       }
 
-      console.log('🔍 [TenderSearchFilter] === API 요청 파라미터 상세 ===');
+      // ====== 1. 정밀 로깅 시스템: API 전송 직전 최종 파라미터 출력 ======
+      console.log('═══════════════════════════════════════════════');
+      console.log('🔍 [DEBUG_G2B_PARAMS] API 최종 쿼리 파라미터');
+      console.log('═══════════════════════════════════════════════');
       console.log('📋 원본 searchParams:', JSON.stringify(searchParams, null, 2));
-      console.log('📋 변환된 mappedParams:', JSON.stringify(mappedParams, null, 2));
-      console.log('📋 필터링된 파라미터 (API 전송용):', Object.keys(mappedParams));
+      console.log('───────────────────────────────────────────────');
+      console.log('📋 클렌징 후 mappedParams:', JSON.stringify(mappedParams, null, 2));
+      console.log('───────────────────────────────────────────────');
+      console.log('📋 전송될 파라미터 키 목록:', Object.keys(mappedParams));
+      console.log('📋 전송될 파라미터 개수:', Object.keys(mappedParams).length);
       
       // '전체' 값 필터링 검증 로그
       const filteredKeys = Object.keys(mappedParams);
       const originalKeys = Object.keys(searchParams);
       const removedKeys = originalKeys.filter(k => !filteredKeys.includes(k));
       if (removedKeys.length > 0) {
-        console.log('⚠️ [TenderSearchFilter] 제외된 파라미터 (전체/빈값):', removedKeys);
+        console.log('⚠️ 제외된 파라미터 (전체/빈값/null):', removedKeys);
       }
+      
+      // 날짜 포맷 검증
+      if (mappedParams.fromBidDt) {
+        console.log(`📅 시작일 (fromBidDt): ${mappedParams.fromBidDt} (길이: ${mappedParams.fromBidDt.length}자리)`);
+      }
+      if (mappedParams.toBidDt) {
+        console.log(`📅 종료일 (toBidDt): ${mappedParams.toBidDt} (길이: ${mappedParams.toBidDt.length}자리)`);
+      }
+      
+      // 쿼리 스트링 미리보기 (axios가 변환할 형태)
+      const queryString = new URLSearchParams(
+        Object.entries(mappedParams)
+          .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+          .flatMap(([k, v]) => 
+            Array.isArray(v) ? v.map(item => [k, item]) : [[k, v]]
+          )
+      ).toString();
+      console.log('🔗 최종 쿼리 스트링:', queryString);
+      console.log('═══════════════════════════════════════════════');
       
       console.log('📤 [TenderSearchFilter] API 요청 시작');
 
@@ -493,89 +530,6 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
         </div>
 
         <div className="lg:col-span-3">
-          <label className="block text-sm font-bold text-gray-700 mb-2">업무구분</label>
-          <div className="flex flex-wrap gap-2">{businessTypeButtons}</div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">업무여부</label>
-          <div className="flex flex-wrap gap-2">
-            {BUSINESS_STATUS_OPTIONS.map((status) => (
-              <button
-                key={status}
-                type="button"
-                onClick={() => handleBusinessStatusToggle(status)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-bold border transition-colors ${
-                  searchParams.businessStatuses.includes(status)
-                    ? 'bg-brand text-white border-brand'
-                    : 'bg-white text-gray-600 border-gray-200 hover:text-brand hover:border-brand'
-                }`}
-              >
-                {status}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">기관명</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={searchParams.insttNm}
-              onChange={handleInputChange('insttNm')}
-              placeholder="기관명 입력"
-              className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-            />
-            <div className="flex items-center gap-3 text-xs text-gray-600 whitespace-nowrap">
-              <label className="inline-flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  checked={searchParams.isAnnouncingInstitution}
-                  onChange={handleInputChange('isAnnouncingInstitution')}
-                  className="w-4 h-4 text-brand rounded"
-                />
-                공고기관
-              </label>
-              <label className="inline-flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  checked={searchParams.isDemandingInstitution}
-                  onChange={handleInputChange('isDemandingInstitution')}
-                  className="w-4 h-4 text-brand rounded"
-                />
-                수요기관
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">참조번호</label>
-          <input
-            type="text"
-            value={searchParams.refNo}
-            onChange={handleInputChange('refNo')}
-            placeholder="참조번호 입력"
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">참가제한지역</label>
-          <select
-            value={searchParams.area}
-            onChange={handleInputChange('area')}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-          >
-            <option value="전체">전체</option>
-            <option value="부산">부산</option>
-            <option value="서울">서울</option>
-            <option value="경기">경기</option>
-          </select>
-        </div>
-
-        <div className="lg:col-span-3">
           <button
             type="button"
             onClick={() =>
@@ -583,14 +537,93 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
             }
             className="flex items-center gap-2 text-sm text-gray-600 hover:text-brand"
           >
-            <Icons.ChevronDown size={16} className={searchParams.isDetailedOpen ? 'rotate-180' : ''} />
+            <Icons.ChevronDown size={16} className={`transition-transform ${searchParams.isDetailedOpen ? 'rotate-180' : ''}`} />
             상세조건 {searchParams.isDetailedOpen ? '접기' : '펼치기'}
           </button>
         </div>
 
+        {/* 상세조건: 접힌 상태에서 펼치면 업무구분·기관명 등 표시 (나라장터와 동일) */}
         {searchParams.isDetailedOpen ? (
           <>
+            <div className="lg:col-span-3">
+              <label className="block text-sm font-bold text-gray-700 mb-2">업무구분</label>
+              <div className="flex flex-wrap gap-2">{businessTypeButtons}</div>
+            </div>
             <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">업무여부</label>
+              <div className="flex flex-wrap gap-2">
+                {BUSINESS_STATUS_OPTIONS.map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => handleBusinessStatusToggle(status)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-bold border transition-colors ${
+                      searchParams.businessStatuses.includes(status)
+                        ? 'bg-brand text-white border-brand'
+                        : 'bg-white text-gray-600 border-gray-200 hover:text-brand hover:border-brand'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">기관명</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={searchParams.insttNm}
+                  onChange={handleInputChange('insttNm')}
+                  placeholder="기관명 입력"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                />
+                <div className="flex items-center gap-3 text-xs text-gray-600 whitespace-nowrap">
+                  <label className="inline-flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={searchParams.isAnnouncingInstitution}
+                      onChange={handleInputChange('isAnnouncingInstitution')}
+                      className="w-4 h-4 text-brand rounded"
+                    />
+                    공고기관
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={searchParams.isDemandingInstitution}
+                      onChange={handleInputChange('isDemandingInstitution')}
+                      className="w-4 h-4 text-brand rounded"
+                    />
+                    수요기관
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">참조번호</label>
+              <input
+                type="text"
+                value={searchParams.refNo}
+                onChange={handleInputChange('refNo')}
+                placeholder="참조번호 입력"
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">참가제한지역</label>
+              <select
+                value={searchParams.area}
+                onChange={handleInputChange('area')}
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+              >
+                <option value="전체">전체</option>
+                <option value="부산">부산</option>
+                <option value="서울">서울</option>
+                <option value="경기">경기</option>
+              </select>
+            </div>
+            <div className="lg:col-span-3">
               <label className="block text-sm font-bold text-gray-700 mb-2">업종</label>
               <input
                 type="text"
@@ -780,6 +813,16 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
           ) : (
             '검색'
           )}
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setSearchParams((prev) => ({ ...prev, isDetailedOpen: !prev.isDetailedOpen }))
+          }
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand text-white font-bold hover:bg-blue-700"
+        >
+          <Icons.ChevronDown size={16} className={`transition-transform ${searchParams.isDetailedOpen ? 'rotate-180' : ''}`} />
+          상세조건
         </button>
       </div>
 

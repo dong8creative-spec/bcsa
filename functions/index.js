@@ -140,14 +140,27 @@ app.get('/api/bid-search', async (req, res) => {
   const type = req.query.type || 'bid-search';
   
   // 날짜 범위 파라미터 (사용자 선택)
-  let fromBidDt = req.query.fromBidDt || ''; // YYYYMMDD 형식
-  let toBidDt = req.query.toBidDt || ''; // YYYYMMDD 형식
+  let fromBidDt = req.query.fromBidDt || ''; // YYYYMMDDHHMM (12자리) 또는 YYYYMMDD (8자리)
+  let toBidDt = req.query.toBidDt || ''; // YYYYMMDDHHMM (12자리) 또는 YYYYMMDD (8자리)
   
-  // YYYYMMDD 형식 검증 (8자리 숫자)
+  // 날짜 형식 검증 및 정규화: YYYYMMDDHHMM (12자리) 또는 YYYYMMDD (8자리) 허용
   const validateDateFormat = (dateStr) => {
     if (!dateStr) return '';
     const cleaned = String(dateStr).replace(/-/g, '').replace(/\s/g, '');
-    return /^\d{8}$/.test(cleaned) ? cleaned : '';
+    
+    // YYYYMMDDHHMM (12자리) 형식
+    if (/^\d{12}$/.test(cleaned)) {
+      return cleaned;
+    }
+    
+    // YYYYMMDD (8자리) 형식 → YYYYMMDDHHMM (12자리)로 변환
+    if (/^\d{8}$/.test(cleaned)) {
+      // 시작일은 0000, 종료일은 2359 추가 (기본값)
+      // 실제로는 buildApiUrl에서 처리하므로 일단 8자리 그대로 반환
+      return cleaned;
+    }
+    
+    return '';
   };
   
   fromBidDt = validateDateFormat(fromBidDt);
@@ -251,58 +264,61 @@ app.get('/api/bid-search', async (req, res) => {
   
   // 날짜 범위 설정 (사용자가 선택한 날짜가 있으면 사용, 없으면 최근 30일)
   const today = new Date();
-  let startDate, endDate;
+  let inqryBgnDt, inqryEndDt;
   
   if (fromBidDt && toBidDt) {
-    // 사용자가 선택한 날짜 사용 (YYYYMMDD 형식으로 받음)
+    // 사용자가 선택한 날짜 사용
     const fromStr = fromBidDt.replace(/-/g, '');
     const toStr = toBidDt.replace(/-/g, '');
     
-    // 날짜 유효성 검사
-    if (fromStr.length === 8 && toStr.length === 8) {
-      startDate = new Date(
-        parseInt(fromStr.substring(0, 4)),
-        parseInt(fromStr.substring(4, 6)) - 1,
-        parseInt(fromStr.substring(6, 8))
-      );
-      endDate = new Date(
-        parseInt(toStr.substring(0, 4)),
-        parseInt(toStr.substring(4, 6)) - 1,
-        parseInt(toStr.substring(6, 8))
-      );
-      
-      // 날짜 유효성 검사 (Invalid Date 체크)
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        // 잘못된 날짜면 기본값 사용
-        startDate = new Date(today);
-        startDate.setDate(today.getDate() - 30);
-        endDate = today;
-      }
+    // YYYYMMDDHHMM (12자리) 형식이면 그대로 사용
+    if (fromStr.length === 12 && toStr.length === 12) {
+      inqryBgnDt = fromStr;
+      inqryEndDt = toStr;
+      console.log('✅ [Date] 12자리 날짜 형식 사용:', { inqryBgnDt, inqryEndDt });
+    }
+    // YYYYMMDD (8자리) 형식이면 시간 추가
+    else if (fromStr.length === 8 && toStr.length === 8) {
+      inqryBgnDt = fromStr + '0000';
+      inqryEndDt = toStr + '2359';
+      console.log('✅ [Date] 8자리 날짜에 시간 추가:', { inqryBgnDt, inqryEndDt });
     } else {
-      // 형식이 맞지 않으면 기본값 사용
-      startDate = new Date(today);
+      // 형식이 맞지 않으면 기본값 사용 (최근 30일)
+      console.warn('⚠️ [Date] 잘못된 날짜 형식, 기본값 사용:', { fromStr, toStr });
+      const startDate = new Date(today);
       startDate.setDate(today.getDate() - 30);
-      endDate = today;
+      const endDate = today;
+      
+      const formatDate = (date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}${m}${d}`;
+      };
+      
+      inqryBgnDt = formatDate(startDate) + '0000';
+      inqryEndDt = formatDate(endDate) + '2359';
     }
   } else {
-    // 기본값: 최근 30일 (더 넓은 범위로 검색하여 결과 확보)
-    startDate = new Date(today);
+    // 기본값: 최근 30일
+    const startDate = new Date(today);
     startDate.setDate(today.getDate() - 30);
-    endDate = new Date(today);
-    endDate.setHours(23, 59, 59, 999); // 오늘 23:59:59까지 포함
+    const endDate = new Date(today);
+    endDate.setHours(23, 59, 59, 999);
+    
+    const formatDate = (date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}${m}${d}`;
+    };
+    
+    inqryBgnDt = formatDate(startDate) + '0000';
+    inqryEndDt = formatDate(endDate) + '2359';
+    console.log('✅ [Date] 기본값 (최근 30일) 사용:', { inqryBgnDt, inqryEndDt });
   }
   
-  const formatDate = (date) => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}${m}${d}`;
-  };
-
-  const inqryBgnDt = formatDate(startDate) + '0000';
-  const inqryEndDt = formatDate(endDate) + '2359';
-  
-  console.log('📥 inqryBgnDt/inqryEndDt:', { inqryBgnDt, inqryEndDt });
+  console.log('📥 최종 inqryBgnDt/inqryEndDt:', { inqryBgnDt, inqryEndDt });
 
   // 파라미터 검증 및 정제 함수
   const validateAndSanitizeParam = (value, maxLength = 200) => {
@@ -790,8 +806,8 @@ app.get('/api/bid-search', async (req, res) => {
           keyword: keyword || undefined,
           type: type,
           dateRange: {
-            from: formatDate(startDate),
-            to: formatDate(endDate)
+            from: inqryBgnDt ? `${inqryBgnDt.slice(0,4)}-${inqryBgnDt.slice(4,6)}-${inqryBgnDt.slice(6,8)}` : undefined,
+            to: inqryEndDt ? `${inqryEndDt.slice(0,4)}-${inqryEndDt.slice(4,6)}-${inqryEndDt.slice(6,8)}` : undefined
           }
         }
       },
