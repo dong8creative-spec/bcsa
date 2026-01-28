@@ -773,6 +773,19 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
             </table>
           </div>
         </div>
+      ) : results.length === 0 && !loading && !error ? (
+        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+          <Icons.Info className="w-8 h-8 text-blue-600 mx-auto mb-3" />
+          <p className="font-bold text-blue-700 mb-2">검색 결과가 없습니다</p>
+          <p className="text-sm text-blue-600 mb-4">
+            다른 검색 조건을 시도해보시거나 날짜 범위를 넓혀보세요.
+          </p>
+          <div className="text-xs text-blue-500 space-y-1">
+            <p>• 검색어를 변경하거나 제거해보세요</p>
+            <p>• 날짜 범위를 넓혀보세요 (상세조건에서 설정 가능)</p>
+            <p>• 필터 조건을 완화해보세요</p>
+          </div>
+        </div>
       ) : null}
     </div>
   );

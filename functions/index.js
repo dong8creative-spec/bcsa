@@ -277,9 +277,9 @@ app.get('/api/bid-search', async (req, res) => {
       endDate = today;
     }
   } else {
-    // 기본값: 최근 7일 (더 최신 데이터 조회)
+    // 기본값: 최근 30일 (더 넓은 범위로 검색하여 결과 확보)
     startDate = new Date(today);
-    startDate.setDate(today.getDate() - 7);
+    startDate.setDate(today.getDate() - 30);
     endDate = new Date(today);
     endDate.setHours(23, 59, 59, 999); // 오늘 23:59:59까지 포함
   }

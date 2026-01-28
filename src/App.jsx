@@ -146,8 +146,21 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
         }
     };
     
-    // mySeminars 상태를 사용 (비동기 로딩은 useEffect에서 처리)
-    const appliedSeminars = mySeminars;
+    // 신청한 프로그램 목록 상태 (비동기 로딩)
+    const [appliedSeminars, setAppliedSeminars] = useState([]);
+    
+    // 신청한 프로그램 목록 로드
+    useEffect(() => {
+        const loadAppliedSeminars = async () => {
+            if (!currentUser || !seminars) {
+                setAppliedSeminars([]);
+                return;
+            }
+            const loaded = await getAppliedSeminars();
+            setAppliedSeminars(loaded);
+        };
+        loadAppliedSeminars();
+    }, [currentUser, seminars]);
     
     // 관리자 여부 확인 (localStorage에서 adminAuthenticated 확인)
     const isCurrentUserAdmin = typeof localStorage !== 'undefined' && localStorage.getItem('adminAuthenticated') === 'true';

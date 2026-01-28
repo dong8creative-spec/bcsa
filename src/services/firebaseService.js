@@ -343,15 +343,26 @@ export const firebaseService = {
 
   async getApplicationsByUserId(userId) {
     try {
+      // orderBy를 제거하여 인덱스 불필요하도록 수정
       const q = query(
         collection(db, 'applications'), 
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', userId)
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const applications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // 클라이언트 측에서 정렬 (createdAt 기준 내림차순)
+      return applications.sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
+        const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
+        return bTime - aTime; // 내림차순 (최신순)
+      });
     } catch (error) {
       console.error('Error getting applications by userId:', error);
+      // 인덱스 오류인 경우 사용자에게 안내
+      if (error.code === 'failed-precondition') {
+        console.warn('Firestore 인덱스가 필요합니다. 관리자에게 문의하세요.');
+      }
       throw error;
     }
   },
