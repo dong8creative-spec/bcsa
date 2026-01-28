@@ -89,45 +89,50 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                 </div>
 
                 {/* 검색바 */}
-                <div className="bg-white rounded-3xl shadow-card p-6 mb-8">
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-600 mb-2">이름 검색</label>
-                            <div className="relative">
-                                <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                <input 
-                                    type="text" 
-                                    placeholder="이름을 입력하세요" 
-                                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" 
-                                    value={searchName} 
-                                    onChange={e => setSearchName(e.target.value)}
-                                />
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6 mb-8">
+                    <div className="flex flex-col md:flex-row gap-0 items-center">
+                        <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                                <Icons.Search size={14} className="text-gray-400" /> 이름 검색
                             </div>
+                            <input 
+                                type="text" 
+                                placeholder="이름을 입력하세요" 
+                                className="w-full font-medium text-gray-900 bg-transparent outline-none text-sm placeholder-gray-300" 
+                                value={searchName} 
+                                onChange={e => setSearchName(e.target.value)}
+                            />
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-600 mb-2">업종 검색</label>
+                        <div className="w-full md:w-48 px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                                <Icons.Briefcase size={14} className="text-gray-400" /> 업종 검색
+                            </div>
                             <input 
                                 type="text" 
                                 placeholder="업종을 입력하세요" 
-                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" 
+                                className="w-full font-medium text-gray-900 bg-transparent outline-none text-sm placeholder-gray-300" 
                                 value={searchIndustry} 
                                 onChange={e => setSearchIndustry(e.target.value)}
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-600 mb-2">지역 검색</label>
+                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                                <Icons.MapPin size={14} className="text-gray-400" /> 지역
+                            </div>
                             <input 
                                 type="text" 
                                 placeholder="지역을 입력하세요" 
-                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" 
+                                className="w-full font-medium text-gray-900 bg-transparent outline-none text-sm placeholder-gray-300" 
                                 value={searchRegion} 
                                 onChange={e => setSearchRegion(e.target.value)}
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-600 mb-2">업종 필터</label>
+                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                                <Icons.Tag size={14} className="text-gray-400" /> 업종
+                            </div>
                             <select 
-                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm bg-white" 
+                                className="w-full font-medium text-gray-900 bg-transparent outline-none cursor-pointer text-sm" 
                                 value={selectedIndustryFilter} 
                                 onChange={e => setSelectedIndustryFilter(e.target.value)}
                             >
@@ -136,10 +141,12 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                 ))}
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold text-gray-600 mb-2">등급 필터</label>
+                        <div className="w-full md:w-32 px-4 py-3">
+                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                                <Icons.Award size={14} className="text-gray-400" /> 등급
+                            </div>
                             <select 
-                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm bg-white" 
+                                className="w-full font-medium text-gray-900 bg-transparent outline-none cursor-pointer text-sm" 
                                 value={selectedGradeFilter} 
                                 onChange={e => setSelectedGradeFilter(e.target.value)}
                             >
@@ -149,7 +156,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                             </select>
                         </div>
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 mt-4 px-4">
                         검색 결과: <span className="font-bold text-brand">{filteredMembers.length}</span>명
                     </div>
                 </div>

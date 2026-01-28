@@ -333,7 +333,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                             <Icons.ArrowLeft size={20} /> 메인으로
                                 </button>
                             </div>
-                    <div className="bg-white rounded-3xl shadow-card p-12 text-center">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
                         <div className="w-20 h-20 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-6">
                             <Icons.Lock size={40} className="text-brand" />
                                                     </div>
@@ -489,7 +489,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                         {filteredPosts.map((post) => (
                                                     <div 
                                                         key={post.id} 
-                                className="bg-white rounded-3xl p-6 shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20"
+                                className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-all border border-gray-200 hover:border-brand/20"
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1 cursor-pointer" onClick={() => handleViewPost(post)}>
@@ -566,7 +566,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                     <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
                                     <select 
-                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" 
+                                        className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" 
                                         value={formData.category} 
                                         onChange={(e) => {
                                             const newCategory = e.target.value;
@@ -594,11 +594,11 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                     </div>
                                     <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
-                                    <input type="text" className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} />
+                                    <input type="text" className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} />
                                     </div>
                                     <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">내용 *</label>
-                                    <textarea className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-48 resize-none" value={formData.content} onChange={(e) => setFormData({...formData, content: e.target.value})} />
+                                    <textarea className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none h-48 resize-none" value={formData.content} onChange={(e) => setFormData({...formData, content: e.target.value})} />
                                     </div>
 
                                     {/* 인력구인 추가 필드 */}
@@ -606,29 +606,29 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                         <Fragment>
                                                 <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">업무 내용 *</label>
-                                                <textarea className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-32 resize-none" value={formData.jobDetails} onChange={(e) => setFormData({...formData, jobDetails: e.target.value})} placeholder="업무 내용을 상세히 입력해주세요" />
+                                                <textarea className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none h-32 resize-none" value={formData.jobDetails} onChange={(e) => setFormData({...formData, jobDetails: e.target.value})} placeholder="업무 내용을 상세히 입력해주세요" />
                                                 </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">모집 인원 *</label>
-                                                    <input type="number" className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.recruitCount} onChange={(e) => setFormData({...formData, recruitCount: e.target.value})} placeholder="명" min="1" />
+                                                    <input type="number" className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" value={formData.recruitCount} onChange={(e) => setFormData({...formData, recruitCount: e.target.value})} placeholder="명" min="1" />
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">마감일 *</label>
-                                                    <input type="date" className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.deadline} onChange={(e) => setFormData({...formData, deadline: e.target.value})} />
+                                                    <input type="date" className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" value={formData.deadline} onChange={(e) => setFormData({...formData, deadline: e.target.value})} />
                                             </div>
                                                 </div>
                                     <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">근무 시간 *</label>
-                                                <input type="text" className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.workHours} onChange={(e) => setFormData({...formData, workHours: e.target.value})} placeholder="예: 09:00 ~ 18:00" />
+                                                <input type="text" className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" value={formData.workHours} onChange={(e) => setFormData({...formData, workHours: e.target.value})} placeholder="예: 09:00 ~ 18:00" />
                                     </div>
                                     <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">급여/처우 *</label>
-                                                <input type="text" className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.salary} onChange={(e) => setFormData({...formData, salary: e.target.value})} placeholder="예: 월 250만원, 주 5일" />
+                                                <input type="text" className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" value={formData.salary} onChange={(e) => setFormData({...formData, salary: e.target.value})} placeholder="예: 월 250만원, 주 5일" />
                                     </div>
                                     <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">우대 사항</label>
-                                                <textarea className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-24 resize-none" value={formData.preferred} onChange={(e) => setFormData({...formData, preferred: e.target.value})} placeholder="우대 사항을 입력해주세요" />
+                                                <textarea className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none h-24 resize-none" value={formData.preferred} onChange={(e) => setFormData({...formData, preferred: e.target.value})} placeholder="우대 사항을 입력해주세요" />
                                     </div>
                                             <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -636,7 +636,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                     <div className="flex gap-2">
                                                         <input 
                                                             type="text" 
-                                                            className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" 
+                                                            className="flex-1 p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" 
                                                             value={formData.storeLocation} 
                                                             onChange={(e) => setFormData({...formData, storeLocation: e.target.value})} 
                                                             placeholder="매장 주소" 
@@ -657,7 +657,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                     </div>
                                     <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">전화번호 *</label>
-                                                    <input type="text" className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.storePhone} onChange={(e) => setFormData({...formData, storePhone: e.target.value})} placeholder="010-1234-5678" />
+                                                    <input type="text" className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" value={formData.storePhone} onChange={(e) => setFormData({...formData, storePhone: e.target.value})} placeholder="010-1234-5678" />
                                                 </div>
                                                     </div>
                                                 <div>
@@ -665,7 +665,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                 <div className="flex gap-4 flex-wrap">
                                                     {formData.storeImages.map((img, idx) => (
                                                         <div key={idx} className="relative">
-                                                            <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                            <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-gray-200" />
                                                             <button type="button" onClick={() => setFormData({...formData, storeImages: formData.storeImages.filter((_, i) => i !== idx)})} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
                                                 </div>
                                                     ))}
@@ -710,11 +710,11 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                             <div className="grid grid-cols-2 gap-4">
                                     <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">제품명 *</label>
-                                                    <input type="text" className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.itemName} onChange={(e) => setFormData({...formData, itemName: e.target.value})} placeholder="제품명을 입력해주세요" />
+                                                    <input type="text" className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" value={formData.itemName} onChange={(e) => setFormData({...formData, itemName: e.target.value})} placeholder="제품명을 입력해주세요" />
                                     </div>
                                     <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">카테고리 *</label>
-                                                    <select className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.itemCategory} onChange={(e) => setFormData({...formData, itemCategory: e.target.value})}>
+                                                    <select className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" value={formData.itemCategory} onChange={(e) => setFormData({...formData, itemCategory: e.target.value})}>
                                                         <option value="">카테고리 선택</option>
                                                         <option value="가전제품">가전제품</option>
                                                         <option value="가구">가구</option>
@@ -727,11 +727,11 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">가격 *</label>
-                                                    <input type="number" className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} placeholder="원" min="0" />
+                                                    <input type="number" className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} placeholder="원" min="0" />
                                         </div>
                                         <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">상태 *</label>
-                                                    <select className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.itemCondition} onChange={(e) => setFormData({...formData, itemCondition: e.target.value})}>
+                                                    <select className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" value={formData.itemCondition} onChange={(e) => setFormData({...formData, itemCondition: e.target.value})}>
                                                         <option value="">상태 선택</option>
                                                         <option value="S급">S급</option>
                                                         <option value="A급">A급</option>
@@ -743,7 +743,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">거래 방식 *</label>
-                                                    <select className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.tradeMethod} onChange={(e) => setFormData({...formData, tradeMethod: e.target.value})}>
+                                                    <select className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" value={formData.tradeMethod} onChange={(e) => setFormData({...formData, tradeMethod: e.target.value})}>
                                                         <option value="">거래 방식 선택</option>
                                                         <option value="직거래">직거래</option>
                                                         <option value="택배">택배</option>
@@ -755,7 +755,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                     <div className="flex gap-2">
                                                         <input 
                                                             type="text" 
-                                                            className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" 
+                                                            className="flex-1 p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" 
                                                             value={formData.tradeLocation} 
                                                             onChange={(e) => setFormData({...formData, tradeLocation: e.target.value})} 
                                                             placeholder="거래 지역을 입력해주세요" 
@@ -780,7 +780,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                 <div className="flex gap-4 flex-wrap">
                                                     {formData.itemImages.map((img, idx) => (
                                                     <div key={idx} className="relative">
-                                                            <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                            <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-gray-200" />
                                                             <button type="button" onClick={() => setFormData({...formData, itemImages: formData.itemImages.filter((_, i) => i !== idx)})} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
                                                 </div>
                                             ))}
@@ -818,7 +818,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                         </div>
                                             <div>
                                                 <label className="block text-sm font-bold text-gray-700 mb-2">사업자등록번호 * (신뢰도 확인용)</label>
-                                                <input type="text" className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.businessNumber} onChange={(e) => setFormData({...formData, businessNumber: e.target.value})} placeholder="사업자등록번호를 입력해주세요" />
+                                                <input type="text" className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" value={formData.businessNumber} onChange={(e) => setFormData({...formData, businessNumber: e.target.value})} placeholder="사업자등록번호를 입력해주세요" />
                                                 {currentUser && currentUser.businessRegistrationNumber && formData.businessNumber && formData.businessNumber !== currentUser.businessRegistrationNumber ? (
                                                     <p className="text-red-500 text-xs mt-1">회원 정보의 사업자등록번호와 일치하지 않습니다.</p>
             ) : null}
@@ -839,7 +839,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                     </div>
                                                 ) : (
                                                     <select 
-                                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" 
+                                                        className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" 
                                                         value={formData.seminarId || ''}
                                                         onChange={(e) => {
                                                             const selectedId = parseInt(e.target.value);
@@ -890,7 +890,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                                 <div className="flex gap-4 flex-wrap">
                                                     {formData.reviewImages.map((img, idx) => (
                                                         <div key={idx} className="relative">
-                                                            <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                            <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-gray-200" />
                                                             <button type="button" onClick={() => setFormData({...formData, reviewImages: formData.reviewImages.filter((_, i) => i !== idx)})} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
                                                 </div>
                                             ))}
@@ -925,7 +925,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                         <span className="text-sm font-bold text-gray-700">비밀글</span>
                                                 </label>
                                     {formData.isSecret ? (
-                                        <input type="text" placeholder="비밀번호" className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
+                                        <input type="text" placeholder="비밀번호" className="flex-1 p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
                                     ) : null}
                                 </div>
                         <div className="flex gap-4 mt-8">
@@ -956,7 +956,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                     <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
                                     <input 
                                         type="text" 
-                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" 
+                                        className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" 
                                         value={editingPost.title || ''} 
                                         onChange={(e) => setEditingPost({...editingPost, title: e.target.value})} 
                                     />
@@ -964,7 +964,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">내용 *</label>
                                     <textarea 
-                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-48 resize-none" 
+                                        className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none h-48 resize-none" 
                                         value={editingPost.content || ''} 
                                         onChange={(e) => setEditingPost({...editingPost, content: e.target.value})} 
                                     />
@@ -977,7 +977,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                         <div className="flex gap-4 flex-wrap">
                                             {(editingPost.storeImages || []).map((img, idx) => (
                                                 <div key={idx} className="relative">
-                                                    <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                    <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-gray-200" />
                                                     <button 
                                                         type="button" 
                                                         onClick={() => {
@@ -1050,7 +1050,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                         <div className="flex gap-4 flex-wrap">
                                             {(editingPost.itemImages || []).map((img, idx) => (
                                                 <div key={idx} className="relative">
-                                                    <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                    <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-gray-200" />
                                                     <button 
                                                         type="button" 
                                                         onClick={() => {
@@ -1123,7 +1123,7 @@ const CommunityView = ({ onBack, posts, onCreate, onDelete, currentUser, onNotif
                                         <div className="flex gap-4 flex-wrap">
                                             {(editingPost.reviewImages || editingPost.images || []).map((img, idx) => (
                                                 <div key={idx} className="relative">
-                                                    <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                    <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-gray-200" />
                                                     <button 
                                                         type="button" 
                                                         onClick={() => {
@@ -1488,7 +1488,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                             <input 
                                 type="text" 
                                 placeholder="맛집명, 주소, 등록자명 검색" 
-                                className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm" 
+                                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none text-sm" 
                                 value={searchKeyword} 
                                 onChange={(e) => setSearchKeyword(e.target.value)} 
                             />
@@ -1914,7 +1914,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                                 type="text"
                                 value={formData.title}
                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                 placeholder="맛집 이름"
                             />
                         </div>
@@ -2011,7 +2011,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                                             newMenuItems[index].name = e.target.value;
                                             setFormData({ ...formData, menuItems: newMenuItems });
                                         }}
-                                        className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                        className="flex-1 p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                         placeholder="메뉴명"
                                     />
                                     <input
@@ -2022,7 +2022,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                                             newMenuItems[index].price = e.target.value;
                                             setFormData({ ...formData, menuItems: newMenuItems });
                                         }}
-                                        className="w-32 p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                        className="w-32 p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                         placeholder="가격"
                                     />
                                     {formData.menuItems.length > 1 ? (
@@ -2052,7 +2052,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                                 type="url"
                                 value={formData.naverReservationUrl}
                                 onChange={(e) => setFormData({ ...formData, naverReservationUrl: e.target.value })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                 placeholder="https://booking.naver.com/..."
                             />
                         </div>
@@ -2064,7 +2064,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                                 type="url"
                                 value={formData.smartPlaceUrl}
                                 onChange={(e) => setFormData({ ...formData, smartPlaceUrl: e.target.value })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                 placeholder="https://place.naver.com/..."
                             />
                         </div>
@@ -2076,7 +2076,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                                 type="tel"
                                 value={formData.phone}
                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                 placeholder="051-123-4567"
                             />
                         </div>
@@ -2088,7 +2088,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                                 type="text"
                                 value={formData.businessHours}
                                 onChange={(e) => setFormData({ ...formData, businessHours: e.target.value })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                 placeholder="예: 11:00 - 22:00"
                             />
                         </div>
@@ -2100,7 +2100,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                                 type="text"
                                 value={formData.priceRange}
                                 onChange={(e) => setFormData({ ...formData, priceRange: e.target.value })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                 placeholder="예: 만원대, 2만원대"
                             />
                         </div>
@@ -2111,7 +2111,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                             <textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                 rows="5"
                                 placeholder="맛집 소개"
                             />
@@ -3287,7 +3287,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                 onChange={(e) => setBidNoticeNo(e.target.value)}
                                 onKeyPress={handleKeyPress}
                                 placeholder="입찰공고번호 입력"
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors"
+                                className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none transition-colors"
                             />
                         </div>
                         <div>
@@ -3298,7 +3298,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                                 onChange={(e) => setKeyword(e.target.value)}
                                 onKeyPress={handleKeyPress}
                                 placeholder="공고명 입력 (예: 부산)"
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors"
+                                className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none transition-colors"
                             />
                         </div>
                     </div>
@@ -3308,7 +3308,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                         <button
                             type="button"
                             onClick={resetFilters}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-bold"
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-bold"
                         >
                             <Icons.X size={16} />
                             초기화
@@ -4472,7 +4472,7 @@ const InquiryModal = ({ onClose, currentUser, onSubmit }) => {
                         <label className="block text-sm font-bold text-gray-700 mb-2">이름 *</label>
                         <input
                             type="text"
-                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                            className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                             value={formData.name}
                             onChange={(e) => setFormData({...formData, name: e.target.value})}
                             required
@@ -4482,7 +4482,7 @@ const InquiryModal = ({ onClose, currentUser, onSubmit }) => {
                         <label className="block text-sm font-bold text-gray-700 mb-2">이메일 *</label>
                         <input
                             type="email"
-                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                            className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                             value={formData.email}
                             onChange={(e) => setFormData({...formData, email: e.target.value})}
                             required
@@ -4492,7 +4492,7 @@ const InquiryModal = ({ onClose, currentUser, onSubmit }) => {
                         <label className="block text-sm font-bold text-gray-700 mb-2">전화번호</label>
                         <input
                             type="tel"
-                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                            className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                             value={formData.phone}
                             onChange={(e) => setFormData({...formData, phone: e.target.value})}
                         />
@@ -4501,7 +4501,7 @@ const InquiryModal = ({ onClose, currentUser, onSubmit }) => {
                         <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
                         <input
                             type="text"
-                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                            className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                             value={formData.title}
                             onChange={(e) => setFormData({...formData, title: e.target.value})}
                             required
@@ -4510,7 +4510,7 @@ const InquiryModal = ({ onClose, currentUser, onSubmit }) => {
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">내용 *</label>
                         <textarea
-                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-32 resize-none"
+                            className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none h-32 resize-none"
                             value={formData.content}
                             onChange={(e) => setFormData({...formData, content: e.target.value})}
                             required
@@ -4949,7 +4949,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">이름 <span className="text-red-500">*</span></label>
-                                                    <input type="text" placeholder="이름을 입력하세요" className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                                                    <input type="text" placeholder="이름을 입력하세요" className="w-full p-3.5 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none transition-colors text-sm" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">비밀번호 <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(최소 8자, 영문+숫자+특수문자)</span></label>
@@ -4985,7 +4985,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                 </div>
                                                 <div className="md:col-span-2">
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">전화번호 <span className="text-red-500">*</span></label>
-                                                    <input type="tel" placeholder="010-1234-5678" className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                                                    <input type="tel" placeholder="010-1234-5678" className="w-full p-3.5 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none transition-colors text-sm" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
                                                 </div>
                                             </div>
                                             
@@ -5034,14 +5034,14 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                             <>
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">사업자 유형 <span className="text-red-500">*</span></label>
-                                                    <select className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors bg-white text-sm" value={formData.businessType} onChange={e => setFormData({...formData, businessType: e.target.value})}>
+                                                    <select className="w-full p-3.5 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none transition-colors bg-white text-sm" value={formData.businessType} onChange={e => setFormData({...formData, businessType: e.target.value})}>
                                                         <option value="개인사업자">개인사업자</option>
                                                         <option value="법인사업자">법인사업자</option>
                                                     </select>
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">사업형태 <span className="text-red-500">*</span></label>
-                                                    <select className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors bg-white text-sm" value={formData.businessCategory} onChange={e => setFormData({...formData, businessCategory: e.target.value})}>
+                                                    <select className="w-full p-3.5 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none transition-colors bg-white text-sm" value={formData.businessCategory} onChange={e => setFormData({...formData, businessCategory: e.target.value})}>
                                                         <optgroup label="제조업">
                                                             <option>식품제조업</option>
                                                             <option>의류제조업</option>
@@ -5093,11 +5093,11 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">업체명 <span className="text-red-500">*</span></label>
-                                                    <input type="text" placeholder="회사/사업체 이름" className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
+                                                    <input type="text" placeholder="회사/사업체 이름" className="w-full p-3.5 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none transition-colors text-sm" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">직책</label>
-                                                    <input type="text" placeholder="대표, 이사, 팀장 등" className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} />
+                                                    <input type="text" placeholder="대표, 이사, 팀장 등" className="w-full p-3.5 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none transition-colors text-sm" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} />
                                                 </div>
                                                 <div className="md:col-span-2">
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">업체주소 <span className="text-red-500">*</span></label>
@@ -5107,7 +5107,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                                 type="text" 
                                                                 readOnly 
                                                                 placeholder="도로명 주소 검색" 
-                                                                className="flex-1 p-3.5 border-2 border-gray-200 rounded-xl bg-gray-50 text-sm cursor-pointer" 
+                                                                className="flex-1 p-3.5 border border-gray-200 rounded-xl bg-gray-50 text-sm cursor-pointer" 
                                                                 value={formData.roadAddress} 
                                                                 onClick={() => {
                                                                     openDaumPostcode((data) => {
@@ -5149,7 +5149,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                         {formData.zipCode ? (
                                                             <p className="text-xs text-gray-500">우편번호: {formData.zipCode}</p>
                                                         ) : null}
-                                                        <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.detailAddress} onChange={e => setFormData({...formData, detailAddress: e.target.value})} />
+                                                        <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3.5 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none transition-colors text-sm" value={formData.detailAddress} onChange={e => setFormData({...formData, detailAddress: e.target.value})} />
                                                     </div>
                                                 </div>
                                             </>
@@ -5163,7 +5163,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                             type="text" 
                                                             readOnly 
                                                             placeholder="도로명 주소 검색" 
-                                                            className="flex-1 p-3.5 border-2 border-gray-200 rounded-xl bg-gray-50 text-sm cursor-pointer" 
+                                                            className="flex-1 p-3.5 border border-gray-200 rounded-xl bg-gray-50 text-sm cursor-pointer" 
                                                             value={formData.roadAddress} 
                                                             onClick={() => {
                                                                 openDaumPostcode((data) => {
@@ -5205,7 +5205,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     {formData.zipCode ? (
                                                         <p className="text-xs text-gray-500">우편번호: {formData.zipCode}</p>
                                                     ) : null}
-                                                    <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3.5 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.detailAddress} onChange={e => setFormData({...formData, detailAddress: e.target.value})} />
+                                                    <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3.5 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none transition-colors text-sm" value={formData.detailAddress} onChange={e => setFormData({...formData, detailAddress: e.target.value})} />
                                                 </div>
                                             </div>
                                         ) : null}
@@ -5562,7 +5562,7 @@ const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, mem
                                     <label className="block text-sm font-bold text-gray-700 mb-2">이름 *</label>
                                     <input 
                                         type="text" 
-                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" 
+                                        className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" 
                                         value={guestName}
                                         onChange={(e) => setGuestName(e.target.value)}
                                         placeholder="이름을 입력하세요"
@@ -5572,7 +5572,7 @@ const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, mem
                                     <label className="block text-sm font-bold text-gray-700 mb-2">이메일 *</label>
                                     <input 
                                         type="email" 
-                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none" 
+                                        className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none" 
                                         value={guestEmail}
                                         onChange={(e) => setGuestEmail(e.target.value)}
                                         placeholder="이메일을 입력하세요"
@@ -5615,7 +5615,7 @@ const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, mem
                                     </p>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">결제 주기</label>
                                     <select
-                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                        className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                         value={recurringInterval}
                                         onChange={(e) => setRecurringInterval(e.target.value)}
                                     >
@@ -5650,7 +5650,7 @@ const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, mem
                             <input
                                 type="number"
                                         placeholder="직접 입력"
-                                        className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                        className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                 value={customAmount}
                                 onChange={(e) => {
                                             const val = parseInt(e.target.value) || 0;
@@ -6053,7 +6053,7 @@ const App = () => {
                         type="text" 
                         id="place-search-input" 
                         placeholder="장소명, 주소, 건물명 등을 입력하세요" 
-                        class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                        class="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                     />
                 </div>
                 <div id="place-search-results" class="flex-1 overflow-y-auto space-y-2"></div>
@@ -8699,7 +8699,7 @@ END:VCALENDAR`;
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">신청사유 *</label>
                                 <textarea 
-                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-32 resize-none" 
+                                    className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none h-32 resize-none" 
                                     value={popupApplicationData.reason}
                                     onChange={(e) => setPopupApplicationData({...popupApplicationData, reason: e.target.value})}
                                     placeholder="이 프로그램에 신청하는 이유를 작성해주세요"
@@ -8710,7 +8710,7 @@ END:VCALENDAR`;
                                 <div className="space-y-3">
                                     <input 
                                         type="text" 
-                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                        className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                         value={popupApplicationData.questions[0]}
                                         onChange={(e) => {
                                             const newQuestions = [...popupApplicationData.questions];
@@ -8721,7 +8721,7 @@ END:VCALENDAR`;
                                     />
                                     <input 
                                         type="text" 
-                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                        className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                         value={popupApplicationData.questions[1]}
                                         onChange={(e) => {
                                             const newQuestions = [...popupApplicationData.questions];

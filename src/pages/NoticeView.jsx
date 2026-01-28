@@ -24,7 +24,7 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
                     </button>
                 </div>
                 {/* 공지사항 내용 */}
-                <div className="bg-white rounded-3xl shadow-card p-6">
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6">
                 {/* 카테고리 필터 */}
                     <div className="flex flex-wrap gap-2 mb-6">
                         {categories.map((cat) => (
@@ -53,7 +53,7 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
                         {filteredPosts.map((post) => (
                             <div
                                 key={post.id}
-                                    className="p-4 border border-gray-200 rounded-xl hover:shadow-md transition-all cursor-pointer"
+                                    className="p-5 border border-gray-200 rounded-lg hover:shadow-md transition-all cursor-pointer bg-white"
                                 onClick={() => setSelectedPost(post)}
                             >
                                     <h3 className="font-bold text-dark mb-2">{post.title}</h3>
@@ -72,7 +72,7 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
             {/* 공지사항 상세 모달 */}
                 {selectedPost && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPost(null); }}>
-                    <div className="bg-white rounded-3xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
                         <div className="flex items-start justify-between mb-6">
                             <div className="flex-1">
                                 <h3 className="text-2xl font-bold text-dark mb-2">{selectedPost.title}</h3>

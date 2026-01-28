@@ -29,7 +29,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
     return (
         <div className="min-h-screen bg-white font-sans text-slate-800">
             {/* 1. Hero Section */}
-            <section className="pt-32 pb-16 px-6 bg-gradient-to-br from-brand/5 to-white border-b border-gray-100">
+            <section className="pt-32 pb-16 px-6 bg-gray-50 border-b border-gray-100">
                 <div className="container mx-auto max-w-3xl text-center">
                     <div className="flex justify-center mb-4 animate-fade-in-up">
                         <div className="inline-block px-4 py-1.5 bg-blue-100 text-brand rounded-full text-sm font-bold shadow-sm">
@@ -107,7 +107,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                                 {icon: Icons.Target || Icons.ArrowUp, title: "실무 교육", sub: "역량 강화"},
                                 {icon: Icons.Shield, title: "심리 안정", sub: "고민 해결"},
                             ].map((item, idx) => (
-                                <div key={idx} className="bg-slate-50 p-5 rounded-xl text-center border border-transparent hover:border-brand/10 transition-colors">
+                                <div key={idx} className="bg-gray-50 p-5 rounded-xl text-center border border-gray-200 hover:border-brand/10 transition-colors">
                                     <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-brand mx-auto mb-2 shadow-sm border border-gray-100">
                                         {React.createElement(item.icon, { size: 20 })}
                                     </div>
@@ -142,7 +142,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {whyUs.map((item, idx) => (
-                            <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-lg transition-all border border-transparent hover:border-brand/20 group">
+                            <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-all border border-gray-200 hover:border-brand/20 group">
                                 <div className="w-12 h-12 bg-brand/5 text-brand rounded-xl flex items-center justify-center mb-4 group-hover:bg-brand group-hover:text-white transition-colors">
                                     {React.createElement(item.icon, { size: 24 })}
                                 </div>
@@ -179,7 +179,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                 </section>
 
             {/* 5. Future Plans */}
-            <section className="py-20 px-6 bg-slate-50 border-y border-gray-100">
+            <section className="py-20 px-6 bg-gray-50 border-y border-gray-100">
                 <div className="container mx-auto max-w-5xl">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold text-dark mb-3">{content.about_future_title || "향후 계획 및 목표"}</h2>
@@ -198,7 +198,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                 </section>
 
             {/* 6. Contact */}
-            <section className="py-20 px-6 bg-blue-50/50">
+            <section className="py-20 px-6 bg-gray-50">
                 <div className="container mx-auto max-w-3xl">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold text-dark mb-2">CONTACT</h2>

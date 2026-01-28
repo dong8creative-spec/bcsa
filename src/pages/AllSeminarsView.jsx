@@ -211,40 +211,63 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                     </div>
 
                 {/* 검색 및 필터 */}
-                <div className="bg-white rounded-3xl shadow-card p-6 mb-8">
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <div className="md:col-span-2">
-                            <label className="block text-xs font-bold text-gray-600 mb-2">검색</label>
-                            <div className="relative">
-                                <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                <input type="text" placeholder="제목 또는 내용 검색" className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm" value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} />
-                </div>
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6 mb-8">
+                    <div className="flex flex-col md:flex-row gap-0 items-center">
+                        <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                                <Icons.Search size={14} className="text-gray-400" /> 키워드 검색
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-2">카테고리</label>
-                            <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm bg-white" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+                            <input 
+                                type="text" 
+                                placeholder="제목 또는 내용 검색" 
+                                className="w-full font-medium text-gray-900 bg-transparent outline-none text-sm placeholder-gray-300" 
+                                value={searchKeyword} 
+                                onChange={(e) => setSearchKeyword(e.target.value)} 
+                            />
+                        </div>
+                        <div className="w-full md:w-48 px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                                <Icons.Tag size={14} className="text-gray-400" /> 카테고리
+                            </div>
+                            <select 
+                                className="w-full font-medium text-gray-900 bg-transparent outline-none cursor-pointer text-sm" 
+                                value={selectedCategory} 
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                            >
                                 {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                </select>
+                            </select>
+                        </div>
+                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                                <Icons.CheckCircle size={14} className="text-gray-400" /> 모집 상태
                             </div>
-                                    <div>
-                            <label className="block text-xs font-bold text-gray-600 mb-2">상태</label>
-                            <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm bg-white" value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}>
+                            <select 
+                                className="w-full font-medium text-gray-900 bg-transparent outline-none cursor-pointer text-sm" 
+                                value={selectedStatus} 
+                                onChange={(e) => setSelectedStatus(e.target.value)}
+                            >
                                 {statuses.map(status => <option key={status} value={status}>{status}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                            <label className="block text-xs font-bold text-gray-600 mb-2">정렬</label>
-                            <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none text-sm bg-white" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                            </select>
+                        </div>
+                        <div className="w-full md:w-32 px-4 py-3">
+                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                                <Icons.Filter size={14} className="text-gray-400" /> 정렬
+                            </div>
+                            <select 
+                                className="w-full font-medium text-gray-900 bg-transparent outline-none cursor-pointer text-sm" 
+                                value={sortBy} 
+                                onChange={(e) => setSortBy(e.target.value)}
+                            >
                                 <option value="latest">최신순</option>
                                 <option value="popular">인기순</option>
                                 <option value="date">날짜순</option>
-                                        </select>
-                                    </div>
-                                    </div>
-                    <div className="text-xs text-gray-500 mt-4">
+                            </select>
+                        </div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-4 px-4">
                         검색 결과: <span className="font-bold text-brand">{sortedSeminars.length}</span>개
-                                    </div>
-                                    </div>
+                    </div>
+                </div>
 
                 {/* 세미나 리스트 */}
                 {sortedSeminars.length > 0 ? (
@@ -256,7 +279,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                                 : seminar.img;
                             
                             return (
-                            <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-3xl shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 cursor-pointer overflow-hidden" onClick={() => setSelectedSeminar(seminar)}>
+                            <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-gray-200 hover:border-brand/20 cursor-pointer overflow-hidden" onClick={() => setSelectedSeminar(seminar)}>
                                 {displayImage && (
                                     <div className="w-full overflow-hidden relative" style={{ aspectRatio: '3/4' }}>
                                         <img src={displayImage} alt={seminar.title} className="w-full h-full object-cover" />
@@ -536,7 +559,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                 {/* 신청 모달 */}
                 {isApplyModalOpen && applySeminar && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setIsApplyModalOpen(false); }}>
-                        <div className="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-2xl font-bold text-dark">프로그램 신청</h3>
                                 <button type="button" onClick={() => setIsApplyModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -554,7 +577,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                                     <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">신청사유 *</label>
                                         <textarea 
-                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-32 resize-none" 
+                                        className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none h-32 resize-none" 
                                         value={applicationData.reason}
                                         onChange={(e) => setApplicationData({...applicationData, reason: e.target.value})}
                                         placeholder="이 프로그램에 신청하는 이유를 작성해주세요"
@@ -565,7 +588,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                                         <div className="space-y-3">
                                 <input 
                                     type="text" 
-                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                             value={applicationData.questions[0]}
                                                 onChange={(e) => {
                                                 const newQuestions = [...applicationData.questions];
@@ -576,7 +599,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                                         />
                                                                 <input 
                                     type="text" 
-                                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                                            className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
                                             value={applicationData.questions[1]}
                                             onChange={(e) => {
                                                 const newQuestions = [...applicationData.questions];

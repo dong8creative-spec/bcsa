@@ -579,7 +579,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.itemImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-gray-200" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -594,7 +594,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                             </div>
                                         ))}
                                         {(editingPost.itemImages || []).length < 3 ? (
-                                            <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                            <label className="w-32 h-32 border border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                 {uploadingImages ? (
                                                     <div className="text-center">
                                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
@@ -652,7 +652,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.reviewImages || editingPost.images || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border-2 border-gray-200" />
+                                                <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-gray-200" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -668,7 +668,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                             </div>
                                         ))}
                                         {((editingPost.reviewImages || editingPost.images || []).length < 3) ? (
-                                            <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                            <label className="w-32 h-32 border border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                 {uploadingImages ? (
                                                     <div className="text-center">
                                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
