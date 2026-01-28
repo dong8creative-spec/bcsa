@@ -41,7 +41,7 @@ const mapSearchParamsToApiParams = (params) => {
   const result = {
     bidNtceNo: params.bidNtceNo?.trim() || '',
     bidNtceNm: params.bidNtceNm?.trim() || '',
-    inqryDiv: params.inqryDiv || '',
+    inqryDiv: params.inqryDiv || '1', // 기본값: 등록일시 기준 조회
     fromBidDt: formatDateParam(params.fromBidDt),
     toBidDt: formatDateParam(params.toBidDt),
     bidNtceDtlClsfCd: params.bidNtceDtlClsfCd || '',
@@ -65,6 +65,11 @@ const mapSearchParamsToApiParams = (params) => {
 
   Object.keys(result).forEach((key) => {
     const value = result[key];
+    
+    // inqryDiv는 항상 유지 (기본값 '1')
+    if (key === 'inqryDiv') {
+      return;
+    }
     
     // 빈 값 및 '전체' 값 필터링 (더 엄격한 검증)
     if (value === '' || value === null || value === undefined || value === '전체' || String(value).trim() === '') {
@@ -95,8 +100,11 @@ const mapSearchParamsToApiParams = (params) => {
 };
 
 const normalizeItems = (payload) => {
+  console.log('🔍 [normalizeItems] 입력 payload:', payload);
+  
   // 1. 최신 API 응답 형식: { success: true, data: { items: [...], totalCount: ... } }
   if (payload?.data?.items && Array.isArray(payload.data.items)) {
+    console.log('✅ [normalizeItems] 최신 형식으로 파싱 성공:', payload.data.items.length, '개');
     return payload.data.items;
   }
   
@@ -104,6 +112,7 @@ const normalizeItems = (payload) => {
   if (payload?.data && typeof payload.data === 'object') {
     // data가 빈 객체 {}인 경우 또는 items가 없는 경우
     if (!payload.data.items || (Array.isArray(payload.data.items) && payload.data.items.length === 0)) {
+      console.log('⚠️ [normalizeItems] data.items가 없거나 빈 배열');
       return [];
     }
   }
@@ -114,13 +123,16 @@ const normalizeItems = (payload) => {
     ?? [];
 
   if (Array.isArray(items)) {
+    console.log('✅ [normalizeItems] 레거시 형식으로 파싱 성공:', items.length, '개');
     return items;
   }
 
   if (items && typeof items === 'object') {
+    console.log('✅ [normalizeItems] 단일 객체를 배열로 변환');
     return [items];
   }
 
+  console.log('❌ [normalizeItems] 파싱 실패 - 빈 배열 반환');
   return [];
 };
 
@@ -325,15 +337,38 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
 
       console.log('✅ [TenderSearchFilter] 검색 성공');
       console.log('✅ [TenderSearchFilter] 응답 상태:', response.status);
+      console.log('✅ [TenderSearchFilter] 전체 응답 객체:', response);
+      console.log('✅ [TenderSearchFilter] response.data:', response.data);
+      console.log('✅ [TenderSearchFilter] response.data 타입:', typeof response.data);
+      console.log('✅ [TenderSearchFilter] response.data 구조:', {
+        hasSuccess: 'success' in (response.data || {}),
+        hasData: 'data' in (response.data || {}),
+        dataType: typeof response.data?.data,
+        hasItems: 'items' in (response.data?.data || {}),
+        itemsType: Array.isArray(response.data?.data?.items),
+        itemsLength: response.data?.data?.items?.length
+      });
 
       const data = response.data;
       if (!data) {
         throw new Error('API 응답 데이터가 비어있습니다.');
       }
 
+      // success가 false인 경우 에러 처리
+      if (data.success === false) {
+        const errorMsg = data.error || data.message || '검색에 실패했습니다.';
+        setError(errorMsg);
+        setResults([]);
+        return;
+      }
+
       const items = normalizeItems(data);
+      console.log('✅ [TenderSearchFilter] normalizeItems 결과:', items);
       console.log('✅ [TenderSearchFilter] 결과 아이템 수:', items.length);
-      console.log('✅ [TenderSearchFilter] 전체 응답 데이터:', data);
+      
+      if (items.length === 0 && data.success === true) {
+        console.log('⚠️ [TenderSearchFilter] 검색은 성공했지만 결과가 없습니다.');
+      }
       
       setResults(items);
       onSearchResult?.(data);
