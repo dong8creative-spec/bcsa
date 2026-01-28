@@ -4113,69 +4113,7 @@ const App = () => {
         }
     }, []);
     
-    // Firebase Auth 상태 변경 리스너 - 새로고침 시 로그인 세션 유지
-    useEffect(() => {
-        if (authService && authService.onAuthStateChanged) {
-            const unsubscribe = authService.onAuthStateChanged(async (user) => {
-                if (user) {
-                    // 사용자가 로그인되어 있으면 Firestore에서 사용자 데이터 로드
-                    try {
-                        const userDoc = await authService.getUserData(user.uid);
-                        if (userDoc) {
-                            setCurrentUser(userDoc);
-                            setMyPosts(communityPosts.filter(p => p.author === userDoc.name));
-                            
-                            // Firestore에서 신청한 프로그램 목록 가져오기
-                            try {
-                                if (firebaseService && firebaseService.getApplicationsByUserId) {
-                                    const applications = await firebaseService.getApplicationsByUserId(userDoc.id);
-                                    // applications에서 seminarId를 추출하여 해당 seminar 찾기
-                                    const appliedSeminarIds = applications.map(app => app.seminarId);
-                                    const appliedSeminars = seminars.filter(seminar => 
-                                        appliedSeminarIds.includes(seminar.id)
-                                    );
-                                    setMySeminars(appliedSeminars);
-                                    
-                                    // 프로그램 알람 체크 (시작 3일 전)
-                                    checkProgramAlerts(appliedSeminars, userDoc.id);
-                                }
-                            } catch (error) {
-                                console.error('신청한 프로그램 목록 로드 실패:', error);
-                                // 실패 시 localStorage에서 가져오기 (폴백)
-                                try {
-                                    const localApplications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
-                                    const localAppliedSeminarIds = localApplications
-                                        .filter(app => app.userId === userDoc.id)
-                                        .map(app => app.seminarId);
-                                    const localAppliedSeminars = seminars.filter(seminar => 
-                                        localAppliedSeminarIds.includes(seminar.id)
-                                    );
-                                    setMySeminars(localAppliedSeminars);
-                                    
-                                    // 프로그램 알람 체크 (시작 3일 전)
-                                    checkProgramAlerts(localAppliedSeminars, userDoc.id);
-                                } catch (localError) {
-                                    console.error('localStorage에서 프로그램 목록 로드 실패:', localError);
-                                }
-                            }
-                        }
-                    } catch (error) {
-                    }
-                } else {
-                    // 사용자가 로그아웃했으면 상태 초기화
-                    setCurrentUser(null);
-                    setMyPosts([]);
-                    setMySeminars([]);
-                    setProgramAlerts([]);
-                    setShowProgramAlertModal(false);
-                }
-            });
-            
-            return () => unsubscribe();
-        }
-    }, [communityPosts, seminars]);
-    
-    // 프로그램 알람 체크 함수 (시작 3일 전)
+    // 프로그램 알람 체크 함수 (시작 3일 전) - useEffect 이전에 정의
     const checkProgramAlerts = (appliedSeminars, userId) => {
         if (!appliedSeminars || appliedSeminars.length === 0) return;
         
@@ -4248,6 +4186,68 @@ const App = () => {
             setShowProgramAlertModal(true);
         }
     };
+    
+    // Firebase Auth 상태 변경 리스너 - 새로고침 시 로그인 세션 유지
+    useEffect(() => {
+        if (authService && authService.onAuthStateChanged) {
+            const unsubscribe = authService.onAuthStateChanged(async (user) => {
+                if (user) {
+                    // 사용자가 로그인되어 있으면 Firestore에서 사용자 데이터 로드
+                    try {
+                        const userDoc = await authService.getUserData(user.uid);
+                        if (userDoc) {
+                            setCurrentUser(userDoc);
+                            setMyPosts(communityPosts.filter(p => p.author === userDoc.name));
+                            
+                            // Firestore에서 신청한 프로그램 목록 가져오기
+                            try {
+                                if (firebaseService && firebaseService.getApplicationsByUserId) {
+                                    const applications = await firebaseService.getApplicationsByUserId(userDoc.id);
+                                    // applications에서 seminarId를 추출하여 해당 seminar 찾기
+                                    const appliedSeminarIds = applications.map(app => app.seminarId);
+                                    const appliedSeminars = seminarsData.filter(seminar => 
+                                        appliedSeminarIds.includes(seminar.id)
+                                    );
+                                    setMySeminars(appliedSeminars);
+                                    
+                                    // 프로그램 알람 체크 (시작 3일 전)
+                                    checkProgramAlerts(appliedSeminars, userDoc.id);
+                                }
+                            } catch (error) {
+                                console.error('신청한 프로그램 목록 로드 실패:', error);
+                                // 실패 시 localStorage에서 가져오기 (폴백)
+                                try {
+                                    const localApplications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
+                                    const localAppliedSeminarIds = localApplications
+                                        .filter(app => app.userId === userDoc.id)
+                                        .map(app => app.seminarId);
+                                    const localAppliedSeminars = seminarsData.filter(seminar => 
+                                        localAppliedSeminarIds.includes(seminar.id)
+                                    );
+                                    setMySeminars(localAppliedSeminars);
+                                    
+                                    // 프로그램 알람 체크 (시작 3일 전)
+                                    checkProgramAlerts(localAppliedSeminars, userDoc.id);
+                                } catch (localError) {
+                                    console.error('localStorage에서 프로그램 목록 로드 실패:', localError);
+                                }
+                            }
+                        }
+                    } catch (error) {
+                    }
+                } else {
+                    // 사용자가 로그아웃했으면 상태 초기화
+                    setCurrentUser(null);
+                    setMyPosts([]);
+                    setMySeminars([]);
+                    setProgramAlerts([]);
+                    setShowProgramAlertModal(false);
+                }
+            });
+            
+            return () => unsubscribe();
+        }
+    }, [communityPosts, seminarsData]);
     
     // 알람 확인 처리 함수
     const handleProgramAlertConfirm = (userId) => {
