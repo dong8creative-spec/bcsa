@@ -1,9 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Icons } from './Icons';
 
-const CalendarSection = ({ seminars, onSelectSeminar, currentUser, onWriteReview, applications }) => {
+const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteReview, applications = [] }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(null);
+    
+    // seminars가 배열이 아닌 경우 빈 배열로 처리
+    const safeSeminars = Array.isArray(seminars) ? seminars : [];
     
     // 접속일 기준 주의 시작일(일요일) 계산
     const getWeekStart = (date) => {
@@ -63,7 +66,7 @@ const CalendarSection = ({ seminars, onSelectSeminar, currentUser, onWriteReview
     // 특정 날짜의 이벤트 가져오기 (시간대별 정렬)
     const getEventsForDate = (date) => {
         const dateStr = formatDate(date);
-        const events = seminars.filter(s => {
+        const events = safeSeminars.filter(s => {
             const parts = s.date.replace(/-/g, '.').split('.'); 
             if (parts.length < 3) return false;
             const eventDateStr = `${parts[0]}.${parts[1].padStart(2, '0')}.${parts[2].padStart(2, '0')}`;
@@ -99,7 +102,7 @@ const CalendarSection = ({ seminars, onSelectSeminar, currentUser, onWriteReview
         }).length;
         
         return { totalEvents, ongoingEvents, endedEvents };
-    }, [weekDays, seminars]);
+    }, [weekDays, safeSeminars]);
     const renderCalendarDays = () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);

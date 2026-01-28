@@ -3,7 +3,11 @@ import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 import CalendarSection from '../components/CalendarSection';
 
-const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, onAddProgram, waitForKakaoMap, openKakaoPlacesSearch, pageTitles, onWriteReview, applications }) => {
+const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuNames = {}, onAddProgram, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [] }) => {
+    // props 안전성 검증
+    const safeSeminars = Array.isArray(seminars) ? seminars : [];
+    const safeApplications = Array.isArray(applications) ? applications : [];
+    
     const [searchKeyword, setSearchKeyword] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('전체');
     const [selectedStatus, setSelectedStatus] = useState('전체');
@@ -41,10 +45,10 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
     });
     const [uploadingImage, setUploadingImage] = useState(false);
     
-    const categories = ['전체', ...new Set(seminars.map(s => s.category).filter(Boolean))];
+    const categories = ['전체', ...new Set(safeSeminars.map(s => s.category).filter(Boolean))];
     const statuses = ['전체', '모집중', '마감임박', '후기작성가능', '종료'];
     
-    const filteredSeminars = seminars.filter(seminar => {
+    const filteredSeminars = safeSeminars.filter(seminar => {
         const matchKeyword = !searchKeyword || seminar.title.toLowerCase().includes(searchKeyword.toLowerCase()) || seminar.desc?.toLowerCase().includes(searchKeyword.toLowerCase());
         const matchCategory = selectedCategory === '전체' || seminar.category === selectedCategory;
         const matchStatus = selectedStatus === '전체' || seminar.status === selectedStatus;
@@ -373,11 +377,11 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
 
                 {/* 프로그램 일정표 */}
                 <CalendarSection 
-                    seminars={seminars} 
+                    seminars={safeSeminars} 
                     onSelectSeminar={(seminar) => setSelectedSeminar(seminar)}
                     currentUser={currentUser}
                     onWriteReview={onWriteReview}
-                    applications={applications}
+                    applications={safeApplications}
                 />
 
                 {/* 세미나 상세 모달 */}

@@ -473,7 +473,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
             {/* 게시글 수정 모달 */}
             {isEditModalOpen && editingPost ? (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
-                    <div className="bg-white max-w-3xl w-full max-h-[calc(90vh-200px)] overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
                         <div className="sticky top-0 bg-white border-b border-gray-200 px-8 py-6 flex items-center justify-between">
                             <h3 className="text-xl font-light text-gray-900">게시글 수정</h3>
                             <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} className="p-2 hover:bg-gray-100 transition-colors">

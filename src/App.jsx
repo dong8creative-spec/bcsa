@@ -1480,7 +1480,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                 </div>
 
                 {/* 검색 */}
-                <div className="bg-white rounded-3xl shadow-card p-6 mb-8">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
                     <div className="mb-4">
                         <label className="block text-xs font-bold text-gray-600 mb-2">검색</label>
                         <div className="relative">
@@ -1505,7 +1505,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                         {filteredRestaurants.map((restaurant) => (
                             <div 
                                 key={restaurant.id} 
-                                className="bg-white rounded-3xl shadow-card hover:shadow-lg transition-all border border-transparent hover:border-brand/20 cursor-pointer overflow-hidden" 
+                                className="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-all hover:border-brand/20 cursor-pointer overflow-hidden" 
                                 onClick={() => onRestaurantClick(restaurant)}
                             >
                                 {restaurant.images && restaurant.images.length > 0 ? (
@@ -1621,7 +1621,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                 
                 {/* 갤러리 */}
                 {restaurant.images && restaurant.images.length > 0 ? (
-                    <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
                         <div className="relative" style={{ aspectRatio: '1/1' }}>
                             <img 
                                 src={restaurant.images[currentImageIndex]} 
@@ -1732,7 +1732,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                 
                 {/* 대표메뉴 */}
                 {restaurant.menuItems && restaurant.menuItems.length > 0 ? (
-                    <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
                         <h3 className="text-xl font-bold text-dark mb-4">대표메뉴</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {restaurant.menuItems.map((menu, idx) => (
@@ -3239,7 +3239,7 @@ const BidSearchView = ({ onBack, currentUser, pageTitles }) => {
                 </div>
 
                 {/* 검색 영역 */}
-                <div className="bg-white rounded-3xl shadow-card p-6 mb-8">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
                     {/* 검색유형 탭 */}
                     <div className="flex gap-2 mb-4 border-b border-gray-200">
                         <button
@@ -5547,7 +5547,7 @@ const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, mem
                     </button>
                 </div>
 
-                <div className="bg-white rounded-3xl shadow-card p-8 md:p-12">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 md:p-12">
                     <div className="text-center mb-8">
                         <h3 className="text-2xl font-bold text-dark mb-4">후원을 통해 더 많은 청년 사업가들이 꿈을 이룰 수 있도록 도와주세요</h3>
                         <p className="text-gray-600">후원금은 커뮤니티 운영 및 프로그램 지원에 사용됩니다.</p>
@@ -7801,8 +7801,28 @@ END:VCALENDAR`;
     const renderView = () => {
         try {
             if (currentView === 'myPage') {
-                const result = <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} />;
-                return result || null;
+                if (!currentUser) {
+                    // 로그인 필요 처리
+                    return (
+                        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+                            <div className="container mx-auto max-w-7xl">
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+                                    <Icons.AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                                    <h2 className="text-2xl font-bold text-dark mb-2">로그인이 필요합니다</h2>
+                                    <p className="text-gray-600 mb-6">이 페이지를 보려면 로그인이 필요합니다.</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowLoginModal(true)}
+                                        className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                                    >
+                                        로그인하기
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+                return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} />;
             }
         if (currentView === 'allMembers' && !menuEnabled['부청사 회원']) {
             alert('준비중인 서비스입니다.');
@@ -8470,16 +8490,38 @@ END:VCALENDAR`;
                 </section>
             </Fragment>
         );
-        return homeView || null;
+        // currentView가 'home'이거나 null/undefined인 경우 홈 화면 렌더링
+        // homeView는 항상 유효한 React 요소이므로 null 체크 불필요
+        return homeView;
         } catch (error) {
             console.error('renderView error:', error);
             console.error('Error stack:', error.stack);
             console.error('Current view:', currentView);
-            // 오류 발생 시 홈으로 리다이렉트
+            // 오류 발생 시 에러 메시지 표시 (null 대신 유효한 React 요소 반환)
             if (currentView !== 'home') {
                 setCurrentView('home');
             }
-            return null;
+            return (
+                <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+                    <div className="container mx-auto max-w-7xl">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+                            <Icons.AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                            <h2 className="text-2xl font-bold text-dark mb-2">페이지를 불러올 수 없습니다</h2>
+                            <p className="text-gray-600 mb-6">오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setCurrentView('home');
+                                    window.location.reload();
+                                }}
+                                className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                            >
+                                홈으로 돌아가기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
         }
     };
     
