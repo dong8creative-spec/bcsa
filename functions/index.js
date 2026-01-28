@@ -675,6 +675,27 @@ app.get('/api/bid-search', async (req, res) => {
       console.warn(`[Bid Search] Some APIs failed (${errors.length}/${apiPaths.length}):`, errorsByType);
     }
 
+    // 필드명 정규화 (나라장터 API 필드명 -> 표준 필드명)
+    const normalizeFieldNames = (item) => {
+      if (!item) return item;
+      
+      // 나라장터 API는 ntceInsttNm, dminsttNm을 사용하지만
+      // 프론트엔드는 insttNm, dmandInsttNm을 기대함
+      const normalized = { ...item };
+      
+      // 공고기관명 매핑
+      if (normalized.ntceInsttNm && !normalized.insttNm) {
+        normalized.insttNm = normalized.ntceInsttNm;
+      }
+      
+      // 수요기관명 매핑
+      if (normalized.dminsttNm && !normalized.dmandInsttNm) {
+        normalized.dmandInsttNm = normalized.dminsttNm;
+      }
+      
+      return normalized;
+    };
+
     // 중복 제거 (입찰공고번호 + 차수 기준)
     const uniqueItems = [];
     const seenBids = new Set();
@@ -685,10 +706,13 @@ app.get('/api/bid-search', async (req, res) => {
         return;
       }
       
-      const bidKey = `${item.bidNtceNo}-${item.bidNtceOrd || '1'}`;
+      // 필드명 정규화
+      const normalizedItem = normalizeFieldNames(item);
+      
+      const bidKey = `${normalizedItem.bidNtceNo}-${normalizedItem.bidNtceOrd || '1'}`;
       if (!seenBids.has(bidKey)) {
         seenBids.add(bidKey);
-        uniqueItems.push(item);
+        uniqueItems.push(normalizedItem);
       }
     });
     
