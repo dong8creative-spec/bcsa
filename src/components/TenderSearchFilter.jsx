@@ -101,6 +101,10 @@ const mapSearchParamsToApiParams = (params) => {
 
 const normalizeItems = (payload) => {
   console.log('🔍 [normalizeItems] 입력 payload:', payload);
+  console.log('🔍 [normalizeItems] payload.data:', payload?.data);
+  console.log('🔍 [normalizeItems] payload.data.items:', payload?.data?.items);
+  console.log('🔍 [normalizeItems] payload.data.totalCount:', payload?.data?.totalCount);
+  console.log('🔍 [normalizeItems] payload.data의 모든 키:', payload?.data ? Object.keys(payload.data) : 'data 없음');
   
   // 1. 최신 API 응답 형식: { success: true, data: { items: [...], totalCount: ... } }
   if (payload?.data?.items && Array.isArray(payload.data.items)) {

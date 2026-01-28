@@ -4,11 +4,19 @@ import cors from 'cors';
 import axios from 'axios';
 import { parseStringPromise } from 'xml2js';
 import admin from 'firebase-admin';
+import http from 'http';
+import https from 'https';
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
   admin.initializeApp();
 }
+
+// axios가 Node.js http/https 어댑터를 사용하도록 설정
+// Firebase Functions v2 (Node.js 20) 환경에서 fetch 대신 http/https 사용
+// 수정일: 2026-01-29 - fetch is not a function 오류 해결
+axios.defaults.httpAgent = new http.Agent({ keepAlive: true });
+axios.defaults.httpsAgent = new https.Agent({ keepAlive: true });
 
 const app = express();
 const db = admin.firestore();
