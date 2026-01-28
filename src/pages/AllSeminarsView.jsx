@@ -348,7 +348,7 @@ const AllSeminarsView = ({ onBack, seminars, onApply, currentUser, menuNames, on
                     </div>
                 )}
 
-                {/* 주간일정표 */}
+                {/* 프로그램 일정표 */}
                 <CalendarSection 
                     seminars={seminars} 
                     onSelectSeminar={(seminar) => setSelectedSeminar(seminar)}
