@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 
 const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
     const [selectedCategory, setSelectedCategory] = useState('전체');
     const [selectedPost, setSelectedPost] = useState(null);
+    
+    // ESC 키로 공지 상세 모달 닫기
+    useEffect(() => {
+        const handleEscKey = (e) => {
+            if (e.key === 'Escape' && selectedPost) {
+                setSelectedPost(null);
+            }
+        };
+        window.addEventListener('keydown', handleEscKey);
+        return () => {
+            window.removeEventListener('keydown', handleEscKey);
+        };
+    }, [selectedPost]);
     
     const categories = ['전체', '일반공지', '세미나', '내부안내'];
     const filteredPosts = selectedCategory === '전체' 
@@ -24,7 +37,7 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
                     </button>
                 </div>
                 {/* 공지사항 내용 */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-6">
                 {/* 카테고리 필터 */}
                     <div className="flex flex-wrap gap-2 mb-6">
                         {categories.map((cat) => (
@@ -53,7 +66,7 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
                         {filteredPosts.map((post) => (
                             <div
                                 key={post.id}
-                                    className="p-5 bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-all cursor-pointer"
+                                    className="p-5 bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md transition-all cursor-pointer"
                                 onClick={() => setSelectedPost(post)}
                             >
                                     <h3 className="font-bold text-dark mb-2">{post.title}</h3>
@@ -69,26 +82,26 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
                 </div>
             </div>
 
-            {/* 공지사항 상세 모달 */}
+            {/* 공지사항 상세 모달 (ESC로 닫기) */}
                 {selectedPost && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPost(null); }}>
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
-                        <div className="flex items-start justify-between mb-6">
-                            <div className="flex-1">
-                                <h3 className="text-2xl font-bold text-dark mb-2">{selectedPost.title}</h3>
-                                <div className="flex items-center gap-4 text-sm text-gray-500">
-                                    <span>{selectedPost.author}</span>
-                                    <span>{new Date(selectedPost.createdAt?.toDate?.() || selectedPost.createdAt).toLocaleDateString()}</span>
-                                </div>
-                                </div>
-                            <button type="button" onClick={() => setSelectedPost(null)} className="p-2 hover:bg-gray-100 rounded-lg">
-                                <Icons.X size={24} />
-                            </button>
-                                        </div>
+                    <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[calc(90vh-100px)]">
+                        <div className="flex-1 overflow-y-auto modal-scroll p-8">
+                            <h3 className="text-2xl font-bold text-dark mb-2">{selectedPost.title}</h3>
+                            <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
+                                <span>{selectedPost.author}</span>
+                                <span>{new Date(selectedPost.createdAt?.toDate?.() || selectedPost.createdAt).toLocaleDateString()}</span>
+                            </div>
                         <div className="prose max-w-none">
                             <p className="whitespace-pre-wrap text-gray-700">{selectedPost.content}</p>
                             </div>
                         </div>
+                        <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
+                            <button type="button" onClick={() => setSelectedPost(null)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                                닫기
+                            </button>
+                        </div>
+                    </div>
                     </div>
                 )}
         </div>

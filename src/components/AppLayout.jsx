@@ -1,0 +1,681 @@
+import React, { useRef, useState, useEffect } from 'react';
+import { Icons } from './Icons';
+import SignUpModal from './SignUpModal';
+import InquiryModal from './InquiryModal';
+
+const FAB_GAP_PX = 16;
+const FAB_ESTIMATE_HEIGHT_PX = 152;
+
+const AppLayout = (props) => {
+    const footerRef = useRef(null);
+    const fabRef = useRef(null);
+    const [fabStyle, setFabStyle] = useState({ position: 'fixed', right: '1.5rem', bottom: '10rem' });
+    const {
+        MobileMenu,
+        renderView,
+        currentView,
+        setCurrentView,
+        popupPrograms,
+        setPopupPrograms,
+        closePopupAndMarkAsShown,
+        isPopupApplyModalOpen,
+        applySeminarFromPopup,
+        setIsPopupApplyModalOpen,
+        popupApplicationData,
+        setPopupApplicationData,
+        handlePopupApplySubmit,
+        handlePopupApply,
+        getCategoryColor,
+        scrolled,
+        menuOrder,
+        menuEnabled,
+        menuNames,
+        handleNavigation,
+        getNavClass,
+        currentUser,
+        handleLogout,
+        showLoginModal,
+        setShowLoginModal,
+        showSignUpModal,
+        setShowSignUpModal,
+        isInquiryModalOpen,
+        setIsInquiryModalOpen,
+        handleInquirySubmit,
+        showProgramAlertModal,
+        programAlerts,
+        handleProgramAlertConfirm,
+        handleSignUp,
+        handleLogin,
+        users,
+        LoginModal,
+        isMenuOpen,
+        setIsMenuOpen,
+        content,
+    } = props;
+
+    useEffect(() => {
+        const updateFabPosition = () => {
+            const footerEl = footerRef.current;
+            const fabEl = fabRef.current;
+            if (!footerEl) return;
+            const footerRect = footerEl.getBoundingClientRect();
+            const fabHeight = fabEl?.getBoundingClientRect()?.height ?? FAB_ESTIMATE_HEIGHT_PX;
+            const viewportBottom = window.innerHeight;
+            const threshold = viewportBottom - fabHeight - FAB_GAP_PX;
+            if (footerRect.top <= threshold) {
+                const top = Math.max(FAB_GAP_PX, footerRect.top - fabHeight - FAB_GAP_PX);
+                setFabStyle({ position: 'fixed', right: '1.5rem', bottom: 'auto', top: `${top}px` });
+            } else {
+                setFabStyle({ position: 'fixed', right: '1.5rem', bottom: '10rem', top: 'auto' });
+            }
+        };
+        updateFabPosition();
+        window.addEventListener('scroll', updateFabPosition, { passive: true });
+        window.addEventListener('resize', updateFabPosition);
+        return () => {
+            window.removeEventListener('scroll', updateFabPosition);
+            window.removeEventListener('resize', updateFabPosition);
+        };
+    }, []);
+
+    return (
+        <div className="min-h-screen bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">
+            {/* 프로그램 팝업 (최대 3개 동시 표시, 1회만 표시) */}
+            {popupPrograms && popupPrograms.length > 0 ? (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) closePopupAndMarkAsShown(); }}>
+                    <div className="flex flex-col md:flex-row gap-4 max-w-6xl w-full overflow-x-auto py-4" onClick={(e) => e.stopPropagation()}>
+                        {popupPrograms.map((program, idx) => {
+                            const isMobile = window.innerWidth < 768;
+                            
+                            if (isMobile) {
+                                // 모바일: 간단한 팝업 (이미지 + 더 자세히 알아보기 버튼만)
+                                return (
+                                    <div 
+                                        key={program.id || idx} 
+                                        className="bg-white rounded-2xl shadow-2xl w-[85vw] max-w-sm overflow-hidden relative mx-auto"
+                                    >
+                                        {/* 이미지 영역 (3:4 비율) */}
+                                        <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
+                                            {/* 마감임박 마크 */}
+                                            {program.isDeadlineSoon ? (
+                                                <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+                                                    마감임박
+                                                </div>
+                                            ) : null}
+                                            {/* 닫기 버튼 */}
+                                            <button 
+                                                type="button" 
+                                                onClick={() => {
+                                                    const remaining = popupPrograms.filter((_, i) => i !== idx);
+                                                    if (remaining.length === 0) {
+                                                        closePopupAndMarkAsShown();
+                                                    } else {
+                                                        setPopupPrograms(remaining);
+                                                    }
+                                                }} 
+                                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 z-10 shadow-md"
+                                            >
+                                                <Icons.X size={18} />
+                                            </button>
+                                            {/* 이미지 */}
+                                            {program.img ? (
+                                                <img 
+                                                    src={program.img} 
+                                                    alt={program.title} 
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : null}
+                                        </div>
+                                        {/* 더 자세히 알아보기 버튼 */}
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                closePopupAndMarkAsShown();
+                                                setCurrentView('allSeminars');
+                                                // 해당 프로그램을 선택하여 상세 모달 열기
+                                                setTimeout(() => {
+                                                    const allSeminarsView = document.querySelector('[data-view="allSeminars"]');
+                                                    if (allSeminarsView) {
+                                                        // 프로그램 상세 모달을 열기 위해 이벤트 트리거
+                                                        const programCard = Array.from(allSeminarsView.querySelectorAll('[data-program-id]')).find(
+                                                            el => el.getAttribute('data-program-id') === String(program.id)
+                                                        );
+                                                        if (programCard) {
+                                                            programCard.click();
+                                                        }
+                                                    }
+                                                }, 100);
+                                            }}
+                                            className="w-full py-4 bg-brand text-white font-bold rounded-b-2xl hover:bg-blue-700 transition-colors"
+                                        >
+                                            더 자세히 알아보기
+                                        </button>
+                                    </div>
+                                );
+                            } else {
+                                // 데스크톱: 가로 레이아웃
+                                return (
+                                    <div 
+                                        key={program.id || idx} 
+                                        className="bg-white rounded-3xl shadow-2xl w-full md:w-auto md:max-w-5xl flex-shrink-0 overflow-hidden relative mx-auto flex flex-col md:flex-row"
+                                        style={{ maxHeight: '90vh' }}
+                                    >
+                                        {/* 이미지 영역 (왼쪽) */}
+                                        <div className="w-full md:flex-[0_0_400px] lg:flex-[0_0_450px] relative bg-gray-50 flex items-center justify-center overflow-hidden" style={{ minHeight: '400px' }}>
+                                            {/* 마감임박 마크 */}
+                                            {program.isDeadlineSoon ? (
+                                                <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+                                                    마감임박
+                                                </div>
+                                            ) : null}
+                                            {/* 닫기 버튼 */}
+                                            <button 
+                                                type="button" 
+                                                onClick={() => {
+                                                    const remaining = popupPrograms.filter((_, i) => i !== idx);
+                                                    if (remaining.length === 0) {
+                                                        closePopupAndMarkAsShown();
+                                                    } else {
+                                                        setPopupPrograms(remaining);
+                                                    }
+                                                }} 
+                                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 z-10 shadow-md"
+                                            >
+                                                <Icons.X size={18} />
+                                            </button>
+                                            {/* 이미지 */}
+                                            {program.img ? (
+                                                <img 
+                                                    src={program.img} 
+                                                    alt={program.title} 
+                                                    className="w-full h-full object-contain"
+                                                    style={{ maxHeight: '90vh' }}
+                                                />
+                                            ) : null}
+                                        </div>
+                                        
+                                        {/* 정보 영역 (오른쪽) */}
+                                        <div className="flex-1 p-6 overflow-y-auto modal-scroll" style={{ minWidth: '300px', maxHeight: '90vh' }}>
+                                            <h3 className="text-xl font-bold text-dark mb-3">{program.title}</h3>
+                                            
+                                            {/* 카테고리 및 유료/무료 배지 */}
+                                            <div className="flex items-center gap-2 mb-3">
+                                                {program.category ? (
+                                                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${getCategoryColor(program.category)}`}>
+                                                        {program.category}
+                                                    </span>
+                                                ) : null}
+                                                <span className="text-xs font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">
+                                                    {program.requiresPayment ? (program.price ? `${program.price.toLocaleString()}원` : '유료') : '무료'}
+                                                </span>
+                                            </div>
+                                            
+                                            {/* 날짜, 장소, 신청현황 */}
+                                            <div className="space-y-2 text-sm text-gray-600 mb-4">
+                                                <div className="flex items-center gap-2">
+                                                    <Icons.Calendar size={16} className="text-brand" /> {program.date}
+                                                </div>
+                                                {program.location ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <Icons.MapPin size={16} className="text-brand" /> {program.location}
+                                                    </div>
+                                                ) : null}
+                                                <div className="flex items-center gap-2">
+                                                    <Icons.Users size={16} className="text-brand" /> {program.currentParticipants || 0} / {program.maxParticipants || 0}명
+                                                </div>
+                                            </div>
+                                            
+                                            {/* 프로그램 설명 */}
+                                            {program.desc ? (
+                                                <div className="mb-4">
+                                                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{program.desc}</p>
+                                                </div>
+                                            ) : null}
+                                            
+                                            {/* 신청하기 버튼 */}
+                                            {currentUser ? (
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => handlePopupApply(program)}
+                                                    className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                                                >
+                                                    신청하기
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        closePopupAndMarkAsShown();
+                                                        setShowLoginModal(true);
+                                                    }}
+                                                    className="w-full py-3 bg-gray-300 text-gray-500 font-bold rounded-xl cursor-not-allowed"
+                                                    disabled
+                                                >
+                                                    로그인 후 신청 가능
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            }
+                        })}
+                    </div>
+                    {/* 전체 닫기 버튼 */}
+                    {popupPrograms.length > 1 ? (
+                        <button 
+                            type="button" 
+                            onClick={() => closePopupAndMarkAsShown()} 
+                            className="fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 bg-white/90 hover:bg-white text-gray-700 rounded-full font-bold shadow-lg z-20"
+                        >
+                            모두 닫기
+                        </button>
+                    ) : null}
+                </div>
+            ) : null}
+            
+            {/* 팝업 신청 모달 (ESC 미적용) */}
+            {isPopupApplyModalOpen && applySeminarFromPopup ? (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setIsPopupApplyModalOpen(false); }}>
+                    <div className="bg-white rounded-3xl max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)]">
+                        <div className="flex-1 overflow-y-auto modal-scroll p-8">
+                            <h3 className="text-2xl font-bold text-dark mb-6">프로그램 신청</h3>
+                        <div className="mb-6">
+                            <h4 className="text-lg font-bold text-dark mb-2">{applySeminarFromPopup.title}</h4>
+                            <div className="text-sm text-gray-600 space-y-1">
+                                <div><span className="font-bold">일시:</span> {applySeminarFromPopup.date}</div>
+                                {applySeminarFromPopup.location && <div><span className="font-bold">장소:</span> {applySeminarFromPopup.location}</div>}
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">신청사유 *</label>
+                                <textarea 
+                                    className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none h-32 resize-none" 
+                                    value={popupApplicationData.reason}
+                                    onChange={(e) => setPopupApplicationData({...popupApplicationData, reason: e.target.value})}
+                                    placeholder="이 프로그램에 신청하는 이유를 작성해주세요"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">사전질문 *</label>
+                                <div className="space-y-3">
+                                    <input 
+                                        type="text" 
+                                        className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none"
+                                        value={popupApplicationData.questions[0]}
+                                        onChange={(e) => {
+                                            const newQuestions = [...popupApplicationData.questions];
+                                            newQuestions[0] = e.target.value;
+                                            setPopupApplicationData({...popupApplicationData, questions: newQuestions});
+                                        }}
+                                        placeholder="사전질문 1"
+                                    />
+                                    <input 
+                                        type="text" 
+                                        className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none"
+                                        value={popupApplicationData.questions[1]}
+                                        onChange={(e) => {
+                                            const newQuestions = [...popupApplicationData.questions];
+                                            newQuestions[1] = e.target.value;
+                                            setPopupApplicationData({...popupApplicationData, questions: newQuestions});
+                                        }}
+                                        placeholder="사전질문 2"
+                                    />
+                                </div>
+                            </div>
+                            <button type="button" onClick={handlePopupApplySubmit} className="w-full py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 mt-6">
+                                    신청하기
+                                </button>
+                        </div>
+                        </div>
+                        <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
+                            <button type="button" onClick={() => setIsPopupApplyModalOpen(false)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                                닫기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+            
+            <header className={`fixed top-0 w-full z-50 transition-all duration-300 ease-in-out px-4 md:px-6 py-5 ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : 'bg-transparent'}`}>
+                <div className="container mx-auto flex justify-between items-center relative">
+                    <div className="flex items-center cursor-pointer group h-[75px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
+                        {/* 🌟 Logo Image: 부산청년사업가들 로고 */}
+                        <img 
+                            src="/assets/images/logo.png" 
+                            alt="부산청년사업가들" 
+                            className="h-full w-auto object-contain hover:opacity-90 transition-opacity" 
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                // 절대 경로 사용 (Vite가 public을 루트로 복사)
+                                if (e.target.src.includes('/assets/')) {
+                                    e.target.src = '/assets/images/logo.png';
+                                } else {
+                                e.target.style.display = 'none';
+                                const fallback = document.createElement('div');
+                                fallback.className = 'text-xl md:text-2xl font-black text-brand';
+                                fallback.textContent = '부청사';
+                                e.target.parentNode.appendChild(fallback);
+                                }
+                            }}
+                        />
+                    </div>
+                    <nav className={`hidden md:flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-3 relative whitespace-nowrap ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md shadow-glass'}`}>
+                        {menuOrder.filter(item => menuEnabled[item]).map((item, idx) => (
+                            <div key={idx} className="flex flex-col items-center gap-1 relative flex-shrink-0 min-w-fit">
+                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} relative`}>
+                                    {menuNames[item] || item}
+                                </button>
+                            </div>
+                        ))}
+                    </nav>
+                    <div className="flex items-center gap-3 whitespace-nowrap">
+                        {currentUser ? (
+                            <div className="flex items-center gap-2">
+                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hidden md:block text-xs font-bold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">마이페이지</button>
+                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); }} className="px-3 md:px-4 py-2 bg-gray-200 text-gray-600 rounded-full text-xs font-medium hover:bg-gray-300 transition-colors whitespace-nowrap flex-shrink-0">로그아웃</button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3">
+                                <button type="button" onClick={(e) => { 
+                                    e.preventDefault(); 
+                                    e.stopPropagation(); 
+                                    setShowLoginModal(true); 
+                                }} className="text-xs font-semibold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">로그인</button>
+                                <button type="button" onClick={(e) => { 
+                                    e.preventDefault(); 
+                                    e.stopPropagation(); 
+                                    setShowSignUpModal(true); 
+                                }} className="px-3 md:px-4 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover whitespace-nowrap flex-shrink-0">가입하기</button>
+                            </div>
+                        )}
+                        <button type="button" className="md:hidden p-2 text-dark flex-shrink-0" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(true); }}><Icons.Menu /></button>
+                    </div>
+                </div>
+            </header>
+            
+            {(() => {
+                try {
+                    const viewResult = renderView();
+                    // renderView()가 undefined를 반환하는 경우를 방지
+                    if (viewResult === undefined || viewResult === null) {
+                        console.error('renderView() returned undefined or null, currentView:', currentView);
+                        // 홈으로 리다이렉트
+                        if (currentView !== 'home') {
+                            setCurrentView('home');
+                        }
+                        return null;
+                    }
+                    // React 요소인지 확인 (React.isValidElement 사용)
+                    if (!React.isValidElement(viewResult) && viewResult !== null) {
+                        console.error('renderView() returned invalid element:', viewResult);
+                        // 홈으로 리다이렉트
+                        if (currentView !== 'home') {
+                            setCurrentView('home');
+                        }
+                        return null;
+                    }
+                    return viewResult;
+                } catch (error) {
+                    console.error('renderView() error:', error);
+                    console.error('Error stack:', error.stack);
+                    // 오류 발생 시 홈으로 리다이렉트
+                    if (currentView !== 'home') {
+                        setCurrentView('home');
+                    }
+                    return null;
+                }
+            })()}
+
+            <footer ref={footerRef} className="py-12 bg-white px-6 shadow-[0_-4px_25px_rgba(0,69,165,0.05)] border-none">
+                <div className="container mx-auto max-w-6xl">
+                    <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-12">
+                        <div>
+                            <div className="flex items-center gap-2 mb-4 h-20 overflow-hidden">
+                                <img 
+                                    src="/assets/images/logo.png" 
+                                    alt="부산청년사업가들" 
+                                    className="h-full w-auto object-contain" 
+                                    onError={(e) => {
+                                        e.target.onerror = null;
+                                        // 절대 경로 사용 (Vite가 public을 루트로 복사)
+                                        if (e.target.src.includes('/assets/')) {
+                                            e.target.src = '/assets/images/logo.png';
+                                        } else {
+                                        e.target.style.display = 'none';
+                                        const fallback = document.createElement('div');
+                                        fallback.className = 'text-xl font-black text-brand';
+                                        fallback.textContent = '부청사';
+                                        e.target.parentNode.appendChild(fallback);
+                                        }
+                                    }}
+                                />
+                            </div>
+                            <p className="text-gray-500 text-sm leading-relaxed max-w-xs break-keep">부산 지역 청년 사업가들이 모여 함께 성장하는<br/>비즈니스 커뮤니티입니다.</p>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-12">
+                            {(menuEnabled['부청사 회원'] || menuEnabled['커뮤니티']) ? (
+                                <div>
+                                    <h4 className="font-bold text-dark mb-4">커뮤니티</h4>
+                                    <ul className="space-y-2 text-sm text-gray-500">
+                                        {menuEnabled['부청사 회원'] ? (
+                                            <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allMembers'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">부청사 회원</button></li>
+                                        ) : null}
+                                        {menuEnabled['커뮤니티'] ? (
+                                            <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('community'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">커뮤니티 게시판</button></li>
+                                        ) : null}
+                                    </ul>
+                                </div>
+                            ) : null}
+                            {menuEnabled['프로그램'] ? (
+                                <div>
+                                    <h4 className="font-bold text-dark mb-4">프로그램</h4>
+                                    <ul className="space-y-2 text-sm text-gray-500">
+                                        <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">세미나 일정</button></li>
+                                    </ul>
+                                </div>
+                            ) : null}
+                            {(menuEnabled['후원'] || menuEnabled['소개']) ? (
+                                <div>
+                                    <h4 className="font-bold text-dark mb-4">지원</h4>
+                                    <ul className="space-y-2 text-sm text-gray-500">
+                                        <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">공지사항</button></li>
+                                        {menuEnabled['후원'] ? (
+                                            <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('donation'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">후원하기</button></li>
+                                        ) : null}
+                                        {menuEnabled['소개'] ? (
+                                            <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">소개</button></li>
+                                        ) : null}
+                                    </ul>
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+                    <div className="pt-8 border-t border-brand/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-400">
+                        <span>&copy; 2025 BCSA. All rights reserved.</span>
+                        <div className="flex gap-4 items-center">
+                            <a href="#" className="hover:text-dark">이용약관</a>
+                            <a href="#" className="hover:text-dark">개인정보처리방침</a>
+                            <button 
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.location.href = '/admin';
+                                }}
+                                className="hover:text-dark opacity-50 hover:opacity-100 transition-opacity"
+                                title="관리자 페이지"
+                            >
+                                Admin
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+
+            {/* 🌟 모달들 */}
+            {showSignUpModal === true ? (
+                <SignUpModal 
+                    onClose={() => {
+                        
+                        setShowSignUpModal(false);
+                    }} 
+                    onSignUp={handleSignUp}
+                    existingUsers={users}
+                />
+            ) : null}
+            {showLoginModal === true ? (
+                <LoginModal 
+                    onClose={() => {
+                        
+                        setShowLoginModal(false);
+                    }} 
+                    onLogin={handleLogin} 
+                />
+            ) : null}
+            
+            {/* 문의하기 모달 */}
+            {isInquiryModalOpen ? (
+                <InquiryModal 
+                    onClose={() => setIsInquiryModalOpen(false)}
+                    currentUser={currentUser}
+                    onSubmit={handleInquirySubmit}
+                />
+            ) : null}
+            
+            {/* 프로그램 알람 모달 */}
+            {showProgramAlertModal && programAlerts.length > 0 && currentUser ? (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={(e) => { if (e.target === e.currentTarget) handleProgramAlertConfirm(currentUser.id); }}>
+                    <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                                    <Icons.AlertCircle className="w-6 h-6 text-orange-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-dark">프로그램 시작 알림</h3>
+                                    <p className="text-sm text-gray-500">곧 시작되는 프로그램이 있습니다</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button" 
+                                onClick={() => handleProgramAlertConfirm(currentUser.id)} 
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <Icons.X size={20} />
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-4 mb-6">
+                            {programAlerts.map((seminar, idx) => {
+                                // 날짜 파싱
+                                const parseDateString = (dateStr) => {
+                                    if (!dateStr) return null;
+                                    let dateOnly = dateStr.trim();
+                                    if (dateOnly.includes(' ')) dateOnly = dateOnly.split(' ')[0];
+                                    if (dateOnly.includes('T')) dateOnly = dateOnly.split('T')[0];
+                                    dateOnly = dateOnly.replace(/-/g, '.').replace(/\//g, '.');
+                                    const parts = dateOnly.split('.');
+                                    if (parts.length < 3) return null;
+                                    const year = parseInt(parts[0], 10);
+                                    const month = parseInt(parts[1], 10) - 1;
+                                    const day = parseInt(parts[2], 10);
+                                    return new Date(year, month, day);
+                                };
+                                
+                                const programDate = parseDateString(seminar.date);
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const diffTime = programDate ? programDate - today : 0;
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                
+                                return (
+                                    <div key={seminar.id || idx} className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Icons.Calendar className="w-4 h-4 text-orange-600" />
+                                                    <span className="text-xs font-bold text-orange-700">
+                                                        {diffDays === 0 ? '오늘' : diffDays === 1 ? '내일' : `${diffDays}일 후`}
+                                                    </span>
+                                                </div>
+                                                <h4 className="font-bold text-lg text-dark mb-1">{seminar.title}</h4>
+                                                <div className="text-sm text-gray-600 space-y-1">
+                                                    {seminar.date && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Icons.Calendar size={14} />
+                                                            <span>{seminar.date}</span>
+                                                        </div>
+                                                    )}
+                                                    {seminar.location && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Icons.MapPin size={14} />
+                                                            <span>{seminar.location}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        
+                        <button
+                            type="button"
+                            onClick={() => handleProgramAlertConfirm(currentUser.id)}
+                            className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                        >
+                            확인
+                        </button>
+                    </div>
+                </div>
+            ) : null}
+            {/* 🌟 모바일 메뉴 오버레이 */}
+            <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onNavigate={handleNavigation} menuEnabled={menuEnabled} menuNames={menuNames} menuOrder={menuOrder} />
+
+
+            {/* 플로팅 소셜 아이콘 (푸터 전까지 따라다니다가 푸터에 닿으면 멈춤) */}
+            <div ref={fabRef} className="z-50 flex flex-col gap-3 transition-[top] duration-150" style={fabStyle}>
+                <a
+                    href="https://open.kakao.com/o/gMWryRA"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
+                >
+                    <Icons.MessageSquare className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
+                    <span className="absolute right-full mr-3 px-3 py-1.5 bg-yellow-400 text-black text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
+                        부청사 오픈채팅방
+                        <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-yellow-400"></span>
+                    </span>
+                </a>
+                <a
+                    href="https://www.instagram.com/businessmen_in_busan"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
+                >
+                    <Icons.Instagram className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
+                    <span className="absolute right-full mr-3 px-3 py-1.5 bg-gradient-to-br from-purple-600 to-pink-500 text-white text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
+                        부청사 인스타그램
+                        <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-purple-600"></span>
+                    </span>
+                </a>
+                <a
+                    href="https://www.youtube.com/@businessmen_in_busan"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative w-10 h-10 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
+                >
+                    <Icons.Youtube className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
+                    <span className="absolute right-full mr-3 px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
+                        부청사 유튜브
+                        <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-red-600"></span>
+                    </span>
+                </a>
+            </div>
+        </div>
+    );
+};
+
+export default AppLayout;

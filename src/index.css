@@ -1,3 +1,25 @@
+/* PyeojinGothic 웹폰트 (전체 사이트 기본 폰트) */
+@font-face {
+  font-family: 'PyeojinGothic';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2504-1@1.0/PyeojinGothic-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'PyeojinGothic';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2504-1@1.0/PyeojinGothic-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'PyeojinGothic';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2504-1@1.0/PyeojinGothic-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,7 +28,7 @@
   body {
     background-color: #ffffff;
     color: #1e293b;
-    font-family: 'Noto Sans KR', sans-serif;
+    font-family: 'PyeojinGothic', sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
   
@@ -135,6 +157,29 @@
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* 모달 푸터 및 닫기 버튼 공통 스타일 */
+  .modal-footer {
+    flex-shrink: 0;
+    border-top: 1px solid #bfdbfe;
+    padding: 1rem;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .modal-close-btn {
+    padding: 0.75rem 1.5rem;
+    background-color: #0045a5;
+    color: white;
+    font-weight: 700;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+  }
+
+  .modal-close-btn:hover {
+    background-color: #003580;
+    transform: scale(1.02);
   }
 }
 

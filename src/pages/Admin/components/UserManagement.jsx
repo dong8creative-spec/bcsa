@@ -100,7 +100,7 @@ export const UserManagement = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="이름 또는 이메일 검색"
-            className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+            className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
           />
         </div>
         <div>
@@ -108,7 +108,7 @@ export const UserManagement = () => {
           <select
             value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}
-            className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+            className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
           >
             <option value="all">전체</option>
             <option value="user">일반 회원</option>
@@ -137,7 +137,7 @@ export const UserManagement = () => {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200">
+            <tr className="border-b border-blue-200">
               <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">이름</th>
               <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">이메일</th>
               <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">권한</th>
@@ -154,7 +154,7 @@ export const UserManagement = () => {
               </tr>
             ) : (
               filteredUsers.map((user) => (
-                <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr key={user.id} className="border-b border-blue-100 hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm text-dark font-medium">{user.name || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{user.email || '-'}</td>
                   <td className="px-4 py-3">

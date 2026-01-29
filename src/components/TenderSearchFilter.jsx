@@ -457,7 +457,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
           className={`px-3 py-1.5 rounded-lg text-sm font-bold border transition-colors ${
             searchParams.businessTypes.includes(type)
               ? 'bg-brand text-white border-brand'
-              : 'bg-white text-gray-600 border-gray-200 hover:text-brand hover:border-brand'
+              : 'bg-white text-gray-600 border-blue-200 hover:text-brand hover:border-brand'
           }`}
         >
           {type}
@@ -467,7 +467,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
   );
 
   return (
-    <div className="bg-white rounded-2xl shadow-card border border-gray-200 p-6">
+    <div className="bg-white rounded-2xl shadow-card border border-blue-200 p-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">입찰공고번호</label>
@@ -476,7 +476,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
             value={searchParams.bidNtceNo}
             onChange={handleInputChange('bidNtceNo')}
             placeholder="입찰공고번호 입력"
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+            className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
           />
         </div>
         <div>
@@ -486,7 +486,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
             value={searchParams.bidNtceNm}
             onChange={handleInputChange('bidNtceNm')}
             placeholder="공고명 입력"
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+            className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
           />
         </div>
         <div>
@@ -494,7 +494,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
           <select
             value={searchParams.bidNtceDtlClsfCd}
             onChange={handleInputChange('bidNtceDtlClsfCd')}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+            className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
           >
             <option value="전체">전체</option>
             <option value="실공고">실공고</option>
@@ -509,13 +509,13 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               type="date"
               value={searchParams.fromBidDt}
               onChange={handleInputChange('fromBidDt')}
-              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+              className="flex-1 px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
             />
             <input
               type="date"
               value={searchParams.toBidDt}
               onChange={handleInputChange('toBidDt')}
-              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+              className="flex-1 px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
             />
             <label className="inline-flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap">
               <input
@@ -560,7 +560,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                     className={`px-3 py-1.5 rounded-lg text-sm font-bold border transition-colors ${
                       searchParams.businessStatuses.includes(status)
                         ? 'bg-brand text-white border-brand'
-                        : 'bg-white text-gray-600 border-gray-200 hover:text-brand hover:border-brand'
+                        : 'bg-white text-gray-600 border-blue-200 hover:text-brand hover:border-brand'
                     }`}
                   >
                     {status}
@@ -576,7 +576,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                   value={searchParams.insttNm}
                   onChange={handleInputChange('insttNm')}
                   placeholder="기관명 입력"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                  className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
                 />
                 <div className="flex items-center gap-3 text-xs text-gray-600 whitespace-nowrap">
                   <label className="inline-flex items-center gap-1">
@@ -607,7 +607,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                 value={searchParams.refNo}
                 onChange={handleInputChange('refNo')}
                 placeholder="참조번호 입력"
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
               />
             </div>
             <div>
@@ -615,7 +615,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               <select
                 value={searchParams.area}
                 onChange={handleInputChange('area')}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
               >
                 <option value="전체">전체</option>
                 <option value="부산">부산</option>
@@ -630,7 +630,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                 value={searchParams.industry}
                 onChange={handleInputChange('industry')}
                 placeholder="업종 입력"
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
               />
             </div>
             <div>
@@ -641,14 +641,14 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                   value={searchParams.fromEstPrice}
                   onChange={handleInputChange('fromEstPrice')}
                   placeholder="최소"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                  className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
                 />
                 <input
                   type="number"
                   value={searchParams.toEstPrice}
                   onChange={handleInputChange('toEstPrice')}
                   placeholder="최대"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                  className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
                 />
               </div>
             </div>
@@ -659,7 +659,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                 value={searchParams.detailItemNo}
                 onChange={handleInputChange('detailItemNo')}
                 placeholder="세부품명번호 입력"
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
               />
             </div>
             <div>
@@ -669,7 +669,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                 value={searchParams.prNo}
                 onChange={handleInputChange('prNo')}
                 placeholder="조달요청번호 입력"
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
               />
             </div>
             <div>
@@ -677,7 +677,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               <select
                 value={searchParams.shoppingMallYn}
                 onChange={handleInputChange('shoppingMallYn')}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
               >
                 <option value="전체">전체</option>
                 <option value="Y">Y</option>
@@ -689,7 +689,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               <select
                 value={searchParams.domesticYn}
                 onChange={handleInputChange('domesticYn')}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
               >
                 <option value="전체">전체</option>
                 <option value="국내">국내</option>
@@ -701,7 +701,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               <select
                 value={searchParams.contractType}
                 onChange={handleInputChange('contractType')}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
               >
                 <option value="전체">전체</option>
                 <option value="일반">일반</option>
@@ -719,7 +719,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                     className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold border ${
                       searchParams.contractLawType === law
                         ? 'bg-brand text-white border-brand'
-                        : 'bg-white text-gray-600 border-gray-200 hover:text-brand hover:border-brand'
+                        : 'bg-white text-gray-600 border-blue-200 hover:text-brand hover:border-brand'
                     }`}
                   >
                     {law}
@@ -732,7 +732,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               <select
                 value={searchParams.contractMethod}
                 onChange={handleInputChange('contractMethod')}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
               >
                 <option value="전체">전체</option>
                 <option value="일괄계약">일괄계약</option>
@@ -744,7 +744,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               <select
                 value={searchParams.awardMethod}
                 onChange={handleInputChange('awardMethod')}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
+                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
               >
                 <option value="전체">전체</option>
                 <option value="최저가">최저가</option>
@@ -795,7 +795,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               prNo: ''
             }))
           }
-          className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:text-brand hover:border-brand"
+          className="px-4 py-2 rounded-lg border border-blue-200 text-gray-600 hover:text-brand hover:border-brand"
         >
           초기화
         </button>
@@ -827,7 +827,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
       </div>
 
       {results.length > 0 ? (
-        <div className="mt-6 bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="mt-6 bg-white rounded-2xl border border-blue-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-brand text-white">
@@ -842,7 +842,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                   <th className="px-4 py-3 text-left font-bold">마감일시</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-blue-100">
                 {results.map((item, index) => (
                   <tr 
                     key={`${item?.bidNtceNo || 'item'}-${index}`} 

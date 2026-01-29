@@ -25,6 +25,20 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
     useEffect(() => {
         setCurrentImageIndex(0);
     }, [selectedSeminar?.id]);
+
+    // ESC 키로 세미나 상세 모달 닫기 (신청 모달은 ESC 미적용)
+    useEffect(() => {
+        const handleEscKey = (e) => {
+            if (e.key === 'Escape' && selectedSeminar && !isApplyModalOpen) {
+                setSelectedSeminar(null);
+                setCurrentImageIndex(0);
+            }
+        };
+        window.addEventListener('keydown', handleEscKey);
+        return () => {
+            window.removeEventListener('keydown', handleEscKey);
+        };
+    }, [selectedSeminar, isApplyModalOpen]);
     
     const categories = ['전체', ...new Set(safeSeminars.map(s => s.category).filter(Boolean))];
     const statuses = ['전체', '모집중', '마감임박', '후기작성가능', '종료'];
@@ -187,9 +201,9 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                     </div>
 
                 {/* 검색 및 필터 */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
+                <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-6 mb-8">
                     <div className="flex flex-col md:flex-row gap-0 items-center">
-                        <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                        <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.Search size={14} className="text-gray-400" /> 키워드 검색
                             </div>
@@ -201,7 +215,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                                 onChange={(e) => setSearchKeyword(e.target.value)} 
                             />
                         </div>
-                        <div className="w-full md:w-48 px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                        <div className="w-full md:w-48 px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.Tag size={14} className="text-gray-400" /> 카테고리
                             </div>
@@ -213,7 +227,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                                 {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                             </select>
                         </div>
-                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.CheckCircle size={14} className="text-gray-400" /> 모집 상태
                             </div>
@@ -255,7 +269,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                                 : seminar.img;
                             
                             return (
-                            <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-gray-200 hover:border-brand/20 cursor-pointer overflow-hidden" onClick={() => setSelectedSeminar(seminar)}>
+                            <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-blue-200 hover:border-brand/20 cursor-pointer overflow-hidden" onClick={() => setSelectedSeminar(seminar)}>
                                 {displayImage && (
                                     <div className="w-full overflow-hidden relative" style={{ aspectRatio: '3/4' }}>
                                         <img src={displayImage} alt={seminar.title} className="w-full h-full object-cover" />
@@ -320,7 +334,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                         <button
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                             disabled={currentPage === 1}
-                            className="px-4 py-2 rounded-xl border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
+                            className="px-4 py-2 rounded-xl border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
                         >
                             <Icons.ChevronLeft size={20} />
                         </button>
@@ -340,7 +354,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                         <button
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                             disabled={currentPage === totalPages}
-                            className="px-4 py-2 rounded-xl border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
+                            className="px-4 py-2 rounded-xl border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
                         >
                             <Icons.ChevronRight size={20} />
                         </button>
@@ -381,13 +395,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                         }
                     }}>
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl z-10 max-h-[90vh] flex flex-col md:flex-row overflow-hidden relative">
-                            <button type="button" onClick={() => {
-                                setSelectedSeminar(null);
-                                setCurrentImageIndex(0);
-                            }} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 z-20">
-                            <Icons.X size={18}/>
-                        </button>
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl z-10 max-h-[calc(90vh-100px)] flex flex-col overflow-hidden relative">
                             {/* 이미지 갤러리 영역 (왼쪽) */}
                             <div className="flex-[0_0_100%] md:flex-[0_0_400px] lg:flex-[0_0_450px] relative bg-gray-50" style={{ minHeight: '400px' }}>
                                 {hasImages && currentImage ? (
@@ -497,7 +505,8 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                                         </span>
                                     </div>
                                 </div>
-                            {/* 텍스트 영역 (오른쪽) */}
+                            {/* 콘텐츠 영역 */}
+                            <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
                         <div className="flex-1 p-6 md:p-8 overflow-y-auto modal-scroll" style={{ minWidth: '300px' }}>
                             <div className="flex items-center gap-3 mb-4">
                                     <span className={`text-xs font-bold px-3 py-1 rounded-full ${getStatusColor(selectedSeminar.status)}`}>{selectedSeminar.status}</span>
@@ -527,21 +536,23 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                                     })()}
                                     </div>
                                     </div>
+                            </div>
+                            <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
+                                <button type="button" onClick={() => { setSelectedSeminar(null); setCurrentImageIndex(0); }} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                                    닫기
+                                </button>
+                            </div>
                         </div>
                     </div>
                     );
                 })()}
 
-                {/* 신청 모달 */}
+                {/* 신청 모달 (ESC 미적용) */}
                 {isApplyModalOpen && applySeminar && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setIsApplyModalOpen(false); }}>
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-2xl font-bold text-dark">프로그램 신청</h3>
-                                <button type="button" onClick={() => setIsApplyModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                            <Icons.X size={24} />
-                        </button>
-                            </div>
+                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)]">
+                            <div className="flex-1 overflow-y-auto modal-scroll p-8">
+                                <h3 className="text-2xl font-bold text-dark mb-6">프로그램 신청</h3>
                             <div className="mb-6">
                                 <h4 className="text-lg font-bold text-dark mb-2">{applySeminar.title}</h4>
                                 <div className="text-sm text-gray-600 space-y-1">
@@ -553,7 +564,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                                     <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">신청사유 *</label>
                                         <textarea 
-                                        className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none h-32 resize-none" 
+                                        className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none h-32 resize-none" 
                                         value={applicationData.reason}
                                         onChange={(e) => setApplicationData({...applicationData, reason: e.target.value})}
                                         placeholder="이 프로그램에 신청하는 이유를 작성해주세요"
@@ -564,7 +575,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                                         <div className="space-y-3">
                                 <input 
                                     type="text" 
-                                            className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
+                                            className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none"
                                             value={applicationData.questions[0]}
                                                 onChange={(e) => {
                                                 const newQuestions = [...applicationData.questions];
@@ -575,7 +586,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                                         />
                                                                 <input 
                                     type="text" 
-                                            className="w-full p-3 border border-gray-200 rounded-lg focus:border-gray-400 focus:outline-none"
+                                            className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none"
                                             value={applicationData.questions[1]}
                                             onChange={(e) => {
                                                 const newQuestions = [...applicationData.questions];
@@ -586,15 +597,16 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                                         />
                                             </div>
                                                     </div>
-                                <div className="flex gap-4 mt-8">
-                                    <button type="button" onClick={() => setIsApplyModalOpen(false)} className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200">
-                                취소
-                            </button>
-                                    <button type="button" onClick={handleSubmitApplication} className="flex-1 py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">
+                                <button type="button" onClick={handleSubmitApplication} className="w-full py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 mt-6">
                                         신청하기
                             </button>
                         </div>
-                    </div>
+                            </div>
+                            <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
+                                <button type="button" onClick={() => setIsApplyModalOpen(false)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                                    닫기
+                                </button>
+                            </div>
                     </div>
                 </div>
             )}

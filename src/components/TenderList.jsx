@@ -51,7 +51,7 @@ export const TenderList = () => {
                 value={filterKeyword}
                 onChange={(e) => setFilterKeyword(e.target.value)}
                 placeholder="키워드를 입력하세요"
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-brand focus:outline-none"
+                className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none"
               />
             </div>
             <div>
@@ -63,7 +63,7 @@ export const TenderList = () => {
                 value={filterInstitution}
                 onChange={(e) => setFilterInstitution(e.target.value)}
                 placeholder="기관명을 입력하세요"
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-brand focus:outline-none"
+                className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none"
               />
             </div>
           </div>
@@ -146,7 +146,7 @@ export const TenderList = () => {
                     </div>
                   </div>
 
-                  <div className="mt-3 pt-3 border-t border-gray-100">
+                  <div className="mt-3 pt-3 border-t border-blue-100">
                     <span className="text-xs text-gray-400">
                       공고번호: {tender.bidNtceNo || '-'}
                     </span>

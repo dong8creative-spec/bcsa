@@ -163,7 +163,7 @@ export const ProgramManagement = () => {
           </div>
         ) : (
           programs.map((program) => (
-            <div key={program.id} className="bg-white border-2 border-gray-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
+            <div key={program.id} className="bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
               {program.imageUrl && (
                 <img src={program.imageUrl} alt={program.title} className="w-full h-40 object-cover rounded-xl mb-3" />
               )}
@@ -206,18 +206,14 @@ export const ProgramManagement = () => {
         )}
       </div>
 
-      {/* 프로그램 추가/수정 모달 */}
+      {/* 프로그램 추가/수정 모달 (ESC 미적용) */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-dark">
+          <div className="bg-white rounded-3xl max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)]">
+            <div className="flex-1 overflow-y-auto modal-scroll p-6">
+              <h3 className="text-2xl font-bold text-dark mb-6">
                 {editingProgram ? '프로그램 수정' : '프로그램 추가'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                <Icons.X size={24} />
-              </button>
-            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -227,7 +223,7 @@ export const ProgramManagement = () => {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                 />
               </div>
 
@@ -238,7 +234,7 @@ export const ProgramManagement = () => {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   required
                   rows={4}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                 />
               </div>
 
@@ -259,7 +255,7 @@ export const ProgramManagement = () => {
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     required
-                    className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                    className="flex-1 px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                   />
                   <button
                     type="button"
@@ -278,7 +274,7 @@ export const ProgramManagement = () => {
                   type="number"
                   value={formData.capacity}
                   onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                 />
               </div>
 
@@ -288,7 +284,7 @@ export const ProgramManagement = () => {
                   type="text"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                 />
               </div>
 
@@ -298,26 +294,23 @@ export const ProgramManagement = () => {
                   type="url"
                   value={formData.imageUrl}
                   onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
-                >
-                  취소
-                </button>
-                <button
+              <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
+                  className="w-full px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors mt-6"
                 >
                   {editingProgram ? '수정' : '추가'}
                 </button>
-              </div>
             </form>
+            </div>
+            <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
+              <button type="button" onClick={() => setShowModal(false)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       )}

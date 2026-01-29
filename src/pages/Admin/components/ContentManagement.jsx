@@ -106,7 +106,7 @@ export const ContentManagement = () => {
         <textarea
           value={content.hero_title || ''}
           onChange={(e) => handleInputChange('hero_title', e.target.value)}
-          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
           rows={3}
           placeholder="메인 제목을 입력하세요"
         />
@@ -117,7 +117,7 @@ export const ContentManagement = () => {
         <textarea
           value={content.hero_desc || ''}
           onChange={(e) => handleInputChange('hero_desc', e.target.value)}
-          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
           rows={3}
           placeholder="설명을 입력하세요"
         />
@@ -185,7 +185,7 @@ export const ContentManagement = () => {
               type="text"
               value={content[`stat_${num}_val`] || ''}
               onChange={(e) => handleInputChange(`stat_${num}_val`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
               placeholder="예: 200+"
             />
           </div>
@@ -195,7 +195,7 @@ export const ContentManagement = () => {
               type="text"
               value={content[`stat_${num}_desc`] || ''}
               onChange={(e) => handleInputChange(`stat_${num}_desc`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
               placeholder="예: 활동중인 사업가"
             />
           </div>
@@ -238,7 +238,7 @@ export const ContentManagement = () => {
           type="text"
           value={content.features_title || ''}
           onChange={(e) => handleInputChange('features_title', e.target.value)}
-          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
         />
       </div>
 
@@ -251,7 +251,7 @@ export const ContentManagement = () => {
               type="text"
               value={content[`features_${type}_title`] || ''}
               onChange={(e) => handleInputChange(`features_${type}_title`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
             />
           </div>
           <div>
@@ -259,7 +259,7 @@ export const ContentManagement = () => {
             <textarea
               value={content[`features_${type}_desc`] || ''}
               onChange={(e) => handleInputChange(`features_${type}_desc`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
               rows={2}
             />
           </div>
@@ -307,7 +307,7 @@ export const ContentManagement = () => {
           type="text"
           value={content.activities_title || ''}
           onChange={(e) => handleInputChange('activities_title', e.target.value)}
-          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
         />
       </div>
 
@@ -317,7 +317,7 @@ export const ContentManagement = () => {
           type="text"
           value={content.activities_subtitle || ''}
           onChange={(e) => handleInputChange('activities_subtitle', e.target.value)}
-          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
         />
       </div>
 
@@ -330,7 +330,7 @@ export const ContentManagement = () => {
               type="text"
               value={content[`activity_${type}_title`] || ''}
               onChange={(e) => handleInputChange(`activity_${type}_title`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
             />
           </div>
           <div>
@@ -338,7 +338,7 @@ export const ContentManagement = () => {
             <textarea
               value={content[`activity_${type}_desc`] || ''}
               onChange={(e) => handleInputChange(`activity_${type}_desc`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
               rows={2}
             />
           </div>
@@ -348,7 +348,7 @@ export const ContentManagement = () => {
               type="text"
               value={content[`activity_${type}_schedule`] || ''}
               onChange={(e) => handleInputChange(`activity_${type}_schedule`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
             />
           </div>
           <div>
@@ -359,7 +359,7 @@ export const ContentManagement = () => {
                   onClick={() => setPreviewImageUrl(content[`activity_${type}_image`])} 
                   className="cursor-pointer hover:opacity-80 transition-opacity"
                 >
-                  <img src={content[`activity_${type}_image`]} alt={type} className="w-32 h-24 object-cover rounded-xl border-2 border-gray-200" />
+                  <img src={content[`activity_${type}_image`]} alt={type} className="w-32 h-24 object-cover rounded-xl border-2 border-blue-200" />
                 </div>
               )}
               <button
@@ -393,7 +393,7 @@ export const ContentManagement = () => {
           type="text"
           value={content.donation_title || ''}
           onChange={(e) => handleInputChange('donation_title', e.target.value)}
-          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
         />
       </div>
 
@@ -402,7 +402,7 @@ export const ContentManagement = () => {
         <textarea
           value={content.donation_desc || ''}
           onChange={(e) => handleInputChange('donation_desc', e.target.value)}
-          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
           rows={3}
         />
       </div>
@@ -413,7 +413,7 @@ export const ContentManagement = () => {
           type="text"
           value={content.donation_button || ''}
           onChange={(e) => handleInputChange('donation_button', e.target.value)}
-          className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
         />
       </div>
 
@@ -455,7 +455,7 @@ export const ContentManagement = () => {
                         imageMeta.aspectRatio === 1 ? '1:1' : 'Free';
 
       return (
-        <div key={imageMeta.id} className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:shadow-lg transition-shadow">
+        <div key={imageMeta.id} className="bg-white border-2 border-blue-200 rounded-xl p-4 hover:shadow-lg transition-shadow">
           <div className="flex flex-col md:flex-row gap-4">
             {/* 이미지 정보 */}
             <div className="flex-1">
@@ -479,7 +479,7 @@ export const ContentManagement = () => {
                   className="cursor-pointer hover:opacity-80 transition-opacity"
                 >
                   <div 
-                    className="border-2 border-gray-200 rounded-xl overflow-hidden bg-gray-100"
+                    className="border-2 border-blue-200 rounded-xl overflow-hidden bg-gray-100"
                     style={{ 
                       width: '120px', 
                       aspectRatio: imageMeta.aspectRatio || '16/9' 
@@ -494,7 +494,7 @@ export const ContentManagement = () => {
                 </div>
               ) : (
                 <div 
-                  className="border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center bg-gray-50"
+                  className="border-2 border-dashed border-blue-300 rounded-xl flex items-center justify-center bg-gray-50"
                   style={{ 
                     width: '120px', 
                     aspectRatio: imageMeta.aspectRatio || '16/9' 
@@ -576,7 +576,7 @@ export const ContentManagement = () => {
               type="text"
               value={content.about_hero_title || ''}
               onChange={(e) => handleInputChange('about_hero_title', e.target.value)}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
             />
           </div>
           <div>
@@ -584,7 +584,7 @@ export const ContentManagement = () => {
             <textarea
               value={content.about_hero_desc || ''}
               onChange={(e) => handleInputChange('about_hero_desc', e.target.value)}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
               rows={2}
             />
           </div>
@@ -599,7 +599,7 @@ export const ContentManagement = () => {
                   <img 
                     src={content.about_hero_image} 
                     alt="About Hero" 
-                    className="w-48 h-27 object-cover rounded-xl border-2 border-gray-200" 
+                    className="w-48 h-27 object-cover rounded-xl border-2 border-blue-200" 
                   />
                 </div>
               )}
@@ -632,7 +632,7 @@ export const ContentManagement = () => {
               type="text"
               value={content.about_mission_title || ''}
               onChange={(e) => handleInputChange('about_mission_title', e.target.value)}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
             />
           </div>
           {[1, 2, 3].map((num) => (
@@ -641,7 +641,7 @@ export const ContentManagement = () => {
               <textarea
                 value={content[`about_mission_desc_${num}`] || ''}
                 onChange={(e) => handleInputChange(`about_mission_desc_${num}`, e.target.value)}
-                className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                 rows={2}
               />
             </div>
@@ -658,7 +658,7 @@ export const ContentManagement = () => {
               type="text"
               value={content.about_why_title || ''}
               onChange={(e) => handleInputChange('about_why_title', e.target.value)}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
             />
           </div>
           <div>
@@ -667,7 +667,7 @@ export const ContentManagement = () => {
               type="text"
               value={content.about_why_subtitle || ''}
               onChange={(e) => handleInputChange('about_why_subtitle', e.target.value)}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
             />
           </div>
           {[1, 2, 3, 4].map((num) => (
@@ -678,7 +678,7 @@ export const ContentManagement = () => {
                   type="text"
                   value={content[`about_why_${num}_title`] || ''}
                   onChange={(e) => handleInputChange(`about_why_${num}_title`, e.target.value)}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                 />
               </div>
               <div>
@@ -687,7 +687,7 @@ export const ContentManagement = () => {
                   type="text"
                   value={content[`about_why_${num}_desc`] || ''}
                   onChange={(e) => handleInputChange(`about_why_${num}_desc`, e.target.value)}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                 />
               </div>
             </div>
@@ -777,7 +777,7 @@ export const ContentManagement = () => {
       </div>
 
       {/* 섹션 콘텐츠 */}
-      <div className="bg-white rounded-2xl border-2 border-gray-200 p-6">
+      <div className="bg-white rounded-2xl border-2 border-blue-200 p-6">
         {renderSection()}
       </div>
 

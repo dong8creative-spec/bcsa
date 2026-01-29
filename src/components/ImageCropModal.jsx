@@ -229,25 +229,30 @@ export const ImageCropModal = ({
     onClose();
   };
 
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && !isUploading) {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscKey);
+    return () => {
+      window.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, isUploading]);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
-        {/* 헤더 */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-dark">{title}</h2>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-            disabled={isUploading}
-          >
-            <Icons.X size={24} />
-          </button>
-        </div>
-
+      <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full flex flex-col max-h-[calc(90vh-100px)]">
         {/* 콘텐츠 */}
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto modal-scroll p-6">
+          <h2 className="text-2xl font-bold text-dark mb-6">{title}</h2>
+        <div>
           {!imageSrc ? (
             // 파일 선택 UI
             <div className="text-center py-12">
@@ -350,7 +355,7 @@ export const ImageCropModal = ({
                   <label className="block text-sm font-bold text-gray-700 mb-2">
                     실시간 미리보기
                   </label>
-                  <div className="relative w-full h-96 bg-gray-100 rounded-2xl overflow-hidden border-2 border-gray-200 flex items-center justify-center">
+                  <div className="relative w-full h-96 bg-gray-100 rounded-2xl overflow-hidden border-2 border-blue-200 flex items-center justify-center">
                     {previewImage ? (
                       <img
                         src={previewImage}
@@ -371,7 +376,7 @@ export const ImageCropModal = ({
                 <div className="flex gap-3">
                   <button
                     onClick={() => setImageSrc(null)}
-                    className="flex-1 px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
+                    className="flex-1 px-6 py-3 border-2 border-blue-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
                     disabled={isUploading}
                   >
                     다시 선택
@@ -394,6 +399,12 @@ export const ImageCropModal = ({
               </div>
             </div>
           )}
+        </div>
+        </div>
+        <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
+          <button type="button" onClick={handleClose} disabled={isUploading} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+            닫기
+          </button>
         </div>
       </div>
     </div>

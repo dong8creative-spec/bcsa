@@ -89,9 +89,9 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                 </div>
 
                 {/* 검색바 */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
+                <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-6 mb-8">
                     <div className="flex flex-col md:flex-row gap-0 items-center">
-                        <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                        <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.Search size={14} className="text-gray-400" /> 이름 검색
                             </div>
@@ -103,7 +103,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                 onChange={e => setSearchName(e.target.value)}
                             />
                         </div>
-                        <div className="w-full md:w-48 px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                        <div className="w-full md:w-48 px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.Briefcase size={14} className="text-gray-400" /> 업종 검색
                             </div>
@@ -115,7 +115,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                 onChange={e => setSearchIndustry(e.target.value)}
                             />
                         </div>
-                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.MapPin size={14} className="text-gray-400" /> 지역
                             </div>
@@ -127,7 +127,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                 onChange={e => setSearchRegion(e.target.value)}
                             />
                         </div>
-                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-gray-200 py-3">
+                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.Tag size={14} className="text-gray-400" /> 업종
                             </div>
@@ -178,7 +178,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                                         {gradeMembers.map((member, idx) => (
-                                            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-all hover:border-brand/20 ${member.memberGrade === '파트너사' && member.hasDonated ? 'flex flex-row items-start gap-4 p-4' : 'flex flex-col items-center text-center p-6'} group cursor-pointer`} onClick={() => setSelectedMember(member)}>
+                                            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md transition-all hover:border-brand/20 ${member.memberGrade === '파트너사' && member.hasDonated ? 'flex flex-row items-start gap-4 p-4' : 'flex flex-col items-center text-center p-6'} group cursor-pointer`} onClick={() => setSelectedMember(member)}>
                                                 {member.memberGrade === '파트너사' && member.hasDonated ? (
                                                     <Fragment>
                                                         <div className="flex-shrink-0">
@@ -244,7 +244,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                             <span className="text-xs text-gray-400">(12)</span>
                                                         </div>
                                                         <div className="w-full flex gap-2">
-                                                            <button className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-brand hover:text-white hover:border-brand transition-all">프로필 보기</button>
+                                                            <button className="flex-1 py-2.5 rounded-xl border border-blue-200 text-sm font-bold text-gray-600 hover:bg-brand hover:text-white hover:border-brand transition-all">프로필 보기</button>
                                                             {currentUser && member.id !== currentUser?.id && member.uid !== currentUser?.uid && (
                                                                 <button 
                                                                     onClick={(e) => {
@@ -270,7 +270,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                 ) : filteredMembers.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                         {filteredMembers.map((member, idx) => (
-                            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-all hover:border-brand/20 ${member.memberGrade === '파트너사' && member.hasDonated ? 'flex flex-row items-start gap-4 p-4' : 'flex flex-col items-center text-center p-6'} group cursor-pointer`} onClick={() => setSelectedMember(member)}>
+                            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md transition-all hover:border-brand/20 ${member.memberGrade === '파트너사' && member.hasDonated ? 'flex flex-row items-start gap-4 p-4' : 'flex flex-col items-center text-center p-6'} group cursor-pointer`} onClick={() => setSelectedMember(member)}>
                                 {member.memberGrade === '파트너사' && member.hasDonated ? (
                                     <Fragment>
                                         <div className="flex-shrink-0">
@@ -335,7 +335,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                             <span className="text-xs text-gray-500">4.5</span>
                                             <span className="text-xs text-gray-400">(12)</span>
                                         </div>
-                                        <button className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-brand hover:text-white hover:border-brand transition-all">프로필 보기</button>
+                                        <button className="w-full py-2.5 rounded-xl border border-blue-200 text-sm font-bold text-gray-600 hover:bg-brand hover:text-white hover:border-brand transition-all">프로필 보기</button>
                                     </Fragment>
                                 )}
                             </div>
@@ -348,14 +348,12 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                     </div>
                 )}
 
-                {/* 회원 상세 모달 */}
+                {/* 회원 상세 모달 (ESC로 닫기) */}
                 {selectedMember && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedMember(null); }}>
                         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-6xl z-10 p-8 max-h-[calc(90vh-200px)] overflow-y-auto modal-scroll relative" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedMember(null); }} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-all">
-                                <Icons.X size={18}/>
-                            </button>
+                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 w-full max-w-6xl z-10 flex flex-col max-h-[calc(90vh-100px)]" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
+                            <div className="flex-1 overflow-y-auto modal-scroll p-8">
                             
                             {/* 4등분 섹션 */}
                             <div className="grid grid-cols-2 gap-4 mb-6">
@@ -424,7 +422,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                             </div>
                             
                             {/* 선택된 회원 상세 정보 */}
-                            <div className="border-t border-gray-200 pt-6">
+                            <div className="border-t border-blue-200 pt-6">
                                 <div className="flex flex-col md:flex-row gap-6 mb-6">
                                     <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-brand/20 shrink-0 mx-auto md:mx-0">
                                         <img 
@@ -474,7 +472,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                 <span className="text-xs font-bold text-green-700">PortOne 본인인증 완료</span>
                                             </div>
                                         ) : (
-                                            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg">
+                                            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-blue-200 rounded-lg">
                                                 <Icons.X className="w-4 h-4 text-gray-400" />
                                                 <span className="text-xs text-gray-500">본인인증 미완료</span>
                                             </div>
@@ -580,7 +578,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                     </div>
                                 )}
                                 
-                                <div className="border-t border-gray-200 pt-6">
+                                <div className="border-t border-blue-200 pt-6">
                                     <h4 className="text-lg font-bold text-dark mb-4">평가 요약</h4>
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
@@ -603,21 +601,13 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                         </div>
                                     </div>
                                 </div>
-                                
-                                {/* 닫기 버튼 - 우측 하단 */}
-                                <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
-                                    <button 
-                                        type="button"
-                                        onClick={(e) => { 
-                                            e.preventDefault(); 
-                                            e.stopPropagation(); 
-                                            setSelectedMember(null); 
-                                        }} 
-                                        className="px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20"
-                                    >
-                                        닫기
-                                    </button>
-                                </div>
+
+                            </div>
+                            </div>
+                            <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
+                                <button type="button" onClick={() => setSelectedMember(null)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                                    닫기
+                                </button>
                             </div>
                         </div>
                     </div>

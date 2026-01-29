@@ -128,7 +128,7 @@ export const DateTimePicker = ({ value, onChange, placeholder }) => {
   return (
     <div className="relative" ref={calendarRef}>
       <div
-        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none cursor-pointer flex items-center justify-between bg-white"
+        className="w-full p-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none cursor-pointer flex items-center justify-between bg-white"
         onClick={() => setShowCalendar(!showCalendar)}
       >
         <span className={value ? 'text-gray-900' : 'text-gray-400'}>
@@ -138,7 +138,7 @@ export const DateTimePicker = ({ value, onChange, placeholder }) => {
       </div>
 
       {showCalendar && (
-        <div className="absolute top-full left-0 mt-2 bg-white border-2 border-gray-200 rounded-2xl shadow-xl z-50 p-4 w-80">
+        <div className="absolute top-full left-0 mt-2 bg-white border-2 border-blue-200 rounded-2xl shadow-xl z-50 p-4 w-80">
           {/* 월 네비게이션 */}
           <div className="flex items-center justify-between mb-4">
             <button type="button" onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
@@ -185,13 +185,13 @@ export const DateTimePicker = ({ value, onChange, placeholder }) => {
           </div>
 
           {/* 시간 선택 */}
-          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-200">
+          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-blue-200">
             <Icons.Clock size={18} className="text-gray-400" />
             <span className="text-sm font-bold text-gray-700">시간:</span>
             <select
               value={selectedTime}
               onChange={(e) => setSelectedTime(e.target.value)}
-              className="flex-1 p-2 border-2 border-gray-200 rounded-lg focus:border-brand focus:outline-none text-sm"
+              className="flex-1 p-2 border-2 border-blue-200 rounded-lg focus:border-brand focus:outline-none text-sm"
             >
               {timeOptions.map(time => (
                 <option key={time} value={time}>{time}</option>

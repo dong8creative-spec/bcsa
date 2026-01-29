@@ -1,9 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Icons } from './Icons';
 
 const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteReview, applications = [] }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(null);
+    
+    // ESC 키로 일정 상세 모달 닫기
+    useEffect(() => {
+        const handleEscKey = (e) => {
+            if (e.key === 'Escape' && selectedDate) {
+                setSelectedDate(null);
+            }
+        };
+        window.addEventListener('keydown', handleEscKey);
+        return () => {
+            window.removeEventListener('keydown', handleEscKey);
+        };
+    }, [selectedDate]);
     
     // seminars가 배열이 아닌 경우 빈 배열로 처리
     const safeSeminars = Array.isArray(seminars) ? seminars : [];
@@ -171,7 +184,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
             return (
                 <div 
                     key={index} 
-                    className={`min-h-[140px] border border-gray-200 rounded-lg p-3 transition-all hover:shadow-md ${isPastDate ? 'bg-gray-50' : 'bg-white'} ${hasEvents ? 'cursor-pointer hover:border-gray-300' : ''}`}
+                    className={`min-h-[140px] border border-blue-200 rounded-lg p-3 transition-all hover:shadow-md ${isPastDate ? 'bg-gray-50' : 'bg-white'} ${hasEvents ? 'cursor-pointer hover:border-blue-300' : ''}`}
                     onClick={() => hasEvents && setSelectedDate(date)}
                 >
                     <div className="flex items-center justify-between mb-2">
@@ -202,8 +215,8 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                     <div 
                                         key={idx} 
                                         className={`text-xs px-2 py-1.5 rounded border ${isPastDate 
-                                            ? 'bg-gray-100 border-gray-200 text-gray-600' 
-                                            : 'bg-gray-50 border-gray-200 text-gray-800 hover:bg-gray-100'
+                                            ? 'bg-gray-100 border-blue-200 text-gray-600' 
+                                            : 'bg-gray-50 border-blue-200 text-gray-800 hover:bg-gray-100'
                                         }`}
                                     >
                                         {timeStr && (
@@ -227,7 +240,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
         });
     };
     return (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 mt-12 animate-fade-in">
+        <div className="bg-white rounded-2xl border border-blue-200 p-6 md:p-8 mt-12 animate-fade-in">
             {/* 헤더 섹션 */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div>
@@ -236,10 +249,10 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                     </h3>
                     <p className="text-sm text-gray-400">날짜를 클릭하면 상세 내용을 확인할 수 있습니다.</p>
                 </div>
-                <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-1 border border-gray-200">
+                <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-1 border border-blue-200">
                     <button 
                         onClick={prevWeek} 
-                        className="p-2 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600 border border-transparent hover:border-gray-200"
+                        className="p-2 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600 border border-transparent hover:border-blue-200"
                     >
                         <Icons.ArrowLeft size={16} />
                     </button>
@@ -248,7 +261,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                     </span>
                     <button 
                         onClick={nextWeek} 
-                        className="p-2 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600 border border-transparent hover:border-gray-200"
+                        className="p-2 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600 border border-transparent hover:border-blue-200"
                     >
                         <Icons.ArrowRight size={16} />
                     </button>
@@ -257,7 +270,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
             
             {/* 통계 섹션 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="bg-gray-50 border border-blue-200 rounded-lg p-4">
                     <div className="text-xs text-gray-500 font-medium mb-1">이번 주 일정</div>
                     <div className="text-2xl font-light text-gray-900">{weekStats.totalEvents}</div>
                     <div className="text-xs text-gray-400 mt-1">전체 프로그램</div>
@@ -267,7 +280,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                     <div className="text-2xl font-light text-blue-900">{weekStats.ongoingEvents}</div>
                     <div className="text-xs text-blue-500 mt-1">모집 중 / 마감임박</div>
                 </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="bg-gray-50 border border-blue-200 rounded-lg p-4">
                     <div className="text-xs text-gray-500 font-medium mb-1">종료</div>
                     <div className="text-2xl font-light text-gray-700">{weekStats.endedEvents}</div>
                     <div className="text-xs text-gray-400 mt-1">지난 일정</div>
@@ -281,21 +294,11 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
             {selectedDate && getEventsForDate(selectedDate).length > 0 && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedDate(null); }}>
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"></div>
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden z-10 flex flex-col relative border border-gray-200" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
-                        <div className="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 sticky top-0 z-10">
-                            <div>
-                                <h4 className="font-light text-xl text-gray-900">{formatDate(selectedDate)} 프로그램</h4>
-                                <p className="text-xs text-gray-400 mt-1">시간대별로 정렬된 일정입니다</p>
-                            </div>
-                            <button 
-                                type="button" 
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedDate(null); }} 
-                                className="p-2 bg-white rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
-                            >
-                                <Icons.X size={18} className="text-gray-600" />
-                            </button>
-                        </div>
-                        <div className="p-5 overflow-y-auto modal-scroll space-y-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[calc(90vh-100px)] overflow-hidden z-10 flex flex-col border border-blue-200" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="flex-1 overflow-y-auto modal-scroll p-6">
+                            <h4 className="text-2xl font-bold text-dark mb-2">{formatDate(selectedDate)} 프로그램</h4>
+                            <p className="text-sm text-gray-500 mb-6">시간대별로 정렬된 일정입니다</p>
+                        <div className="space-y-4">
                             {getEventsForDate(selectedDate).map((ev, idx) => {
                                 const time = extractTime(ev);
                                 const timeStr = time.hours > 0 || time.minutes > 0 
@@ -303,7 +306,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                     : '';
                                 
                                 return (
-                                    <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-all bg-white">
+                                    <div key={idx} className="border border-blue-200 rounded-lg p-4 hover:border-blue-300 transition-all bg-white">
                                         <div className="flex items-start gap-4">
                                             {timeStr && (
                                                 <div className="flex-shrink-0 w-16 text-center">
@@ -317,7 +320,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${
                                                         ev.status === '모집중' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 
                                                         ev.status === '마감임박' ? 'bg-red-50 text-red-700 border border-red-200' : 
-                                                        'bg-gray-100 text-gray-600 border border-gray-200'
+                                                        'bg-gray-100 text-gray-600 border border-blue-200'
                                                     }`}>
                                                         {ev.status}
                                                     </span>
@@ -336,7 +339,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                     </span>
                                                 </div>
                                                 {ev.desc && (
-                                                    <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100 mb-3">
+                                                    <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-blue-100 mb-3">
                                                         {ev.desc}
                                                     </p>
                                                 )}
@@ -344,7 +347,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                     <button 
                                                         type="button" 
                                                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); alert("로그인이 필요한 서비스입니다. 먼저 로그인해주세요."); }} 
-                                                        className="w-full py-2.5 text-sm font-medium rounded-lg transition-colors bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300" 
+                                                        className="w-full py-2.5 text-sm font-medium rounded-lg transition-colors bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300" 
                                                         disabled
                                                     >
                                                         로그인 후 신청 가능
@@ -352,7 +355,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                 ) : (() => {
                                                     const getButtonConfig = () => {
                                                         if (ev.status === '종료') {
-                                                            return { text: '종료된 일정', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300' };
+                                                            return { text: '종료된 일정', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
                                                         }
                                                         if (ev.status === '후기작성가능') {
                                                             const hasApplied = applications?.some(app => 
@@ -366,7 +369,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                                     className: 'bg-green-600 text-white hover:bg-green-700 border border-green-700'
                                                                 };
                                                             }
-                                                            return { text: '참여자만', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300' };
+                                                            return { text: '참여자만', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
                                                         }
                                                         return { 
                                                             text: '신청하기', 
@@ -392,6 +395,12 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                     </div>
                                 );
                             })}
+                        </div>
+                        </div>
+                        <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
+                            <button type="button" onClick={() => setSelectedDate(null)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                                닫기
+                            </button>
                         </div>
                     </div>
                 </div>

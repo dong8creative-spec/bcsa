@@ -29,7 +29,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
     return (
         <div className="min-h-screen bg-white font-sans text-slate-800">
             {/* 1. Hero Section */}
-            <section className="pt-32 pb-16 px-6 bg-gray-50 border-b border-gray-100">
+            <section className="pt-32 pb-16 px-6 bg-gray-50 border-b border-blue-100">
                 <div className="container mx-auto max-w-3xl text-center">
                     <div className="flex justify-center mb-4 animate-fade-in-up">
                         <div className="inline-block px-4 py-1.5 bg-blue-100 text-brand rounded-full text-sm font-bold shadow-sm">
@@ -107,8 +107,8 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                                 {icon: Icons.Target || Icons.ArrowUp, title: "실무 교육", sub: "역량 강화"},
                                 {icon: Icons.Shield, title: "심리 안정", sub: "고민 해결"},
                             ].map((item, idx) => (
-                                <div key={idx} className="bg-gray-50 p-5 rounded-xl text-center border border-gray-200 hover:border-brand/10 transition-colors">
-                                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-brand mx-auto mb-2 shadow-sm border border-gray-100">
+                                <div key={idx} className="bg-gray-50 p-5 rounded-xl text-center border border-blue-200 hover:border-brand/10 transition-colors">
+                                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-brand mx-auto mb-2 shadow-sm border border-blue-100">
                                         {React.createElement(item.icon, { size: 20 })}
                                     </div>
                                     <h3 className="font-bold text-dark text-sm">{item.title}</h3>
@@ -121,7 +121,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                 </section>
 
             {/* 3. Why We Need It */}
-            <section className="py-20 px-6 bg-slate-50 border-y border-gray-100">
+            <section className="py-20 px-6 bg-slate-50 border-y border-blue-100">
                 <div className="container mx-auto max-w-5xl">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold text-dark mb-2">
@@ -142,7 +142,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {whyUs.map((item, idx) => (
-                            <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-all border border-gray-200 hover:border-brand/20 group">
+                            <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-all border border-blue-200 hover:border-brand/20 group">
                                 <div className="w-12 h-12 bg-brand/5 text-brand rounded-xl flex items-center justify-center mb-4 group-hover:bg-brand group-hover:text-white transition-colors">
                                     {React.createElement(item.icon, { size: 24 })}
                                 </div>
@@ -179,7 +179,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                 </section>
 
             {/* 5. Future Plans */}
-            <section className="py-20 px-6 bg-gray-50 border-y border-gray-100">
+            <section className="py-20 px-6 bg-gray-50 border-y border-blue-100">
                 <div className="container mx-auto max-w-5xl">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold text-dark mb-3">{content.about_future_title || "향후 계획 및 목표"}</h2>
@@ -187,7 +187,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {futurePlans.map((plan) => (
-                            <div key={plan.id} className="p-5 rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition-all hover:-translate-y-1">
+                            <div key={plan.id} className="p-5 rounded-xl border border-blue-200 bg-white shadow-sm hover:shadow-lg transition-all hover:-translate-y-1">
                                 <div className="text-4xl font-black text-gray-100 mb-3 font-pop">{String(plan.id).padStart(2, '0')}</div>
                                 <h3 className="text-lg font-bold text-dark mb-2">{plan.title}</h3>
                                 <p className="text-gray-600 text-xs leading-relaxed break-keep">{plan.desc}</p>
@@ -205,14 +205,14 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                         <p className="text-gray-500 text-sm">문의사항이 있으시면 언제든지 연락주세요</p>
                     </div>
                     <div className="flex flex-col md:flex-row justify-center gap-4 md:gap-8">
-                        <div className="bg-white p-6 rounded-2xl shadow-sm flex-1 flex flex-col items-center border border-gray-100 hover:border-brand/30 transition-all hover:shadow-md">
+                        <div className="bg-white p-6 rounded-2xl shadow-sm flex-1 flex flex-col items-center border border-blue-100 hover:border-brand/30 transition-all hover:shadow-md">
                             <div className="w-12 h-12 bg-brand/10 text-brand rounded-full flex items-center justify-center mb-3">
                                 <Icons.Phone size={24} />
                         </div>
                             <h3 className="font-bold text-gray-500 mb-1 text-sm">문의 전화</h3>
                             <p className="text-xl font-bold text-dark">{content.about_contact_phone || "010-5323-9310"}</p>
                     </div>
-                        <div className="bg-white p-6 rounded-2xl shadow-sm flex-1 flex flex-col items-center border border-gray-100 hover:border-brand/30 transition-all hover:shadow-md">
+                        <div className="bg-white p-6 rounded-2xl shadow-sm flex-1 flex flex-col items-center border border-blue-100 hover:border-brand/30 transition-all hover:shadow-md">
                             <div className="w-12 h-12 bg-brand/10 text-brand rounded-full flex items-center justify-center mb-3">
                                 <Icons.Mail size={24} />
                             </div>

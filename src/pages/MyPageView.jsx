@@ -150,16 +150,16 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                         <PageTitle pageKey="myPage" pageTitles={pageTitles} defaultText="마이페이지" />
                         <p className="text-sm text-gray-500 mt-2">회원 정보와 활동 내역을 확인하세요</p>
                     </div>
-                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-gray-600 text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-gray-600 text-sm border border-blue-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
                         <Icons.ArrowLeft size={18} /> 메인으로
                     </button>
                 </div>
                 
                 {/* 프로필 섹션 */}
-                <div className="bg-gray-50 border border-gray-100 p-10 mb-20">
+                <div className="bg-gray-50 border border-blue-100 p-10 mb-20">
                     <div className="flex flex-col md:flex-row items-start gap-8">
                         <div className="relative">
-                            <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-5xl overflow-hidden border border-gray-300">
+                            <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-5xl overflow-hidden border border-blue-300">
                                 {editFormData.img ? <img src={editFormData.img} className="w-full h-full object-cover"/> : "👤"}
                             </div>
                             {isEditingProfile && (
@@ -172,15 +172,15 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                         <div className="flex-1">
                             {isEditingProfile ? (
                                 <div className="space-y-4">
-                                    <input type="text" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} className="w-full px-4 py-3 border border-gray-200 focus:border-gray-400 focus:outline-none text-sm" placeholder="이름" />
-                                    <input type="text" value={editFormData.company} onChange={e => setEditFormData({...editFormData, company: e.target.value})} className="w-full px-4 py-3 border border-gray-200 focus:border-gray-400 focus:outline-none text-sm" placeholder="회사명" />
-                                    <input type="text" value={editFormData.role} onChange={e => setEditFormData({...editFormData, role: e.target.value})} className="w-full px-4 py-3 border border-gray-200 focus:border-gray-400 focus:outline-none text-sm" placeholder="직책" />
-                                    <input type="text" value={editFormData.industry} onChange={e => setEditFormData({...editFormData, industry: e.target.value})} className="w-full px-4 py-3 border border-gray-200 focus:border-gray-400 focus:outline-none text-sm" placeholder="업종" />
-                                    <input type="text" value={editFormData.address} onChange={e => setEditFormData({...editFormData, address: e.target.value})} className="w-full px-4 py-3 border border-gray-200 focus:border-gray-400 focus:outline-none text-sm" placeholder="주소" />
-                                    <input type="text" value={editFormData.phone} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} className="w-full px-4 py-3 border border-gray-200 focus:border-gray-400 focus:outline-none text-sm" placeholder="전화번호" />
+                                    <input type="text" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} className="w-full px-4 py-3 border border-blue-200 focus:border-blue-400 focus:outline-none text-sm" placeholder="이름" />
+                                    <input type="text" value={editFormData.company} onChange={e => setEditFormData({...editFormData, company: e.target.value})} className="w-full px-4 py-3 border border-blue-200 focus:border-blue-400 focus:outline-none text-sm" placeholder="회사명" />
+                                    <input type="text" value={editFormData.role} onChange={e => setEditFormData({...editFormData, role: e.target.value})} className="w-full px-4 py-3 border border-blue-200 focus:border-blue-400 focus:outline-none text-sm" placeholder="직책" />
+                                    <input type="text" value={editFormData.industry} onChange={e => setEditFormData({...editFormData, industry: e.target.value})} className="w-full px-4 py-3 border border-blue-200 focus:border-blue-400 focus:outline-none text-sm" placeholder="업종" />
+                                    <input type="text" value={editFormData.address} onChange={e => setEditFormData({...editFormData, address: e.target.value})} className="w-full px-4 py-3 border border-blue-200 focus:border-blue-400 focus:outline-none text-sm" placeholder="주소" />
+                                    <input type="text" value={editFormData.phone} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} className="w-full px-4 py-3 border border-blue-200 focus:border-blue-400 focus:outline-none text-sm" placeholder="전화번호" />
                                     <div className="flex gap-3 pt-2">
                                         <button type="button" onClick={handleSaveProfile} className="px-6 py-3 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors">저장</button>
-                                        <button type="button" onClick={() => { setIsEditingProfile(false); setEditFormData({name: user.name || '', company: user.company || '', role: user.role || '', industry: user.industry || user.businessCategory || '', address: user.address || '', phone: user.phone || '', img: user.img || ''}); }} className="px-6 py-3 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">취소</button>
+                                        <button type="button" onClick={() => { setIsEditingProfile(false); setEditFormData({name: user.name || '', company: user.company || '', role: user.role || '', industry: user.industry || user.businessCategory || '', address: user.address || '', phone: user.phone || '', img: user.img || ''}); }} className="px-6 py-3 border border-blue-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">취소</button>
                                     </div>
                                 </div>
                             ) : (
@@ -188,7 +188,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     <h3 className="text-3xl font-light text-gray-900 mb-2">{user.name} <span className="text-sm font-normal text-gray-400">({user.id})</span></h3>
                                     <p className="text-sm text-gray-600 mb-3">{user.company} · {user.role}</p>
                                     <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium mt-1">{user.industry}</span>
-                                    <button type="button" onClick={() => setIsEditingProfile(true)} className="mt-6 px-5 py-2 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                                    <button type="button" onClick={() => setIsEditingProfile(true)} className="mt-6 px-5 py-2 border border-blue-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
                                         개인정보 수정
                                     </button>
                                     {user.approvalStatus === 'pending' && (
@@ -267,14 +267,14 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                 </div>
 
                 {/* 탭 메뉴 */}
-                <div className="border-t border-gray-200 mb-16">
+                <div className="border-t border-blue-200 mb-16">
                     <div className="flex gap-8 overflow-x-auto">
-                        <button onClick={() => setActiveTab('seminars')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'seminars' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>신청한 모임</button>
-                        <button onClick={() => setActiveTab('posts')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'posts' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>내 게시글</button>
-                        <button onClick={() => setActiveTab('bookmarks')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'bookmarks' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>즐겨찾기</button>
-                        <button onClick={() => setActiveTab('verification')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'verification' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>본인인증 정보</button>
+                        <button onClick={() => setActiveTab('seminars')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'seminars' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>신청한 모임</button>
+                        <button onClick={() => setActiveTab('posts')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'posts' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>내 게시글</button>
+                        <button onClick={() => setActiveTab('bookmarks')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'bookmarks' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>즐겨찾기</button>
+                        <button onClick={() => setActiveTab('verification')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'verification' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>본인인증 정보</button>
                         {user.hasDonated && (
-                            <button onClick={() => setActiveTab('company')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'company' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>회사 소개</button>
+                            <button onClick={() => setActiveTab('company')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'company' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>회사 소개</button>
                         )}
                     </div>
                 </div>
@@ -284,7 +284,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                     {activeTab === 'seminars' && (
                         <ul className="space-y-3">
                             {mySeminars.length > 0 ? mySeminars.map((s, idx) => (
-                                <li key={idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:bg-gray-50 transition-all">
+                                <li key={idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:bg-gray-50 transition-all">
                                     <div>
                                         <div className="font-medium text-gray-900 text-base mb-1">{s.title}</div>
                                         <div className="text-xs text-gray-500">{s.date} · {s.location}</div>
@@ -297,7 +297,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                     onCancelSeminar(s.id);
                                                 }
                                             }
-                                        }} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1 border border-gray-300 hover:bg-gray-50 transition-colors">취소</button>
+                                        }} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1 border border-blue-300 hover:bg-gray-50 transition-colors">취소</button>
                                     </div>
                                 </li>
                             )) : <li className="text-center text-gray-500 py-16 text-sm">신청한 모임이 없습니다.</li>}
@@ -306,7 +306,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                     {activeTab === 'posts' && (
                         <ul className="space-y-3">
                             {myPosts.length > 0 ? myPosts.map((p, idx) => (
-                                <li key={idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:bg-gray-50 transition-all">
+                                <li key={idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:bg-gray-50 transition-all">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-2">
                                             <span className="text-[10px] bg-gray-100 px-2 py-1 text-gray-600 font-medium">{p.category}</span>
@@ -352,7 +352,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                 });
                                                 setIsEditModalOpen(true);
                                             }}
-                                            className="p-2 border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+                                            className="p-2 border border-blue-300 text-gray-600 hover:bg-gray-50 transition-colors"
                                             title="수정"
                                         >
                                             <Icons.Edit size={16} />
@@ -372,7 +372,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                             ) : bookmarkDetails.length > 0 ? (
                                 <ul className="space-y-3">
                                     {bookmarkDetails.map((bookmark, idx) => (
-                                        <li key={bookmark.id || idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:bg-gray-50 transition-all">
+                                        <li key={bookmark.id || idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:bg-gray-50 transition-all">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <Icons.Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
@@ -417,12 +417,12 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     <input
                                         type="text"
                                         placeholder="이미지 URL을 입력하세요"
-                                        className="w-full px-4 py-3 border border-gray-300 focus:border-gray-400 focus:outline-none text-sm mb-3"
+                                        className="w-full px-4 py-3 border border-blue-300 focus:border-blue-400 focus:outline-none text-sm mb-3"
                                         value={companyIntro.companyMainImage}
                                         onChange={(e) => setCompanyIntro({...companyIntro, companyMainImage: e.target.value})}
                                     />
                                     {companyIntro.companyMainImage && (
-                                        <div className="relative w-full h-64 overflow-hidden mt-2 border border-gray-200">
+                                        <div className="relative w-full h-64 overflow-hidden mt-2 border border-blue-200">
                                             <img src={companyIntro.companyMainImage} alt="대표 이미지" className="w-full h-full object-cover" />
                                         </div>
                                     )}
@@ -433,7 +433,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     <label className="block text-sm font-medium text-gray-700 mb-3">회사 소개</label>
                                     <textarea
                                         placeholder="회사에 대한 소개를 작성해주세요"
-                                        className="w-full px-4 py-3 border border-gray-300 focus:border-gray-400 focus:outline-none h-32 resize-none text-sm"
+                                        className="w-full px-4 py-3 border border-blue-300 focus:border-blue-400 focus:outline-none h-32 resize-none text-sm"
                                         value={companyIntro.companyDescription}
                                         onChange={(e) => setCompanyIntro({...companyIntro, companyDescription: e.target.value})}
                                     />
@@ -448,7 +448,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                 <input
                                                     type="text"
                                                     placeholder={`사진 ${idx + 1} URL`}
-                                                    className="w-full px-3 py-2 border border-gray-300 focus:border-gray-400 focus:outline-none text-xs mb-2"
+                                                    className="w-full px-3 py-2 border border-blue-300 focus:border-blue-400 focus:outline-none text-xs mb-2"
                                                     value={companyIntro.companyImages[idx] || ''}
                                                     onChange={(e) => {
                                                         const newImages = [...companyIntro.companyImages];
@@ -457,7 +457,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                     }}
                                                 />
                                                 {companyIntro.companyImages[idx] && (
-                                                    <div className="relative aspect-square overflow-hidden border border-gray-200">
+                                                    <div className="relative aspect-square overflow-hidden border border-blue-200">
                                                         <img src={companyIntro.companyImages[idx]} alt={`추가 사진 ${idx + 1}`} className="w-full h-full object-cover" />
                                                     </div>
                                                 )}
@@ -510,7 +510,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
 
                                     {/* 인증 정보 상세 */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="bg-gray-50 border border-gray-200 p-6">
+                                        <div className="bg-gray-50 border border-blue-200 p-6">
                                             <div className="flex items-center gap-2 mb-4">
                                                 <Icons.Users className="w-5 h-5 text-gray-600" />
                                                 <h4 className="text-sm font-medium text-gray-900">인증된 이름</h4>
@@ -519,7 +519,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                             <div className="text-xs text-gray-500 mt-3">PortOne 본인인증으로 확인된 이름</div>
                                         </div>
 
-                                        <div className="bg-gray-50 border border-gray-200 p-6">
+                                        <div className="bg-gray-50 border border-blue-200 p-6">
                                             <div className="flex items-center gap-2 mb-4">
                                                 <Icons.Phone className="w-5 h-5 text-gray-600" />
                                                 <h4 className="text-sm font-medium text-gray-900">인증된 전화번호</h4>
@@ -529,7 +529,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                         </div>
 
                                         {user.verifiedBirthday && (
-                                            <div className="bg-gray-50 border border-gray-200 p-6">
+                                            <div className="bg-gray-50 border border-blue-200 p-6">
                                                 <div className="flex items-center gap-2 mb-4">
                                                     <Icons.Calendar className="w-5 h-5 text-gray-600" />
                                                     <h4 className="text-sm font-medium text-gray-900">생년월일</h4>
@@ -542,7 +542,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                         )}
 
                                         {user.verifiedGender && (
-                                            <div className="bg-gray-50 border border-gray-200 p-6">
+                                            <div className="bg-gray-50 border border-blue-200 p-6">
                                                 <div className="flex items-center gap-2 mb-4">
                                                     <Icons.Users className="w-5 h-5 text-gray-600" />
                                                     <h4 className="text-sm font-medium text-gray-900">성별</h4>
@@ -555,7 +555,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
 
                                     {/* 인증 일시 */}
                                     {user.createdAt && (
-                                        <div className="bg-gray-50 border border-gray-200 p-6">
+                                        <div className="bg-gray-50 border border-blue-200 p-6">
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <div className="text-xs text-gray-600 mb-2">인증 완료 일시</div>
@@ -592,27 +592,23 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                         </div>
                     )}
                 </div>
-                <div className="border-t border-gray-200 pt-10 text-center">
+                <div className="border-t border-blue-200 pt-10 text-center">
                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleWithdrawClick(); }} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">회원 탈퇴하기</button>
                 </div>
             </div>
 
-            {/* 게시글 수정 모달 */}
+            {/* 게시글 수정 모달 (ESC 미적용) */}
             {isEditModalOpen && editingPost ? (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-scroll">
-                        <div className="sticky top-0 bg-white border-b border-gray-200 px-8 py-6 flex items-center justify-between">
-                            <h3 className="text-xl font-light text-gray-900">게시글 수정</h3>
-                            <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} className="p-2 hover:bg-gray-100 transition-colors">
-                                <Icons.X size={20} />
-                            </button>
-                        </div>
-                        <div className="p-8 space-y-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[calc(90vh-100px)]">
+                        <div className="flex-1 overflow-y-auto modal-scroll p-8">
+                            <h3 className="text-2xl font-bold text-dark mb-6">게시글 수정</h3>
+                        <div className="space-y-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">제목 *</label>
                                 <input 
                                     type="text" 
-                                    className="w-full px-4 py-3 border border-gray-300 focus:border-gray-400 focus:outline-none text-sm" 
+                                    className="w-full px-4 py-3 border border-blue-300 focus:border-blue-400 focus:outline-none text-sm" 
                                     value={editingPost.title || ''} 
                                     onChange={(e) => setEditingPost({...editingPost, title: e.target.value})} 
                                 />
@@ -620,7 +616,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">내용 *</label>
                                 <textarea 
-                                    className="w-full px-4 py-3 border border-gray-300 focus:border-gray-400 focus:outline-none h-48 resize-none text-sm" 
+                                    className="w-full px-4 py-3 border border-blue-300 focus:border-blue-400 focus:outline-none h-48 resize-none text-sm" 
                                     value={editingPost.content || ''} 
                                     onChange={(e) => setEditingPost({...editingPost, content: e.target.value})} 
                                 />
@@ -633,7 +629,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.storeImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover border border-gray-200" />
+                                                <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover border border-blue-200" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -648,7 +644,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                             </div>
                                         ))}
                                         {(editingPost.storeImages || []).length < 3 ? (
-                                            <label className="w-32 h-32 border border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors">
+                                            <label className="w-32 h-32 border border-dashed border-blue-300 flex items-center justify-center cursor-pointer hover:border-blue-400 transition-colors">
                                                 {uploadingImages ? (
                                                     <div className="text-center">
                                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
@@ -706,7 +702,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.itemImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-gray-200" />
+                                                <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -721,7 +717,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                             </div>
                                         ))}
                                         {(editingPost.itemImages || []).length < 3 ? (
-                                            <label className="w-32 h-32 border border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                            <label className="w-32 h-32 border border-dashed border-blue-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                 {uploadingImages ? (
                                                     <div className="text-center">
                                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
@@ -779,7 +775,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.reviewImages || editingPost.images || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-gray-200" />
+                                                <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -795,7 +791,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                             </div>
                                         ))}
                                         {((editingPost.reviewImages || editingPost.images || []).length < 3) ? (
-                                            <label className="w-32 h-32 border border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                            <label className="w-32 h-32 border border-dashed border-blue-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                 {uploadingImages ? (
                                                     <div className="text-center">
                                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
@@ -847,15 +843,6 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                 </div>
                             ) : null}
                             
-                        </div>
-                        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-8 py-6 flex gap-4">
-                            <button 
-                                type="button" 
-                                onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} 
-                                className="flex-1 py-3 border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
-                            >
-                                취소
-                            </button>
                             <button 
                                 type="button" 
                                 onClick={async () => {
@@ -867,9 +854,15 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                         alert('게시글 수정 기능이 준비되지 않았습니다.');
                                     }
                                 }} 
-                                className="flex-1 py-3 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+                                className="w-full py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 mt-6"
                             >
                                 수정
+                            </button>
+                        </div>
+                        </div>
+                        <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
+                            <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                                닫기
                             </button>
                         </div>
                     </div>

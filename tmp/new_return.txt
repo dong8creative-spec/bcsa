@@ -1,0 +1,33 @@
+    return (
+        <AppLayout
+            MobileMenu={MobileMenu}
+            renderView={renderView}
+            currentView={currentView}
+            setCurrentView={setCurrentView}
+            popupPrograms={popupPrograms}
+            setPopupPrograms={setPopupPrograms}
+            closePopupAndMarkAsShown={closePopupAndMarkAsShown}
+            isPopupApplyModalOpen={isPopupApplyModalOpen}
+            applySeminarFromPopup={applySeminarFromPopup}
+            setIsPopupApplyModalOpen={setIsPopupApplyModalOpen}
+            popupApplicationData={popupApplicationData}
+            setPopupApplicationData={setPopupApplicationData}
+            handlePopupApplySubmit={handlePopupApplySubmit}
+            scrolled={scrolled}
+            menuOrder={menuOrder}
+            menuEnabled={menuEnabled}
+            menuNames={menuNames}
+            handleNavigation={handleNavigation}
+            getNavClass={getNavClass}
+            currentUser={currentUser}
+            handleLogout={handleLogout}
+            setShowLoginModal={setShowLoginModal}
+            setShowSignUpModal={setShowSignUpModal}
+            setIsMenuOpen={setIsMenuOpen}
+            content={content}
+            isMenuOpen={isMenuOpen}
+        />
+    );
+}
+
+export default App;

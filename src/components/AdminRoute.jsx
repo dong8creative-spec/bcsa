@@ -74,7 +74,7 @@ export const AdminRoute = ({ children, redirectTo = '/' }) => {
                   setCodeError('');
                 }}
                 placeholder="마스터 코드 입력 (4자리)"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-brand transition-colors"
+                className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:outline-none focus:border-brand transition-colors"
                 maxLength={4}
                 autoFocus
               />
@@ -90,7 +90,7 @@ export const AdminRoute = ({ children, redirectTo = '/' }) => {
               <button
                 type="button"
                 onClick={() => window.history.back()}
-                className="flex-1 px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
+                className="flex-1 px-6 py-3 border-2 border-blue-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
               >
                 취소
               </button>

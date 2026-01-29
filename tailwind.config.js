@@ -8,8 +8,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Noto Sans KR', 'sans-serif'],
-        pop: ['Poppins', 'sans-serif'],
+        sans: ['PyeojinGothic', 'sans-serif'],
+        pop: ['PyeojinGothic', 'sans-serif'],
       },
       colors: {
         brand: '#0045a5', 
@@ -17,6 +17,8 @@ export default {
         dark: '#0f172a',
         gray: '#64748b',
         soft: '#f8fafc',
+        borderLight: '#93c5fd',
+        borderLightHover: '#60a5fa',
       },
       borderRadius: {
         '4xl': '2rem',

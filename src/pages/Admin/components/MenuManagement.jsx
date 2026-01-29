@@ -29,7 +29,7 @@ const SortableMenuItem = ({ id, menu, enabled, name, onToggle, onNameChange }) =
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all"
+      className="bg-white border-2 border-blue-200 rounded-xl p-4 hover:shadow-lg transition-all"
     >
       <div className="flex items-center gap-4">
         {/* 드래그 핸들 */}
@@ -48,7 +48,7 @@ const SortableMenuItem = ({ id, menu, enabled, name, onToggle, onNameChange }) =
             type="checkbox"
             checked={enabled}
             onChange={onToggle}
-            className="w-5 h-5 text-brand focus:ring-brand border-gray-300 rounded cursor-pointer"
+            className="w-5 h-5 text-brand focus:ring-brand border-blue-300 rounded cursor-pointer"
           />
         </div>
 
@@ -65,7 +65,7 @@ const SortableMenuItem = ({ id, menu, enabled, name, onToggle, onNameChange }) =
             type="text"
             value={name}
             onChange={onNameChange}
-            className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none font-bold"
+            className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none font-bold"
             placeholder="메뉴 명칭"
           />
         </div>
@@ -273,7 +273,7 @@ export const MenuManagement = () => {
         <div className="flex gap-2">
           <button
             onClick={handleReset}
-            className="px-4 py-2 border-2 border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors flex items-center gap-2"
+            className="px-4 py-2 border-2 border-blue-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors flex items-center gap-2"
           >
             <Icons.RotateCcw size={18} />
             초기화
@@ -332,7 +332,7 @@ export const MenuManagement = () => {
       </div>
 
       {/* 미리보기 */}
-      <div className="mt-8 p-6 bg-gray-50 rounded-2xl border-2 border-gray-200">
+      <div className="mt-8 p-6 bg-gray-50 rounded-2xl border-2 border-blue-200">
         <h3 className="text-lg font-bold text-dark mb-4 flex items-center gap-2">
           <Icons.Eye size={20} />
           메뉴 미리보기

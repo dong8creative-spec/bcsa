@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start:local": "vite",
+    "test:local": "echo '로컬 테스트: npm run dev 실행 후 http://127.0.0.1:3000 접속 → 입찰공고 메뉴 클릭. 자세한 절차는 LOCAL_TEST.md 참고.'",
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "npm run build && firebase deploy",

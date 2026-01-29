@@ -31,6 +31,19 @@ export const PostManagement = () => {
     loadData();
   }, []);
 
+  // ESC 키로 게시물 상세 모달 닫기 (후기 작성/수정 모달은 ESC 미적용)
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && selectedPost && !isReviewModalOpen) {
+        setSelectedPost(null);
+      }
+    };
+    window.addEventListener('keydown', handleEscKey);
+    return () => {
+      window.removeEventListener('keydown', handleEscKey);
+    };
+  }, [selectedPost, isReviewModalOpen]);
+
   const loadData = async () => {
     try {
       setIsLoading(true);
@@ -225,7 +238,7 @@ export const PostManagement = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="제목 또는 내용 검색"
-            className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+            className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
           />
         </div>
         <div>
@@ -233,7 +246,7 @@ export const PostManagement = () => {
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+            className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
           >
             <option value="all">전체</option>
             {categories.map(cat => (
@@ -266,7 +279,7 @@ export const PostManagement = () => {
           </div>
         ) : (
           filteredPosts.map((post) => (
-            <div key={post.id} className="bg-white border-2 border-gray-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
+            <div key={post.id} className="bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
               <div className="flex items-start justify-between">
                 <div className="flex-1 cursor-pointer" onClick={() => setSelectedPost(post)}>
                   <div className="flex items-center gap-2 mb-2">
@@ -333,30 +346,23 @@ export const PostManagement = () => {
         )}
       </div>
 
-      {/* 후기 작성/수정 모달 */}
+      {/* 후기 작성/수정 모달 (ESC 미적용) */}
       {isReviewModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setIsReviewModalOpen(false)}>
-          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-dark">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex-1 overflow-y-auto modal-scroll p-6">
+              <h2 className="text-2xl font-bold text-dark mb-6">
                 {editingReview ? '후기 수정' : '후기 작성'}
               </h2>
-              <button
-                onClick={() => setIsReviewModalOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-              >
-                <Icons.X size={24} />
-              </button>
-            </div>
 
-            <div className="p-6 space-y-6">
+            <div className="space-y-6">
               {/* 프로그램 선택 */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">프로그램 선택 *</label>
                 <select
                   value={reviewForm.seminarId}
                   onChange={(e) => handleSeminarSelect(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                 >
                   <option value="">프로그램을 선택하세요</option>
                   {seminars.map((seminar) => (
@@ -380,7 +386,7 @@ export const PostManagement = () => {
                   type="text"
                   value={reviewForm.title}
                   onChange={(e) => setReviewForm(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                   placeholder="후기 제목을 입력하세요"
                 />
               </div>
@@ -391,7 +397,7 @@ export const PostManagement = () => {
                 <textarea
                   value={reviewForm.content}
                   onChange={(e) => setReviewForm(prev => ({ ...prev, content: e.target.value }))}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none h-40 resize-none"
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none h-40 resize-none"
                   placeholder="후기 내용을 입력하세요"
                 />
               </div>
@@ -403,37 +409,34 @@ export const PostManagement = () => {
                   type="text"
                   value={reviewForm.authorName}
                   onChange={(e) => setReviewForm(prev => ({ ...prev, authorName: e.target.value }))}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                   placeholder="작성자 이름"
                 />
               </div>
 
-              {/* 버튼 */}
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setIsReviewModalOpen(false)}
-                  className="flex-1 px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
-                >
-                  취소
-                </button>
-                <button
+              <button
                   onClick={handleSaveReview}
-                  className="flex-1 px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
+                  className="w-full px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors mt-6"
                 >
                   {editingReview ? '수정' : '작성'}
                 </button>
-              </div>
+            </div>
+            </div>
+            <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
+              <button type="button" onClick={() => setIsReviewModalOpen(false)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                닫기
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 게시물 상세 보기 모달 */}
+      {/* 게시물 상세 보기 모달 (ESC로 닫기) */}
       {selectedPost && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedPost(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div className="flex items-center gap-2">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex-1 overflow-y-auto modal-scroll p-6">
+            <div className="flex items-center gap-2 mb-6">
                 <span className="px-3 py-1 bg-brand/10 text-brand rounded-lg text-sm font-bold">
                   {selectedPost.category}
                 </span>
@@ -443,18 +446,11 @@ export const PostManagement = () => {
                   </div>
                 )}
               </div>
-              <button
-                onClick={() => setSelectedPost(null)}
-                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-              >
-                <Icons.X size={24} />
-              </button>
-            </div>
 
-            <div className="p-6">
+            <div>
               <h2 className="text-2xl font-bold text-dark mb-4">{selectedPost.title}</h2>
               
-              <div className="flex items-center gap-4 text-sm text-gray-500 mb-6 pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-4 text-sm text-gray-500 mb-6 pb-4 border-b border-blue-100">
                 <span className="flex items-center gap-1">
                   <Icons.User size={16} />
                   {selectedPost.authorName || '익명'}
@@ -487,12 +483,10 @@ export const PostManagement = () => {
                 </div>
               )}
 
-              {/* 버튼 */}
-              <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
-                {selectedPost.category === '프로그램 후기' && (
+              {selectedPost.category === '프로그램 후기' && (
                   <button
                     onClick={() => { setSelectedPost(null); openEditReviewModal(selectedPost); }}
-                    className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                    className="w-full px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 mt-6"
                   >
                     <Icons.Edit2 size={18} />
                     수정
@@ -500,12 +494,17 @@ export const PostManagement = () => {
                 )}
                 <button
                   onClick={() => { handleDelete(selectedPost.id); setSelectedPost(null); }}
-                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                  className="w-full px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2 mt-2"
                 >
                   <Icons.Trash2 size={18} />
                   삭제
                 </button>
-              </div>
+            </div>
+            </div>
+            <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
+              <button type="button" onClick={() => setSelectedPost(null)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                닫기
+              </button>
             </div>
           </div>
         </div>
