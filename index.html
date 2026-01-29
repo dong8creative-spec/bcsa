@@ -26,7 +26,8 @@
     <!-- 다음 우편번호 서비스 (API 키 불필요) -->
     <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
     
-    <!-- 카카오맵 SDK는 필요할 때 동적으로 로드됩니다 (document.write 경고 방지) -->
+    <!-- 카카오맵 SDK (동기 로드: document.write 호환, async 미사용) -->
+    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=f35b8c9735d77cced1235c5775c7c3b1&libraries=services"></script>
     
     <!-- checkFirebaseConfig 함수 안전하게 정의 (admin.html 전용 함수이지만 오류 방지) -->
     <script>

@@ -41,18 +41,15 @@ export const useKakaoMap = () => {
           return;
         }
 
-        // 스크립트 동적 생성
+        // 스크립트 동적 생성 (async=false: SDK 내부 document.write 호환, index.html에 없을 때만 사용)
         const script = document.createElement('script');
         script.type = 'text/javascript';
-        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=f35b8c9735d77cced1235c5775c7c3b1&libraries=services&autoload=false`;
-        script.async = true;
+        script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=f35b8c9735d77cced1235c5775c7c3b1&libraries=services';
+        script.async = false;
 
         script.onload = () => {
-          // 카카오맵 SDK 로드 완료 후 초기화
           if (window.kakao && window.kakao.maps) {
-            window.kakao.maps.load(() => {
-              resolve(window.kakao);
-            });
+            resolve(window.kakao);
           } else {
             reject(new Error('카카오맵 객체를 찾을 수 없습니다'));
           }

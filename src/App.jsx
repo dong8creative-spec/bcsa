@@ -489,11 +489,11 @@ const App = () => {
                 return;
             }
             
-            // 스크립트 동적 생성 및 로드
+            // 스크립트 동적 생성 및 로드 (async=false: SDK 내부 document.write 호환)
             const script = document.createElement('script');
             script.type = 'text/javascript';
             script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=f35b8c9735d77cced1235c5775c7c3b1&libraries=services';
-            script.async = true;
+            script.async = false;
             script.onload = resolve;
             script.onerror = reject;
             document.head.appendChild(script);
