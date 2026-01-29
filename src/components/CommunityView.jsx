@@ -641,13 +641,17 @@ const CommunityView = ({
                                                         />
                                                         <button
                                                             type="button"
-                                                            onClick={() => openKakaoPlacesSearch((place) => {
-                                                                setFormData({
-                                                                    ...formData,
-                                                                    storeLocation: `${place.name} (${place.address})`
+                                                            onClick={() => {
+                                                                if (typeof openKakaoPlacesSearch !== 'function') return;
+                                                                openKakaoPlacesSearch((place) => {
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        storeLocation: `${place.name} (${place.address})`
+                                                                    }));
                                                                 });
-                                                            })}
-                                                            className="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors whitespace-nowrap"
+                                                            }}
+                                                            disabled={typeof openKakaoPlacesSearch !== 'function'}
+                                                            className="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                                                         >
                                                             장소 검색
                                                         </button>
@@ -760,13 +764,17 @@ const CommunityView = ({
                                                         />
                                                         <button
                                                             type="button"
-                                                            onClick={() => openKakaoPlacesSearch((place) => {
-                                                                setFormData({
-                                                                    ...formData,
-                                                                    tradeLocation: `${place.name} (${place.address})`
+                                                            onClick={() => {
+                                                                if (typeof openKakaoPlacesSearch !== 'function') return;
+                                                                openKakaoPlacesSearch((place) => {
+                                                                    setFormData((prev) => ({
+                                                                        ...prev,
+                                                                        tradeLocation: `${place.name} (${place.address})`
+                                                                    }));
                                                                 });
-                                                            })}
-                                                            className="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors whitespace-nowrap"
+                                                            }}
+                                                            disabled={typeof openKakaoPlacesSearch !== 'function'}
+                                                            className="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                                                         >
                                                             장소 검색
                                                         </button>

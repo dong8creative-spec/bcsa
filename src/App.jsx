@@ -424,61 +424,24 @@ const App = () => {
             // 스크립트가 로드 중인지 확인
             const existingScript = document.querySelector('script[src*="dapi.kakao.com"]');
             
-            // 스크립트가 있으면 onload 이벤트를 기다림
+            // 스크립트가 있으면 이미 로드됐을 수 있으므로 폴링으로 대기 (load 이벤트는 이미 끝났을 수 있음)
             if (existingScript) {
-                // 이미 로드되었는지 확인
-                if (window.kakao && window.kakao.maps) {
-                    resolve(window.kakao);
-                    return;
-                }
-                
-                // onload 이벤트 리스너 추가
-                const onScriptLoad = () => {
+                let attempts = 0;
+                const maxAttempts = 50; // 5초 대기
+                const pollInterval = setInterval(() => {
+                    attempts++;
                     if (window.kakao && window.kakao.maps) {
+                        clearInterval(pollInterval);
                         resolve(window.kakao);
-                    } else {
-                        // 추가 대기 (스크립트 로드 후 kakao 객체 초기화까지 시간 필요)
-                        let attempts = 0;
-                        const maxAttempts = 50; // 5초 대기
-                        const checkInterval = setInterval(() => {
-                            attempts++;
-                            if (window.kakao && window.kakao.maps) {
-                                clearInterval(checkInterval);
-                                resolve(window.kakao);
-                            } else if (attempts >= maxAttempts) {
-                                clearInterval(checkInterval);
-                                reject(new Error('카카오맵 SDK가 로드되었지만 초기화에 실패했습니다.'));
-                            }
-                        }, 100);
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(pollInterval);
+                        reject(new Error('카카오맵 SDK를 로드할 수 없습니다.'));
                     }
-                };
-                
-                const onScriptError = () => {
+                }, 100);
+                existingScript.addEventListener('error', () => {
+                    clearInterval(pollInterval);
                     reject(new Error('카카오맵 SDK 스크립트 로드에 실패했습니다.'));
-                };
-                
-                existingScript.addEventListener('load', onScriptLoad, { once: true });
-                existingScript.addEventListener('error', onScriptError, { once: true });
-                
-                    // 스크립트가 이미 로드되었을 수도 있으므로 즉시 확인
-                    if (existingScript.readyState && (existingScript.readyState === 'complete' || existingScript.readyState === 'loaded')) {
-                        setTimeout(() => {
-                            if (window.kakao && window.kakao.maps) {
-                                resolve(window.kakao);
-                            } else {
-                                onScriptLoad();
-                            }
-                        }, 100);
-                    } else {
-                        // readyState가 없거나 아직 로드 중인 경우 짧은 대기 후 확인
-                        setTimeout(() => {
-                            if (window.kakao && window.kakao.maps) {
-                                resolve(window.kakao);
-                            }
-                            // 그렇지 않으면 onload 이벤트를 기다림
-                        }, 200);
-                    }
-                
+                }, { once: true });
                 return;
             }
             
@@ -517,9 +480,12 @@ const App = () => {
             
             const existingScript = document.querySelector('script[src*="dapi.kakao.com"]');
             if (existingScript) {
-                // 이미 스크립트가 있으면 로드 완료를 기다림
-                existingScript.addEventListener('load', resolve);
-                existingScript.addEventListener('error', reject);
+                if (existingScript.readyState === 'complete' || existingScript.readyState === 'loaded' || (window.kakao && window.kakao.maps)) {
+                    resolve();
+                    return;
+                }
+                existingScript.addEventListener('load', resolve, { once: true });
+                existingScript.addEventListener('error', reject, { once: true });
                 return;
             }
             
@@ -618,6 +584,8 @@ const App = () => {
                         };
                         resultsContainer.appendChild(item);
                     });
+                } else if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
+                    resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-4">검색 결과가 없습니다.</p>';
                 } else {
                     resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-4">검색 중 오류가 발생했습니다.</p>';
                 }
