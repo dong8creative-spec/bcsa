@@ -196,7 +196,7 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
 
   if (isError) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+      <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
         <div className="bg-white rounded-3xl p-8 max-w-md">
           <div className="text-center">
             <Icons.AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
@@ -215,9 +215,9 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-3xl max-w-4xl w-full flex flex-col max-h-[calc(90vh-100px)]" onClick={(e) => e.stopPropagation()}>
-        <div className="flex-1 overflow-y-auto modal-scroll p-6">
+    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => e.target === e.currentTarget && onClose()}>
+<div className="bg-white rounded-3xl max-w-4xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+      <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-6">
           <h3 className="text-2xl font-bold text-dark mb-6">장소 선택 (카카오 맵)</h3>
 
         {/* 검색 */}

@@ -350,10 +350,10 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
 
                 {/* 회원 상세 모달 (ESC로 닫기) */}
                 {selectedMember && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedMember(null); }}>
+                    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedMember(null); }}>
                         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 w-full max-w-6xl z-10 flex flex-col max-h-[calc(90vh-100px)]" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
-                            <div className="flex-1 overflow-y-auto modal-scroll p-8">
+                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 w-full max-w-6xl z-10 flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                            <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
                             
                             {/* 4등분 섹션 */}
                             <div className="grid grid-cols-2 gap-4 mb-6">

@@ -247,10 +247,10 @@ export const ImageCropModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full flex flex-col max-h-[calc(90vh-100px)]">
+    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
         {/* 콘텐츠 */}
-        <div className="flex-1 overflow-y-auto modal-scroll p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-6">
           <h2 className="text-2xl font-bold text-dark mb-6">{title}</h2>
         <div>
           {!imageSrc ? (

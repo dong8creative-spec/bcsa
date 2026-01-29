@@ -348,9 +348,9 @@ export const PostManagement = () => {
 
       {/* 후기 작성/수정 모달 (ESC 미적용) */}
       {isReviewModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setIsReviewModalOpen(false)}>
-          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)]" onClick={(e) => e.stopPropagation()}>
-            <div className="flex-1 overflow-y-auto modal-scroll p-6">
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={() => setIsReviewModalOpen(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+            <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-6">
               <h2 className="text-2xl font-bold text-dark mb-6">
                 {editingReview ? '후기 수정' : '후기 작성'}
               </h2>
@@ -433,9 +433,9 @@ export const PostManagement = () => {
 
       {/* 게시물 상세 보기 모달 (ESC로 닫기) */}
       {selectedPost && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedPost(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)]" onClick={(e) => e.stopPropagation()}>
-            <div className="flex-1 overflow-y-auto modal-scroll p-6">
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={() => setSelectedPost(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+            <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-6">
             <div className="flex items-center gap-2 mb-6">
                 <span className="px-3 py-1 bg-brand/10 text-brand rounded-lg text-sm font-bold">
                   {selectedPost.category}

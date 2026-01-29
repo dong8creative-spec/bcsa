@@ -84,9 +84,9 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
 
             {/* 공지사항 상세 모달 (ESC로 닫기) */}
                 {selectedPost && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPost(null); }}>
-                    <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[calc(90vh-100px)]">
-                        <div className="flex-1 overflow-y-auto modal-scroll p-8">
+                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPost(null); }}>
+                    <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
                             <h3 className="text-2xl font-bold text-dark mb-2">{selectedPost.title}</h3>
                             <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
                                 <span>{selectedPost.author}</span>

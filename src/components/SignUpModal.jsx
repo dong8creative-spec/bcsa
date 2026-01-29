@@ -323,9 +323,9 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
     
     return (
         <>
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
                 <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70 backdrop-blur-lg"></div>
-                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl z-10 relative border-[0.5px] border-brand max-h-[95vh] overflow-hidden flex flex-col" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl z-10 relative border-[0.5px] border-brand max-h-[95vh] overflow-hidden flex flex-col max-md:scale-[0.8] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
                     {/* 글 작성 모달이므로 ESC 키 미적용 */}
                     <div className="bg-gradient-to-r from-brand to-blue-600 text-white p-6 relative">
                         <div className="text-center">
@@ -348,7 +348,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto modal-scroll p-8">
+                    <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {currentStep === 1 ? (
                                 <div className="space-y-5 animate-fade-in">

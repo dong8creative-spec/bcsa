@@ -1,14 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
 import { KakaoMapModal } from './KakaoMapModal';
+
+const SORT_OPTIONS = [
+  { value: 'popular', label: '인기순 (신청 많은 순)' },
+  { value: 'dateDesc', label: '날짜 최신순' },
+  { value: 'dateAsc', label: '날짜 오래된순' },
+  { value: 'title', label: '제목 가나다순 (ㄱ~ㅎ)' },
+];
+
+/** 프로그램 날짜 문자열을 비교용 타임스탬프로 변환 */
+const parseDateForSort = (dateStr) => {
+  if (!dateStr || typeof dateStr !== 'string') return 0;
+  const trimmed = dateStr.trim();
+  const num = trimmed.replace(/\D/g, '');
+  if (num.length >= 8) {
+    const y = parseInt(num.slice(0, 4), 10);
+    const m = parseInt(num.slice(4, 6), 10) - 1;
+    const d = parseInt(num.slice(6, 8), 10);
+    const h = num.length >= 10 ? parseInt(num.slice(8, 10), 10) : 0;
+    const min = num.length >= 12 ? parseInt(num.slice(10, 12), 10) : 0;
+    return new Date(y, m, d, h, min).getTime();
+  }
+  return 0;
+};
 
 /**
  * 프로그램 관리 컴포넌트
  */
 export const ProgramManagement = () => {
   const [programs, setPrograms] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('dateDesc');
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
@@ -32,8 +58,12 @@ export const ProgramManagement = () => {
   const loadPrograms = async () => {
     try {
       setIsLoading(true);
-      const programsData = await firebaseService.getSeminars();
+      const [programsData, applicationsData] = await Promise.all([
+        firebaseService.getSeminars(),
+        firebaseService.getApplications().catch(() => []),
+      ]);
       setPrograms(programsData);
+      setApplications(applicationsData || []);
     } catch (error) {
       console.error('프로그램 목록 로드 오류:', error);
       alert('프로그램 목록을 불러오는 데 실패했습니다.');
@@ -41,6 +71,50 @@ export const ProgramManagement = () => {
       setIsLoading(false);
     }
   };
+
+  /** 프로그램별 신청 수 */
+  const applicationCountBySeminarId = useMemo(() => {
+    const map = {};
+    (applications || []).forEach((app) => {
+      const sid = app.seminarId != null ? String(app.seminarId) : '';
+      map[sid] = (map[sid] || 0) + 1;
+    });
+    return map;
+  }, [applications]);
+
+  /** 검색어로 필터 + 정렬된 목록 */
+  const filteredAndSortedPrograms = useMemo(() => {
+    const q = (searchQuery || '').trim().toLowerCase();
+    let list = programs;
+    if (q) {
+      list = programs.filter((p) => {
+        const title = (p.title || '').toLowerCase();
+        const desc = (p.description || '').toLowerCase();
+        const category = (p.category || '').toLowerCase();
+        const location = (p.location || '').toLowerCase();
+        const date = (p.date || '').toLowerCase();
+        return title.includes(q) || desc.includes(q) || category.includes(q) || location.includes(q) || date.includes(q);
+      });
+    }
+    const countMap = applicationCountBySeminarId;
+    const sorted = [...list].sort((a, b) => {
+      const aId = a.id != null ? String(a.id) : '';
+      const bId = b.id != null ? String(b.id) : '';
+      switch (sortBy) {
+        case 'popular':
+          return (countMap[bId] || 0) - (countMap[aId] || 0);
+        case 'dateDesc':
+          return parseDateForSort(b.date) - parseDateForSort(a.date);
+        case 'dateAsc':
+          return parseDateForSort(a.date) - parseDateForSort(b.date);
+        case 'title':
+          return (a.title || '').localeCompare(b.title || '', 'ko');
+        default:
+          return parseDateForSort(b.date) - parseDateForSort(a.date);
+      }
+    });
+    return sorted;
+  }, [programs, searchQuery, sortBy, applicationCountBySeminarId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -128,7 +202,7 @@ export const ProgramManagement = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h2 className="text-2xl font-bold text-dark flex items-center gap-3">
           <Icons.Calendar size={28} />
           프로그램 관리
@@ -154,15 +228,43 @@ export const ProgramManagement = () => {
         </div>
       </div>
 
+      {/* 검색 및 정렬 */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="relative flex-1">
+          <Icons.Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="제목, 설명, 카테고리, 장소, 일시로 검색..."
+            className="w-full pl-10 pr-4 py-2.5 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          />
+        </div>
+        <div className="flex items-center gap-2 sm:w-56">
+          <label className="text-sm font-bold text-gray-700 whitespace-nowrap">정렬:</label>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="flex-1 px-3 py-2.5 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* 프로그램 목록 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {programs.length === 0 ? (
+        {filteredAndSortedPrograms.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <Icons.Calendar size={48} className="text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">등록된 프로그램이 없습니다.</p>
+            <p className="text-gray-500">
+              {programs.length === 0 ? '등록된 프로그램이 없습니다.' : '검색 결과가 없습니다.'}
+            </p>
           </div>
         ) : (
-          programs.map((program) => (
+          filteredAndSortedPrograms.map((program) => (
             <div key={program.id} className="bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
               {program.imageUrl && (
                 <img src={program.imageUrl} alt={program.title} className="w-full h-40 object-cover rounded-xl mb-3" />
@@ -208,9 +310,9 @@ export const ProgramManagement = () => {
 
       {/* 프로그램 추가/수정 모달 (ESC 미적용) */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="bg-white rounded-3xl max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)]">
-            <div className="flex-1 overflow-y-auto modal-scroll p-6">
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
+          <div className="bg-white rounded-3xl max-w-2xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center">
+            <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-6">
               <h3 className="text-2xl font-bold text-dark mb-6">
                 {editingProgram ? '프로그램 수정' : '프로그램 추가'}
               </h3>

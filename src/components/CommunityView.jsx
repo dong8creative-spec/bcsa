@@ -558,9 +558,9 @@ const CommunityView = ({
 
                 {/* 게시글 작성 모달 (ESC 미적용) */}
                 {isCreateModalOpen ? (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setIsCreateModalOpen(false); }}>
-                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[calc(90vh-100px)]">
-                            <div className="flex-1 overflow-y-auto modal-scroll p-8">
+                    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setIsCreateModalOpen(false); }}>
+                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
                                 <h3 className="text-2xl font-bold text-dark mb-6">게시글 작성</h3>
                                 <div className="space-y-4">
                                     <div>
@@ -944,9 +944,9 @@ const CommunityView = ({
 
                 {/* 게시글 수정 모달 (ESC 미적용) */}
                 {isEditModalOpen && editingPost && (isCurrentUserAdmin || (currentUser && (editingPost.authorId === currentUser.id || editingPost.authorId === currentUser.uid || (editingPost.author && editingPost.author === currentUser.name)))) ? (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
-                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[calc(90vh-100px)]">
-                            <div className="flex-1 overflow-y-auto modal-scroll p-8">
+                    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
+                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
                                 <h3 className="text-2xl font-bold text-dark mb-6">게시글 수정</h3>
                             <div className="space-y-4">
                                 <div>
@@ -1208,10 +1208,10 @@ const CommunityView = ({
 
                 {/* 게시글 상세 모달 (ESC로 닫기) */}
             {selectedPost && currentUser ? (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPost(null); }}>
+                    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPost(null); }}>
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl z-10 flex flex-col max-h-[calc(90vh-100px)]">
-                            <div className="flex-1 overflow-y-auto modal-scroll p-8">
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl z-10 flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
                         <div className="mb-6">
                             <div className="flex items-center gap-3 mb-4">
                                     <span className="text-xs font-bold px-3 py-1 bg-blue-100 text-blue-700 rounded-full">{selectedPost.category}</span>
@@ -1291,7 +1291,7 @@ const CommunityView = ({
                                                     ))}
                                     </div>
                                 </div>
-                            ) : null}
+                                        ) : null}
                                     </div>
                                 ) : null}
                                 
@@ -1416,8 +1416,8 @@ const CommunityView = ({
 
                 {/* 이미지 확대 모달 (ESC로 닫기) */}
                 {selectedImage ? (
-                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90" onClick={(e) => { if (e.target === e.currentTarget) setSelectedImage(null); }}>
-                        <div className="flex flex-col max-w-[90vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+                    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setSelectedImage(null); }}>
+                        <div className="flex flex-col max-w-[90vw] max-h-[90vh] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex-1 flex items-center justify-center mb-4">
                                 <img src={selectedImage} alt="확대 이미지" className="max-w-full max-h-[85vh] object-contain rounded-lg" />
                             </div>

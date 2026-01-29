@@ -292,10 +292,10 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                 {renderCalendarDays()}
             </div>
             {selectedDate && getEventsForDate(selectedDate).length > 0 && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedDate(null); }}>
+                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedDate(null); }}>
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"></div>
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[calc(90vh-100px)] overflow-hidden z-10 flex flex-col border border-blue-200" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
-                        <div className="flex-1 overflow-y-auto modal-scroll p-6">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[calc(90vh-100px)] overflow-hidden z-10 flex flex-col border border-blue-200 max-md:scale-[0.8] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                        <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-6">
                             <h4 className="text-2xl font-bold text-dark mb-2">{formatDate(selectedDate)} 프로그램</h4>
                             <p className="text-sm text-gray-500 mb-6">시간대별로 정렬된 일정입니다</p>
                         <div className="space-y-4">

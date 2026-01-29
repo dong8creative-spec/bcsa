@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Icons } from './Icons';
 
 const InquiryModal = ({ onClose, currentUser, onSubmit }) => {
     const [formData, setFormData] = useState({
@@ -31,9 +32,9 @@ const InquiryModal = ({ onClose, currentUser, onSubmit }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className="bg-white rounded-3xl max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)]">
-                <div className="flex-1 overflow-y-auto modal-scroll p-8">
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className="bg-white rounded-3xl max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+                <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
                     <h3 className="text-2xl font-bold text-dark mb-6">문의하기</h3>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>

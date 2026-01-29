@@ -798,10 +798,10 @@ export const ContentManagement = () => {
       {/* 이미지 미리보기 모달 */}
       {previewImageUrl && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
+          className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md"
           onClick={() => setPreviewImageUrl(null)}
         >
-          <div className="relative max-w-5xl w-full max-h-[90vh]">
+          <div className="relative max-w-5xl w-full max-h-[100dvh] md:max-h-[90vh] max-md:scale-[0.8] origin-center">
             <button
               onClick={() => setPreviewImageUrl(null)}
               className="absolute top-4 right-4 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center z-10 transition-colors"

@@ -3,10 +3,11 @@ import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 import CalendarSection from '../components/CalendarSection';
 
-const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [] }) => {
+const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [], communityPosts = [] }) => {
     // props 안전성 검증
     const safeSeminars = Array.isArray(seminars) ? seminars : [];
     const safeApplications = Array.isArray(applications) ? applications : [];
+    const safeCommunityPosts = Array.isArray(communityPosts) ? communityPosts : [];
     
     const [searchKeyword, setSearchKeyword] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('전체');
@@ -14,6 +15,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
     const [sortBy, setSortBy] = useState('latest');
     const [selectedSeminar, setSelectedSeminar] = useState(null);
     const [currentImageIndex, setCurrentImageIndex] = useState(0); // 이미지 갤러리 현재 인덱스
+    const [showReviews, setShowReviews] = useState(false);
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
     const [applySeminar, setApplySeminar] = useState(null);
     const [applicationData, setApplicationData] = useState({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
@@ -21,9 +23,10 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
     
     const ITEMS_PER_PAGE = 3;
     
-    // selectedSeminar가 변경될 때 이미지 인덱스 초기화
+    // selectedSeminar가 변경될 때 이미지 인덱스·후기 펼침 초기화
     useEffect(() => {
         setCurrentImageIndex(0);
+        setShowReviews(false);
     }, [selectedSeminar?.id]);
 
     // ESC 키로 세미나 상세 모달 닫기 (신청 모달은 ESC 미적용)
@@ -386,18 +389,26 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                         : 0;
                     const currentImage = images.length > 0 ? images[validIndex] : null;
                     const hasImages = images.length > 0;
+                    const reviewsForSeminar = safeCommunityPosts.filter(p => p.category === '프로그램 후기' && String(p.seminarId) === String(selectedSeminar?.id));
+                    const ratingsOnly = reviewsForSeminar.filter(p => p.rating != null && Number(p.rating) > 0);
+                    const avgRating = ratingsOnly.length > 0 ? (ratingsOnly.reduce((a, p) => a + Number(p.rating), 0) / ratingsOnly.length).toFixed(1) : null;
                     
                     return (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { 
+                    <div className="fixed inset-0 z-[500] flex items-start justify-center p-4 pt-20" onClick={(e) => { 
                         if (e.target === e.currentTarget) {
                             setSelectedSeminar(null);
                             setCurrentImageIndex(0);
                         }
                     }}>
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl z-10 max-h-[calc(90vh-100px)] flex flex-col overflow-hidden relative">
-                            {/* 이미지 갤러리 영역 (왼쪽) */}
-                            <div className="flex-[0_0_100%] md:flex-[0_0_400px] lg:flex-[0_0_450px] relative bg-gray-50" style={{ minHeight: '400px' }}>
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl z-10 max-h-[calc(100vh-5rem)] flex flex-col md:flex-row overflow-hidden relative max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+                            {avgRating != null && (
+                                <div className="absolute top-4 right-4 z-10 px-3 py-1.5 bg-brand/10 text-brand rounded-lg text-sm font-bold" aria-label="평균 별점">
+                                    평균 ★ {avgRating}
+                                </div>
+                            )}
+                            {/* 이미지 갤러리 영역 (왼쪽, md 이상에서 고정 너비) */}
+                            <div className="flex-[0_0_100%] md:flex-[0_0_400px] md:shrink-0 lg:flex-[0_0_450px] relative bg-gray-50" style={{ minHeight: '280px' }}>
                                 {hasImages && currentImage ? (
                                     <>
                                         <img 
@@ -505,42 +516,74 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                                         </span>
                                     </div>
                                 </div>
-                            {/* 콘텐츠 영역 */}
-                            <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-                        <div className="flex-1 p-6 md:p-8 overflow-y-auto modal-scroll" style={{ minWidth: '300px' }}>
-                            <div className="flex items-center gap-3 mb-4">
-                                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${getStatusColor(selectedSeminar.status)}`}>{selectedSeminar.status}</span>
+                            {/* 오른쪽: 텍스트 + 고정 푸터(버튼) + 후기 목록 */}
+                            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                                <div className="flex-1 min-h-0 p-6 md:p-8 overflow-y-auto modal-scroll" style={{ minWidth: '0' }}>
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <span className={`text-xs font-bold px-3 py-1 rounded-full ${getStatusColor(selectedSeminar.status)}`}>{selectedSeminar.status}</span>
                                     </div>
-                                <h3 className="text-2xl font-bold text-dark mb-4">{selectedSeminar.title}</h3>
-                                <div className="space-y-2 text-sm text-gray-600 mb-6">
-                                    <div className="flex items-center gap-2"><Icons.Calendar size={16} /> {selectedSeminar.date}</div>
-                                    {selectedSeminar.location && <div className="flex items-center gap-2"><Icons.MapPin size={16} /> {selectedSeminar.location}</div>}
-                                            </div>
-                                <div className="bg-soft p-6 rounded-2xl border border-brand/5 mb-6">
-                                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{selectedSeminar.desc}</p>
+                                    <h3 className="text-2xl font-bold text-dark mb-4">{selectedSeminar.title}</h3>
+                                    <div className="space-y-2 text-sm text-gray-600 mb-6">
+                                        <div className="flex items-center gap-2"><Icons.Calendar size={16} /> {selectedSeminar.date}</div>
+                                        {selectedSeminar.location && <div className="flex items-center gap-2"><Icons.MapPin size={16} /> {selectedSeminar.location}</div>}
+                                    </div>
+                                    <div className="bg-soft p-6 rounded-2xl border border-brand/5 mb-6">
+                                        <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{selectedSeminar.desc}</p>
+                                    </div>
+                                    <p className="text-sm text-gray-500">신청: {selectedSeminar.currentParticipants || 0} / {selectedSeminar.maxParticipants || 0}명</p>
+                                </div>
+                                <div className="shrink-0 border-t border-blue-200 p-4 flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {currentUser && (() => {
+                                            const btnConfig = getButtonConfig(selectedSeminar);
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { btnConfig.onClick && btnConfig.onClick(); }}
+                                                    disabled={btnConfig.disabled}
+                                                    className={`px-6 py-3 font-bold rounded-xl transition-colors ${btnConfig.className}`}
+                                                >
+                                                    {btnConfig.text}
+                                                </button>
+                                            );
+                                        })()}
+                                        <button type="button" onClick={() => setShowReviews(prev => !prev)} className="px-6 py-3 font-bold rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">
+                                            후기 보기 {(() => {
+                                                return reviewsForSeminar.length > 0 ? `(${reviewsForSeminar.length})` : '';
+                                            })()}
+                                        </button>
+                                    </div>
+                                    <button type="button" onClick={() => { setSelectedSeminar(null); setCurrentImageIndex(0); setShowReviews(false); }} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                                        닫기
+                                    </button>
+                                </div>
+                                {showReviews && (
+                                    <div className="shrink-0 border-t border-blue-200 max-h-60 overflow-y-auto bg-gray-50">
+                                        <div className="p-4 space-y-3">
+                                            <h4 className="text-sm font-bold text-dark">후기글</h4>
+                                            {(() => {
+                                                if (reviewsForSeminar.length === 0) return <p className="text-sm text-gray-500">등록된 후기가 없습니다.</p>;
+                                                return reviewsForSeminar.map((post) => (
+                                                    <div key={post.id || post.title} className="bg-white rounded-xl p-4 border border-blue-100 text-sm">
+                                                        <div className="flex gap-1 mb-2">
+                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                <Icons.Star
+                                                                    key={star}
+                                                                    className={`w-4 h-4 ${(post.rating != null && post.rating >= star) ? 'text-yellow-400' : 'text-gray-300'}`}
+                                                                    style={(post.rating != null && post.rating >= star) ? { fill: 'currentColor' } : {}}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                        <p className="text-xs text-gray-600 mb-2">
+                                                            {(post.author || post.authorName) || '작성자'} · {(post.company || post.authorCompany) || '—'}
+                                                        </p>
+                                                        <p className="text-gray-700 whitespace-pre-wrap">{post.content}</p>
+                                                    </div>
+                                                ));
+                                            })()}
                                         </div>
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                    <span className="text-sm text-gray-500">신청: {selectedSeminar.currentParticipants || 0} / {selectedSeminar.maxParticipants || 0}명</span>
-                                    {currentUser && (() => {
-                                        const btnConfig = getButtonConfig(selectedSeminar);
-                                        return (
-                                            <button 
-                                                type="button"
-                                                onClick={() => { btnConfig.onClick && btnConfig.onClick(); }} 
-                                                disabled={btnConfig.disabled}
-                                                className={`px-6 py-3 font-bold rounded-xl transition-colors ${btnConfig.className}`}
-                                            >
-                                                {btnConfig.text}
-                                            </button>
-                                        );
-                                    })()}
                                     </div>
-                                    </div>
-                            </div>
-                            <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
-                                <button type="button" onClick={() => { setSelectedSeminar(null); setCurrentImageIndex(0); }} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
-                                    닫기
-                                </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -549,9 +592,9 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
 
                 {/* 신청 모달 (ESC 미적용) */}
                 {isApplyModalOpen && applySeminar && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setIsApplyModalOpen(false); }}>
-                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)]">
-                            <div className="flex-1 overflow-y-auto modal-scroll p-8">
+                    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setIsApplyModalOpen(false); }}>
+                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
                                 <h3 className="text-2xl font-bold text-dark mb-6">프로그램 신청</h3>
                             <div className="mb-6">
                                 <h4 className="text-lg font-bold text-dark mb-2">{applySeminar.title}</h4>

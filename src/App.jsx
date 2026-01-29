@@ -134,10 +134,9 @@ const LoginModal = ({ onClose, onLogin }) => {
     
     return (
         <>
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-                <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/60 backdrop-blur-md"></div>
-                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md z-10 flex flex-col max-h-[calc(90vh-100px)] relative border-[0.5px] border-brand" style={{ opacity: 1, transform: 'scale(1)' }} onClick={(e) => e.stopPropagation()}>
-                    <div className="flex-1 overflow-y-auto modal-scroll p-8 text-center">
+            <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md z-10 flex flex-col max-h-[calc(90vh-100px)] relative border-[0.5px] border-brand max-md:scale-[0.8] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                    <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8 text-center">
                         <div className="mb-8">
                             <div className="w-16 h-16 bg-gradient-to-br from-brand to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand/30">
                                 <Icons.Users className="w-8 h-8 text-white" />
@@ -554,7 +553,7 @@ const App = () => {
         
         // 검색 모달 생성
         const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black/70';
+        modal.className = 'fixed inset-0 z-[500] flex items-center justify-center bg-black/50 backdrop-blur-md';
         modal.innerHTML = `
             <div class="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
                 <div class="flex items-center justify-between mb-4">
@@ -2418,7 +2417,7 @@ END:VCALENDAR`;
     const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames, menuOrder }) => {
         if (!isOpen) return null;
         return (
-            <div className="fixed inset-0 z-50 bg-white/95 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className="fixed inset-0 z-[500] bg-white/95 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
                 <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2 text-dark hover:bg-gray-100 rounded-full"><Icons.X size={32}/></button>
                 <nav className="flex flex-col gap-6 text-center" onClick={(e) => e.stopPropagation()}>
                     {menuOrder.filter(item => menuEnabled[item]).map((item, idx) => (
@@ -2605,6 +2604,7 @@ END:VCALENDAR`;
                     pageTitles={pageTitles}
                     onWriteReview={handleWriteReview}
                     applications={JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]')}
+                    communityPosts={communityPosts}
                 />;
             } catch (error) {
                 console.error('프로그램 페이지 렌더링 오류:', error);

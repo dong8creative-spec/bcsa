@@ -82,7 +82,7 @@ const AppLayout = (props) => {
         <div className="min-h-screen bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">
             {/* 프로그램 팝업 (최대 3개 동시 표시, 1회만 표시) */}
             {popupPrograms && popupPrograms.length > 0 ? (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) closePopupAndMarkAsShown(); }}>
+                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) closePopupAndMarkAsShown(); }}>
                     <div className="flex flex-col md:flex-row gap-4 max-w-6xl w-full overflow-x-auto py-4" onClick={(e) => e.stopPropagation()}>
                         {popupPrograms.map((program, idx) => {
                             const isMobile = window.innerWidth < 768;
@@ -92,7 +92,7 @@ const AppLayout = (props) => {
                                 return (
                                     <div 
                                         key={program.id || idx} 
-                                        className="bg-white rounded-2xl shadow-2xl w-[85vw] max-w-sm overflow-hidden relative mx-auto"
+                                        className="bg-white rounded-2xl shadow-2xl w-[85vw] max-w-sm overflow-hidden relative mx-auto max-md:scale-[0.8] origin-center"
                                     >
                                         {/* 이미지 영역 (3:4 비율) */}
                                         <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
@@ -157,8 +157,7 @@ const AppLayout = (props) => {
                                 return (
                                     <div 
                                         key={program.id || idx} 
-                                        className="bg-white rounded-3xl shadow-2xl w-full md:w-auto md:max-w-5xl flex-shrink-0 overflow-hidden relative mx-auto flex flex-col md:flex-row"
-                                        style={{ maxHeight: '90vh' }}
+                                        className="bg-white rounded-3xl shadow-2xl w-full md:w-auto md:max-w-5xl flex-shrink-0 overflow-hidden relative mx-auto flex flex-col md:flex-row max-h-[100dvh] md:max-h-[90vh] max-md:scale-[0.8] origin-center"
                                     >
                                         {/* 이미지 영역 (왼쪽) */}
                                         <div className="w-full md:flex-[0_0_400px] lg:flex-[0_0_450px] relative bg-gray-50 flex items-center justify-center overflow-hidden" style={{ minHeight: '400px' }}>
@@ -195,7 +194,7 @@ const AppLayout = (props) => {
                                         </div>
                                         
                                         {/* 정보 영역 (오른쪽) */}
-                                        <div className="flex-1 p-6 overflow-y-auto modal-scroll" style={{ minWidth: '300px', maxHeight: '90vh' }}>
+                                        <div className="flex-1 min-h-0 p-6 overflow-y-auto modal-scroll" style={{ minWidth: '300px', maxHeight: '100dvh' }}>
                                             <h3 className="text-xl font-bold text-dark mb-3">{program.title}</h3>
                                             
                                             {/* 카테고리 및 유료/무료 배지 */}
@@ -275,9 +274,9 @@ const AppLayout = (props) => {
             
             {/* 팝업 신청 모달 (ESC 미적용) */}
             {isPopupApplyModalOpen && applySeminarFromPopup ? (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setIsPopupApplyModalOpen(false); }}>
-                    <div className="bg-white rounded-3xl max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)]">
-                        <div className="flex-1 overflow-y-auto modal-scroll p-8">
+                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setIsPopupApplyModalOpen(false); }}>
+                    <div className="bg-white rounded-3xl max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
                             <h3 className="text-2xl font-bold text-dark mb-6">프로그램 신청</h3>
                         <div className="mb-6">
                             <h4 className="text-lg font-bold text-dark mb-2">{applySeminarFromPopup.title}</h4>
@@ -545,8 +544,8 @@ const AppLayout = (props) => {
             
             {/* 프로그램 알람 모달 */}
             {showProgramAlertModal && programAlerts.length > 0 && currentUser ? (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" onClick={(e) => { if (e.target === e.currentTarget) handleProgramAlertConfirm(currentUser.id); }}>
-                    <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) handleProgramAlertConfirm(currentUser.id); }}>
+                    <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 max-w-[386px] w-full max-h-[90vh] overflow-y-auto modal-scroll max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
