@@ -519,26 +519,27 @@ const App = () => {
         
         // 검색 모달 생성
         const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 z-[500] flex items-center justify-center bg-black/50 backdrop-blur-md';
+        modal.className = 'fixed inset-0 z-[500] flex items-center justify-center bg-black/50 backdrop-blur-md p-4';
         modal.innerHTML = `
-            <div class="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-bold text-dark">장소 검색</h3>
-                    <button type="button" class="p-2 hover:bg-gray-100 rounded-lg" onclick="this.closest('.fixed').remove()">
+            <div class="bg-white rounded-2xl shadow-2xl border border-blue-100 p-6 max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+                <div class="flex items-center justify-between gap-3 mb-4 flex-shrink-0">
+                    <h3 class="text-xl font-bold text-dark whitespace-nowrap">장소 검색</h3>
+                    <button type="button" class="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0" onclick="this.closest('.fixed').remove()" aria-label="닫기">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
-                <div class="mb-4">
+                <div class="flex gap-2 mb-4 flex-shrink-0">
                     <input 
                         type="text" 
                         id="place-search-input" 
-                        placeholder="장소명, 주소, 건물명 등을 입력하세요" 
-                        class="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none"
+                        placeholder="장소명, 도로명 주소, 건물명 입력" 
+                        class="flex-1 min-w-0 p-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                     />
+                    <button type="button" id="place-search-btn" class="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 flex-shrink-0 whitespace-nowrap">장소를 검색합니다</button>
                 </div>
-                <div id="place-search-results" class="flex-1 overflow-y-auto space-y-2"></div>
+                <div id="place-search-results" class="flex-1 min-h-0 overflow-y-auto space-y-2"></div>
             </div>
         `;
         document.body.appendChild(modal);
@@ -546,66 +547,96 @@ const App = () => {
         const searchInput = modal.querySelector('#place-search-input');
         const resultsContainer = modal.querySelector('#place-search-results');
         const placesService = new window.kakao.maps.services.Places();
+        const geocoder = new window.kakao.maps.services.Geocoder();
         
-        // 검색 실행 함수
+        const renderPlaceItem = (name, address, lat, lng, phone) => {
+            const div = document.createElement('div');
+            div.className = 'p-3 border border-blue-200 rounded-xl hover:bg-blue-50 cursor-pointer flex items-center gap-2 min-w-0';
+            div.innerHTML = `<span class="font-bold text-dark truncate flex-shrink-0 max-w-[140px]">${name}</span><span class="text-sm text-gray-600 truncate flex-1 min-w-0">${address || ''}</span>${phone ? `<span class="text-xs text-gray-500 flex-shrink-0">${phone}</span>` : ''}`;
+            div.onclick = () => {
+                onComplete({ name, address, lat, lng, phone: phone || '', placeUrl: '' });
+                modal.remove();
+            };
+            resultsContainer.appendChild(div);
+        };
+        
+        // 검색 실행 함수 (키워드 검색 + 도로명 주소 검색)
         const performSearch = (keyword) => {
             if (!keyword.trim()) {
-                resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-4">검색어를 입력해주세요.</p>';
+                resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-4 text-sm">검색어를 입력해주세요.</p>';
                 return;
             }
+            resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-4 text-sm">검색 중...</p>';
+            
+            let placeResults = [];
+            let addressResults = [];
+            let placeDone = false;
+            let addressDone = false;
+            
+            const tryRender = () => {
+                if (!placeDone || !addressDone) return;
+                resultsContainer.innerHTML = '';
+                const combined = [];
+                const seen = new Set();
+                placeResults.forEach((p) => {
+                    const key = `${p.lat},${p.lng}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        combined.push(p);
+                    }
+                });
+                addressResults.forEach((a) => {
+                    const key = `${a.lat},${a.lng}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        combined.push(a);
+                    }
+                });
+                if (combined.length === 0) {
+                    resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-4 text-sm">검색 결과가 없습니다.</p>';
+                    return;
+                }
+                combined.forEach((r) => renderPlaceItem(r.name, r.address, r.lat, r.lng, r.phone));
+            };
             
             placesService.keywordSearch(keyword, (data, status) => {
-                resultsContainer.innerHTML = '';
-                
-                if (status === window.kakao.maps.services.Status.OK) {
-                    if (data.length === 0) {
-                        resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-4">검색 결과가 없습니다.</p>';
-                        return;
-                    }
-                    
-                    data.forEach((place) => {
-                        const item = document.createElement('div');
-                        item.className = 'p-4 border border-blue-200 rounded-xl hover:bg-gray-50 cursor-pointer';
-                        item.innerHTML = `
-                            <div class="font-bold text-dark mb-1">${place.place_name}</div>
-                            <div class="text-sm text-gray-600">${place.address_name || place.road_address_name || ''}</div>
-                            ${place.phone ? `<div class="text-xs text-gray-500 mt-1">${place.phone}</div>` : ''}
-                        `;
-                        item.onclick = () => {
-                            onComplete({
-                                name: place.place_name,
-                                address: place.road_address_name || place.address_name,
-                                lat: parseFloat(place.y),
-                                lng: parseFloat(place.x),
-                                phone: place.phone || '',
-                                placeUrl: place.place_url || ''
-                            });
-                            modal.remove();
-                        };
-                        resultsContainer.appendChild(item);
-                    });
-                } else if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
-                    resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-4">검색 결과가 없습니다.</p>';
-                } else {
-                    resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-4">검색 중 오류가 발생했습니다.</p>';
+                placeDone = true;
+                if (status === window.kakao.maps.services.Status.OK && data && data.length > 0) {
+                    placeResults = data.map((place) => ({
+                        name: place.place_name,
+                        address: place.road_address_name || place.address_name,
+                        lat: parseFloat(place.y),
+                        lng: parseFloat(place.x),
+                        phone: place.phone || ''
+                    }));
                 }
+                tryRender();
+            });
+            
+            geocoder.addressSearch(keyword, (data, status) => {
+                addressDone = true;
+                if (status === window.kakao.maps.services.Status.OK && data && data.length > 0) {
+                    addressResults = data.map((addr) => {
+                        const road = addr.road_address;
+                        const jibun = addr.address;
+                        const addressName = road ? road.address_name : (jibun ? jibun.address_name : addr.address_name || '');
+                        return {
+                            name: addressName,
+                            address: addressName,
+                            lat: parseFloat(addr.y),
+                            lng: parseFloat(addr.x),
+                            phone: ''
+                        };
+                    });
+                }
+                tryRender();
             });
         };
         
-        // 엔터 키로 검색
         searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                performSearch(searchInput.value);
-            }
+            if (e.key === 'Enter') performSearch(searchInput.value);
         });
-        
-        // 검색 버튼 추가 (선택사항)
-        const searchButton = document.createElement('button');
-        searchButton.type = 'button';
-        searchButton.className = 'mt-2 w-full py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700';
-        searchButton.textContent = '검색';
-        searchButton.onclick = () => performSearch(searchInput.value);
-        modal.querySelector('.mb-4').appendChild(searchButton);
+        modal.querySelector('#place-search-btn').onclick = () => performSearch(searchInput.value);
         
         // 모달 외부 클릭 시 닫기
         modal.addEventListener('click', (e) => {
