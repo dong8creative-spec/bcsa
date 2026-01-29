@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Fragment } from 'react';
 import { firebaseService } from '../services/firebaseService';
 import { Icons } from './Icons';
-import { uploadImageToImgBB, resizeImage, fileToBase64 } from '../utils/imageUtils';
+import { uploadImageToStorage } from '../utils/imageUtils';
 
 const CommunityView = ({ 
     onBack, 
@@ -152,8 +152,8 @@ const CommunityView = ({
         ? posts.filter(p => p.category !== '공지사항')
         : posts.filter(p => p.category === selectedCategory);
     
+    const MAX_IMAGES = 10;
     const handleImageUpload = async (files, imageType) => {
-        const maxImages = 3;
         let currentImages;
         if (imageType === 'store') {
             currentImages = formData.storeImages;
@@ -163,23 +163,21 @@ const CommunityView = ({
             currentImages = formData.itemImages;
         }
         
-        if (currentImages.length + files.length > maxImages) {
-            alert(`최대 ${maxImages}장까지만 업로드할 수 있습니다.`);
+        if (currentImages.length + files.length > MAX_IMAGES) {
+            alert(`최대 ${MAX_IMAGES}장까지만 업로드할 수 있습니다.`);
             return;
         }
 
         setUploadingImages(true);
         const uploadPromises = Array.from(files).map(async (file) => {
             try {
-            const base64Image = await fileToBase64(file);
-                const resizedImage = await resizeImage(file, 1200, 800, 0.9);
-                const result = await uploadImageToImgBB(resizedImage, file.name);
-            return result.url;
-        } catch (error) {
-                
+                if (!file.type.startsWith('image/')) return null;
+                const url = await uploadImageToStorage(file, 'community');
+                return url;
+            } catch (error) {
                 alert(`${file.name} 업로드에 실패했습니다.`);
-            return null;
-        }
+                return null;
+            }
         });
 
         const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
@@ -188,7 +186,7 @@ const CommunityView = ({
             setFormData({...formData, storeImages: [...currentImages, ...uploadedUrls]});
         } else if (imageType === 'review') {
             setFormData({...formData, reviewImages: [...currentImages, ...uploadedUrls]});
-            } else {
+        } else {
             setFormData({...formData, itemImages: [...currentImages, ...uploadedUrls]});
         }
         setUploadingImages(false);
@@ -661,7 +659,7 @@ const CommunityView = ({
                                                 </div>
                                                     </div>
                                                 <div>
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">매장 사진 (최대 3장)</label>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">매장 사진 (최대 10장)</label>
                                                 <div className="flex gap-4 flex-wrap">
                                                     {formData.storeImages.map((img, idx) => (
                                                         <div key={idx} className="relative">
@@ -669,7 +667,7 @@ const CommunityView = ({
                                                             <button type="button" onClick={() => setFormData({...formData, storeImages: formData.storeImages.filter((_, i) => i !== idx)})} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
                                                 </div>
                                                     ))}
-                                                    {formData.storeImages.length < 3 ? (
+                                                    {formData.storeImages.length < MAX_IMAGES ? (
                                                         <label className="w-32 h-32 border-2 border-dashed border-blue-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                             {uploadingImages ? (
                                                                 <div className="text-center">
@@ -689,8 +687,8 @@ const CommunityView = ({
                                                                 className="hidden" 
                                                                 onChange={(e) => {
                                                                     const files = Array.from(e.target.files);
-                                                                    if (files.length > 3) {
-                                                                        alert('최대 3장까지만 선택할 수 있습니다.');
+                                                                    if (files.length + formData.storeImages.length > MAX_IMAGES) {
+                                                                        alert(`최대 ${MAX_IMAGES}장까지만 선택할 수 있습니다.`);
                                                                         return;
                                                                     }
                                                                     handleImageUpload(files, 'store');
@@ -776,7 +774,7 @@ const CommunityView = ({
                                         </div>
                                     </div>
                                     <div>
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">제품 사진 (최대 3장)</label>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">제품 사진 (최대 10장)</label>
                                                 <div className="flex gap-4 flex-wrap">
                                                     {formData.itemImages.map((img, idx) => (
                                                     <div key={idx} className="relative">
@@ -784,7 +782,7 @@ const CommunityView = ({
                                                             <button type="button" onClick={() => setFormData({...formData, itemImages: formData.itemImages.filter((_, i) => i !== idx)})} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
                                                 </div>
                                             ))}
-                                                    {formData.itemImages.length < 3 ? (
+                                                    {formData.itemImages.length < MAX_IMAGES ? (
                                                         <label className="w-32 h-32 border-2 border-dashed border-blue-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                             {uploadingImages ? (
                                                                 <div className="text-center">
@@ -804,8 +802,8 @@ const CommunityView = ({
                                                                 className="hidden" 
                                                                 onChange={(e) => {
                                                                     const files = Array.from(e.target.files);
-                                                                    if (files.length > 3) {
-                                                                        alert('최대 3장까지만 선택할 수 있습니다.');
+                                                                    if (files.length + formData.itemImages.length > MAX_IMAGES) {
+                                                                        alert(`최대 ${MAX_IMAGES}장까지만 선택할 수 있습니다.`);
                                                                         return;
                                                                     }
                                                                     handleImageUpload(files, 'item');
@@ -886,7 +884,7 @@ const CommunityView = ({
                                                 ) : null}
                         </div>
                                             <div>
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">후기 사진 (최대 3장)</label>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">후기 사진 (최대 10장)</label>
                                                 <div className="flex gap-4 flex-wrap">
                                                     {formData.reviewImages.map((img, idx) => (
                                                         <div key={idx} className="relative">
@@ -894,7 +892,7 @@ const CommunityView = ({
                                                             <button type="button" onClick={() => setFormData({...formData, reviewImages: formData.reviewImages.filter((_, i) => i !== idx)})} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
                                                 </div>
                                             ))}
-                                                    {formData.reviewImages.length < 3 ? (
+                                                    {formData.reviewImages.length < MAX_IMAGES ? (
                                                         <label className="w-32 h-32 border-2 border-dashed border-blue-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                             {uploadingImages ? (
                                                                 <div className="text-center">
@@ -970,7 +968,7 @@ const CommunityView = ({
                                 {/* 이미지 수정 섹션 */}
                                 {editingPost.category === '인력구인' && editingPost.storeImages !== undefined ? (
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">매장 사진 (최대 3장)</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">매장 사진 (최대 10장)</label>
                                         <div className="flex gap-4 flex-wrap">
                                             {(editingPost.storeImages || []).map((img, idx) => (
                                                 <div key={idx} className="relative">
@@ -988,7 +986,7 @@ const CommunityView = ({
                                                     </button>
                                                 </div>
                                             ))}
-                                            {(editingPost.storeImages || []).length < 3 ? (
+                                            {(editingPost.storeImages || []).length < MAX_IMAGES ? (
                                                 <label className="w-32 h-32 border-2 border-dashed border-blue-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                     {uploadingImages ? (
                                                         <div className="text-center">
@@ -1008,22 +1006,21 @@ const CommunityView = ({
                                                         className="hidden" 
                                                         onChange={async (e) => {
                                                             const files = Array.from(e.target.files);
-                                                            if (files.length > 3) {
-                                                                alert('최대 3장까지만 선택할 수 있습니다.');
-                                                                return;
-                                                            }
-                                                            const currentImages = editingPost.storeImages || [];
-                                                            if (currentImages.length + files.length > 3) {
-                                                                alert(`최대 3장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
+if (files.length + (editingPost.storeImages || []).length > MAX_IMAGES) {
+                                                            alert(`최대 ${MAX_IMAGES}장까지만 선택할 수 있습니다.`);
+                                                            return;
+                                                        }
+                                                        const currentImages = editingPost.storeImages || [];
+                                                        if (currentImages.length + files.length > MAX_IMAGES) {
+                                                            alert(`최대 ${MAX_IMAGES}장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
                                                                 return;
                                                             }
                                                             setUploadingImages(true);
                                                             const uploadPromises = files.map(async (file) => {
                                                                 try {
-                                                                    const base64Image = await fileToBase64(file);
-                                                                    const resizedImage = await resizeImage(file, 1200, 800, 0.9);
-                                                                    const result = await uploadImageToImgBB(resizedImage, file.name);
-                                                                    return result.url;
+                                                                    if (!file.type.startsWith('image/')) return null;
+                                                                    const url = await uploadImageToStorage(file, 'community');
+                                                                    return url;
                                                                 } catch (error) {
                                                                     alert(`${file.name} 업로드에 실패했습니다.`);
                                                                     return null;
@@ -1043,7 +1040,7 @@ const CommunityView = ({
                                 
                                 {editingPost.category === '중고거래' && editingPost.itemImages !== undefined ? (
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">제품 사진 (최대 3장)</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">제품 사진 (최대 10장)</label>
                                         <div className="flex gap-4 flex-wrap">
                                             {(editingPost.itemImages || []).map((img, idx) => (
                                                 <div key={idx} className="relative">
@@ -1061,7 +1058,7 @@ const CommunityView = ({
                                                     </button>
                                                 </div>
                                             ))}
-                                            {(editingPost.itemImages || []).length < 3 ? (
+                                            {(editingPost.itemImages || []).length < MAX_IMAGES ? (
                                                 <label className="w-32 h-32 border-2 border-dashed border-blue-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                     {uploadingImages ? (
                                                         <div className="text-center">
@@ -1081,22 +1078,21 @@ const CommunityView = ({
                                                         className="hidden" 
                                                         onChange={async (e) => {
                                                             const files = Array.from(e.target.files);
-                                                            if (files.length > 3) {
-                                                                alert('최대 3장까지만 선택할 수 있습니다.');
-                                                                return;
-                                                            }
-                                                            const currentImages = editingPost.itemImages || [];
-                                                            if (currentImages.length + files.length > 3) {
-                                                                alert(`최대 3장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
+if (files.length + (editingPost.itemImages || []).length > MAX_IMAGES) {
+                                                            alert(`최대 ${MAX_IMAGES}장까지만 선택할 수 있습니다.`);
+                                                            return;
+                                                        }
+                                                        const currentImages = editingPost.itemImages || [];
+                                                        if (currentImages.length + files.length > MAX_IMAGES) {
+                                                            alert(`최대 ${MAX_IMAGES}장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
                                                                 return;
                                                             }
                                                             setUploadingImages(true);
                                                             const uploadPromises = files.map(async (file) => {
                                                                 try {
-                                                                    const base64Image = await fileToBase64(file);
-                                                                    const resizedImage = await resizeImage(file, 1200, 800, 0.9);
-                                                                    const result = await uploadImageToImgBB(resizedImage, file.name);
-                                                                    return result.url;
+                                                                    if (!file.type.startsWith('image/')) return null;
+                                                                    const url = await uploadImageToStorage(file, 'community');
+                                                                    return url;
                                                                 } catch (error) {
                                                                     alert(`${file.name} 업로드에 실패했습니다.`);
                                                                     return null;
@@ -1116,7 +1112,7 @@ const CommunityView = ({
                                 
                                 {editingPost.category === '프로그램 후기' && (editingPost.reviewImages !== undefined || editingPost.images !== undefined) ? (
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">후기 사진 (최대 3장)</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">후기 사진 (최대 10장)</label>
                                         <div className="flex gap-4 flex-wrap">
                                             {(editingPost.reviewImages || editingPost.images || []).map((img, idx) => (
                                                 <div key={idx} className="relative">
@@ -1135,7 +1131,7 @@ const CommunityView = ({
                                                     </button>
                                                 </div>
                                             ))}
-                                            {((editingPost.reviewImages || editingPost.images || []).length < 3) ? (
+                                            {((editingPost.reviewImages || editingPost.images || []).length < MAX_IMAGES) ? (
                                                 <label className="w-32 h-32 border-2 border-dashed border-blue-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                     {uploadingImages ? (
                                                         <div className="text-center">
@@ -1155,22 +1151,21 @@ const CommunityView = ({
                                                         className="hidden" 
                                                         onChange={async (e) => {
                                                             const files = Array.from(e.target.files);
-                                                            if (files.length > 3) {
-                                                                alert('최대 3장까지만 선택할 수 있습니다.');
-                                                                return;
-                                                            }
-                                                            const currentImages = editingPost.reviewImages || editingPost.images || [];
-                                                            if (currentImages.length + files.length > 3) {
-                                                                alert(`최대 3장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
+if (files.length + ((editingPost.reviewImages || editingPost.images || []).length) > MAX_IMAGES) {
+                                                            alert(`최대 ${MAX_IMAGES}장까지만 선택할 수 있습니다.`);
+                                                            return;
+                                                        }
+                                                        const currentImages = editingPost.reviewImages || editingPost.images || [];
+                                                        if (currentImages.length + files.length > MAX_IMAGES) {
+                                                            alert(`최대 ${MAX_IMAGES}장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
                                                                 return;
                                                             }
                                                             setUploadingImages(true);
                                                             const uploadPromises = files.map(async (file) => {
                                                                 try {
-                                                                    const base64Image = await fileToBase64(file);
-                                                                    const resizedImage = await resizeImage(file, 1200, 800, 0.9);
-                                                                    const result = await uploadImageToImgBB(resizedImage, file.name);
-                                                                    return result.url;
+                                                                    if (!file.type.startsWith('image/')) return null;
+                                                                    const url = await uploadImageToStorage(file, 'community');
+                                                                    return url;
                                                                 } catch (error) {
                                                                     alert(`${file.name} 업로드에 실패했습니다.`);
                                                                     return null;

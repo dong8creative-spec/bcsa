@@ -1,9 +1,11 @@
-import React, { useState, Fragment, useEffect, useCallback } from 'react';
+import React, { useState, Fragment, useEffect, useCallback, useRef } from 'react';
 import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
-import { fileToBase64, resizeImage, uploadImageToImgBB } from '../utils/imageUtils';
+import { uploadImageToStorage } from '../utils/imageUtils';
 import { firebaseService } from '../services/firebaseService';
 import { apiGet } from '../utils/api';
+
+const COMPANY_IMAGES_MAX = 10;
 
 const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, pageTitles, onUpdatePost }) => {
     const [activeTab, setActiveTab] = useState('seminars');
@@ -14,8 +16,11 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
     const [companyIntro, setCompanyIntro] = useState({
         companyMainImage: user.companyMainImage || '',
         companyDescription: user.companyDescription || '',
-        companyImages: user.companyImages || []
+        companyImages: Array.isArray(user.companyImages) ? user.companyImages : (user.companyImages ? [user.companyImages] : [])
     });
+    const [companyImageUploading, setCompanyImageUploading] = useState(false);
+    const companyMainImageInputRef = useRef(null);
+    const companyImagesInputRef = useRef(null);
     const [editFormData, setEditFormData] = useState({
         name: user.name || '',
         company: user.company || '',
@@ -95,6 +100,64 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
             setBookmarks([]);
         }
     }, [user, activeTab, loadBookmarks]);
+
+    useEffect(() => {
+        if (user) {
+            setCompanyIntro({
+                companyMainImage: user.companyMainImage || '',
+                companyDescription: user.companyDescription || '',
+                companyImages: Array.isArray(user.companyImages) ? user.companyImages : (user.companyImages ? [user.companyImages] : [])
+            });
+        }
+    }, [user?.companyMainImage, user?.companyDescription, user?.companyImages]);
+
+    const handleCompanyMainImageChange = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file || !file.type.startsWith('image/')) return;
+        setCompanyImageUploading(true);
+        try {
+            const url = await uploadImageToStorage(file, 'company');
+            setCompanyIntro(prev => ({ ...prev, companyMainImage: url }));
+        } catch (err) {
+            console.error(err);
+            alert('대표 이미지 업로드에 실패했습니다.');
+        } finally {
+            setCompanyImageUploading(false);
+        }
+    };
+
+    const handleCompanyImagesChange = async (e) => {
+        const files = e.target.files ? Array.from(e.target.files) : [];
+        e.target.value = '';
+        const current = companyIntro.companyImages || [];
+        if (current.length + files.length > COMPANY_IMAGES_MAX) {
+            alert(`추가 사진은 최대 ${COMPANY_IMAGES_MAX}장까지 등록할 수 있습니다.`);
+            return;
+        }
+        setCompanyImageUploading(true);
+        try {
+            const uploaded = [];
+            for (const file of files) {
+                if (!file.type.startsWith('image/')) continue;
+                const url = await uploadImageToStorage(file, 'company');
+                uploaded.push(url);
+            }
+            setCompanyIntro(prev => ({ ...prev, companyImages: [...prev.companyImages, ...uploaded] }));
+        } catch (err) {
+            console.error(err);
+            alert('이미지 업로드에 실패했습니다.');
+        } finally {
+            setCompanyImageUploading(false);
+        }
+    };
+
+    const removeCompanyImage = (index) => {
+        setCompanyIntro(prev => ({
+            ...prev,
+            companyImages: prev.companyImages.filter((_, i) => i !== index)
+        }));
+    };
     
     const handleRemoveBookmark = async (bidNtceNo) => {
         if (!confirm('즐겨찾기에서 삭제하시겠습니까?')) return;
@@ -415,17 +478,43 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                 <div className="mb-6">
                                     <label className="block text-sm font-medium text-gray-700 mb-3">대표 이미지 (1장)</label>
                                     <input
-                                        type="text"
-                                        placeholder="이미지 URL을 입력하세요"
-                                        className="w-full px-4 py-3 border border-blue-300 focus:border-blue-400 focus:outline-none text-sm mb-3"
-                                        value={companyIntro.companyMainImage}
-                                        onChange={(e) => setCompanyIntro({...companyIntro, companyMainImage: e.target.value})}
+                                        ref={companyMainImageInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleCompanyMainImageChange}
                                     />
-                                    {companyIntro.companyMainImage && (
-                                        <div className="relative w-full h-64 overflow-hidden mt-2 border border-blue-200">
-                                            <img src={companyIntro.companyMainImage} alt="대표 이미지" className="w-full h-full object-cover" />
+                                    {companyIntro.companyMainImage ? (
+                                        <div className="relative inline-block">
+                                            <img src={companyIntro.companyMainImage} alt="대표 이미지" className="w-full max-w-md h-64 object-cover border border-blue-200 rounded-lg" />
+                                            <button
+                                                type="button"
+                                                onClick={() => setCompanyIntro(prev => ({ ...prev, companyMainImage: '' }))}
+                                                className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                                                aria-label="삭제"
+                                            >
+                                                <Icons.X size={18} />
+                                            </button>
                                         </div>
-                                    )}
+                                    ) : null}
+                                    <button
+                                        type="button"
+                                        disabled={companyImageUploading}
+                                        onClick={() => companyMainImageInputRef.current?.click()}
+                                        className="mt-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {companyImageUploading ? (
+                                            <>
+                                                <span className="inline-block w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                                                업로드 중...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Icons.Plus size={18} />
+                                                대표 이미지 선택
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
                                 
                                 {/* 회사 소개 텍스트 */}
@@ -439,31 +528,41 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     />
                                 </div>
                                 
-                                {/* 추가 사진 3장 */}
+                                {/* 추가 사진 (최대 10장) */}
                                 <div className="mb-8">
-                                    <label className="block text-sm font-medium text-gray-700 mb-3">추가 사진 (최대 3장)</label>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        {[0, 1, 2].map((idx) => (
-                                            <div key={idx}>
-                                                <input
-                                                    type="text"
-                                                    placeholder={`사진 ${idx + 1} URL`}
-                                                    className="w-full px-3 py-2 border border-blue-300 focus:border-blue-400 focus:outline-none text-xs mb-2"
-                                                    value={companyIntro.companyImages[idx] || ''}
-                                                    onChange={(e) => {
-                                                        const newImages = [...companyIntro.companyImages];
-                                                        newImages[idx] = e.target.value;
-                                                        setCompanyIntro({...companyIntro, companyImages: newImages});
-                                                    }}
-                                                />
-                                                {companyIntro.companyImages[idx] && (
-                                                    <div className="relative aspect-square overflow-hidden border border-blue-200">
-                                                        <img src={companyIntro.companyImages[idx]} alt={`추가 사진 ${idx + 1}`} className="w-full h-full object-cover" />
-                                                    </div>
-                                                )}
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">추가 사진 (최대 {COMPANY_IMAGES_MAX}장)</label>
+                                    <input
+                                        ref={companyImagesInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="hidden"
+                                        onChange={handleCompanyImagesChange}
+                                    />
+                                    <div className="flex flex-wrap gap-3 mb-3">
+                                        {(companyIntro.companyImages || []).map((url, idx) => (
+                                            <div key={idx} className="relative group">
+                                                <img src={url} alt={`추가 사진 ${idx + 1}`} className="w-24 h-24 object-cover rounded-lg border border-blue-200" />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeCompanyImage(idx)}
+                                                    className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                                                    aria-label="삭제"
+                                                >
+                                                    <Icons.X size={14} />
+                                                </button>
                                             </div>
                                         ))}
                                     </div>
+                                    <button
+                                        type="button"
+                                        disabled={(companyIntro.companyImages?.length || 0) >= COMPANY_IMAGES_MAX || companyImageUploading}
+                                        onClick={() => companyImagesInputRef.current?.click()}
+                                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        <Icons.Plus size={18} />
+                                        추가 사진
+                                    </button>
                                 </div>
                                 
                                 <button
@@ -625,7 +724,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                             {/* 이미지 수정 섹션 */}
                             {editingPost.category === '인력구인' && editingPost.storeImages !== undefined ? (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-3">매장 사진 (최대 3장)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">매장 사진 (최대 10장)</label>
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.storeImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
@@ -643,7 +742,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                 </button>
                                             </div>
                                         ))}
-                                        {(editingPost.storeImages || []).length < 3 ? (
+                                        {(editingPost.storeImages || []).length < 10 ? (
                                             <label className="w-32 h-32 border border-dashed border-blue-300 flex items-center justify-center cursor-pointer hover:border-blue-400 transition-colors">
                                                 {uploadingImages ? (
                                                     <div className="text-center">
@@ -663,22 +762,17 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                     className="hidden" 
                                                     onChange={async (e) => {
                                                         const files = Array.from(e.target.files);
-                                                        if (files.length > 3) {
-                                                            alert('최대 3장까지만 선택할 수 있습니다.');
-                                                            return;
-                                                        }
                                                         const currentImages = editingPost.storeImages || [];
-                                                        if (currentImages.length + files.length > 3) {
-                                                            alert(`최대 3장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
+                                                        if (currentImages.length + files.length > 10) {
+                                                            alert(`최대 10장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
                                                             return;
                                                         }
                                                         setUploadingImages(true);
                                                         const uploadPromises = files.map(async (file) => {
                                                             try {
-                                                                const base64Image = await fileToBase64(file);
-                                                                const resizedImage = await resizeImage(file, 1200, 800, 0.9);
-                                                                const result = await uploadImageToImgBB(resizedImage, file.name);
-                                                                return result.url;
+                                                                if (!file.type.startsWith('image/')) return null;
+                                                                const url = await uploadImageToStorage(file, 'community');
+                                                                return url;
                                                             } catch (error) {
                                                                 alert(`${file.name} 업로드에 실패했습니다.`);
                                                                 return null;
@@ -698,7 +792,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                             
                             {editingPost.category === '중고거래' && editingPost.itemImages !== undefined ? (
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">제품 사진 (최대 3장)</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">제품 사진 (최대 10장)</label>
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.itemImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
@@ -716,42 +810,41 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                 </button>
                                             </div>
                                         ))}
-                                        {(editingPost.itemImages || []).length < 3 ? (
+                                        {(editingPost.itemImages || []).length < 10 ? (
                                             <label className="w-32 h-32 border border-dashed border-blue-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
-                                                {uploadingImages ? (
-                                                    <div className="text-center">
-                                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
-                                                        <span className="text-xs text-gray-500">업로드 중...</span>
-                                                    </div>
-                                                ) : (
-                                                    <div className="text-center">
-                                                        <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
-                                                        <span className="text-xs text-gray-500">사진 추가</span>
-                                                    </div>
-                                                )}
-                                                <input 
-                                                    type="file" 
-                                                    accept="image/*" 
-                                                    multiple 
-                                                    className="hidden" 
-                                                    onChange={async (e) => {
+                                                    {uploadingImages ? (
+                                                        <div className="text-center">
+                                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
+                                                            <span className="text-xs text-gray-500">업로드 중...</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center">
+                                                            <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
+                                                            <span className="text-xs text-gray-500">사진 추가</span>
+                                                        </div>
+                                                    )}
+                                                    <input 
+                                                        type="file" 
+                                                        accept="image/*" 
+                                                        multiple 
+                                                        className="hidden" 
+                                                        onChange={async (e) => {
                                                         const files = Array.from(e.target.files);
-                                                        if (files.length > 3) {
-                                                            alert('최대 3장까지만 선택할 수 있습니다.');
+                                                        if (files.length + (editingPost.itemImages || []).length > 10) {
+                                                            alert('최대 10장까지만 선택할 수 있습니다.');
                                                             return;
                                                         }
                                                         const currentImages = editingPost.itemImages || [];
-                                                        if (currentImages.length + files.length > 3) {
-                                                            alert(`최대 3장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
+                                                        if (currentImages.length + files.length > 10) {
+                                                            alert(`최대 10장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
                                                             return;
                                                         }
                                                         setUploadingImages(true);
                                                         const uploadPromises = files.map(async (file) => {
                                                             try {
-                                                                const base64Image = await fileToBase64(file);
-                                                                const resizedImage = await resizeImage(file, 1200, 800, 0.9);
-                                                                const result = await uploadImageToImgBB(resizedImage, file.name);
-                                                                return result.url;
+                                                                if (!file.type.startsWith('image/')) return null;
+                                                                const url = await uploadImageToStorage(file, 'community');
+                                                                return url;
                                                             } catch (error) {
                                                                 alert(`${file.name} 업로드에 실패했습니다.`);
                                                                 return null;
@@ -771,7 +864,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                             
                             {editingPost.category === '프로그램 후기' && (editingPost.reviewImages !== undefined || editingPost.images !== undefined) ? (
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">후기 사진 (최대 3장)</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">후기 사진 (최대 10장)</label>
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.reviewImages || editingPost.images || []).map((img, idx) => (
                                             <div key={idx} className="relative">
@@ -790,42 +883,41 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                 </button>
                                             </div>
                                         ))}
-                                        {((editingPost.reviewImages || editingPost.images || []).length < 3) ? (
+                                        {((editingPost.reviewImages || editingPost.images || []).length < 10) ? (
                                             <label className="w-32 h-32 border border-dashed border-blue-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
-                                                {uploadingImages ? (
-                                                    <div className="text-center">
-                                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
-                                                        <span className="text-xs text-gray-500">업로드 중...</span>
-                                                    </div>
-                                                ) : (
-                                                    <div className="text-center">
-                                                        <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
-                                                        <span className="text-xs text-gray-500">사진 추가</span>
-                                                    </div>
-                                                )}
-                                                <input 
-                                                    type="file" 
-                                                    accept="image/*" 
-                                                    multiple 
-                                                    className="hidden" 
-                                                    onChange={async (e) => {
+                                                    {uploadingImages ? (
+                                                        <div className="text-center">
+                                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
+                                                            <span className="text-xs text-gray-500">업로드 중...</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-center">
+                                                            <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
+                                                            <span className="text-xs text-gray-500">사진 추가</span>
+                                                        </div>
+                                                    )}
+                                                    <input 
+                                                        type="file" 
+                                                        accept="image/*" 
+                                                        multiple 
+                                                        className="hidden" 
+                                                        onChange={async (e) => {
                                                         const files = Array.from(e.target.files);
-                                                        if (files.length > 3) {
-                                                            alert('최대 3장까지만 선택할 수 있습니다.');
+                                                        if (files.length + ((editingPost.reviewImages || editingPost.images || []).length) > 10) {
+                                                            alert('최대 10장까지만 선택할 수 있습니다.');
                                                             return;
                                                         }
                                                         const currentImages = editingPost.reviewImages || editingPost.images || [];
-                                                        if (currentImages.length + files.length > 3) {
-                                                            alert(`최대 3장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
+                                                        if (currentImages.length + files.length > 10) {
+                                                            alert(`최대 10장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장)`);
                                                             return;
                                                         }
                                                         setUploadingImages(true);
                                                         const uploadPromises = files.map(async (file) => {
                                                             try {
-                                                                const base64Image = await fileToBase64(file);
-                                                                const resizedImage = await resizeImage(file, 1200, 800, 0.9);
-                                                                const result = await uploadImageToImgBB(resizedImage, file.name);
-                                                                return result.url;
+                                                                if (!file.type.startsWith('image/')) return null;
+                                                                const url = await uploadImageToStorage(file, 'community');
+                                                                return url;
                                                             } catch (error) {
                                                                 alert(`${file.name} 업로드에 실패했습니다.`);
                                                                 return null;

@@ -2,7 +2,29 @@
  * 이미지 처리 유틸리티 함수
  */
 
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
 import { CONFIG } from '../config';
+
+const IMAGE_TYPES = ['program', 'content', 'community', 'company'];
+
+/**
+ * Firebase Storage에 이미지 파일 업로드
+ * @param {File} file - 업로드할 이미지 파일
+ * @param {string} type - 이미지 유형 (program | content | community | company)
+ * @returns {Promise<string>} 다운로드 URL
+ */
+export const uploadImageToStorage = async (file, type = 'program') => {
+  const safeType = IMAGE_TYPES.includes(type) ? type : 'program';
+  const ext = (file.name && file.name.split('.').pop()) || 'jpg';
+  const safeName = (file.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
+  const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `id_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  const path = `images/${safeType}/${id}_${safeName}`;
+  const storageRef = ref(storage, path);
+  await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
+  const url = await getDownloadURL(storageRef);
+  return url;
+};
 
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
 

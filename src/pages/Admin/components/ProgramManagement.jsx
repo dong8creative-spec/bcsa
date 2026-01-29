@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
 import { KakaoMapModal } from './KakaoMapModal';
+import { uploadImageToStorage } from '../../../utils/imageUtils';
+
+const MAX_IMAGES = 10;
 
 const SORT_OPTIONS = [
   { value: 'popular', label: '인기순 (신청 많은 순)' },
@@ -48,8 +51,10 @@ export const ProgramManagement = () => {
     locationLng: null,
     capacity: '',
     category: '',
-    imageUrl: ''
+    imageUrls: []
   });
+  const [imageUploading, setImageUploading] = useState(false);
+  const programImageInputRef = useRef(null);
 
   useEffect(() => {
     loadPrograms();
@@ -118,13 +123,17 @@ export const ProgramManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    const payload = {
+      ...formData,
+      imageUrl: formData.imageUrls?.[0] || '',
+      images: formData.imageUrls || []
+    };
     try {
       if (editingProgram) {
-        await firebaseService.updateSeminar(editingProgram.id, formData);
+        await firebaseService.updateSeminar(editingProgram.id, payload);
         alert('프로그램이 수정되었습니다.');
       } else {
-        await firebaseService.createSeminar(formData);
+        await firebaseService.createSeminar(payload);
         alert('프로그램이 추가되었습니다.');
       }
       setShowModal(false);
@@ -138,6 +147,7 @@ export const ProgramManagement = () => {
 
   const handleEdit = (program) => {
     setEditingProgram(program);
+    const urls = Array.isArray(program.imageUrls) ? program.imageUrls : (program.imageUrl ? [program.imageUrl] : []);
     setFormData({
       title: program.title || '',
       description: program.description || '',
@@ -147,7 +157,7 @@ export const ProgramManagement = () => {
       locationLng: program.locationLng || null,
       capacity: program.capacity || '',
       category: program.category || '',
-      imageUrl: program.imageUrl || ''
+      imageUrls: urls
     });
     setShowModal(true);
   };
@@ -176,8 +186,38 @@ export const ProgramManagement = () => {
       locationLng: null,
       capacity: '',
       category: '',
-      imageUrl: ''
+      imageUrls: []
     });
+  };
+
+  const handleProgramImageChange = async (e) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = '';
+    const current = formData.imageUrls || [];
+    if (current.length + files.length > MAX_IMAGES) {
+      alert(`이미지는 최대 ${MAX_IMAGES}장까지 등록할 수 있습니다.`);
+      return;
+    }
+    setImageUploading(true);
+    try {
+      const uploaded = [];
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) continue;
+        const url = await uploadImageToStorage(file, 'program');
+        uploaded.push(url);
+      }
+      setFormData({ ...formData, imageUrls: [...current, ...uploaded] });
+    } catch (err) {
+      console.error(err);
+      alert('이미지 업로드에 실패했습니다.');
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const removeProgramImage = (index) => {
+    const next = (formData.imageUrls || []).filter((_, i) => i !== index);
+    setFormData({ ...formData, imageUrls: next });
   };
 
   const handleLocationSelect = (location) => {
@@ -264,10 +304,12 @@ export const ProgramManagement = () => {
             </p>
           </div>
         ) : (
-          filteredAndSortedPrograms.map((program) => (
+          filteredAndSortedPrograms.map((program) => {
+            const thumb = (program.imageUrls?.[0] ?? program.imageUrl);
+            return (
             <div key={program.id} className="bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
-              {program.imageUrl && (
-                <img src={program.imageUrl} alt={program.title} className="w-full h-40 object-cover rounded-xl mb-3" />
+              {thumb && (
+                <img src={thumb} alt={program.title} className="w-full h-40 object-cover rounded-xl mb-3" />
               )}
               <h3 className="font-bold text-lg text-dark mb-2">{program.title}</h3>
               <p className="text-sm text-gray-600 mb-3 line-clamp-2">{program.description}</p>
@@ -304,7 +346,8 @@ export const ProgramManagement = () => {
                 </button>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -391,13 +434,48 @@ export const ProgramManagement = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">이미지 URL</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">이미지 (최대 {MAX_IMAGES}장)</label>
                 <input
-                  type="url"
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                  ref={programImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleProgramImageChange}
                 />
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {(formData.imageUrls || []).map((url, idx) => (
+                    <div key={idx} className="relative group">
+                      <img src={url} alt={`이미지 ${idx + 1}`} className="w-20 h-20 object-cover rounded-xl border-2 border-blue-200" />
+                      <button
+                        type="button"
+                        onClick={() => removeProgramImage(idx)}
+                        className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-90 hover:opacity-100"
+                        aria-label="삭제"
+                      >
+                        <Icons.X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  disabled={(formData.imageUrls?.length || 0) >= MAX_IMAGES || imageUploading}
+                  onClick={() => programImageInputRef.current?.click()}
+                  className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {imageUploading ? (
+                    <>
+                      <span className="inline-block w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      업로드 중...
+                    </>
+                  ) : (
+                    <>
+                      <Icons.Plus size={18} />
+                      이미지 추가
+                    </>
+                  )}
+                </button>
               </div>
 
               <button

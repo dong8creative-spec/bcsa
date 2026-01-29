@@ -266,10 +266,12 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                 {sortedSeminars.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {currentPageSeminars.map((seminar) => {
-                            // images 배열이 있으면 첫 번째 이미지 사용, 없으면 img 필드 사용
-                            const displayImage = (seminar.images && seminar.images.length > 0) 
-                                ? seminar.images[0] 
-                                : seminar.img;
+                            // images/imageUrls 배열 또는 imageUrl/img 단일 필드 호환
+                            const displayImage = (seminar.images && seminar.images.length > 0)
+                                ? seminar.images[0]
+                                : (seminar.imageUrls && seminar.imageUrls.length > 0)
+                                    ? seminar.imageUrls[0]
+                                    : seminar.imageUrl || seminar.img;
                             
                             return (
                             <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-blue-200 hover:border-brand/20 cursor-pointer overflow-hidden" onClick={() => setSelectedSeminar(seminar)}>
@@ -277,10 +279,10 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                                     <div className="w-full overflow-hidden relative" style={{ aspectRatio: '3/4' }}>
                                         <img src={displayImage} alt={seminar.title} className="w-full h-full object-cover" />
                                         {/* 이미지가 여러 장일 경우 표시 */}
-                                        {(seminar.images && seminar.images.length > 1) && (
+                                        {((seminar.images && seminar.images.length > 1) || (seminar.imageUrls && seminar.imageUrls.length > 1)) && (
                                             <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
                                                 <Icons.Camera size={12} className="inline mr-1" />
-                                                {seminar.images.length}
+                                                {(seminar.images || seminar.imageUrls || []).length}
                                             </div>
                                         )}
                                         </div>
@@ -375,11 +377,16 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
 
                 {/* 세미나 상세 모달 */}
                 {selectedSeminar && (() => {
-                    // images 배열 정규화: 빈 문자열 필터링 및 null 처리
+                    // images/imageUrls 배열 또는 imageUrl/img 단일 필드 호환
                     let images = [];
-                    if (selectedSeminar.images && Array.isArray(selectedSeminar.images) && selectedSeminar.images.length > 0) {
-                        images = selectedSeminar.images.filter(img => img && typeof img === 'string' && img.trim() !== '');
-                    } else if (selectedSeminar.img && typeof selectedSeminar.img === 'string' && selectedSeminar.img.trim() !== '') {
+                    const raw = selectedSeminar.images || selectedSeminar.imageUrls;
+                    if (raw && Array.isArray(raw) && raw.length > 0) {
+                        images = raw.filter(img => img && typeof img === 'string' && img.trim() !== '');
+                    }
+                    if (images.length === 0 && selectedSeminar.imageUrl && typeof selectedSeminar.imageUrl === 'string' && selectedSeminar.imageUrl.trim() !== '') {
+                        images = [selectedSeminar.imageUrl];
+                    }
+                    if (images.length === 0 && selectedSeminar.img && typeof selectedSeminar.img === 'string' && selectedSeminar.img.trim() !== '') {
                         images = [selectedSeminar.img];
                     }
                     
