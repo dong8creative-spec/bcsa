@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { Icons } from '../../../components/Icons';
+import ModalPortal from '../../../components/ModalPortal';
 
 /**
  * 게시물 관리 컴포넌트
@@ -348,6 +349,7 @@ export const PostManagement = () => {
 
       {/* 후기 작성/수정 모달 (ESC 미적용) */}
       {isReviewModalOpen && (
+        <ModalPortal>
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={() => setIsReviewModalOpen(false)}>
           <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
             <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-6">
@@ -429,10 +431,12 @@ export const PostManagement = () => {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* 게시물 상세 보기 모달 (ESC로 닫기) */}
       {selectedPost && (
+        <ModalPortal>
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={() => setSelectedPost(null)}>
           <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
             <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-6">
@@ -508,6 +512,7 @@ export const PostManagement = () => {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useKakaoMap } from '../../../hooks/useKakaoMap';
 import { Icons } from '../../../components/Icons';
+import ModalPortal from '../../../components/ModalPortal';
 
 /**
  * 카카오맵 장소 선택 모달 컴포넌트
@@ -196,6 +197,7 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
 
   if (isError) {
     return (
+      <ModalPortal>
       <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
         <div className="bg-white rounded-3xl p-8 max-w-md">
           <div className="text-center">
@@ -211,10 +213,12 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
           </div>
         </div>
       </div>
+      </ModalPortal>
     );
   }
 
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => e.target === e.currentTarget && onClose()}>
 <div className="bg-white rounded-3xl max-w-4xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
       <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-6">
@@ -300,5 +304,6 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 };

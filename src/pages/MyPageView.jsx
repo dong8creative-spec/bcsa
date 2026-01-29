@@ -4,6 +4,7 @@ import { Icons } from '../components/Icons';
 import { uploadImageToStorage } from '../utils/imageUtils';
 import { firebaseService } from '../services/firebaseService';
 import { apiGet } from '../utils/api';
+import ModalPortal from '../components/ModalPortal';
 
 const COMPANY_IMAGES_MAX = 10;
 
@@ -698,6 +699,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
 
             {/* 게시글 수정 모달 (ESC 미적용) */}
             {isEditModalOpen && editingPost ? (
+                <ModalPortal>
                 <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
                     <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
@@ -959,6 +961,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                         </div>
                     </div>
                 </div>
+                </ModalPortal>
             ) : null}
         </div>
     );

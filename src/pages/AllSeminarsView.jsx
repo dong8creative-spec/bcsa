@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 import CalendarSection from '../components/CalendarSection';
+import ModalPortal from '../components/ModalPortal';
 
 const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [], communityPosts = [] }) => {
     // props 안전성 검증
@@ -401,6 +402,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                     const avgRating = ratingsOnly.length > 0 ? (ratingsOnly.reduce((a, p) => a + Number(p.rating), 0) / ratingsOnly.length).toFixed(1) : null;
                     
                     return (
+                    <ModalPortal>
                     <div className="fixed inset-0 z-[500] flex items-start justify-center p-4 pt-20" onClick={(e) => { 
                         if (e.target === e.currentTarget) {
                             setSelectedSeminar(null);
@@ -594,11 +596,13 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                             </div>
                         </div>
                     </div>
+                    </ModalPortal>
                     );
                 })()}
 
                 {/* 신청 모달 (ESC 미적용) */}
                 {isApplyModalOpen && applySeminar && (
+                    <ModalPortal>
                     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setIsApplyModalOpen(false); }}>
                         <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
@@ -659,6 +663,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                             </div>
                     </div>
                 </div>
+                </ModalPortal>
             )}
                         </div>
         </div>

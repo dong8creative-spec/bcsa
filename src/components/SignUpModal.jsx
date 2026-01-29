@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { firebaseService } from '../services/firebaseService';
 import { hashPassword } from '../utils/authUtils';
 import { Icons } from './Icons';
+import ModalPortal from './ModalPortal';
 
 const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
     const [formData, setFormData] = useState({ 
@@ -322,7 +323,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
     };
     
     return (
-        <>
+        <ModalPortal>
             <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
                 <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70 backdrop-blur-lg"></div>
                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl z-10 relative border-[0.5px] border-brand max-h-[95vh] overflow-hidden flex flex-col max-md:scale-[0.8] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
@@ -897,7 +898,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                     </div>
                 </div>
             </div>
-        </>
+        </ModalPortal>
     );
 };
 

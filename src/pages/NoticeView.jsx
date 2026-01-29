@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
+import ModalPortal from '../components/ModalPortal';
 
 const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
     const [selectedCategory, setSelectedCategory] = useState('전체');
@@ -84,6 +85,7 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
 
             {/* 공지사항 상세 모달 (ESC로 닫기) */}
                 {selectedPost && (
+                <ModalPortal>
                 <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPost(null); }}>
                     <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
@@ -103,6 +105,7 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
                         </div>
                     </div>
                     </div>
+                </ModalPortal>
                 )}
         </div>
     );

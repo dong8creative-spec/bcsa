@@ -3,6 +3,7 @@ import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 import { firebaseService } from '../services/firebaseService';
 import { translateFirebaseError } from '../utils/errorUtils';
+import ModalPortal from '../components/ModalPortal';
 
 const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
     const [searchName, setSearchName] = useState('');
@@ -350,6 +351,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
 
                 {/* 회원 상세 모달 (ESC로 닫기) */}
                 {selectedMember && (
+                    <ModalPortal>
                     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedMember(null); }}>
                         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
                         <div className="bg-white rounded-2xl shadow-sm border border-blue-200 w-full max-w-6xl z-10 flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
@@ -611,6 +613,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                             </div>
                         </div>
                     </div>
+                    </ModalPortal>
                 )}
             </div>
         </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, Fragment } from 'react';
 import { firebaseService } from '../services/firebaseService';
 import { Icons } from './Icons';
 import { uploadImageToStorage } from '../utils/imageUtils';
+import ModalPortal from './ModalPortal';
 
 const CommunityView = ({ 
     onBack, 
@@ -556,6 +557,7 @@ const CommunityView = ({
 
                 {/* 게시글 작성 모달 (ESC 미적용) */}
                 {isCreateModalOpen ? (
+                    <ModalPortal>
                     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setIsCreateModalOpen(false); }}>
                         <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
@@ -946,10 +948,12 @@ const CommunityView = ({
                             </div>
                         </div>
                     </div>
+                    </ModalPortal>
                 ) : null}
 
                 {/* 게시글 수정 모달 (ESC 미적용) */}
                 {isEditModalOpen && editingPost && (isCurrentUserAdmin || (currentUser && (editingPost.authorId === currentUser.id || editingPost.authorId === currentUser.uid || (editingPost.author && editingPost.author === currentUser.name)))) ? (
+                    <ModalPortal>
                     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
                         <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
@@ -1207,10 +1211,12 @@ if (files.length + ((editingPost.reviewImages || editingPost.images || []).lengt
                             </div>
                         </div>
                     </div>
+                    </ModalPortal>
                 ) : null}
 
                 {/* 게시글 상세 모달 (ESC로 닫기) */}
             {selectedPost && currentUser ? (
+                    <ModalPortal>
                     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPost(null); }}>
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
                         <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl z-10 flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
@@ -1415,10 +1421,12 @@ if (files.length + ((editingPost.reviewImages || editingPost.images || []).lengt
                         </div>
                         </div>
                                 </div>
+                    </ModalPortal>
                             ) : null}
 
                 {/* 이미지 확대 모달 (ESC로 닫기) */}
                 {selectedImage ? (
+                    <ModalPortal>
                     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setSelectedImage(null); }}>
                         <div className="flex flex-col max-w-[90vw] max-h-[90vh] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex-1 flex items-center justify-center mb-4">
@@ -1431,6 +1439,7 @@ if (files.length + ((editingPost.reviewImages || editingPost.images || []).lengt
                             </div>
                         </div>
                     </div>
+                    </ModalPortal>
                 ) : null}
         </div>
     );

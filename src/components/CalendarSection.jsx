@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Icons } from './Icons';
+import ModalPortal from './ModalPortal';
 
 const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteReview, applications = [] }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -292,6 +293,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                 {renderCalendarDays()}
             </div>
             {selectedDate && getEventsForDate(selectedDate).length > 0 && (
+                <ModalPortal>
                 <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedDate(null); }}>
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"></div>
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[calc(90vh-100px)] overflow-hidden z-10 flex flex-col border border-blue-200 max-md:scale-[0.8] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
@@ -404,6 +406,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                         </div>
                     </div>
                 </div>
+                </ModalPortal>
             )}
         </div>
     );

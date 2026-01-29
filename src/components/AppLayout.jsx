@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Icons } from './Icons';
 import SignUpModal from './SignUpModal';
 import InquiryModal from './InquiryModal';
+import ModalPortal from './ModalPortal';
 
 const FAB_GAP_PX = 16;
 const FAB_ESTIMATE_HEIGHT_PX = 152;
@@ -82,6 +83,7 @@ const AppLayout = (props) => {
         <div className="min-h-screen bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">
             {/* 프로그램 팝업 (최대 3개 동시 표시, 1회만 표시) */}
             {popupPrograms && popupPrograms.length > 0 ? (
+                <ModalPortal>
                 <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) closePopupAndMarkAsShown(); }}>
                     <div className="flex flex-col md:flex-row gap-4 max-w-6xl w-full overflow-x-auto py-4" onClick={(e) => e.stopPropagation()}>
                         {popupPrograms.map((program, idx) => {
@@ -270,10 +272,12 @@ const AppLayout = (props) => {
                         </button>
                     ) : null}
                 </div>
+                </ModalPortal>
             ) : null}
             
             {/* 팝업 신청 모달 (ESC 미적용) */}
             {isPopupApplyModalOpen && applySeminarFromPopup ? (
+                <ModalPortal>
                 <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setIsPopupApplyModalOpen(false); }}>
                     <div className="bg-white rounded-3xl max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
@@ -334,6 +338,7 @@ const AppLayout = (props) => {
                         </div>
                     </div>
                 </div>
+                </ModalPortal>
             ) : null}
             
             <header className={`fixed top-0 w-full z-50 transition-all duration-300 ease-in-out px-4 md:px-6 py-5 ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : 'bg-transparent'}`}>
@@ -544,6 +549,7 @@ const AppLayout = (props) => {
             
             {/* 프로그램 알람 모달 */}
             {showProgramAlertModal && programAlerts.length > 0 && currentUser ? (
+                <ModalPortal>
                 <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) handleProgramAlertConfirm(currentUser.id); }}>
                     <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 max-w-[386px] w-full max-h-[90vh] overflow-y-auto modal-scroll max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-6">
@@ -629,6 +635,7 @@ const AppLayout = (props) => {
                         </button>
                     </div>
                 </div>
+                </ModalPortal>
             ) : null}
             {/* 🌟 모바일 메뉴 오버레이 */}
             <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onNavigate={handleNavigation} menuEnabled={menuEnabled} menuNames={menuNames} menuOrder={menuOrder} />

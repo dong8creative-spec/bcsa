@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Cropper from 'react-easy-crop';
 import { Icons } from './Icons';
 import { uploadImageToImgBB, fileToBase64, resizeImage } from '../utils/imageUtils';
+import ModalPortal from './ModalPortal';
 
 /**
  * 이미지 크롭 모달 컴포넌트
@@ -247,6 +248,7 @@ export const ImageCropModal = ({
   if (!isOpen) return null;
 
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
       <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
         {/* 콘텐츠 */}
@@ -408,5 +410,6 @@ export const ImageCropModal = ({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 };

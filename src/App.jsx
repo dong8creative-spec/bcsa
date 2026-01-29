@@ -34,6 +34,7 @@ import RestaurantFormView from './components/RestaurantFormView';
 import InquiryModal from './components/InquiryModal';
 import DonationView from './components/DonationView';
 import AppLayout from './components/AppLayout';
+import ModalPortal from './components/ModalPortal';
 
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
 
@@ -133,7 +134,7 @@ const LoginModal = ({ onClose, onLogin }) => {
     };
     
     return (
-        <>
+        <ModalPortal>
             <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md z-10 flex flex-col max-h-[calc(90vh-100px)] relative border-[0.5px] border-brand max-md:scale-[0.8] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
                     <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8 text-center">
@@ -181,7 +182,7 @@ const LoginModal = ({ onClose, onLogin }) => {
                     </div>
                 </div>
             </div>
-        </>
+        </ModalPortal>
     );
 };
 
@@ -2416,6 +2417,7 @@ END:VCALENDAR`;
     const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames, menuOrder }) => {
         if (!isOpen) return null;
         return (
+            <ModalPortal>
             <div className="fixed inset-0 z-[500] bg-white/95 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
                 <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2 text-dark hover:bg-gray-100 rounded-full"><Icons.X size={32}/></button>
                 <nav className="flex flex-col gap-6 text-center" onClick={(e) => e.stopPropagation()}>
@@ -2451,6 +2453,7 @@ END:VCALENDAR`;
                     )}
                 </nav>
             </div>
+            </ModalPortal>
         );
     };
 

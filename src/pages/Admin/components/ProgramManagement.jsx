@@ -4,6 +4,7 @@ import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
 import { KakaoMapModal } from './KakaoMapModal';
 import { uploadImageToStorage } from '../../../utils/imageUtils';
+import ModalPortal from '../../../components/ModalPortal';
 
 const MAX_IMAGES = 10;
 
@@ -353,6 +354,7 @@ export const ProgramManagement = () => {
 
       {/* 프로그램 추가/수정 모달 (ESC 미적용) */}
       {showModal && (
+        <ModalPortal>
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
           <div className="bg-white rounded-3xl max-w-2xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center">
             <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-6">
@@ -493,6 +495,7 @@ export const ProgramManagement = () => {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
 
       {/* 카카오맵 모달 */}

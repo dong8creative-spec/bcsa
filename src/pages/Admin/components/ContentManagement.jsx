@@ -5,6 +5,7 @@ import { defaultContent } from '../../../constants/content';
 import { imageMetadata } from '../../../constants/imageMetadata';
 import { Icons } from '../../../components/Icons';
 import { ImageCropModal } from '../../../components/ImageCropModal';
+import ModalPortal from '../../../components/ModalPortal';
 
 /**
  * 콘텐츠 관리 컴포넌트
@@ -797,6 +798,7 @@ export const ContentManagement = () => {
 
       {/* 이미지 미리보기 모달 */}
       {previewImageUrl && (
+        <ModalPortal>
         <div 
           className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md"
           onClick={() => setPreviewImageUrl(null)}
@@ -816,6 +818,7 @@ export const ContentManagement = () => {
             />
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   );
