@@ -5,15 +5,24 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start": "vite",
     "start:local": "vite",
-    "test:local": "echo '로컬 테스트: npm run dev 실행 후 http://127.0.0.1:3000 접속 → 입찰공고 메뉴 클릭. 자세한 절차는 LOCAL_TEST.md 참고.'",
+    "test": "vite --port 5173 --host 127.0.0.1",
+    "test:env": "echo '▶ 테스트 환경: docs/테스트_환경_조성.md 참고' && echo '▶ API: .env.development 의 VITE_API_URL 사용' && echo '▶ 브라우저: http://127.0.0.1:3000' && npm run dev",
+    "test:env:emulator": "concurrently -n front,api -c blue,green \"npm run dev\" \"firebase emulators:start --only functions\"",
+    "test:local": "echo '로컬 테스트: npm run test 실행 후 http://127.0.0.1:5173 접속. 자세한 가이드는 빠른_시작.md 또는 로컬_테스트_가이드.md 참고.'",
+    "test:quick": "echo '✅ 빠른 시작 가이드는 빠른_시작.md 파일을 확인하세요!' && npm run test",
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "npm run build && firebase deploy",
     "deploy:hosting": "npm run build && firebase deploy --only hosting",
     "deploy:functions": "firebase deploy --only functions",
     "emulators": "firebase emulators:start",
-    "emulators:functions": "firebase emulators:start --only functions"
+    "emulators:functions": "firebase emulators:start --only functions",
+    "verify:bid-search": "node scripts/verify-bid-search.mjs",
+    "verify:busan": "node scripts/verify-bid-search.mjs --keyword 부산",
+    "compare:bid-search": "node scripts/verify-bid-search.mjs --keyword 부산 --strict",
+    "test:bid-search-keywords": "node scripts/verify-bid-search-keywords.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -806,19 +806,33 @@ app.get('/api/bid-search', async (req, res) => {
     if (excludeDeadline) {
       const now = new Date();
       const parseClsDt = (dt) => {
-        if (!dt) return null;
-        const s = String(dt).trim();
-        if (/^\d{12}$/.test(s)) {
-          return new Date(s.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:00'));
+        if (dt === undefined || dt === null || dt === '') return null;
+        const s = String(dt).trim().replace(/\s/g, '').replace(/-/g, '').replace(/:/g, '');
+        const digitsOnly = s.replace(/\D/g, '');
+        if (digitsOnly.length >= 14) {
+          const y = digitsOnly.slice(0, 4), m = digitsOnly.slice(4, 6), d = digitsOnly.slice(6, 8);
+          const h = digitsOnly.slice(8, 10), min = digitsOnly.slice(10, 12), sec = digitsOnly.slice(12, 14);
+          const parsed = new Date(`${y}-${m}-${d}T${h}:${min}:${sec}`);
+          return isNaN(parsed.getTime()) ? null : parsed;
         }
-        if (/^\d{8}$/.test(s)) return new Date(s.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'));
-        const d = new Date(s);
+        if (digitsOnly.length === 12) {
+          const y = digitsOnly.slice(0, 4), m = digitsOnly.slice(4, 6), d = digitsOnly.slice(6, 8);
+          const h = digitsOnly.slice(8, 10), min = digitsOnly.slice(10, 12);
+          const parsed = new Date(`${y}-${m}-${d}T${h}:${min}:00`);
+          return isNaN(parsed.getTime()) ? null : parsed;
+        }
+        if (digitsOnly.length === 8) {
+          const parsed = new Date(digitsOnly.slice(0, 4) + '-' + digitsOnly.slice(4, 6) + '-' + digitsOnly.slice(6, 8) + 'T23:59:59');
+          return isNaN(parsed.getTime()) ? null : parsed;
+        }
+        const d = new Date(String(dt).trim());
         return isNaN(d.getTime()) ? null : d;
       };
       const beforeExcl = filteredItems.length;
       filteredItems = filteredItems.filter(item => {
         const clsDt = parseClsDt(item.bidClseDt || item.bidClsDt);
-        return !clsDt || clsDt > now;
+        if (!clsDt) return true; // 마감일 없으면 유지 (과도한 제외 방지)
+        return clsDt > now;
       });
       console.log(`[Bid Search] Exclude closed (입찰마감제외): ${beforeExcl} -> ${filteredItems.length} items`);
     }
@@ -860,11 +874,14 @@ app.get('/api/bid-search', async (req, res) => {
 
     // 모든 API가 실패하고 결과가 없는 경우 명확한 에러 반환
     if (filteredItems.length === 0 && errors.length === callSpecs.length) {
-      console.error('[Bid Search] All APIs failed, no results available');
+      console.error('[Bid Search] All APIs failed, no results available', errors);
+      const hasKey = !!(serviceKey && serviceKey.trim());
       return res.status(502).json({
         success: false,
         error: '조달청 API 호출 실패',
-        message: '모든 API 요청이 실패했습니다. 잠시 후 다시 시도해 주세요. 계속되면 G2B(나라장터) API 상태 또는 Firebase Functions 환경 변수(G2B API 키)를 확인해 주세요.',
+        message: hasKey
+          ? '모든 API 요청이 실패했습니다. 잠시 후 다시 시도해 주세요. 계속되면 공공데이터포털 API 상태·트래픽 한도를 확인해 주세요.'
+          : '조달청 API 키가 설정되지 않았습니다. Firebase Functions 환경 변수에 G2B_API_KEY(또는 G2B_SERVICE_KEY)를 설정한 뒤 다시 배포해 주세요.',
         details: errors,
         timestamp: new Date().toISOString()
       });
@@ -941,7 +958,264 @@ app.get('/api/bid-search', async (req, res) => {
   }
 });
 
-// 캐시 키 생성 함수 (조회 기간 포함 시 기간별로 다른 문서로 저장)
+// 상세 내역 캐시 TTL: 1시간 (초) / 신선도: 이 시간보다 오래된 캐시는 무시하고 조달청에서 새로 가져옴
+const DETAIL_CACHE_TTL_SEC = 3600;
+const DETAIL_MAX_AGE_MS = 30 * 60 * 1000; // 30분
+const DETAIL_CACHE_COLLECTION = 'tenderDetails';
+
+// 상세 내역 캐시 키 (공고번호 + 차수)
+function generateDetailCacheKey(bidNtceNo, bidNtceOrd) {
+  if (!bidNtceNo) return null;
+  const ord = bidNtceOrd != null && String(bidNtceOrd).trim() !== ''
+    ? String(bidNtceOrd).padStart(3, '0')
+    : '000';
+  return `detail_${String(bidNtceNo).trim()}_${ord}`;
+}
+
+// 응답 객체에서 첨부파일 URL 추출 (PDF, 한글 등) — 링크·세부 금액 누락 방지
+const ATTACHMENT_KEY_PATTERN = /^(atchFile|pblancFile|fileUrl|fileLink|atchUrl|pblancUrl|filePath|atchFilePath|docUrl|specUrl|공고서|첨부)/i;
+const FILE_EXT_PATTERN = /\.(pdf|hwp|hwpx|doc|docx)(\?|$)/i;
+const FILE_URL_PATTERN = /^https?:\/\/[^\s"']+/i;
+
+function extractAttachmentUrls(obj, collected = new Set()) {
+  if (!obj) return collected;
+  if (typeof obj === 'string') {
+    const trimmed = obj.trim();
+    if (trimmed.length < 10) return collected;
+    if (FILE_EXT_PATTERN.test(trimmed) || /fileDown\.do|download|atchFile|pblancFile|fileUrl|\.go\.kr.*\.(pdf|hwp)/i.test(trimmed)) {
+      if (FILE_URL_PATTERN.test(trimmed)) collected.add(trimmed);
+    }
+    return collected;
+  }
+  if (Array.isArray(obj)) {
+    obj.forEach(item => {
+      if (item && typeof item === 'object' && (item.fileUrl || item.url || item.atchFileUrl || item.fileLink)) {
+        const url = item.fileUrl || item.url || item.atchFileUrl || item.fileLink;
+        if (url && typeof url === 'string') collected.add(url.trim());
+      }
+      extractAttachmentUrls(item, collected);
+    });
+    return collected;
+  }
+  if (typeof obj === 'object') {
+    Object.entries(obj).forEach(([k, v]) => {
+      if (ATTACHMENT_KEY_PATTERN.test(k) && typeof v === 'string' && v.trim().length > 10 && FILE_URL_PATTERN.test(v)) {
+        collected.add(v.trim());
+      }
+      extractAttachmentUrls(v, collected);
+    });
+    return collected;
+  }
+  return collected;
+}
+
+/**
+ * G2B detail response → standardized schema (readable keys for frontend).
+ * Maps cryptic G2B field names to camelCase keys; normalizes typos (e.g. presmptPrce → presmtPrce).
+ */
+const G2B_DETAIL_FIELD_MAP = {
+  basePrice: ['bsnsBdgtAmt', 'baseAmt', 'basePrce', 'presmtPrce', 'presmptPrce', 'estPrice', 'estmtAmt', 'presmtPrc'],
+  estimatedPrice: ['presmtPrce', 'presmptPrce', 'estPrice', 'estmtAmt'],
+  bidFloorPrice: ['sldngPrce', 'sldngLwstPrce', 'basePrc'],
+  successfulBidAmount: ['sucsfbidAmt', 'sucsfbidAmt'],
+  noticeDate: ['bidNtceDt'],
+  deadlineDate: ['bidClseDt', 'bidClsDt'],
+  openingDate: ['opengDt', 'opengDtTm', 'bidBegnDt'],
+  participantQualifications: ['licnsReq', 'licnsReqNm', 'partcptLmt', 'partcptLmtNm', 'bsnsCond', 'bsnsCondNm'],
+  noticeName: ['bidNtceNm'],
+  noticeNo: ['bidNtceNo'],
+  noticeOrd: ['bidNtceOrd'],
+  announcingOrg: ['insttNm', 'ntceInsttNm'],
+  demandingOrg: ['dmandInsttNm', 'dminsttNm']
+};
+
+function buildStandardizedDetail(raw, attachmentList) {
+  const d = raw || {};
+  const pickFirst = (keys) => {
+    for (const k of keys) {
+      const v = d[k];
+      if (v !== undefined && v !== null && v !== '') return v;
+    }
+    return undefined;
+  };
+  const arr = (keys) => {
+    const out = [];
+    for (const k of keys) {
+      const v = d[k];
+      if (v !== undefined && v !== null && v !== '') out.push(String(v).trim());
+    }
+    return out.length ? out : undefined;
+  };
+  const standardized = {
+    basePrice: pickFirst(G2B_DETAIL_FIELD_MAP.basePrice),
+    estimatedPrice: pickFirst(G2B_DETAIL_FIELD_MAP.estimatedPrice),
+    bidFloorPrice: pickFirst(G2B_DETAIL_FIELD_MAP.bidFloorPrice),
+    successfulBidAmount: pickFirst(G2B_DETAIL_FIELD_MAP.successfulBidAmount),
+    noticeDate: pickFirst(G2B_DETAIL_FIELD_MAP.noticeDate),
+    deadlineDate: pickFirst(G2B_DETAIL_FIELD_MAP.deadlineDate),
+    openingDate: pickFirst(G2B_DETAIL_FIELD_MAP.openingDate),
+    participantQualifications: arr(G2B_DETAIL_FIELD_MAP.participantQualifications),
+    noticeName: pickFirst(G2B_DETAIL_FIELD_MAP.noticeName),
+    noticeNo: pickFirst(G2B_DETAIL_FIELD_MAP.noticeNo),
+    noticeOrd: pickFirst(G2B_DETAIL_FIELD_MAP.noticeOrd),
+    announcingOrg: pickFirst(G2B_DETAIL_FIELD_MAP.announcingOrg),
+    demandingOrg: pickFirst(G2B_DETAIL_FIELD_MAP.demandingOrg),
+    attachmentFileUrls: Array.isArray(attachmentList) ? attachmentList.map(a => (typeof a === 'string' ? { url: a, label: '첨부파일' } : { url: a?.url, label: a?.label || '첨부파일' })).filter(x => x.url) : []
+  };
+  return standardized;
+}
+
+// 입찰공고 상세 API (공고번호 + 차수 → 용역/물품/공사별 세부내역)
+app.get('/api/bid-detail', async (req, res, next) => {
+  const bidNtceNo = (req.query.bidNtceNo || '').trim();
+  const bidNtceOrd = req.query.bidNtceOrd != null ? String(req.query.bidNtceOrd).trim() : '';
+
+  if (!bidNtceNo) {
+    return res.status(400).json({
+      success: false,
+      error: 'bidNtceNo(입찰공고번호)는 필수입니다.',
+      errorCode: 'MISSING_BID_NTCE_NO'
+    });
+  }
+
+  const cacheKey = generateDetailCacheKey(bidNtceNo, bidNtceOrd || '000');
+  const serviceKey = process.env.G2B_API_KEY || process.env.G2B_SERVICE_KEY;
+
+  if (!serviceKey || serviceKey.trim() === '') {
+    return res.status(500).json({
+      success: false,
+      error: 'API 키가 설정되지 않았습니다. 관리자에게 문의하세요.'
+    });
+  }
+
+  try {
+    // 1) Firestore 캐시 조회 (신선도: DETAIL_MAX_AGE_MS 초과 시 무시하고 조달청에서 새로 가져옴)
+    const detailRef = db.collection(DETAIL_CACHE_COLLECTION).doc(cacheKey);
+    const detailSnap = await detailRef.get();
+
+    if (detailSnap.exists) {
+      const data = detailSnap.data();
+      const cachedAt = data._metadata?.cachedAt;
+      const cachedAtMs = cachedAt?.toDate ? cachedAt.toDate().getTime() : 0;
+      if (cachedAtMs && (Date.now() - cachedAtMs) <= DETAIL_MAX_AGE_MS) {
+        const { _metadata, ...payload } = data;
+        console.log(`[Bid Detail] Cache hit: ${cacheKey} (age ${Math.round((Date.now() - cachedAtMs) / 1000)}s)`);
+        return res.status(200).json({
+          success: true,
+          data: payload,
+          cached: true
+        });
+      }
+      console.log(`[Bid Detail] Cache too old, refetching: ${cacheKey}`);
+    }
+
+    // 2) 캐시 미스 → 조달청 상세 API 호출 (물품/용역/공사 각각 시도)
+    const baseUrl = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
+    const bidseq = bidNtceOrd !== '' ? String(bidNtceOrd).padStart(3, '0') : '000';
+    const isEncodedKey = /[%=\+]/g.test(serviceKey);
+    const keyParam = isEncodedKey ? serviceKey : encodeURIComponent(serviceKey);
+
+    const detailOps = [
+      'getBidPblancListInfoDtl',               // 통합 입찰공고 상세 (공공데이터포털 명세)
+      'getBidPblancListInfoThngPPSSrchDtl',   // 물품 상세
+      'getBidPblancListInfoServcPPSSrchDtl',  // 용역 상세
+      'getBidPblancListInfoCnstwkPPSSrchDtl'  // 공사 상세
+    ];
+
+    let detailData = null;
+    let lastError = null;
+
+    for (const op of detailOps) {
+      const url = `${baseUrl}/${op}?ServiceKey=${keyParam}&bidNtceNo=${encodeURIComponent(bidNtceNo)}&bidNtceOrd=${encodeURIComponent(bidseq)}&type=json&numOfRows=1&pageNo=1`;
+      try {
+        const apiRes = await axios.get(url, {
+          timeout: 15000,
+          responseType: 'text',
+          headers: { Accept: 'application/json, application/xml, text/xml' },
+          validateStatus: () => true
+        });
+
+        if (apiRes.status !== 200) {
+          lastError = `HTTP ${apiRes.status}`;
+          continue;
+        }
+
+        const { parsed } = await parseApiResponse(apiRes.data, apiRes.headers['content-type']);
+        const body = parsed?.response?.body;
+        if (!body) {
+          lastError = 'No body';
+          continue;
+        }
+
+        let items = body.items ?? body.item;
+        if (items && !Array.isArray(items) && items.item) {
+          items = Array.isArray(items.item) ? items.item : [items.item];
+        } else if (items && !Array.isArray(items)) {
+          items = [items];
+        }
+        if (items && items.length > 0) {
+          detailData = items[0];
+          console.log(`[Bid Detail] API success: ${op}`);
+          break;
+        }
+        lastError = 'No items in response';
+      } catch (err) {
+        lastError = err.message;
+        console.warn(`[Bid Detail] ${op} failed:`, err.message);
+      }
+    }
+
+    if (!detailData) {
+      return res.status(404).json({
+        success: false,
+        error: '해당 공고의 상세 정보를 찾을 수 없습니다.',
+        detail: lastError || 'No data from detail APIs'
+      });
+    }
+
+    // 3) 첨부파일 URL 추출 (누락 방지, 공고서·첨부문서 포함)
+    const attachmentUrls = [...extractAttachmentUrls(detailData)];
+    const attachments = attachmentUrls.map(url => ({ url, label: decodeURIComponent((url.split('/').pop() || '').split('?')[0]) || '첨부파일' }));
+
+    // 4) 표준 스키마 (G2B 필드명 → 읽기 쉬운 키)
+    const standardized = buildStandardizedDetail(detailData, attachments);
+
+    // 5) 원본 + attachments + standardized (하위 호환)
+    const payload = {
+      ...detailData,
+      attachments,
+      standardized
+    };
+
+    // 6) Firestore에 1시간 TTL로 저장
+    const expiresAt = new Date(Date.now() + DETAIL_CACHE_TTL_SEC * 1000);
+    await detailRef.set({
+      ...payload,
+      _metadata: {
+        bidNtceNo,
+        bidNtceOrd: bidseq,
+        cachedAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+        ttl: DETAIL_CACHE_TTL_SEC
+      }
+    }, { merge: true });
+
+    console.log(`[Bid Detail] Cached: ${cacheKey}, attachments: ${payload.attachments?.length || 0}`);
+    res.status(200).json({
+      success: true,
+      data: payload,
+      cached: false
+    });
+  } catch (error) {
+    error.context = { endpoint: 'bid-detail', bidNtceNo, bidNtceOrd };
+    next(error);
+  }
+});
+
+// 검색 캐시 신선도: 이 시간보다 오래된 캐시는 무시하고 조달청에서 새로 가져옴 (ms)
+const SEARCH_CACHE_MAX_AGE_MS = 3 * 60 * 1000; // 3분 (결과 정확도·갱신 확보)
+
+// 캐시 키 생성 함수 (검색어 + 날짜 범위 포함 → 데이터 겹침 방지)
 function generateCacheKey(bidNtceNo, keyword = '', type = 'bid-search', inqryBgnDt = '', inqryEndDt = '') {
   if (!bidNtceNo) return null;
   
@@ -958,6 +1232,7 @@ function generateCacheKey(bidNtceNo, keyword = '', type = 'bid-search', inqryBgn
     keyParts.push(type);
   }
   
+  // 날짜 범위 필수 포함 (검색 결과가 기간별로 겹치지 않도록)
   if (inqryBgnDt && String(inqryBgnDt).length <= 20) {
     keyParts.push(String(inqryBgnDt));
   }
@@ -1005,27 +1280,31 @@ async function saveBidToFirestore(bidItem, keyword = '', type = 'bid-search', in
   }
 }
 
-// 캐시된 데이터 조회 (검색어 + 조회 기간 기반)
+// 캐시된 데이터 조회 (검색어 + 조회 기간 필수 → 날짜 범위별로 정교하게 관리)
 async function getCachedBids(keyword, pageNo = 1, numOfRows = 10, type = 'bid-search', inqryBgnDt = '', inqryEndDt = '') {
   try {
     if (!keyword || !keyword.trim()) {
       console.log('[Cache] No keyword provided, skipping cache');
       return null;
     }
+    // 날짜 범위 없으면 캐시 미사용 (데이터 겹침 방지)
+    if (!inqryBgnDt || !inqryEndDt) {
+      console.log('[Cache] No date range provided, skipping cache (keyword + date range required)');
+      return null;
+    }
     
     const now = admin.firestore.Timestamp.now();
+    const minCachedAt = admin.firestore.Timestamp.fromDate(new Date(Date.now() - SEARCH_CACHE_MAX_AGE_MS));
     const trimmedKeyword = keyword.trim();
     
-    console.log(`[Cache] Checking cache for keyword="${trimmedKeyword}", type=${type}, inqryBgnDt=${inqryBgnDt}, inqryEndDt=${inqryEndDt}`);
+    console.log(`[Cache] Checking cache for keyword="${trimmedKeyword}", type=${type}, inqryBgnDt=${inqryBgnDt}, inqryEndDt=${inqryEndDt} (maxAge=${SEARCH_CACHE_MAX_AGE_MS}ms)`);
     
-    let query = db.collection('tenders')
+    const query = db.collection('tenders')
       .where('_metadata.keyword', '==', trimmedKeyword)
       .where('_metadata.type', '==', type)
-      .where('_metadata.expiresAt', '>', now);
-    
-    if (inqryBgnDt && inqryEndDt) {
-      query = query.where('_metadata.inqryBgnDt', '==', String(inqryBgnDt)).where('_metadata.inqryEndDt', '==', String(inqryEndDt));
-    }
+      .where('_metadata.inqryBgnDt', '==', String(inqryBgnDt))
+      .where('_metadata.inqryEndDt', '==', String(inqryEndDt))
+      .where('_metadata.cachedAt', '>', minCachedAt);
     
     const snapshot = await query
       .limit(1000)

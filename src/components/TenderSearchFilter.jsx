@@ -4,6 +4,7 @@ import { getApiBaseUrl, apiGet } from '../utils/api';
 import { firebaseService } from '../services/firebaseService';
 import { auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import TenderDetail from './TenderDetail';
 
 const BUSINESS_TYPE_OPTIONS = ['전체', '물품', '일반용역', '기술용역', '공사', '기타', '민간'];
 const BUSINESS_STATUS_OPTIONS = ['전체', '외자', '비축', '리스'];
@@ -48,7 +49,7 @@ const mapSearchParamsToApiParams = (params) => {
     fromBidDt: formatDateParam(params.fromBidDt, true),  // 시작일: 0000 추가
     toBidDt: formatDateParam(params.toBidDt, false),     // 종료일: 2359 추가
     bidNtceDtlClsfCd: params.bidNtceDtlClsfCd || '',
-    excludeDeadline: params.excludeDeadline === true ? 'true' : 'false', // 입찰마감제외 (나라장터와 동일)
+    excludeDeadline: params.excludeDeadline !== false ? 'true' : 'false', // 사용자 선택 (기본: 마감 제외)
     insttNm: params.insttNm?.trim() || '',
     refNo: params.refNo?.trim() || '',
     area: params.area || '',
@@ -177,6 +178,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
     inqryDiv: '1',
     fromBidDt: defaultDates.fromBidDt,
     toBidDt: defaultDates.toBidDt,
+    excludeDeadline: true, // 검색 결과 제한: 마감된 공고 제외 (사용자 선택)
     bidNtceDtlClsfCd: '전체', // 나라장터와 비교 시 "실공고" 선택
     insttNm: '',
     refNo: '',
@@ -192,7 +194,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
     contractLawType: '전체',
     contractMethod: '전체',
     awardMethod: '전체',
-    excludeDeadline: false, // 나라장터와 비교 시 "입찰마감제외" 체크
+    excludeDeadline: true, // 무조건 마감된 공고 제외 (항상 적용)
     businessTypes: ['전체'],
     businessStatuses: ['전체'],
     isAnnouncingInstitution: true,
@@ -210,7 +212,8 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
   // 즐겨찾기 관련 상태
   const [currentUser, setCurrentUser] = useState(null);
   const [bookmarks, setBookmarks] = useState([]); // bidNtceNo 배열
-  
+  // 상세 보기 모달: 선택한 공고 (item | null)
+  const [selectedDetailBid, setSelectedDetailBid] = useState(null);
   // Firebase Auth 체크
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -223,7 +226,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
     });
     return () => unsubscribe();
   }, []);
-  
+
   // 즐겨찾기 로드 함수
   const loadBookmarks = async (userId) => {
     try {
@@ -292,17 +295,12 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
     return `${item.bidNtceNo}-${ord}`;
   };
 
-  // 나라장터 공식 사이트 공고 상세 페이지로 이동 (bidseq 3자리: 000, 001 …)
-  const handleRowClick = (item) => {
-    if (!item?.bidNtceNo) {
-      console.warn('⚠️ [TenderSearchFilter] 공고번호가 없어 링크를 열 수 없습니다.');
-      return;
-    }
-    const bidseq = item.bidNtceOrd != null && item.bidNtceOrd !== ''
-      ? String(item.bidNtceOrd).padStart(3, '0')
-      : '000';
-    const g2bUrl = `https://www.g2b.go.kr/ep/invitation/publish/bidInfoDtl.do?bidno=${encodeURIComponent(item.bidNtceNo)}&bidseq=${bidseq}&releaseYn=Y`;
-    window.open(g2bUrl, '_blank', 'noopener,noreferrer');
+  // 나라장터 입찰공고 검색(결과) 페이지 URL — 공고번호 클릭 시 해당 공고를 검색결과에서 볼 수 있도록
+  const getBidSearchResultUrl = (item) => {
+    const base = 'https://www.g2b.go.kr/ep/invitation/publish/publishInvitation.do';
+    if (!item?.bidNtceNo) return base;
+    const params = new URLSearchParams({ bidNtceNo: item.bidNtceNo });
+    return `${base}?${params.toString()}`;
   };
 
   const handleInputChange = (key) => (event) => {
@@ -349,7 +347,12 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
   const handleSearch = async () => {
     setLoading(true);
     setError('');
-    const mappedParams = mapSearchParamsToApiParams(searchParams);
+    const paramsWithDates = {
+      ...searchParams,
+      fromBidDt: searchParams.fromBidDt || defaultDates.fromBidDt,
+      toBidDt: searchParams.toBidDt || defaultDates.toBidDt
+    };
+    const mappedParams = mapSearchParamsToApiParams(paramsWithDates);
 
     try {
       if (!resolvedApiBaseUrl) {
@@ -456,9 +459,10 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
         const responseData = err.response.data;
         
         if (status === 404 || status >= 500) {
-          // 백엔드에서 반환한 에러 메시지 사용
+          // 백엔드에서 반환한 에러 메시지 사용 (message가 있으면 함께 표시)
           const errorMsg = responseData?.error || responseData?.message || '프록시 서버 연결 확인 필요';
-          setError(errorMsg);
+          const detailMsg = responseData?.message && responseData?.message !== errorMsg ? responseData.message : '';
+          setError(detailMsg ? `${errorMsg}\n\n${detailMsg}` : errorMsg);
         } else if (status === 400) {
           // 잘못된 요청 (파라미터 오류 등)
           const errorMsg = responseData?.error || '요청 파라미터가 올바르지 않습니다.';
@@ -499,6 +503,14 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-card border border-blue-200 p-6">
+      {selectedDetailBid ? (
+        <TenderDetail
+          bidNtceNo={selectedDetailBid.bidNtceNo}
+          bidNtceOrd={selectedDetailBid.bidNtceOrd}
+          onClose={() => setSelectedDetailBid(null)}
+          fallbackItem={selectedDetailBid}
+        />
+      ) : null}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">입찰공고번호</label>
@@ -548,11 +560,11 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               onChange={handleInputChange('toBidDt')}
               className="flex-1 px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
             />
-            <label className="inline-flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap">
+            <label className="inline-flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap" title="체크 시 마감된 공고 제외">
               <input
                 type="checkbox"
-                checked={searchParams.excludeDeadline}
-                onChange={handleInputChange('excludeDeadline')}
+                checked={searchParams.excludeDeadline !== false}
+                onChange={(e) => setSearchParams((prev) => ({ ...prev, excludeDeadline: e.target.checked }))}
                 className="w-4 h-4 text-brand rounded"
               />
               입찰마감제외
@@ -791,7 +803,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
           <div className="flex items-start gap-2">
             <Icons.AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-bold text-red-700 mb-1">{error}</p>
+              <p className="font-bold text-red-700 mb-1 whitespace-pre-line">{error}</p>
               {import.meta.env.MODE === 'development' && (
                 <div className="mt-2 text-xs text-red-600 space-y-1">
                   <p>• 현재 API URL: {resolvedApiBaseUrl || '(설정되지 않음)'}</p>
@@ -860,7 +872,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
       {results.length > 0 ? (
         <div className="mt-6 bg-white rounded-2xl border border-blue-200 overflow-hidden">
           <p className="px-4 py-2 text-sm text-gray-600 bg-blue-50/80 border-b border-blue-200">
-            검색결과는 나라장터(공공데이터포털)와 동일한 데이터를 사용합니다. 행을 클릭하면 나라장터에서 상세 내용을 볼 수 있습니다.
+            검색결과는 나라장터(공공데이터포털)와 동일한 데이터를 사용합니다. 공고번호를 클릭하면 나라장터 입찰공고 검색결과에서 확인할 수 있습니다.
           </p>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -869,6 +881,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                   <th className="px-4 py-3 text-left font-bold">No</th>
                   <th className="px-4 py-3 text-left font-bold">즐겨찾기</th>
                   <th className="px-4 py-3 text-left font-bold">공고번호</th>
+                  <th className="px-4 py-3 text-left font-bold">상세</th>
                   <th className="px-4 py-3 text-left font-bold">공고명</th>
                   <th className="px-4 py-3 text-left font-bold">공고기관</th>
                   <th className="px-4 py-3 text-left font-bold">수요기관</th>
@@ -878,11 +891,9 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               </thead>
               <tbody className="divide-y divide-blue-100">
                 {results.map((item, index) => (
-                  <tr 
-                    key={`${item?.bidNtceNo || 'item'}-${index}`} 
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => handleRowClick(item)}
-                    title="나라장터에서 상세 보기"
+                  <tr
+                    key={`${item?.bidNtceNo || 'item'}-${index}`}
+                    className="hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-4 py-3 text-gray-500">{index + 1}</td>
                     <td className="px-4 py-3">
@@ -897,11 +908,27 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                         />
                       </button>
                     </td>
-                    <td className="px-4 py-3 text-gray-700 hover:text-brand transition-colors">
-                      <span className="flex items-center gap-1">
+                    <td className="px-4 py-3">
+                      <a
+                        href={getBidSearchResultUrl(item)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-gray-700 hover:text-brand transition-colors underline decoration-brand/50 hover:decoration-brand"
+                        title="나라장터 입찰공고 검색결과에서 보기"
+                      >
                         {formatBidNoWithOrd(item)}
                         <Icons.ExternalLink className="w-3 h-3 opacity-50" />
-                      </span>
+                      </a>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setSelectedDetailBid(item); }}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium text-brand border border-brand/50 hover:bg-brand/10"
+                        title="상세 내역 보기"
+                      >
+                        상세 보기
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-gray-700 hover:text-brand transition-colors font-medium">
                       {item?.bidNtceNm || '-'}

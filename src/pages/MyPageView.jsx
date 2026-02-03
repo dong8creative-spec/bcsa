@@ -37,17 +37,18 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
     const [bookmarksLoading, setBookmarksLoading] = useState(false);
     const [bookmarkDetails, setBookmarkDetails] = useState([]);
     
-    // 즐겨찾기 로드
+    // 즐겨찾기 로드 (userId: Firebase Auth uid로 통일 - 검색 화면 즐겨찾기와 동일 경로)
     const loadBookmarks = useCallback(async () => {
-        if (!user || !user.id) {
+        const userId = user?.uid ?? user?.id;
+        if (!user || !userId) {
             setBookmarkDetails([]);
             return;
         }
         
         setBookmarksLoading(true);
         try {
-            // Firestore에서 즐겨찾기 목록 가져오기
-            const bookmarkList = await firebaseService.getBookmarks(user.id);
+            // Firestore에서 즐겨찾기 목록 가져오기 (users/{userId}/bookmarks)
+            const bookmarkList = await firebaseService.getBookmarks(userId);
             setBookmarks(bookmarkList);
             
             // 각 bidNtceNo로 API 호출하여 상세 정보 가져오기
@@ -93,7 +94,8 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
     }, [user]);
     
     useEffect(() => {
-        if (user && user.id && activeTab === 'bookmarks') {
+        const userId = user?.uid ?? user?.id;
+        if (user && userId && activeTab === 'bookmarks') {
             loadBookmarks();
         } else if (activeTab !== 'bookmarks') {
             // 다른 탭으로 전환할 때 즐겨찾기 데이터 초기화
@@ -162,9 +164,11 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
     
     const handleRemoveBookmark = async (bidNtceNo) => {
         if (!confirm('즐겨찾기에서 삭제하시겠습니까?')) return;
-        
+        const userId = user?.uid ?? user?.id;
+        if (!userId) return;
+
         try {
-            await firebaseService.removeBookmark(user.id, bidNtceNo);
+            await firebaseService.removeBookmark(userId, bidNtceNo);
             // 목록 새로고침
             loadBookmarks();
         } catch (error) {

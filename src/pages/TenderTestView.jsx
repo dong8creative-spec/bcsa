@@ -14,6 +14,11 @@ export const TenderTestView = ({ onBack, pageTitles }) => {
           <div>
             <PageTitle pageKey="tenderTest" pageTitles={pageTitles} defaultText="나라장터 입찰공고 검색 테스트" />
             <p className="text-gray-500 text-sm">나라장터 API 연동 테스트 페이지입니다.</p>
+            <p className="text-gray-500 text-xs mt-1">
+              검색 조건·API 안내:{' '}
+              <a href="https://data.g2b.go.kr" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">조달데이터허브</a>
+              {' '}(나라장터 입찰공고정보서비스 — 목록/상세조회 API)
+            </p>
           </div>
           {onBack && (
             <button
