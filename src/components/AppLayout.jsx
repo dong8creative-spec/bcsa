@@ -434,89 +434,23 @@ const AppLayout = (props) => {
                 }
             })()}
 
-            <footer ref={footerRef} className="py-12 bg-white px-6 shadow-[0_-4px_25px_rgba(0,69,165,0.05)] border-none">
-                <div className="container mx-auto max-w-6xl">
-                    <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-12">
-                        <div>
-                            <div className="flex items-center gap-2 mb-4 h-20 overflow-hidden">
-                                <img 
-                                    src="/assets/images/logo.png" 
-                                    alt="부산청년사업가들" 
-                                    className="h-full w-auto object-contain" 
-                                    onError={(e) => {
-                                        e.target.onerror = null;
-                                        // 절대 경로 사용 (Vite가 public을 루트로 복사)
-                                        if (e.target.src.includes('/assets/')) {
-                                            e.target.src = '/assets/images/logo.png';
-                                        } else {
-                                        e.target.style.display = 'none';
-                                        const fallback = document.createElement('div');
-                                        fallback.className = 'text-xl font-black text-brand';
-                                        fallback.textContent = '부청사';
-                                        e.target.parentNode.appendChild(fallback);
-                                        }
-                                    }}
-                                />
-                            </div>
-                            <p className="text-gray-500 text-sm leading-relaxed max-w-xs break-keep">부산 지역 청년 사업가들이 모여 함께 성장하는<br/>비즈니스 커뮤니티입니다.</p>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-12">
-                            {(menuEnabled['부청사 회원'] || menuEnabled['커뮤니티']) ? (
-                                <div>
-                                    <h4 className="font-bold text-dark mb-4">커뮤니티</h4>
-                                    <ul className="space-y-2 text-sm text-gray-500">
-                                        {menuEnabled['부청사 회원'] ? (
-                                            <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allMembers'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">부청사 회원</button></li>
-                                        ) : null}
-                                        {menuEnabled['커뮤니티'] ? (
-                                            <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('community'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">커뮤니티 게시판</button></li>
-                                        ) : null}
-                                    </ul>
-                                </div>
-                            ) : null}
-                            {menuEnabled['프로그램'] ? (
-                                <div>
-                                    <h4 className="font-bold text-dark mb-4">프로그램</h4>
-                                    <ul className="space-y-2 text-sm text-gray-500">
-                                        <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">세미나 일정</button></li>
-                                    </ul>
-                                </div>
-                            ) : null}
-                            {(menuEnabled['후원'] || menuEnabled['소개']) ? (
-                                <div>
-                                    <h4 className="font-bold text-dark mb-4">지원</h4>
-                                    <ul className="space-y-2 text-sm text-gray-500">
-                                        <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">공지사항</button></li>
-                                        {menuEnabled['후원'] ? (
-                                            <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('donation'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">후원하기</button></li>
-                                        ) : null}
-                                        {menuEnabled['소개'] ? (
-                                            <li><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-brand text-left">소개</button></li>
-                                        ) : null}
-                                    </ul>
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
-                    <div className="pt-8 border-t border-brand/5 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-400">
-                        <span>&copy; 2025 BCSA. All rights reserved.</span>
-                        <div className="flex gap-4 items-center">
-                            <a href="#" className="hover:text-dark">이용약관</a>
-                            <a href="#" className="hover:text-dark">개인정보처리방침</a>
-                            <button 
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    window.location.href = '/admin';
-                                }}
-                                className="hover:text-dark opacity-50 hover:opacity-100 transition-opacity"
-                                title="관리자 페이지"
-                            >
-                                Admin
-                            </button>
-                        </div>
-                    </div>
+            <footer ref={footerRef} className="py-12 px-6 text-white bg-[#0046a5]">
+                <div className="container mx-auto max-w-6xl text-left">
+                    <h3 className="text-lg font-bold text-white mb-4">부산청년사업가들</h3>
+                    <p className="text-sm text-white/90 mb-2">부산광역시 연제구 법원남로9번길 17(거제동) | 대표 정은지 | 사업자등록번호 792-72-00616</p>
+                    <p className="text-sm text-white/90 mb-2">대표번호 <a href="tel:070-8064-7238" className="hover:text-white transition-colors">070-8064-7238</a> (평일 09:00–18:00 / 주말·공휴일 휴무) | 대표 메일 <a href="mailto:pujar@naver.com" className="hover:text-white transition-colors">pujar@naver.com</a></p>
+                    <p className="text-xs text-white/70 mb-4">© 2025 부산청년사업가들 (BCSA). All rights reserved.</p>
+                    <p className="text-xs text-white/70">
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
+                        <span className="mx-2">|</span>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
+                        <span className="mx-2">|</span>
+                        <a href="#" className="hover:text-white/90 transition-colors">서비스 이용약관</a>
+                        <span className="mx-2">|</span>
+                        <a href="#" className="hover:text-white/90 transition-colors">개인정보 처리방침</a>
+                        <span className="mx-2">|</span>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = '/admin'; }} className="text-white/60 hover:text-white/90 transition-colors" title="관리자">Admin</button>
+                    </p>
                 </div>
             </footer>
 
