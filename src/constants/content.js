@@ -99,6 +99,13 @@ export const defaultContent = {
     about_future_6_desc: "교육 콘텐츠, 굿즈 등 지속가능한 운영 기반 마련",
     about_contact_phone: "010-5323-9310",
     about_contact_email: "pujar@naver.com",
+    // 푸터 텍스트 (페이지 관리에서 수정)
+    footer_title: '부산청년사업가 포럼',
+    footer_line2: '부산광역시 연제구 법원남로9번길 17(거제동) | 대표 정은지 | 사업자등록번호 792-72-00616',
+    footer_phone: '070-8064-7238',
+    footer_hours: '평일 09:00–18:00 / 주말·공휴일 휴무',
+    footer_email: 'pujar@naver.com',
+    footer_copyright: '© 2025 부산청년사업가 포럼 (BCSA). All rights reserved.',
     // 페이지 제목 설정
     pageTitles: {
         home: { text: "함께 성장하는\n청년 사업가 커뮤니티\n부산청년사업가들", fontSize: "text-4xl", fontWeight: "font-black" },

@@ -95,7 +95,8 @@ export const ContentManagement = () => {
     { id: 'features', label: 'Features 섹션', icon: Icons.CheckCircle },
     { id: 'activities', label: '활동 섹션', icon: Icons.Calendar },
     { id: 'donation', label: '후원 섹션', icon: Icons.DollarSign },
-    { id: 'about', label: '소개 페이지', icon: Icons.Info }
+    { id: 'about', label: '소개 페이지', icon: Icons.Info },
+    { id: 'footer', label: '푸터', icon: Icons.FileText }
   ];
 
   const renderHeroSection = () => (
@@ -698,6 +699,80 @@ export const ContentManagement = () => {
     </div>
   );
 
+  const renderFooterSection = () => (
+    <div className="space-y-6">
+      <h3 className="text-xl font-bold text-dark mb-4">푸터 텍스트</h3>
+      <p className="text-sm text-gray-600 mb-6">사이트 하단 푸터에 표시되는 문구를 수정할 수 있습니다.</p>
+
+      <div>
+        <label className="block text-sm font-bold text-gray-700 mb-2">푸터 제목 (1줄)</label>
+        <input
+          type="text"
+          value={content.footer_title || ''}
+          onChange={(e) => handleInputChange('footer_title', e.target.value)}
+          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          placeholder="예: 부산청년사업가들"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-bold text-gray-700 mb-2">주소 · 대표 · 사업자등록번호 (2줄, | 로 구분)</label>
+        <input
+          type="text"
+          value={content.footer_line2 || ''}
+          onChange={(e) => handleInputChange('footer_line2', e.target.value)}
+          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          placeholder="예: 부산광역시 연제구 ... | 대표 정은지 | 사업자등록번호 792-72-00616"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">대표번호</label>
+          <input
+            type="text"
+            value={content.footer_phone || ''}
+            onChange={(e) => handleInputChange('footer_phone', e.target.value)}
+            className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+            placeholder="예: 070-8064-7238"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">운영시간 문구</label>
+          <input
+            type="text"
+            value={content.footer_hours || ''}
+            onChange={(e) => handleInputChange('footer_hours', e.target.value)}
+            className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+            placeholder="예: 평일 09:00–18:00 / 주말·공휴일 휴무"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-bold text-gray-700 mb-2">대표 메일</label>
+        <input
+          type="email"
+          value={content.footer_email || ''}
+          onChange={(e) => handleInputChange('footer_email', e.target.value)}
+          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          placeholder="예: pujar@naver.com"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-bold text-gray-700 mb-2">저작권 문구</label>
+        <input
+          type="text"
+          value={content.footer_copyright || ''}
+          onChange={(e) => handleInputChange('footer_copyright', e.target.value)}
+          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          placeholder="예: © 2025 부산청년사업가들 (BCSA). All rights reserved."
+        />
+      </div>
+    </div>
+  );
+
   const renderSection = () => {
     switch (activeSection) {
       case 'images':
@@ -714,6 +789,8 @@ export const ContentManagement = () => {
         return renderDonationSection();
       case 'about':
         return renderAboutSection();
+      case 'footer':
+        return renderFooterSection();
       default:
         return renderImagesSection();
     }

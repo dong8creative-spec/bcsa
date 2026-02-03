@@ -436,10 +436,13 @@ const AppLayout = (props) => {
 
             <footer ref={footerRef} className="py-12 px-6 text-white bg-[#0046a5]">
                 <div className="container mx-auto max-w-6xl text-left">
-                    <h3 className="text-lg font-bold text-white mb-4">부산청년사업가들</h3>
-                    <p className="text-sm text-white/90 mb-2">부산광역시 연제구 법원남로9번길 17(거제동) | 대표 정은지 | 사업자등록번호 792-72-00616</p>
-                    <p className="text-sm text-white/90 mb-2">대표번호 <a href="tel:070-8064-7238" className="hover:text-white transition-colors">070-8064-7238</a> (평일 09:00–18:00 / 주말·공휴일 휴무) | 대표 메일 <a href="mailto:pujar@naver.com" className="hover:text-white transition-colors">pujar@naver.com</a></p>
-                    <p className="text-xs text-white/70 mb-4">© 2025 부산청년사업가들 (BCSA). All rights reserved.</p>
+                    <h3 className="text-lg font-bold text-white mb-4">{content?.footer_title || '부산청년사업가 포럼'}</h3>
+                    <p className="text-sm text-white/90 mb-2">{content?.footer_line2 || '부산광역시 연제구 법원남로9번길 17(거제동) | 대표 정은지 | 사업자등록번호 792-72-00616'}</p>
+                    <p className="text-sm text-white/90 mb-2">
+                        대표번호 <a href={`tel:${content?.footer_phone || '070-8064-7238'}`} className="hover:text-white transition-colors">{content?.footer_phone || '070-8064-7238'}</a>
+                        {content?.footer_hours ? ` (${content.footer_hours})` : ' (평일 09:00–18:00 / 주말·공휴일 휴무)'} | 대표 메일 <a href={`mailto:${content?.footer_email || 'pujar@naver.com'}`} className="hover:text-white transition-colors">{content?.footer_email || 'pujar@naver.com'}</a>
+                    </p>
+                    <p className="text-xs text-white/70 mb-4">{content?.footer_copyright || '© 2025 부산청년사업가 포럼 (BCSA). All rights reserved.'}</p>
                     <p className="text-xs text-white/70">
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
                         <span className="mx-2">|</span>
