@@ -6,66 +6,27 @@ import { auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import TenderDetail from './TenderDetail';
 
-const BUSINESS_TYPE_OPTIONS = ['전체', '물품', '일반용역', '기술용역', '공사', '기타', '민간'];
-const BUSINESS_STATUS_OPTIONS = ['전체', '외자', '비축', '리스'];
-
 const mapSearchParamsToApiParams = (params) => {
   // 날짜 포맷 변환: YYYYMMDDHHMM (12자리) 형식으로 변환
-  // 시작일: 0000 추가, 종료일: 2359 추가
   const formatDateParam = (dateStr, isStartDate = true) => {
     if (!dateStr) return '';
-    // 하이픈 제거
     const cleaned = dateStr.replace(/-/g, '').replace(/\s/g, '');
-    // YYYYMMDD 형식 검증 (8자리 숫자)
     if (/^\d{8}$/.test(cleaned)) {
-      // 시간 부분 추가 (시작일: 0000, 종료일: 2359)
       const timePart = isStartDate ? '0000' : '2359';
-      return cleaned + timePart; // YYYYMMDDHHMM (12자리)
+      return cleaned + timePart;
     }
-    // 형식이 맞지 않으면 빈 문자열 반환 (파라미터에서 제외됨)
     console.warn(`[Date Format] Invalid date format: ${dateStr}, expected YYYYMMDD`);
-    return '';
-  };
-
-  // 금액 필터 검증: 숫자만 허용 (콤마 등 제거)
-  const sanitizePrice = (priceStr) => {
-    if (!priceStr) return '';
-    // 콤마, 공백, 기타 문자 제거 후 숫자만 추출
-    const cleaned = String(priceStr).replace(/[,\s]/g, '');
-    // 숫자 검증
-    const num = Number(cleaned);
-    if (!isNaN(num) && num >= 0 && isFinite(num)) {
-      return Math.floor(num).toString(); // 정수로 변환
-    }
-    // 유효하지 않은 값은 빈 문자열 반환
-    console.warn(`[Price] Invalid price format: ${priceStr}`);
     return '';
   };
 
   const result = {
     bidNtceNo: params.bidNtceNo?.trim() || '',
     bidNtceNm: params.bidNtceNm?.trim() || '',
-    inqryDiv: params.inqryDiv || '1', // 기본값: 등록일시 기준 조회
-    fromBidDt: formatDateParam(params.fromBidDt, true),  // 시작일: 0000 추가
-    toBidDt: formatDateParam(params.toBidDt, false),     // 종료일: 2359 추가
+    inqryDiv: params.inqryDiv || '1',
+    fromBidDt: formatDateParam(params.fromBidDt, true),
+    toBidDt: formatDateParam(params.toBidDt, false),
     bidNtceDtlClsfCd: params.bidNtceDtlClsfCd || '',
-    excludeDeadline: params.excludeDeadline !== false ? 'true' : 'false', // 사용자 선택 (기본: 마감 제외)
-    insttNm: params.insttNm?.trim() || '',
-    refNo: params.refNo?.trim() || '',
-    area: params.area || '',
-    industry: params.industry?.trim() || '',
-    fromEstPrice: sanitizePrice(params.fromEstPrice),
-    toEstPrice: sanitizePrice(params.toEstPrice),
-    detailItemNo: params.detailItemNo?.trim() || '',
-    prNo: params.prNo?.trim() || '',
-    shoppingMallYn: params.shoppingMallYn || '',
-    domesticYn: params.domesticYn || '',
-    contractType: params.contractType || '',
-    contractLawType: params.contractLawType || '',
-    contractMethod: params.contractMethod || '',
-    awardMethod: params.awardMethod || '',
-    businessTypes: params.businessTypes || [],
-    businessStatuses: params.businessStatuses || []
+    excludeDeadline: params.excludeDeadline !== false ? 'true' : 'false'
   };
 
   // ====== 데이터 클렌징: 빈 값, null, undefined, '전체' 완전 제거 ======
@@ -178,28 +139,8 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
     inqryDiv: '1',
     fromBidDt: defaultDates.fromBidDt,
     toBidDt: defaultDates.toBidDt,
-    excludeDeadline: true, // 검색 결과 제한: 마감된 공고 제외 (사용자 선택)
-    bidNtceDtlClsfCd: '전체', // 나라장터와 비교 시 "실공고" 선택
-    insttNm: '',
-    refNo: '',
-    area: '전체',
-    industry: '',
-    fromEstPrice: '',
-    toEstPrice: '',
-    detailItemNo: '',
-    prNo: '',
-    shoppingMallYn: '전체',
-    domesticYn: '전체',
-    contractType: '전체',
-    contractLawType: '전체',
-    contractMethod: '전체',
-    awardMethod: '전체',
-    excludeDeadline: true, // 무조건 마감된 공고 제외 (항상 적용)
-    businessTypes: ['전체'],
-    businessStatuses: ['전체'],
-    isAnnouncingInstitution: true,
-    isDemandingInstitution: false,
-    isDetailedOpen: false
+    excludeDeadline: true,
+    bidNtceDtlClsfCd: '전체'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -306,42 +247,6 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
   const handleInputChange = (key) => (event) => {
     const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
     setSearchParams((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleBusinessTypeToggle = (type) => {
-    setSearchParams((prev) => {
-      if (type === '전체') {
-        const next = prev.businessTypes.includes('전체') ? [] : ['전체'];
-        return { ...prev, businessTypes: next.length ? next : ['전체'] };
-      }
-
-      const filtered = prev.businessTypes.filter((item) => item !== '전체');
-      const exists = filtered.includes(type);
-      const nextTypes = exists ? filtered.filter((item) => item !== type) : [...filtered, type];
-
-      return {
-        ...prev,
-        businessTypes: nextTypes.length ? nextTypes : ['전체']
-      };
-    });
-  };
-
-  const handleBusinessStatusToggle = (status) => {
-    setSearchParams((prev) => {
-      if (status === '전체') {
-        const next = prev.businessStatuses.includes('전체') ? [] : ['전체'];
-        return { ...prev, businessStatuses: next.length ? next : ['전체'] };
-      }
-
-      const filtered = prev.businessStatuses.filter((item) => item !== '전체');
-      const exists = filtered.includes(status);
-      const nextStatuses = exists ? filtered.filter((item) => item !== status) : [...filtered, status];
-
-      return {
-        ...prev,
-        businessStatuses: nextStatuses.length ? nextStatuses : ['전체']
-      };
-    });
   };
 
   const handleSearch = async () => {
@@ -482,25 +387,6 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
     }
   };
 
-  const businessTypeButtons = useMemo(
-    () =>
-      BUSINESS_TYPE_OPTIONS.map((type) => (
-        <button
-          key={type}
-          type="button"
-          onClick={() => handleBusinessTypeToggle(type)}
-          className={`px-3 py-1.5 rounded-lg text-sm font-bold border transition-colors ${
-            searchParams.businessTypes.includes(type)
-              ? 'bg-brand text-white border-brand'
-              : 'bg-white text-gray-600 border-blue-200 hover:text-brand hover:border-brand'
-          }`}
-        >
-          {type}
-        </button>
-      )),
-    [searchParams.businessTypes]
-  );
-
   return (
     <div className="bg-white rounded-2xl shadow-card border border-blue-200 p-6">
       {selectedDetailBid ? (
@@ -571,231 +457,6 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
             </label>
           </div>
         </div>
-
-        <div className="lg:col-span-3">
-          <button
-            type="button"
-            onClick={() =>
-              setSearchParams((prev) => ({ ...prev, isDetailedOpen: !prev.isDetailedOpen }))
-            }
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-brand"
-          >
-            <Icons.ChevronDown size={16} className={`transition-transform ${searchParams.isDetailedOpen ? 'rotate-180' : ''}`} />
-            상세조건 {searchParams.isDetailedOpen ? '접기' : '펼치기'}
-          </button>
-        </div>
-
-        {/* 상세조건: 접힌 상태에서 펼치면 업무구분·기관명 등 표시 (나라장터와 동일) */}
-        {searchParams.isDetailedOpen ? (
-          <>
-            <div className="lg:col-span-3">
-              <label className="block text-sm font-bold text-gray-700 mb-2">업무구분</label>
-              <div className="flex flex-wrap gap-2">{businessTypeButtons}</div>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">업무여부</label>
-              <div className="flex flex-wrap gap-2">
-                {BUSINESS_STATUS_OPTIONS.map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => handleBusinessStatusToggle(status)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-bold border transition-colors ${
-                      searchParams.businessStatuses.includes(status)
-                        ? 'bg-brand text-white border-brand'
-                        : 'bg-white text-gray-600 border-blue-200 hover:text-brand hover:border-brand'
-                    }`}
-                  >
-                    {status}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">기관명</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={searchParams.insttNm}
-                  onChange={handleInputChange('insttNm')}
-                  placeholder="기관명 입력"
-                  className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-                />
-                <div className="flex items-center gap-3 text-xs text-gray-600 whitespace-nowrap">
-                  <label className="inline-flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      checked={searchParams.isAnnouncingInstitution}
-                      onChange={handleInputChange('isAnnouncingInstitution')}
-                      className="w-4 h-4 text-brand rounded"
-                    />
-                    공고기관
-                  </label>
-                  <label className="inline-flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      checked={searchParams.isDemandingInstitution}
-                      onChange={handleInputChange('isDemandingInstitution')}
-                      className="w-4 h-4 text-brand rounded"
-                    />
-                    수요기관
-                  </label>
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">참조번호</label>
-              <input
-                type="text"
-                value={searchParams.refNo}
-                onChange={handleInputChange('refNo')}
-                placeholder="참조번호 입력"
-                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">참가제한지역</label>
-              <select
-                value={searchParams.area}
-                onChange={handleInputChange('area')}
-                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-              >
-                <option value="전체">전체</option>
-                <option value="부산">부산</option>
-                <option value="서울">서울</option>
-                <option value="경기">경기</option>
-              </select>
-            </div>
-            <div className="lg:col-span-3">
-              <label className="block text-sm font-bold text-gray-700 mb-2">업종</label>
-              <input
-                type="text"
-                value={searchParams.industry}
-                onChange={handleInputChange('industry')}
-                placeholder="업종 입력"
-                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">추정가격</label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={searchParams.fromEstPrice}
-                  onChange={handleInputChange('fromEstPrice')}
-                  placeholder="최소"
-                  className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-                />
-                <input
-                  type="number"
-                  value={searchParams.toEstPrice}
-                  onChange={handleInputChange('toEstPrice')}
-                  placeholder="최대"
-                  className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">세부품명번호</label>
-              <input
-                type="text"
-                value={searchParams.detailItemNo}
-                onChange={handleInputChange('detailItemNo')}
-                placeholder="세부품명번호 입력"
-                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">조달요청번호/PRNO</label>
-              <input
-                type="text"
-                value={searchParams.prNo}
-                onChange={handleInputChange('prNo')}
-                placeholder="조달요청번호 입력"
-                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">쇼핑몰공고</label>
-              <select
-                value={searchParams.shoppingMallYn}
-                onChange={handleInputChange('shoppingMallYn')}
-                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-              >
-                <option value="전체">전체</option>
-                <option value="Y">Y</option>
-                <option value="N">N</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">국내/국제</label>
-              <select
-                value={searchParams.domesticYn}
-                onChange={handleInputChange('domesticYn')}
-                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-              >
-                <option value="전체">전체</option>
-                <option value="국내">국내</option>
-                <option value="국제">국제</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">계약유형</label>
-              <select
-                value={searchParams.contractType}
-                onChange={handleInputChange('contractType')}
-                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-              >
-                <option value="전체">전체</option>
-                <option value="일반">일반</option>
-                <option value="수의">수의</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">계약법구분</label>
-              <div className="flex gap-2">
-                {['전체', '국가계약법', '지방계약법'].map((law) => (
-                  <button
-                    key={law}
-                    type="button"
-                    onClick={() => setSearchParams((prev) => ({ ...prev, contractLawType: law }))}
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold border ${
-                      searchParams.contractLawType === law
-                        ? 'bg-brand text-white border-brand'
-                        : 'bg-white text-gray-600 border-blue-200 hover:text-brand hover:border-brand'
-                    }`}
-                  >
-                    {law}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">계약방법</label>
-              <select
-                value={searchParams.contractMethod}
-                onChange={handleInputChange('contractMethod')}
-                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-              >
-                <option value="전체">전체</option>
-                <option value="일괄계약">일괄계약</option>
-                <option value="수의계약">수의계약</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">낙찰방법</label>
-              <select
-                value={searchParams.awardMethod}
-                onChange={handleInputChange('awardMethod')}
-                className="w-full px-3 py-2 rounded-lg border border-blue-200 ring-1 ring-transparent focus:ring-brand focus:border-brand"
-              >
-                <option value="전체">전체</option>
-                <option value="최저가">최저가</option>
-                <option value="적격심사">적격심사</option>
-              </select>
-            </div>
-          </>
-        ) : null}
       </div>
 
       {error ? (
@@ -829,13 +490,8 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               ...prev,
               bidNtceNo: '',
               bidNtceNm: '',
-              insttNm: '',
-              refNo: '',
-              industry: '',
-              fromEstPrice: '',
-              toEstPrice: '',
-              detailItemNo: '',
-              prNo: ''
+              fromBidDt: defaultDates.fromBidDt,
+              toBidDt: defaultDates.toBidDt
             }))
           }
           className="px-4 py-2 rounded-lg border border-blue-200 text-gray-600 hover:text-brand hover:border-brand"
@@ -856,16 +512,6 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
           ) : (
             '검색'
           )}
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            setSearchParams((prev) => ({ ...prev, isDetailedOpen: !prev.isDetailedOpen }))
-          }
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand text-white font-bold hover:bg-blue-700"
-        >
-          <Icons.ChevronDown size={16} className={`transition-transform ${searchParams.isDetailedOpen ? 'rotate-180' : ''}`} />
-          상세조건
         </button>
       </div>
 
@@ -1008,7 +654,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
           </p>
           <div className="text-xs text-blue-500 space-y-1">
             <p>• 검색어를 변경하거나 제거해보세요</p>
-            <p>• 날짜 범위를 넓혀보세요 (상세조건에서 설정 가능)</p>
+            <p>• 날짜 범위를 넓혀보세요</p>
             <p>• 필터 조건을 완화해보세요</p>
           </div>
         </div>

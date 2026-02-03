@@ -52,6 +52,7 @@ export const ProgramManagement = () => {
     locationLng: null,
     capacity: '',
     category: '',
+    applicationFee: '', // 신청 비용 (원, 비어 있으면 무료)
     imageUrls: []
   });
   const [imageUploading, setImageUploading] = useState(false);
@@ -124,8 +125,10 @@ export const ProgramManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const feeNum = formData.applicationFee === '' ? null : (parseInt(String(formData.applicationFee).replace(/[,\s]/g, ''), 10) || null);
     const payload = {
       ...formData,
+      applicationFee: feeNum != null && !isNaN(feeNum) && feeNum >= 0 ? feeNum : null,
       imageUrl: formData.imageUrls?.[0] || '',
       images: formData.imageUrls || []
     };
@@ -158,6 +161,7 @@ export const ProgramManagement = () => {
       locationLng: program.locationLng || null,
       capacity: program.capacity || '',
       category: program.category || '',
+      applicationFee: program.applicationFee != null && program.applicationFee !== '' ? String(program.applicationFee) : '',
       imageUrls: urls
     });
     setShowModal(true);
@@ -187,6 +191,7 @@ export const ProgramManagement = () => {
       locationLng: null,
       capacity: '',
       category: '',
+      applicationFee: '',
       imageUrls: []
     });
   };
@@ -362,7 +367,7 @@ export const ProgramManagement = () => {
                 {editingProgram ? '프로그램 수정' : '프로그램 추가'}
               </h3>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form id="program-form" onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
                 <input
@@ -426,6 +431,20 @@ export const ProgramManagement = () => {
               </div>
 
               <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">신청 비용 (원)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={formData.applicationFee}
+                  onChange={(e) => setFormData({ ...formData, applicationFee: e.target.value })}
+                  placeholder="비워두면 무료"
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">비워두면 무료, 숫자 입력 시 해당 금액이 신청 화면에 표시되고 결제하기 버튼이 노출됩니다.</p>
+              </div>
+
+              <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
                 <input
                   type="text"
@@ -479,17 +498,21 @@ export const ProgramManagement = () => {
                   )}
                 </button>
               </div>
-
-              <button
-                  type="submit"
-                  className="w-full px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors mt-6"
-                >
-                  {editingProgram ? '수정' : '추가'}
-                </button>
             </form>
             </div>
-            <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
-              <button type="button" onClick={() => setShowModal(false)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+            <div className="shrink-0 border-t border-blue-200 p-4 flex gap-3 justify-end">
+              <button
+                type="submit"
+                form="program-form"
+                className="flex-1 max-w-[12rem] px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
+              >
+                {editingProgram ? '수정' : '추가'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="flex-1 max-w-[12rem] px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200"
+              >
                 닫기
               </button>
             </div>

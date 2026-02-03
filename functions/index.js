@@ -650,9 +650,8 @@ app.get('/api/bid-search', async (req, res) => {
   console.log(`[Bid Search] BusinessTypes: ${JSON.stringify(businessTypes)}, apiPaths=${JSON.stringify(apiPaths)}`);
 
   try {
-    // 캐시 확인 (키워드 검색 시, 단일 검색일 때만, nocache·excludeDeadline이 아닐 때. 이중 검색/입찰마감제외 시 캐시 미사용)
-    const useDualSearch = keyword.trim() && !(insttNm && String(insttNm).trim());
-    if (keyword.trim() && !useDualSearch && !nocache && !excludeDeadline) {
+    // 캐시 확인 (키워드 검색 시, nocache·입찰마감제외가 아닐 때만. 캐시 키: keyword+type+inqryBgnDt+inqryEndDt)
+    if (keyword.trim() && !nocache && !excludeDeadline) {
       const cachedResult = await getCachedBids(keyword.trim(), pageNo, numOfRows, type, inqryBgnDt, inqryEndDt);
       if (cachedResult && cachedResult.items.length > 0) {
         console.log(`[Cache] Returning cached data for keyword="${keyword}", type=${type}`);
@@ -680,17 +679,9 @@ app.get('/api/bid-search', async (req, res) => {
       }
     }
 
-    // 나라장터와 동일: 키워드만 있고 상세조건 기관명이 비어 있으면 공고명+기관명 이중 검색 후 병합
-    const callSpecs = [];
-    if (useDualSearch) {
-      apiPaths.forEach(apiPath => {
-        callSpecs.push({ apiPath, searchOverrides: null }); // 공고명 검색 (keyword -> bidNtceNm)
-        callSpecs.push({ apiPath, searchOverrides: { bidNtceNm: '', insttNm: keyword } }); // 기관명 검색
-      });
-      console.log(`[Bid Search] Dual search (공고명+기관명): ${callSpecs.length} API calls`);
-    } else {
-      callSpecs.push(...apiPaths.map(apiPath => ({ apiPath, searchOverrides: null })));
-    }
+    // 단일 API 호출: 타입별 1회만 (공고명=keyword, 기관명=insttNm 요청값 그대로 사용)
+    const callSpecs = apiPaths.map(apiPath => ({ apiPath, searchOverrides: null }));
+    console.log(`[Bid Search] Single API per type: ${callSpecs.length} API calls`);
 
     const apiResults = await Promise.all(
       callSpecs.map(({ apiPath, searchOverrides }) => callBidApi(apiPath, searchOverrides))
@@ -767,9 +758,9 @@ app.get('/api/bid-search', async (req, res) => {
     
     console.log(`[Bid Search] Deduplication: ${allItems.length} -> ${uniqueItems.length} items`);
 
-    // 검색어 포함 여부 재필터: 단일 검색일 때만 적용 (이중 검색은 API가 이미 공고명/기관명으로 걸러줌)
+    // 검색어 포함 여부 재필터 (공고명·기관명·수요기관명에 키워드 포함된 항목만 유지)
     let filteredItems = uniqueItems;
-    if (keyword.trim() && !useDualSearch) {
+    if (keyword.trim()) {
       const k = keyword.trim();
       filteredItems = uniqueItems.filter(item => {
         const title = String(item.bidNtceNm || '').trim();
@@ -837,8 +828,8 @@ app.get('/api/bid-search', async (req, res) => {
       console.log(`[Bid Search] Exclude closed (입찰마감제외): ${beforeExcl} -> ${filteredItems.length} items`);
     }
 
-    // Firestore 캐시 저장 (단일 검색·입찰마감제외 미적용 결과만 저장. 이중 검색 시 저장 안 함)
-    if (filteredItems.length > 0 && keyword.trim() && !useDualSearch && !nocache && !excludeDeadline && inqryBgnDt && inqryEndDt) {
+    // Firestore 캐시 저장 (키워드+날짜 범위 필수, 입찰마감제외 미적용 시만)
+    if (filteredItems.length > 0 && keyword.trim() && !nocache && !excludeDeadline && inqryBgnDt && inqryEndDt) {
       const BATCH_SIZE = 500;
       const expiresAtTs = admin.firestore.Timestamp.fromDate(new Date(Date.now() + 5 * 60 * 1000));
       const trimmedKw = keyword.trim();
@@ -931,7 +922,6 @@ app.get('/api/bid-search', async (req, res) => {
         apiCallCount: callSpecs.length,
         successfulCalls: callSpecs.length - errors.length,
         deduplicatedFrom: allItems.length,
-        dualSearch: useDualSearch || undefined,
         nocacheUsed: nocache || undefined
       }
     };
@@ -1111,7 +1101,6 @@ app.get('/api/bid-detail', async (req, res, next) => {
 
     // 2) 캐시 미스 → 조달청 상세 API 호출 (물품/용역/공사 각각 시도)
     const baseUrl = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
-    const bidseq = bidNtceOrd !== '' ? String(bidNtceOrd).padStart(3, '0') : '000';
     const isEncodedKey = /[%=\+]/g.test(serviceKey);
     const keyParam = isEncodedKey ? serviceKey : encodeURIComponent(serviceKey);
 
@@ -1122,47 +1111,67 @@ app.get('/api/bid-detail', async (req, res, next) => {
       'getBidPblancListInfoCnstwkPPSSrchDtl'  // 공사 상세
     ];
 
+    // bidNtceOrd 후보: 요청값 우선, 없으면 000/001/1 순으로 재시도 (G2B API 형식 차이 대응)
+    const ordCandidates = [];
+    const requestedOrd = bidNtceOrd !== '' ? String(bidNtceOrd).trim() : null;
+    if (requestedOrd) {
+      ordCandidates.push(String(requestedOrd).padStart(3, '0'));
+      if (requestedOrd !== '1') ordCandidates.push('1');
+      if (requestedOrd !== '001') ordCandidates.push('001');
+    } else {
+      ordCandidates.push('000', '001', '1');
+    }
+    const seenOrd = new Set();
+
     let detailData = null;
     let lastError = null;
+    let usedBidseq = null;
 
-    for (const op of detailOps) {
-      const url = `${baseUrl}/${op}?ServiceKey=${keyParam}&bidNtceNo=${encodeURIComponent(bidNtceNo)}&bidNtceOrd=${encodeURIComponent(bidseq)}&type=json&numOfRows=1&pageNo=1`;
-      try {
-        const apiRes = await axios.get(url, {
-          timeout: 15000,
-          responseType: 'text',
-          headers: { Accept: 'application/json, application/xml, text/xml' },
-          validateStatus: () => true
-        });
+    for (const bidseq of ordCandidates) {
+      if (seenOrd.has(bidseq)) continue;
+      seenOrd.add(bidseq);
 
-        if (apiRes.status !== 200) {
-          lastError = `HTTP ${apiRes.status}`;
-          continue;
-        }
+      for (const op of detailOps) {
+        const url = `${baseUrl}/${op}?ServiceKey=${keyParam}&bidNtceNo=${encodeURIComponent(bidNtceNo)}&bidNtceOrd=${encodeURIComponent(bidseq)}&type=json&numOfRows=1&pageNo=1`;
+        try {
+          const apiRes = await axios.get(url, {
+            timeout: 15000,
+            responseType: 'text',
+            headers: { Accept: 'application/json, application/xml, text/xml' },
+            validateStatus: () => true
+          });
 
-        const { parsed } = await parseApiResponse(apiRes.data, apiRes.headers['content-type']);
-        const body = parsed?.response?.body;
-        if (!body) {
-          lastError = 'No body';
-          continue;
-        }
+          if (apiRes.status !== 200) {
+            lastError = `HTTP ${apiRes.status}`;
+            continue;
+          }
 
-        let items = body.items ?? body.item;
-        if (items && !Array.isArray(items) && items.item) {
-          items = Array.isArray(items.item) ? items.item : [items.item];
-        } else if (items && !Array.isArray(items)) {
-          items = [items];
+          const { parsed } = await parseApiResponse(apiRes.data, apiRes.headers['content-type']);
+          const body = parsed?.response?.body;
+          if (!body) {
+            lastError = 'No body';
+            continue;
+          }
+
+          let items = body.items ?? body.item;
+          if (items && !Array.isArray(items) && items.item) {
+            items = Array.isArray(items.item) ? items.item : [items.item];
+          } else if (items && !Array.isArray(items)) {
+            items = [items];
+          }
+          if (items && items.length > 0) {
+            detailData = items[0];
+            usedBidseq = bidseq;
+            console.log(`[Bid Detail] API success: ${op}, bidNtceOrd=${bidseq}`);
+            break;
+          }
+          lastError = 'No items in response';
+        } catch (err) {
+          lastError = err.message;
+          console.warn(`[Bid Detail] ${op} bidNtceOrd=${bidseq} failed:`, err.message);
         }
-        if (items && items.length > 0) {
-          detailData = items[0];
-          console.log(`[Bid Detail] API success: ${op}`);
-          break;
-        }
-        lastError = 'No items in response';
-      } catch (err) {
-        lastError = err.message;
-        console.warn(`[Bid Detail] ${op} failed:`, err.message);
       }
+      if (detailData) break;
     }
 
     if (!detailData) {
@@ -1187,20 +1196,22 @@ app.get('/api/bid-detail', async (req, res, next) => {
       standardized
     };
 
-    // 6) Firestore에 1시간 TTL로 저장
+    // 6) Firestore에 1시간 TTL로 저장 (실제 성공한 차수 usedBidseq 사용)
+    const cacheKeyFinal = generateDetailCacheKey(bidNtceNo, usedBidseq);
+    const detailRefFinal = db.collection(DETAIL_CACHE_COLLECTION).doc(cacheKeyFinal);
     const expiresAt = new Date(Date.now() + DETAIL_CACHE_TTL_SEC * 1000);
-    await detailRef.set({
+    await detailRefFinal.set({
       ...payload,
       _metadata: {
         bidNtceNo,
-        bidNtceOrd: bidseq,
+        bidNtceOrd: usedBidseq,
         cachedAt: admin.firestore.FieldValue.serverTimestamp(),
         expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
         ttl: DETAIL_CACHE_TTL_SEC
       }
     }, { merge: true });
 
-    console.log(`[Bid Detail] Cached: ${cacheKey}, attachments: ${payload.attachments?.length || 0}`);
+    console.log(`[Bid Detail] Cached: ${cacheKeyFinal}, attachments: ${payload.attachments?.length || 0}`);
     res.status(200).json({
       success: true,
       data: payload,

@@ -612,8 +612,11 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                                 <div className="text-sm text-gray-600 space-y-1">
                                     <div><span className="font-bold">일시:</span> {applySeminar.date}</div>
                                     {applySeminar.location && <div><span className="font-bold">장소:</span> {applySeminar.location}</div>}
+                                    {applySeminar.applicationFee != null && Number(applySeminar.applicationFee) > 0 && (
+                                      <div className="font-bold text-brand mt-2">신청 비용: {new Intl.NumberFormat('ko-KR').format(Number(applySeminar.applicationFee))}원</div>
+                                    )}
+                                </div>
                             </div>
-                                    </div>
                         <div className="space-y-4">
                                     <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">신청사유 *</label>
@@ -652,8 +655,8 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                                             </div>
                                                     </div>
                                 <button type="button" onClick={handleSubmitApplication} className="w-full py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 mt-6">
-                                        신청하기
-                            </button>
+                                        {applySeminar.applicationFee != null && Number(applySeminar.applicationFee) > 0 ? '결제하기' : '신청하기'}
+                                    </button>
                         </div>
                             </div>
                             <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
