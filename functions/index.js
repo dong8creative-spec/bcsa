@@ -113,7 +113,7 @@ app.get('/api/network-test', async (req, res, next) => {
   }
 });
 
-// 조달청 입찰공고 검색 API 프록시 엔드포인트
+// 조달청 입찰공고 검색 API 프록시 엔드포인트 (용역: ServcPPSSrch)
 app.get('/api/bid-search', async (req, res) => {
   // 한글 파라미터 명시적 디코딩 및 검증
   let keyword = '';
@@ -135,6 +135,8 @@ app.get('/api/bid-search', async (req, res) => {
   const userId = req.query.userId || '';
   const userEmail = req.query.userEmail || '';
   const userName = req.query.userName || '';
+  const nocache = req.query.nocache === 'true' || req.query.nocache === '1';
+  const excludeDeadline = req.query.excludeDeadline === 'true' || req.query.excludeDeadline === '1';
   
   // type 파라미터 (api-proxy.php 호환성): bid-search, bid-openg-result, bid-award
   const type = req.query.type || 'bid-search';
@@ -248,7 +250,7 @@ app.get('/api/bid-search', async (req, res) => {
       apiPaths.push('getBidPblancListInfoThngPPSSrch'); // 물품
     }
     if (searchAll || businessTypes.includes('일반용역') || businessTypes.includes('기술용역')) {
-      apiPaths.push('getBidPblancListInfoSvcPPSSrch'); // 용역 (추정)
+      apiPaths.push('getBidPblancListInfoServcPPSSrch'); // 용역 (명세 확인 후 정확한 이름으로 교체 권장)
     }
     if (searchAll || businessTypes.includes('공사')) {
       apiPaths.push('getBidPblancListInfoCnstwkPPSSrch'); // 공사 (추정)
@@ -257,14 +259,21 @@ app.get('/api/bid-search', async (req, res) => {
     // 기본값: 모든 업무구분 검색
     if (apiPaths.length === 0) {
       apiPaths.push('getBidPblancListInfoThngPPSSrch'); // 물품 (기본값)
-      apiPaths.push('getBidPblancListInfoSvcPPSSrch'); // 용역
+      apiPaths.push('getBidPblancListInfoServcPPSSrch'); // 용역 (명세 확인 후 정확한 이름으로 교체 권장)
       apiPaths.push('getBidPblancListInfoCnstwkPPSSrch'); // 공사
     }
   }
   
-  // 날짜 범위 설정 (사용자가 선택한 날짜가 있으면 사용, 없으면 최근 30일)
+  // 날짜 범위 설정 (사용자가 선택한 날짜가 있으면 사용, 없으면 최근 30일 - 나라장터와 일치율 확보)
   const today = new Date();
   let inqryBgnDt, inqryEndDt;
+
+  const formatDate = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}${m}${d}`;
+  };
   
   if (fromBidDt && toBidDt) {
     // 사용자가 선택한 날짜 사용
@@ -287,32 +296,15 @@ app.get('/api/bid-search', async (req, res) => {
       console.warn('⚠️ [Date] 잘못된 날짜 형식, 기본값 사용:', { fromStr, toStr });
       const startDate = new Date(today);
       startDate.setDate(today.getDate() - 30);
-      const endDate = today;
-      
-      const formatDate = (date) => {
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        return `${y}${m}${d}`;
-      };
-      
       inqryBgnDt = formatDate(startDate) + '0000';
-      inqryEndDt = formatDate(endDate) + '2359';
+      inqryEndDt = formatDate(today) + '2359';
     }
   } else {
-    // 기본값: 최근 30일
+    // 기본값: 최근 30일 (나라장터 웹과 비교 시 일치율 확보용)
     const startDate = new Date(today);
     startDate.setDate(today.getDate() - 30);
     const endDate = new Date(today);
     endDate.setHours(23, 59, 59, 999);
-    
-    const formatDate = (date) => {
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      return `${y}${m}${d}`;
-    };
-    
     inqryBgnDt = formatDate(startDate) + '0000';
     inqryEndDt = formatDate(endDate) + '2359';
     console.log('✅ [Date] 기본값 (최근 30일) 사용:', { inqryBgnDt, inqryEndDt });
@@ -329,8 +321,12 @@ app.get('/api/bid-search', async (req, res) => {
   };
 
   // 공통 파라미터 구성 함수 (개선된 버전)
-  const buildApiUrl = (apiPath) => {
+  // searchOverrides: { bidNtceNm?, insttNm? } - 나라장터와 동일하게 공고명+기관명 검색 시 사용
+  const buildApiUrl = (apiPath, searchOverrides = null) => {
     try {
+      const useBidNtceNm = searchOverrides?.bidNtceNm !== undefined ? searchOverrides.bidNtceNm : keyword;
+      const useInsttNm = searchOverrides?.insttNm !== undefined ? searchOverrides.insttNm : insttNm;
+
       // ServiceKey 인코딩 감지 및 처리
       // Encoding 키: %, =, + 등 특수문자 포함 (이미 URL 인코딩됨)
       // Decoding 키: 원본 키 값
@@ -368,11 +364,17 @@ app.get('/api/bid-search', async (req, res) => {
       
       // 선택적 검색 파라미터 (검증 및 정제 후 추가)
       const optionalParams = {
-        bidNtceNm: validateAndSanitizeParam(keyword, 100),
+        bidNtceNm: validateAndSanitizeParam(useBidNtceNm, 100),
         // bidNtceNo는 inqryDiv='2'일 때 이미 필수로 추가되므로 조건부 처리
         ...(inqryDiv !== '2' && bidNtceNo ? { bidNtceNo: validateAndSanitizeParam(bidNtceNo, 50) } : {}),
-        bidNtceDtlClsfCd: validateAndSanitizeParam(bidNtceDtlClsfCd, 20),
-        insttNm: validateAndSanitizeParam(insttNm, 100),
+        bidNtceDtlClsfCd: (() => {
+          const v = validateAndSanitizeParam(bidNtceDtlClsfCd, 20);
+          if (!v) return '';
+          if (v === '실공고') return '02'; // API 코드 (참고문서 확인 권장)
+          if (v === '사전공고') return '01';
+          return v;
+        })(),
+        insttNm: validateAndSanitizeParam(useInsttNm, 100),
         refNo: validateAndSanitizeParam(refNo, 50),
         area: validateAndSanitizeParam(area, 50),
         industry: validateAndSanitizeParam(industry, 50),
@@ -425,12 +427,15 @@ app.get('/api/bid-search', async (req, res) => {
   };
 
   // 단일 API 호출 함수 (재시도 로직 포함)
-  const callBidApi = async (apiPath, retryCount = 0) => {
+  // searchOverrides: buildApiUrl에 전달 (공고명/기관명 이중 검색 시 사용)
+  const callBidApi = async (apiPath, searchOverrides = null, retryCount = 0) => {
     const maxRetries = 2;
-    const apiUrl = buildApiUrl(apiPath);
+    const apiUrl = buildApiUrl(apiPath, searchOverrides);
 
     try {
       console.log(`[Bid Search] Calling API: ${apiPath} (attempt ${retryCount + 1})`);
+      const urlForLog = apiUrl.toString().replace(/ServiceKey=[^&]+/, 'ServiceKey=***');
+      console.log('[G2B] Request URL:', urlForLog);
 
       const apiResponse = await axios.get(apiUrl.toString(), {
         timeout: 30000,
@@ -453,7 +458,7 @@ app.get('/api/bid-search', async (req, res) => {
         if (apiResponse.status >= 500 && retryCount < maxRetries) {
           console.log(`[Bid Search] Retrying ${apiPath} due to server error...`);
           await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-          return await callBidApi(apiPath, retryCount + 1);
+          return await callBidApi(apiPath, searchOverrides, retryCount + 1);
         }
 
         return {
@@ -524,7 +529,7 @@ app.get('/api/bid-search', async (req, res) => {
           if (retryableErrors.includes(resultCode) && retryCount < maxRetries) {
             console.log(`[Bid Search] Retrying ${apiPath} due to error ${resultCode}...`);
             await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-            return await callBidApi(apiPath, retryCount + 1);
+            return await callBidApi(apiPath, searchOverrides, retryCount + 1);
           }
 
           // 에러 코드별 사용자 친화적 메시지
@@ -570,6 +575,7 @@ app.get('/api/bid-search', async (req, res) => {
           bidItems = [items];
         }
 
+        console.log('[G2B] Raw response', apiPath, 'items:', bidItems.length, 'totalCount:', totalCnt);
         console.log(`[Bid Search] API Success (${apiPath}): ${bidItems.length} items retrieved`);
         return {
           success: true,
@@ -604,7 +610,7 @@ app.get('/api/bid-search', async (req, res) => {
         if (retryCount < maxRetries) {
           console.log(`[Bid Search] Retrying ${apiPath} after timeout...`);
           await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-          return await callBidApi(apiPath, retryCount + 1);
+          return await callBidApi(apiPath, searchOverrides, retryCount + 1);
         }
 
         return {
@@ -626,7 +632,7 @@ app.get('/api/bid-search', async (req, res) => {
       if (retryCount < maxRetries) {
         console.log(`[Bid Search] Retrying ${apiPath} after network error...`);
         await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-        return await callBidApi(apiPath, retryCount + 1);
+        return await callBidApi(apiPath, searchOverrides, retryCount + 1);
       }
 
       return {
@@ -644,23 +650,50 @@ app.get('/api/bid-search', async (req, res) => {
   console.log(`[Bid Search] BusinessTypes: ${JSON.stringify(businessTypes)}, apiPaths=${JSON.stringify(apiPaths)}`);
 
   try {
-    // 캐시 확인 (키워드 검색 시에만)
-    if (keyword.trim()) {
-      const cachedResult = await getCachedBids(keyword.trim(), pageNo, numOfRows, type);
+    // 캐시 확인 (키워드 검색 시, 단일 검색일 때만, nocache·excludeDeadline이 아닐 때. 이중 검색/입찰마감제외 시 캐시 미사용)
+    const useDualSearch = keyword.trim() && !(insttNm && String(insttNm).trim());
+    if (keyword.trim() && !useDualSearch && !nocache && !excludeDeadline) {
+      const cachedResult = await getCachedBids(keyword.trim(), pageNo, numOfRows, type, inqryBgnDt, inqryEndDt);
       if (cachedResult && cachedResult.items.length > 0) {
         console.log(`[Cache] Returning cached data for keyword="${keyword}", type=${type}`);
+        const startIndex = (pageNo - 1) * numOfRows;
+        const endIndex = startIndex + cachedResult.items.length;
         return res.status(200).json({
           success: true,
-          data: cachedResult,
+          data: {
+            items: cachedResult.items,
+            totalCount: cachedResult.totalCount,
+            pageNo,
+            numOfRows,
+            hasMore: endIndex < cachedResult.totalCount,
+            searchParams: {
+              keyword: keyword || undefined,
+              type,
+              dateRange: {
+                from: inqryBgnDt ? `${inqryBgnDt.slice(0,4)}-${inqryBgnDt.slice(4,6)}-${inqryBgnDt.slice(6,8)}` : undefined,
+                to: inqryEndDt ? `${inqryEndDt.slice(0,4)}-${inqryEndDt.slice(4,6)}-${inqryEndDt.slice(6,8)}` : undefined
+              }
+            }
+          },
           cached: true
         });
       }
     }
-    
-    // 캐시 미스 - API 호출
-    // 여러 API를 병렬로 호출
+
+    // 나라장터와 동일: 키워드만 있고 상세조건 기관명이 비어 있으면 공고명+기관명 이중 검색 후 병합
+    const callSpecs = [];
+    if (useDualSearch) {
+      apiPaths.forEach(apiPath => {
+        callSpecs.push({ apiPath, searchOverrides: null }); // 공고명 검색 (keyword -> bidNtceNm)
+        callSpecs.push({ apiPath, searchOverrides: { bidNtceNm: '', insttNm: keyword } }); // 기관명 검색
+      });
+      console.log(`[Bid Search] Dual search (공고명+기관명): ${callSpecs.length} API calls`);
+    } else {
+      callSpecs.push(...apiPaths.map(apiPath => ({ apiPath, searchOverrides: null })));
+    }
+
     const apiResults = await Promise.all(
-      apiPaths.map(apiPath => callBidApi(apiPath))
+      callSpecs.map(({ apiPath, searchOverrides }) => callBidApi(apiPath, searchOverrides))
     );
 
     // 결과 통합
@@ -673,7 +706,7 @@ app.get('/api/bid-search', async (req, res) => {
         allItems = allItems.concat(result.items);
         totalCount += result.totalCount;
       } else {
-        errors.push(`${apiPaths[index]}: ${result.error}`);
+        errors.push(`${callSpecs[index].apiPath}: ${result.error}`);
       }
     });
 
@@ -688,7 +721,7 @@ app.get('/api/bid-search', async (req, res) => {
     });
     
     if (errors.length > 0) {
-      console.warn(`[Bid Search] Some APIs failed (${errors.length}/${apiPaths.length}):`, errorsByType);
+      console.warn(`[Bid Search] Some APIs failed (${errors.length}/${callSpecs.length}):`, errorsByType);
     }
 
     // 필드명 정규화 (나라장터 API 필드명 -> 표준 필드명)
@@ -734,40 +767,104 @@ app.get('/api/bid-search', async (req, res) => {
     
     console.log(`[Bid Search] Deduplication: ${allItems.length} -> ${uniqueItems.length} items`);
 
-    // 최종낙찰자 필터링 (bid-award 타입인 경우)
+    // 검색어 포함 여부 재필터: 단일 검색일 때만 적용 (이중 검색은 API가 이미 공고명/기관명으로 걸러줌)
     let filteredItems = uniqueItems;
-    if (type === 'bid-award') {
+    if (keyword.trim() && !useDualSearch) {
+      const k = keyword.trim();
       filteredItems = uniqueItems.filter(item => {
-        return item.sucsfbidAmt && item.sucsfbidAmt !== '';
+        const title = String(item.bidNtceNm || '').trim();
+        const agency = String(item.insttNm || item.ntceInsttNm || '').trim();
+        const demand = String(item.dmandInsttNm || item.dminsttNm || '').trim();
+        return title.includes(k) || agency.includes(k) || demand.includes(k);
       });
-      console.log(`[Bid Search] Award filtering: ${uniqueItems.length} -> ${filteredItems.length} items`);
+      console.log(`[Bid Search] Keyword re-filter: ${uniqueItems.length} -> ${filteredItems.length} items`);
     }
 
-    // 정렬 (게시일시 기준 내림차순 - 최신순)
-    filteredItems.sort((a, b) => {
-      const dateA = a.bidNtceDt ? new Date(a.bidNtceDt.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:00')) : new Date(0);
-      const dateB = b.bidNtceDt ? new Date(b.bidNtceDt.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:00')) : new Date(0);
-      return dateB - dateA;
-    });
-    
-    // Firestore에 저장 (비동기, 응답과 독립적)
-    // 검색어가 있고 결과가 있을 때만 캐싱
-    if (filteredItems.length > 0 && keyword.trim()) {
-      console.log(`[Cache] Saving ${filteredItems.length} items to cache...`);
-      filteredItems.forEach(item => {
-        saveBidToFirestore(item, keyword.trim(), type).catch(err => 
-          console.error('[Cache] Save error:', err.message)
-        );
+    // 최종낙찰자 필터링 (bid-award 타입인 경우)
+    if (type === 'bid-award') {
+      const beforeAward = filteredItems.length;
+      filteredItems = filteredItems.filter(item => {
+        return item.sucsfbidAmt && item.sucsfbidAmt !== '';
       });
+      console.log(`[Bid Search] Award filtering: ${beforeAward} -> ${filteredItems.length} items`);
+    }
+
+    // 정렬 (게시일시 기준 내림차순 - 최신순). API 날짜 형식 다양 대응
+    const parseBidDt = (dt) => {
+      if (!dt) return new Date(0);
+      const s = String(dt).trim().replace(/\s/g, ' ').replace(/-/g, '-');
+      const m12 = s.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+      if (m12) return new Date(`${m12[1]}-${m12[2]}-${m12[3]}T${m12[4]}:${m12[5]}:00`);
+      const m14 = s.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+      if (m14) return new Date(`${m14[1]}-${m14[2]}-${m14[3]}T${m14[4]}:${m14[5]}:${m14[6]}`);
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? new Date(0) : d;
+    };
+    filteredItems.sort((a, b) => parseBidDt(b.bidNtceDt).getTime() - parseBidDt(a.bidNtceDt).getTime());
+
+    // 입찰마감제외: 마감일이 지난 공고 제거 (나라장터 "입찰마감제외" 체크와 동일)
+    if (excludeDeadline) {
+      const now = new Date();
+      const parseClsDt = (dt) => {
+        if (!dt) return null;
+        const s = String(dt).trim();
+        if (/^\d{12}$/.test(s)) {
+          return new Date(s.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:00'));
+        }
+        if (/^\d{8}$/.test(s)) return new Date(s.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'));
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+      };
+      const beforeExcl = filteredItems.length;
+      filteredItems = filteredItems.filter(item => {
+        const clsDt = parseClsDt(item.bidClseDt || item.bidClsDt);
+        return !clsDt || clsDt > now;
+      });
+      console.log(`[Bid Search] Exclude closed (입찰마감제외): ${beforeExcl} -> ${filteredItems.length} items`);
+    }
+
+    // Firestore 캐시 저장 (단일 검색·입찰마감제외 미적용 결과만 저장. 이중 검색 시 저장 안 함)
+    if (filteredItems.length > 0 && keyword.trim() && !useDualSearch && !nocache && !excludeDeadline && inqryBgnDt && inqryEndDt) {
+      const BATCH_SIZE = 500;
+      const expiresAtTs = admin.firestore.Timestamp.fromDate(new Date(Date.now() + 5 * 60 * 1000));
+      const trimmedKw = keyword.trim();
+      try {
+        for (let i = 0; i < filteredItems.length; i += BATCH_SIZE) {
+          const batch = db.batch();
+          const chunk = filteredItems.slice(i, i + BATCH_SIZE);
+          chunk.forEach(item => {
+            if (!item || !item.bidNtceNo) return;
+            const cacheKey = generateCacheKey(item.bidNtceNo, trimmedKw, type, inqryBgnDt, inqryEndDt);
+            if (!cacheKey) return;
+            const docRef = db.collection('tenders').doc(cacheKey);
+            batch.set(docRef, {
+              ...item,
+              _metadata: {
+                keyword: trimmedKw,
+                type,
+                inqryBgnDt: String(inqryBgnDt),
+                inqryEndDt: String(inqryEndDt),
+                cachedAt: admin.firestore.FieldValue.serverTimestamp(),
+                expiresAt: expiresAtTs,
+                ttl: 300
+              }
+            }, { merge: true });
+          });
+          await batch.commit();
+        }
+        console.log(`[Cache] Saved ${filteredItems.length} items (keyword="${trimmedKw}", inqryBgnDt=${inqryBgnDt}, inqryEndDt=${inqryEndDt})`);
+      } catch (err) {
+        console.error('[Cache] Batch save error:', err.message);
+      }
     }
 
     // 모든 API가 실패하고 결과가 없는 경우 명확한 에러 반환
-    if (filteredItems.length === 0 && errors.length === apiPaths.length) {
+    if (filteredItems.length === 0 && errors.length === callSpecs.length) {
       console.error('[Bid Search] All APIs failed, no results available');
       return res.status(502).json({
         success: false,
         error: '조달청 API 호출 실패',
-        message: '모든 API 요청이 실패했습니다. 잠시 후 다시 시도해주세요.',
+        message: '모든 API 요청이 실패했습니다. 잠시 후 다시 시도해 주세요. 계속되면 G2B(나라장터) API 상태 또는 Firebase Functions 환경 변수(G2B API 키)를 확인해 주세요.',
         details: errors,
         timestamp: new Date().toISOString()
       });
@@ -814,9 +911,11 @@ app.get('/api/bid-search', async (req, res) => {
       meta: {
         timestamp: new Date().toISOString(),
         cached: false,
-        apiCallCount: apiPaths.length,
-        successfulCalls: apiPaths.length - errors.length,
-        deduplicatedFrom: allItems.length
+        apiCallCount: callSpecs.length,
+        successfulCalls: callSpecs.length - errors.length,
+        deduplicatedFrom: allItems.length,
+        dualSearch: useDualSearch || undefined,
+        nocacheUsed: nocache || undefined
       }
     };
     
@@ -842,18 +941,16 @@ app.get('/api/bid-search', async (req, res) => {
   }
 });
 
-// 캐시 키 생성 함수
-function generateCacheKey(bidNtceNo, keyword = '', type = 'bid-search') {
+// 캐시 키 생성 함수 (조회 기간 포함 시 기간별로 다른 문서로 저장)
+function generateCacheKey(bidNtceNo, keyword = '', type = 'bid-search', inqryBgnDt = '', inqryEndDt = '') {
   if (!bidNtceNo) return null;
   
-  // 검색어를 포함한 고유 키 생성
   const keyParts = [bidNtceNo];
   
   if (keyword && keyword.trim()) {
-    // 검색어를 안전한 문자열로 변환 (Firestore 문서 ID 규칙 준수)
     const safeKeyword = keyword.trim()
       .replace(/[^a-zA-Z0-9가-힣]/g, '_')
-      .substring(0, 50); // 최대 길이 제한
+      .substring(0, 50);
     keyParts.push(safeKeyword);
   }
   
@@ -861,26 +958,32 @@ function generateCacheKey(bidNtceNo, keyword = '', type = 'bid-search') {
     keyParts.push(type);
   }
   
+  if (inqryBgnDt && String(inqryBgnDt).length <= 20) {
+    keyParts.push(String(inqryBgnDt));
+  }
+  if (inqryEndDt && String(inqryEndDt).length <= 20) {
+    keyParts.push(String(inqryEndDt));
+  }
+  
   return keyParts.join('_');
 }
 
-// Firestore 캐싱 함수 (30분 TTL, 검색어 기반 캐싱)
-async function saveBidToFirestore(bidItem, keyword = '', type = 'bid-search') {
+// Firestore 캐싱 함수 (5분 TTL, 검색어+조회기간 기반 캐싱, YYYYMMDDHHMM 문자열 저장)
+async function saveBidToFirestore(bidItem, keyword = '', type = 'bid-search', inqryBgnDt = '', inqryEndDt = '') {
   try {
     if (!bidItem || !bidItem.bidNtceNo) {
       console.warn('[Cache] Cannot save bid: missing bidNtceNo');
       return;
     }
     
-    // 캐시 키 생성
-    const cacheKey = generateCacheKey(bidItem.bidNtceNo, keyword, type);
+    const cacheKey = generateCacheKey(bidItem.bidNtceNo, keyword, type, inqryBgnDt, inqryEndDt);
     if (!cacheKey) {
       console.warn('[Cache] Cannot generate cache key');
       return;
     }
     
     const now = Date.now();
-    const expiresAt = new Date(now + 30 * 60 * 1000); // 30분 후
+    const expiresAt = new Date(now + 5 * 60 * 1000); // 5분 후
     
     const docRef = db.collection('tenders').doc(cacheKey);
     await docRef.set({
@@ -888,9 +991,11 @@ async function saveBidToFirestore(bidItem, keyword = '', type = 'bid-search') {
       _metadata: {
         keyword: keyword.trim() || '',
         type: type,
+        inqryBgnDt: inqryBgnDt ? String(inqryBgnDt) : '',
+        inqryEndDt: inqryEndDt ? String(inqryEndDt) : '',
         cachedAt: admin.firestore.FieldValue.serverTimestamp(),
         expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
-        ttl: 1800 // 30분 (초)
+        ttl: 300 // 5분 (초)
       }
     }, { merge: true });
     
@@ -900,8 +1005,8 @@ async function saveBidToFirestore(bidItem, keyword = '', type = 'bid-search') {
   }
 }
 
-// 캐시된 데이터 조회 (검색어 기반)
-async function getCachedBids(keyword, pageNo = 1, numOfRows = 10, type = 'bid-search') {
+// 캐시된 데이터 조회 (검색어 + 조회 기간 기반)
+async function getCachedBids(keyword, pageNo = 1, numOfRows = 10, type = 'bid-search', inqryBgnDt = '', inqryEndDt = '') {
   try {
     if (!keyword || !keyword.trim()) {
       console.log('[Cache] No keyword provided, skipping cache');
@@ -911,14 +1016,19 @@ async function getCachedBids(keyword, pageNo = 1, numOfRows = 10, type = 'bid-se
     const now = admin.firestore.Timestamp.now();
     const trimmedKeyword = keyword.trim();
     
-    console.log(`[Cache] Checking cache for keyword="${trimmedKeyword}", type=${type}`);
+    console.log(`[Cache] Checking cache for keyword="${trimmedKeyword}", type=${type}, inqryBgnDt=${inqryBgnDt}, inqryEndDt=${inqryEndDt}`);
     
-    // 검색어와 타입으로 필터링, 만료되지 않은 항목만
-    const snapshot = await db.collection('tenders')
+    let query = db.collection('tenders')
       .where('_metadata.keyword', '==', trimmedKeyword)
       .where('_metadata.type', '==', type)
-      .where('_metadata.expiresAt', '>', now)
-      .limit(1000) // 충분한 데이터 가져오기
+      .where('_metadata.expiresAt', '>', now);
+    
+    if (inqryBgnDt && inqryEndDt) {
+      query = query.where('_metadata.inqryBgnDt', '==', String(inqryBgnDt)).where('_metadata.inqryEndDt', '==', String(inqryEndDt));
+    }
+    
+    const snapshot = await query
+      .limit(1000)
       .get();
     
     if (snapshot.empty) {

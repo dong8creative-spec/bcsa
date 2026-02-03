@@ -48,6 +48,7 @@ const mapSearchParamsToApiParams = (params) => {
     fromBidDt: formatDateParam(params.fromBidDt, true),  // 시작일: 0000 추가
     toBidDt: formatDateParam(params.toBidDt, false),     // 종료일: 2359 추가
     bidNtceDtlClsfCd: params.bidNtceDtlClsfCd || '',
+    excludeDeadline: params.excludeDeadline === true ? 'true' : 'false', // 입찰마감제외 (나라장터와 동일)
     insttNm: params.insttNm?.trim() || '',
     refNo: params.refNo?.trim() || '',
     area: params.area || '',
@@ -70,8 +71,8 @@ const mapSearchParamsToApiParams = (params) => {
   Object.keys(result).forEach((key) => {
     const value = result[key];
     
-    // inqryDiv는 항상 유지 (기본값 '1')
-    if (key === 'inqryDiv') {
+    // inqryDiv, excludeDeadline는 항상 유지
+    if (key === 'inqryDiv' || key === 'excludeDeadline') {
       return;
     }
     
@@ -155,6 +156,15 @@ const normalizeItems = (payload) => {
 export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
   const resolvedApiBaseUrl = apiBaseUrl || getApiBaseUrl();
   
+  // 최근 30일 날짜 (나라장터와 비교 시 일치율 확보용 기본값, 마운트 시 1회만 계산)
+  const defaultDates = useMemo(() => {
+    const today = new Date();
+    const from = new Date(today);
+    from.setDate(today.getDate() - 30);
+    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return { fromBidDt: fmt(from), toBidDt: fmt(today) };
+  }, []);
+
   // 디버깅: 환경 변수 확인 (항상 출력)
   console.log('🔍 [TenderSearchFilter] API URL:', resolvedApiBaseUrl);
   console.log('🔍 [TenderSearchFilter] 환경 변수:', {
@@ -165,9 +175,9 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
     bidNtceNo: '',
     bidNtceNm: '',
     inqryDiv: '1',
-    fromBidDt: '',
-    toBidDt: '',
-    bidNtceDtlClsfCd: '전체',
+    fromBidDt: defaultDates.fromBidDt,
+    toBidDt: defaultDates.toBidDt,
+    bidNtceDtlClsfCd: '전체', // 나라장터와 비교 시 "실공고" 선택
     insttNm: '',
     refNo: '',
     area: '전체',
@@ -182,7 +192,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
     contractLawType: '전체',
     contractMethod: '전체',
     awardMethod: '전체',
-    excludeDeadline: false,
+    excludeDeadline: false, // 나라장터와 비교 시 "입찰마감제외" 체크
     businessTypes: ['전체'],
     businessStatuses: ['전체'],
     isAnnouncingInstitution: true,
@@ -192,6 +202,10 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [results, setResults] = useState([]);
+  // 검증용: 마지막 응답 메타·요청 파라미터 (나라장터 검색결과 검증 가이드용)
+  const [lastResponseMeta, setLastResponseMeta] = useState(null);
+  const [lastRequestParams, setLastRequestParams] = useState(null);
+  const [verificationPanelOpen, setVerificationPanelOpen] = useState(false);
   
   // 즐겨찾기 관련 상태
   const [currentUser, setCurrentUser] = useState(null);
@@ -269,16 +283,25 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
     }
   };
   
-  // 나라장터 공식 사이트로 이동하는 함수
+  // 나라장터 공고번호 표시 형식: R26BK01270659-000 (차수 3자리)
+  const formatBidNoWithOrd = (item) => {
+    if (!item?.bidNtceNo) return '-';
+    const ord = item.bidNtceOrd != null && item.bidNtceOrd !== ''
+      ? String(item.bidNtceOrd).padStart(3, '0')
+      : '000';
+    return `${item.bidNtceNo}-${ord}`;
+  };
+
+  // 나라장터 공식 사이트 공고 상세 페이지로 이동 (bidseq 3자리: 000, 001 …)
   const handleRowClick = (item) => {
     if (!item?.bidNtceNo) {
       console.warn('⚠️ [TenderSearchFilter] 공고번호가 없어 링크를 열 수 없습니다.');
       return;
     }
-    
-    // 나라장터 공고 상세 페이지 URL (일반적인 형식)
-    // 실제 URL 형식은 나라장터 사이트 구조에 따라 다를 수 있음
-    const g2bUrl = `https://www.g2b.go.kr/ep/co/coDetail.do?bidNo=${item.bidNtceNo}`;
+    const bidseq = item.bidNtceOrd != null && item.bidNtceOrd !== ''
+      ? String(item.bidNtceOrd).padStart(3, '0')
+      : '000';
+    const g2bUrl = `https://www.g2b.go.kr/ep/invitation/publish/bidInfoDtl.do?bidno=${encodeURIComponent(item.bidNtceNo)}&bidseq=${bidseq}&releaseYn=Y`;
     window.open(g2bUrl, '_blank', 'noopener,noreferrer');
   };
 
@@ -412,6 +435,14 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
       }
       
       setResults(items);
+      setLastResponseMeta({
+        cached: data.cached,
+        totalCount: data.data?.totalCount,
+        meta: data.meta,
+        warnings: data.warnings,
+        searchParams: data.data?.searchParams
+      });
+      setLastRequestParams(mappedParams);
       onSearchResult?.(data);
     } catch (err) {
       // axios 에러 처리
@@ -828,6 +859,9 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
 
       {results.length > 0 ? (
         <div className="mt-6 bg-white rounded-2xl border border-blue-200 overflow-hidden">
+          <p className="px-4 py-2 text-sm text-gray-600 bg-blue-50/80 border-b border-blue-200">
+            검색결과는 나라장터(공공데이터포털)와 동일한 데이터를 사용합니다. 행을 클릭하면 나라장터에서 상세 내용을 볼 수 있습니다.
+          </p>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-brand text-white">
@@ -848,6 +882,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                     key={`${item?.bidNtceNo || 'item'}-${index}`} 
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
                     onClick={() => handleRowClick(item)}
+                    title="나라장터에서 상세 보기"
                   >
                     <td className="px-4 py-3 text-gray-500">{index + 1}</td>
                     <td className="px-4 py-3">
@@ -864,7 +899,7 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
                     </td>
                     <td className="px-4 py-3 text-gray-700 hover:text-brand transition-colors">
                       <span className="flex items-center gap-1">
-                        {item?.bidNtceNo || '-'}
+                        {formatBidNoWithOrd(item)}
                         <Icons.ExternalLink className="w-3 h-3 opacity-50" />
                       </span>
                     </td>
@@ -880,6 +915,62 @@ export const TenderSearchFilter = ({ apiBaseUrl, onSearchResult }) => {
               </tbody>
             </table>
           </div>
+          {/* 나라장터 검색결과 검증용: 응답 메타·요청 파라미터 표시 */}
+          {lastResponseMeta != null || lastRequestParams != null ? (
+            <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setVerificationPanelOpen((v) => !v)}
+                className="w-full px-4 py-2 text-left text-sm font-bold text-gray-700 bg-gray-50 hover:bg-gray-100 flex items-center justify-between"
+              >
+                <span>검증 정보 (나라장터 결과 비교용)</span>
+                <Icons.ChevronDown size={16} className={`transition-transform ${verificationPanelOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {verificationPanelOpen ? (
+                <div className="p-4 bg-gray-50/80 text-xs font-mono space-y-3 border-t border-gray-200">
+                  {lastResponseMeta ? (
+                    <>
+                      <div>
+                        <span className="font-bold text-gray-700">응답 메타</span>
+                        <ul className="mt-1 text-gray-600 list-none space-y-0.5">
+                          <li>cached: {String(lastResponseMeta.cached)}</li>
+                          <li>totalCount: {lastResponseMeta.totalCount ?? '-'}</li>
+                          {lastResponseMeta.meta ? (
+                            <>
+                              <li>meta.timestamp: {lastResponseMeta.meta.timestamp ?? '-'}</li>
+                              <li>meta.apiCallCount: {lastResponseMeta.meta.apiCallCount ?? '-'}</li>
+                              <li>meta.successfulCalls: {lastResponseMeta.meta.successfulCalls ?? '-'}</li>
+                              <li>meta.partialFailure: {String(lastResponseMeta.meta.partialFailure ?? false)}</li>
+                              <li>meta.deduplicatedFrom: {lastResponseMeta.meta.deduplicatedFrom ?? '-'}</li>
+                            </>
+                          ) : null}
+                          {Array.isArray(lastResponseMeta.warnings) && lastResponseMeta.warnings.length > 0 ? (
+                            <li className="text-amber-700">warnings: {lastResponseMeta.warnings.join('; ')}</li>
+                          ) : null}
+                        </ul>
+                      </div>
+                      {lastResponseMeta.searchParams ? (
+                        <div>
+                          <span className="font-bold text-gray-700">응답 searchParams (날짜 등)</span>
+                          <pre className="mt-1 text-gray-600 whitespace-pre-wrap break-all">
+                            {JSON.stringify(lastResponseMeta.searchParams, null, 2)}
+                          </pre>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
+                  {lastRequestParams ? (
+                    <div>
+                      <span className="font-bold text-gray-700">전송 요청 파라미터</span>
+                      <pre className="mt-1 text-gray-600 whitespace-pre-wrap break-all">
+                        {JSON.stringify(lastRequestParams, null, 2)}
+                      </pre>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : results.length === 0 && !loading && !error ? (
         <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
