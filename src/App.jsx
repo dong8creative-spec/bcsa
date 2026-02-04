@@ -1913,6 +1913,7 @@ const App = () => {
             return;
         }
         if (!PORTONE_IMP_CODE || PORTONE_IMP_CODE === 'imp00000000') {
+            alert('결제가 설정되지 않았습니다. 관리자에게 문의해주세요.');
             if (onFail) onFail();
             return;
         }
