@@ -1904,6 +1904,44 @@ const App = () => {
          alert("회원 탈퇴가 완료되었습니다.\n세미나 후기와 사진은 유지됩니다.");
     };
 
+    /** PortOne 결제 요청 후 성공 시 onSuccess, 실패/취소 시 onFail 호출 */
+    const requestPortOnePayment = (seminar, applicationData, onSuccess, onFail) => {
+        const IMP = typeof window !== 'undefined' ? window.IMP : null;
+        if (!IMP) {
+            alert('결제를 불러올 수 없습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.');
+            if (onFail) onFail();
+            return;
+        }
+        if (!PORTONE_IMP_CODE || PORTONE_IMP_CODE === 'imp00000000') {
+            if (onFail) onFail();
+            return;
+        }
+        const amount = Number(seminar.applicationFee) || 0;
+        if (amount <= 0) {
+            if (onFail) onFail();
+            return;
+        }
+        IMP.init(PORTONE_IMP_CODE);
+        const merchantUid = `order_${seminar.id}_${currentUser?.id || 'anon'}_${Date.now()}`;
+        IMP.request_pay({
+            pg: undefined,
+            pay_method: 'card',
+            merchant_uid: merchantUid,
+            name: (seminar.title || '프로그램 신청').substring(0, 50),
+            amount,
+            buyer_email: currentUser?.email || '',
+            buyer_name: currentUser?.name || '',
+            buyer_tel: currentUser?.phone || ''
+        }, (rsp) => {
+            if (rsp.success) {
+                if (onSuccess) onSuccess(rsp);
+            } else {
+                if (rsp.error_msg) alert(`결제 실패: ${rsp.error_msg}`);
+                if (onFail) onFail();
+            }
+        });
+    };
+
     const handleSeminarApply = async (seminar, applicationData = null) => {
         if (!currentUser) { alert("로그인이 필요한 서비스입니다."); return false; }
         if (mySeminars.find(s => s.id === seminar.id)) { alert("이미 신청한 세미나입니다."); return false; }
@@ -2090,7 +2128,7 @@ const App = () => {
         handleOpenApplyModal(program);
     };
 
-    // 팝업 신청 제출
+    // 팝업 신청 제출 (유료 프로그램이면 결제 후 신청)
     const handlePopupApplySubmit = () => {
         if (!popupApplicationData.reason.trim()) {
             alert('신청사유를 입력해주세요.');
@@ -2100,20 +2138,33 @@ const App = () => {
             alert('사전질문 2개를 모두 입력해주세요.');
             return;
         }
-        
-        // 신청 처리
-        const success = handleSeminarApply(applySeminarFromPopup, popupApplicationData);
-        
-        if (success) {
-            // 캘린더 파일 생성 및 다운로드
-            generateAndDownloadCalendar(applySeminarFromPopup);
-            
-            // 팝업 닫기 및 표시 기록
-            setIsPopupApplyModalOpen(false);
-            closePopupAndMarkAsShown();
-            setApplySeminarFromPopup(null);
-            setPopupApplicationData({ reason: '', questions: ['', ''] });
+        const fee = applySeminarFromPopup?.applicationFee != null ? Number(applySeminarFromPopup.applicationFee) : 0;
+        const isPaid = fee > 0;
+        if (isPaid) {
+            requestPortOnePayment(applySeminarFromPopup, popupApplicationData, async () => {
+                const success = await handleSeminarApply(applySeminarFromPopup, popupApplicationData);
+                if (success) {
+                    generateAndDownloadCalendar(applySeminarFromPopup);
+                    setIsPopupApplyModalOpen(false);
+                    closePopupAndMarkAsShown();
+                    setApplySeminarFromPopup(null);
+                    setPopupApplicationData({ reason: '', questions: ['', ''] });
+                }
+            }, () => {
+                alert('결제가 취소되었거나 실패했습니다.');
+            });
+            return;
         }
+        (async () => {
+            const success = await handleSeminarApply(applySeminarFromPopup, popupApplicationData);
+            if (success) {
+                generateAndDownloadCalendar(applySeminarFromPopup);
+                setIsPopupApplyModalOpen(false);
+                closePopupAndMarkAsShown();
+                setApplySeminarFromPopup(null);
+                setPopupApplicationData({ reason: '', questions: ['', ''] });
+            }
+        })();
     };
 
     // 문의하기 저장 함수
@@ -2587,12 +2638,21 @@ END:VCALENDAR`;
                     onBack={() => setCurrentView('home')} 
                     seminars={safeSeminarsData} 
                     menuNames={menuNames} 
-                    onApply={(seminar, applicationData) => {
+                    onApply={async (seminar, applicationData) => {
                         try {
-                            const success = handleSeminarApply(seminar, applicationData);
-                            if (success) {
-                                generateAndDownloadCalendar(seminar);
+                            const fee = seminar?.applicationFee != null ? Number(seminar.applicationFee) : 0;
+                            let success = false;
+                            if (fee > 0) {
+                                success = await new Promise((resolve) => {
+                                    requestPortOnePayment(seminar, applicationData, async () => {
+                                        const ok = await handleSeminarApply(seminar, applicationData);
+                                        resolve(ok);
+                                    }, () => resolve(false));
+                                });
+                            } else {
+                                success = await handleSeminarApply(seminar, applicationData);
                             }
+                            if (success) generateAndDownloadCalendar(seminar);
                             return success;
                         } catch (error) {
                             console.error('프로그램 신청 오류:', error);

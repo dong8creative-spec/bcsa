@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { firebaseService } from '../services/firebaseService';
 import { hashPassword } from '../utils/authUtils';
 import { Icons } from './Icons';
@@ -20,6 +20,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         businessRegistrationNumber: '',
         businessVerified: false,
         businessVerificationStatus: 'not_started',
+        isIdentityVerified: false,
         businessType: '',
         businessCategory: '',
         company: '', 
@@ -255,6 +256,10 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         
         if (!firebaseUser) {
             return alert("회원가입 오류가 발생했습니다. 처음부터 다시 시도해주세요.");
+        }
+        
+        if (!formData.isIdentityVerified) {
+            return alert("개인정보 확인을 위해 본인인증을 완료해주세요.\n본인인증 버튼을 눌러 휴대폰 본인확인을 진행해주세요.");
         }
         
         if (!formData.roadAddress) {

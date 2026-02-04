@@ -168,7 +168,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
         setIsApplyModalOpen(true);
     };
 
-    const handleSubmitApplication = () => {
+    const handleSubmitApplication = async () => {
         if (!applicationData.reason.trim()) {
             alert('신청사유를 입력해주세요.');
             return;
@@ -177,16 +177,12 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
             alert('사전질문 2개를 모두 입력해주세요.');
             return;
         }
-        const success = onApply(applySeminar, applicationData);
+        const success = await onApply(applySeminar, applicationData);
         if (success) {
-            // 캘린더 파일 생성 및 다운로드 (generateAndDownloadCalendar는 상위 컴포넌트에서 정의됨)
-            // AllSeminarsView는 함수형 컴포넌트이므로, onApply 콜백에서 처리하거나
-            // 상위 컴포넌트에서 generateAndDownloadCalendar를 prop으로 전달받아야 함
-            // 일단 onApply가 성공하면 상위에서 처리하도록 함
+            setIsApplyModalOpen(false);
+            setApplySeminar(null);
+            setApplicationData({ reason: '', questions: ['', ''] });
         }
-        setIsApplyModalOpen(false);
-        setApplySeminar(null);
-        setApplicationData({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
     };
 
     return (
