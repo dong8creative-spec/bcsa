@@ -4,7 +4,7 @@ import { Icons } from '../components/Icons';
 import CalendarSection from '../components/CalendarSection';
 import ModalPortal from '../components/ModalPortal';
 
-const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [], communityPosts = [] }) => {
+const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [], communityPosts = [] }) => {
     // props 안전성 검증
     const safeSeminars = Array.isArray(seminars) ? seminars : [];
     const safeApplications = Array.isArray(applications) ? applications : [];
@@ -17,9 +17,6 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
     const [selectedSeminar, setSelectedSeminar] = useState(null);
     const [currentImageIndex, setCurrentImageIndex] = useState(0); // 이미지 갤러리 현재 인덱스
     const [showReviews, setShowReviews] = useState(false);
-    const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
-    const [applySeminar, setApplySeminar] = useState(null);
-    const [applicationData, setApplicationData] = useState({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
     const [currentPage, setCurrentPage] = useState(1);
     
     const ITEMS_PER_PAGE = 3;
@@ -30,10 +27,10 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
         setShowReviews(false);
     }, [selectedSeminar?.id]);
 
-    // ESC 키로 세미나 상세 모달 닫기 (신청 모달은 ESC 미적용)
+    // ESC 키로 세미나 상세 모달 닫기
     useEffect(() => {
         const handleEscKey = (e) => {
-            if (e.key === 'Escape' && selectedSeminar && !isApplyModalOpen) {
+            if (e.key === 'Escape' && selectedSeminar) {
                 setSelectedSeminar(null);
                 setCurrentImageIndex(0);
             }
@@ -42,7 +39,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
         return () => {
             window.removeEventListener('keydown', handleEscKey);
         };
-    }, [selectedSeminar, isApplyModalOpen]);
+    }, [selectedSeminar]);
     
     const categories = ['전체', ...new Set(safeSeminars.map(s => s.category).filter(Boolean))];
     const statuses = ['전체', '모집중', '마감임박', '후기작성가능', '종료'];
@@ -137,7 +134,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
         return { 
             text: '신청하기', 
             disabled: false, 
-            onClick: () => handleOpenApplyModal(seminar),
+            onClick: () => onNavigateToApply ? onNavigateToApply(seminar) : (() => {}),
             className: 'bg-brand text-white hover:bg-blue-700'
         };
     };
@@ -151,38 +148,6 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
             '기타': 'bg-gray-100 text-gray-700'
         };
         return colorMap[category] || 'bg-gray-100 text-gray-700';
-    };
-
-    const handleOpenApplyModal = (seminar) => {
-        
-        if (!seminar) {
-            
-            return;
-        }
-        if (seminar.status === '종료') {
-            
-            return;
-        }
-        setApplySeminar(seminar);
-        setApplicationData({ reason: '', questions: ['', ''] }); // 사전 질문 2개로 변경
-        setIsApplyModalOpen(true);
-    };
-
-    const handleSubmitApplication = async () => {
-        if (!applicationData.reason.trim()) {
-            alert('신청사유를 입력해주세요.');
-            return;
-        }
-        if (!applicationData.questions[0].trim() || !applicationData.questions[1].trim()) {
-            alert('사전질문 2개를 모두 입력해주세요.');
-            return;
-        }
-        const success = await onApply(applySeminar, applicationData);
-        if (success) {
-            setIsApplyModalOpen(false);
-            setApplySeminar(null);
-            setApplicationData({ reason: '', questions: ['', ''] });
-        }
     };
 
     return (
@@ -593,79 +558,11 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, currentUser, menuName
                         </div>
                     </div>
                     </ModalPortal>
-                    );
+);
                 })()}
 
-                {/* 신청 모달 (ESC 미적용) */}
-                {isApplyModalOpen && applySeminar && (
-                    <ModalPortal>
-                    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setIsApplyModalOpen(false); }}>
-                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
-                                <h3 className="text-2xl font-bold text-dark mb-6">프로그램 신청</h3>
-                            <div className="mb-6">
-                                <h4 className="text-lg font-bold text-dark mb-2">{applySeminar.title}</h4>
-                                <div className="text-sm text-gray-600 space-y-1">
-                                    <div><span className="font-bold">일시:</span> {applySeminar.date}</div>
-                                    {applySeminar.location && <div><span className="font-bold">장소:</span> {applySeminar.location}</div>}
-                                    {applySeminar.applicationFee != null && Number(applySeminar.applicationFee) > 0 && (
-                                      <div className="font-bold text-brand mt-2">신청 비용: {new Intl.NumberFormat('ko-KR').format(Number(applySeminar.applicationFee))}원</div>
-                                    )}
-                                </div>
-                            </div>
-                        <div className="space-y-4">
-                                    <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">신청사유 *</label>
-                                        <textarea 
-                                        className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none h-32 resize-none" 
-                                        value={applicationData.reason}
-                                        onChange={(e) => setApplicationData({...applicationData, reason: e.target.value})}
-                                        placeholder="이 프로그램에 신청하는 이유를 작성해주세요"
-                                        />
-                                    </div>
-                                    <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">사전질문 *</label>
-                                        <div className="space-y-3">
-                                <input 
-                                    type="text" 
-                                            className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none"
-                                            value={applicationData.questions[0]}
-                                                onChange={(e) => {
-                                                const newQuestions = [...applicationData.questions];
-                                                newQuestions[0] = e.target.value;
-                                                setApplicationData({...applicationData, questions: newQuestions});
-                                            }}
-                                            placeholder="사전질문 1"
-                                        />
-                                                                <input 
-                                    type="text" 
-                                            className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none"
-                                            value={applicationData.questions[1]}
-                                            onChange={(e) => {
-                                                const newQuestions = [...applicationData.questions];
-                                                newQuestions[1] = e.target.value;
-                                                setApplicationData({...applicationData, questions: newQuestions});
-                                            }}
-                                            placeholder="사전질문 2"
-                                        />
-                                            </div>
-                                                    </div>
-                                <button type="button" onClick={handleSubmitApplication} className="w-full py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 mt-6">
-                                        {applySeminar.applicationFee != null && Number(applySeminar.applicationFee) > 0 ? '결제하기' : '신청하기'}
-                                    </button>
-                        </div>
-                            </div>
-                            <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
-                                <button type="button" onClick={() => setIsApplyModalOpen(false)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
-                                    닫기
-                                </button>
-                            </div>
-                    </div>
                 </div>
-                </ModalPortal>
-            )}
-                        </div>
-        </div>
+            </div>
     );
 };
 

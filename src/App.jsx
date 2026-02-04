@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, Fragment } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { firebaseService } from './services/firebaseService';
 import { authService } from './services/authService';
 import { CONFIG } from './config';
@@ -33,6 +34,7 @@ import RestaurantDetailView from './components/RestaurantDetailView';
 import RestaurantFormView from './components/RestaurantFormView';
 import InquiryModal from './components/InquiryModal';
 import DonationView from './components/DonationView';
+import ProgramApplyView from './pages/ProgramApplyView';
 import AppLayout from './components/AppLayout';
 import ModalPortal from './components/ModalPortal';
 
@@ -216,6 +218,8 @@ const App = () => {
     const [restaurantsData, setRestaurantsData] = useState([]);
     const [selectedRestaurant, setSelectedRestaurant] = useState(null);
     const [currentView, setCurrentView] = useState('home');
+    const navigate = useNavigate();
+    const location = useLocation();
 
     // 개발 모드에서 테스트 페이지 접근을 위한 URL 파라미터 체크
     useEffect(() => {
@@ -2123,10 +2127,9 @@ const App = () => {
             return;
         }
         
-        // 팝업 닫기 및 신청 모달 표시
+        // 팝업 닫기 후 프로그램 신청 페이지로 이동
         closePopupAndMarkAsShown();
-        setApplySeminar(program);
-        handleOpenApplyModal(program);
+        navigate(`/program/apply/${program.id}`);
     };
 
     // 팝업 신청 제출 (유료 프로그램이면 결제 후 신청)
@@ -2588,6 +2591,58 @@ END:VCALENDAR`;
         }
         
         try {
+            // 프로그램 신청 전용 페이지 (URL: /program/apply/:programId)
+            const programApplyMatch = location.pathname.match(/^\/program\/apply\/([^/]+)/);
+            if (programApplyMatch) {
+                const programId = programApplyMatch[1];
+                const safeSeminars = Array.isArray(seminarsData) ? seminarsData : [];
+                const program = safeSeminars.find(s => String(s.id) === String(programId));
+                if (!currentUser) {
+                    return (
+                        <div className="pt-32 pb-20 px-4 min-h-screen bg-soft">
+                            <div className="container mx-auto max-w-2xl">
+                                <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 text-center">
+                                    <Icons.AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+                                    <h2 className="text-xl font-bold text-dark mb-2">로그인이 필요합니다</h2>
+                                    <p className="text-gray-600 mb-6">프로그램 신청을 위해 로그인해 주세요.</p>
+                                    <div className="flex flex-wrap justify-center gap-3">
+                                        <button type="button" onClick={() => setShowLoginModal(true)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">로그인</button>
+                                        <button type="button" onClick={() => navigate(-1)} className="px-6 py-3 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5">돌아가기</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+                return (
+                    <ProgramApplyView
+                        program={program}
+                        currentUser={currentUser}
+                        onBack={() => navigate(-1)}
+                        onApply={async (seminar, applicationData) => {
+                            try {
+                                const fee = seminar?.applicationFee != null ? Number(seminar.applicationFee) : 0;
+                                if (fee > 0) {
+                                    return await new Promise((resolve) => {
+                                        requestPortOnePayment(seminar, applicationData, async () => {
+                                            const ok = await handleSeminarApply(seminar, applicationData);
+                                            if (ok) generateAndDownloadCalendar(seminar);
+                                            resolve(ok);
+                                        }, () => resolve(false));
+                                    });
+                                }
+                                const ok = await handleSeminarApply(seminar, applicationData);
+                                if (ok) generateAndDownloadCalendar(seminar);
+                                return ok;
+                            } catch (err) {
+                                console.error('프로그램 신청 오류:', err);
+                                alert('프로그램 신청 중 오류가 발생했습니다.');
+                                return false;
+                            }
+                        }}
+                    />
+                );
+            }
             if (currentView === 'myPage') {
                 if (!currentUser) {
                     // 로그인 필요 처리
@@ -2639,6 +2694,7 @@ END:VCALENDAR`;
                     onBack={() => setCurrentView('home')} 
                     seminars={safeSeminarsData} 
                     menuNames={menuNames} 
+                    onNavigateToApply={(seminar) => navigate(`/program/apply/${seminar.id}`)}
                     onApply={async (seminar, applicationData) => {
                         try {
                             const fee = seminar?.applicationFee != null ? Number(seminar.applicationFee) : 0;
