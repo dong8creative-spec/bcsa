@@ -170,27 +170,27 @@ const CommunityView = ({
         }
 
         setUploadingImages(true);
-        const uploadPromises = Array.from(files).map(async (file) => {
-            try {
-                if (!file.type.startsWith('image/')) return null;
-                const url = await uploadImage(file, 'community');
-                return url;
-            } catch (error) {
-                alert(`${file.name} 업로드에 실패했습니다.`);
-                return null;
+        try {
+            const uploadPromises = Array.from(files).map(async (file) => {
+                try {
+                    if (!file.type.startsWith('image/')) return null;
+                    return await uploadImage(file, 'community');
+                } catch (error) {
+                    alert(`${file.name} 업로드에 실패했습니다.`);
+                    return null;
+                }
+            });
+            const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+            if (imageType === 'store') {
+                setFormData({...formData, storeImages: [...currentImages, ...uploadedUrls]});
+            } else if (imageType === 'review') {
+                setFormData({...formData, reviewImages: [...currentImages, ...uploadedUrls]});
+            } else {
+                setFormData({...formData, itemImages: [...currentImages, ...uploadedUrls]});
             }
-        });
-
-        const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
-        
-        if (imageType === 'store') {
-            setFormData({...formData, storeImages: [...currentImages, ...uploadedUrls]});
-        } else if (imageType === 'review') {
-            setFormData({...formData, reviewImages: [...currentImages, ...uploadedUrls]});
-        } else {
-            setFormData({...formData, itemImages: [...currentImages, ...uploadedUrls]});
+        } finally {
+            setUploadingImages(false);
         }
-        setUploadingImages(false);
     };
 
     const handleRemoveImage = (index, imageType) => {
@@ -1028,19 +1028,21 @@ if (files.length + (editingPost.storeImages || []).length > MAX_IMAGES) {
                                                                 return;
                                                             }
                                                             setUploadingImages(true);
-                                                            const uploadPromises = files.map(async (file) => {
-                                                                try {
-                                                                    if (!file.type.startsWith('image/')) return null;
-                                                                    const url = await uploadImage(file, 'community');
-                                                                    return url;
-                                                                } catch (error) {
-                                                                    alert(`${file.name} 업로드에 실패했습니다.`);
-                                                                    return null;
-                                                                }
-                                                            });
-                                                            const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
-                                                            setEditingPost({...editingPost, storeImages: [...currentImages, ...uploadedUrls]});
-                                                            setUploadingImages(false);
+                                                            try {
+                                                                const uploadPromises = files.map(async (file) => {
+                                                                    try {
+                                                                        if (!file.type.startsWith('image/')) return null;
+                                                                        return await uploadImage(file, 'community');
+                                                                    } catch (error) {
+                                                                        alert(`${file.name} 업로드에 실패했습니다.`);
+                                                                        return null;
+                                                                    }
+                                                                });
+                                                                const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                                setEditingPost({...editingPost, storeImages: [...currentImages, ...uploadedUrls]});
+                                                            } finally {
+                                                                setUploadingImages(false);
+                                                            }
                                                             e.target.value = '';
                                                         }} 
                                                     />
@@ -1100,19 +1102,21 @@ if (files.length + (editingPost.itemImages || []).length > MAX_IMAGES) {
                                                                 return;
                                                             }
                                                             setUploadingImages(true);
-                                                            const uploadPromises = files.map(async (file) => {
-                                                                try {
-                                                                    if (!file.type.startsWith('image/')) return null;
-                                                                    const url = await uploadImage(file, 'community');
-                                                                    return url;
-                                                                } catch (error) {
-                                                                    alert(`${file.name} 업로드에 실패했습니다.`);
-                                                                    return null;
-                                                                }
-                                                            });
-                                                            const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
-                                                            setEditingPost({...editingPost, itemImages: [...currentImages, ...uploadedUrls]});
-                                                            setUploadingImages(false);
+                                                            try {
+                                                                const uploadPromises = files.map(async (file) => {
+                                                                    try {
+                                                                        if (!file.type.startsWith('image/')) return null;
+                                                                        return await uploadImage(file, 'community');
+                                                                    } catch (error) {
+                                                                        alert(`${file.name} 업로드에 실패했습니다.`);
+                                                                        return null;
+                                                                    }
+                                                                });
+                                                                const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                                setEditingPost({...editingPost, itemImages: [...currentImages, ...uploadedUrls]});
+                                                            } finally {
+                                                                setUploadingImages(false);
+                                                            }
                                                             e.target.value = '';
                                                         }} 
                                                     />
@@ -1173,19 +1177,21 @@ if (files.length + ((editingPost.reviewImages || editingPost.images || []).lengt
                                                                 return;
                                                             }
                                                             setUploadingImages(true);
-                                                            const uploadPromises = files.map(async (file) => {
-                                                                try {
-                                                                    if (!file.type.startsWith('image/')) return null;
-                                                                    const url = await uploadImage(file, 'community');
-                                                                    return url;
-                                                                } catch (error) {
-                                                                    alert(`${file.name} 업로드에 실패했습니다.`);
-                                                                    return null;
-                                                                }
-                                                            });
-                                                            const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
-                                                            setEditingPost({...editingPost, reviewImages: [...currentImages, ...uploadedUrls], images: [...currentImages, ...uploadedUrls]});
-                                                            setUploadingImages(false);
+                                                            try {
+                                                                const uploadPromises = files.map(async (file) => {
+                                                                    try {
+                                                                        if (!file.type.startsWith('image/')) return null;
+                                                                        return await uploadImage(file, 'community');
+                                                                    } catch (error) {
+                                                                        alert(`${file.name} 업로드에 실패했습니다.`);
+                                                                        return null;
+                                                                    }
+                                                                });
+                                                                const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                                setEditingPost({...editingPost, reviewImages: [...currentImages, ...uploadedUrls], images: [...currentImages, ...uploadedUrls]});
+                                                            } finally {
+                                                                setUploadingImages(false);
+                                                            }
                                                             e.target.value = '';
                                                         }} 
                                                     />

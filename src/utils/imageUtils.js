@@ -49,25 +49,37 @@ export const uploadImageToStorage = async (file, type = 'program') => {
 
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
 
+const FIREBASE_UPLOAD_TIMEOUT_MS = 12 * 1000; // 12초 내 응답 없으면 ImgBB 폴백
+
 /**
- * 통합 이미지 업로드: Firebase Storage 시도 후 실패 시 ImgBB 폴백
+ * 통합 이미지 업로드: Firebase Storage 시도 후 실패/타임아웃 시 ImgBB 폴백
  * @param {File} file - 업로드할 이미지 파일
  * @param {string} type - 이미지 유형 (program | content | community | company). Firebase 경로에만 사용됨.
  * @returns {Promise<string>} 업로드된 이미지의 URL (Firebase 또는 ImgBB)
  */
 export const uploadImage = async (file, type = 'program') => {
+  let firebaseError;
   try {
-    return await uploadImageToStorage(file, type);
-  } catch (firebaseError) {
-    try {
-      const base64 = await fileToBase64(file);
-      const result = await uploadImageToImgBB(base64, file.name || 'image.jpg');
-      const url = result?.url ?? (typeof result === 'string' ? result : null);
-      if (url) return url;
-      throw new Error(result?.message || 'ImgBB 업로드 후 URL을 받지 못했습니다.');
-    } catch (imgbbError) {
-      throw imgbbError instanceof Error ? imgbbError : new Error(imgbbError?.message || '이미지 업로드에 실패했습니다.');
-    }
+    const url = await Promise.race([
+      uploadImageToStorage(file, type),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('TIMEOUT')), FIREBASE_UPLOAD_TIMEOUT_MS)
+      ),
+    ]);
+    return url;
+  } catch (e) {
+    firebaseError = e;
+  }
+  try {
+    const base64 = await fileToBase64(file);
+    const result = await uploadImageToImgBB(base64, file.name || 'image.jpg');
+    const url = result?.url ?? (typeof result === 'string' ? result : null);
+    if (url) return url;
+    throw new Error(result?.message || 'ImgBB 업로드 후 URL을 받지 못했습니다.');
+  } catch (imgbbError) {
+    throw firebaseError?.message === 'TIMEOUT'
+      ? (imgbbError instanceof Error ? imgbbError : new Error(imgbbError?.message || '이미지 업로드에 실패했습니다.'))
+      : (imgbbError instanceof Error ? imgbbError : new Error(imgbbError?.message || '이미지 업로드에 실패했습니다.'));
   }
 };
 

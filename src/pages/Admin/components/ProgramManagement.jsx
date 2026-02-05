@@ -264,16 +264,13 @@ export const ProgramManagement = () => {
     }
     setImageUploading(true);
     try {
-      const uploaded = [];
-      for (const file of files) {
-        if (!file.type.startsWith('image/')) continue;
-        const url = await uploadImage(file, 'program');
-        uploaded.push(url);
-      }
+      const toUpload = Array.from(files).filter((f) => f.type?.startsWith('image/'));
+      const uploadPromises = toUpload.map((file) => uploadImage(file, 'program'));
+      const uploaded = (await Promise.all(uploadPromises)).filter(Boolean);
       setFormData({ ...formData, imageUrls: [...current, ...uploaded] });
     } catch (err) {
       console.error(err);
-      alert('이미지 업로드에 실패했습니다.');
+      alert(err?.message || '이미지 업로드에 실패했습니다.');
     } finally {
       setImageUploading(false);
     }
