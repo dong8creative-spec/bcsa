@@ -11,6 +11,7 @@ const AppLayout = (props) => {
     const footerRef = useRef(null);
     const fabRef = useRef(null);
     const [fabStyle, setFabStyle] = useState({ position: 'fixed', right: '1.5rem', bottom: '10rem' });
+    const [showRefundPolicyModal, setShowRefundPolicyModal] = useState(false);
     const {
         MobileMenu,
         renderView,
@@ -207,7 +208,13 @@ const AppLayout = (props) => {
                                                     </span>
                                                 ) : null}
                                                 <span className="text-xs font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">
-                                                    {program.requiresPayment ? (program.price ? `${program.price.toLocaleString()}원` : '유료') : '무료'}
+                                                    {(() => {
+                                                        const fee = program.applicationFee != null ? Number(program.applicationFee) : 0;
+                                                        const price = program.price != null ? Number(program.price) : 0;
+                                                        const isPaid = fee > 0 || (program.requiresPayment && price > 0);
+                                                        const amount = fee > 0 ? fee : price;
+                                                        return isPaid ? (amount > 0 ? `${amount.toLocaleString()}원` : '유료') : '무료';
+                                                    })()}
                                                 </span>
                                             </div>
                                             
@@ -443,15 +450,17 @@ const AppLayout = (props) => {
                         {content?.footer_hours ? ` (${content.footer_hours})` : ' (평일 09:00–18:00 / 주말·공휴일 휴무)'} | 대표 메일 <a href={`mailto:${content?.footer_email || 'pujar@naver.com'}`} className="hover:text-white transition-colors">{content?.footer_email || 'pujar@naver.com'}</a>
                     </p>
                     <p className="text-xs text-white/70 mb-4">{content?.footer_copyright || '© 2025 부산청년사업가 포럼 (BCSA). All rights reserved.'}</p>
-                    <p className="text-xs text-white/70">
+                    <p className="text-xs text-white/70 flex flex-wrap items-center gap-x-2 gap-y-1">
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
-                        <span className="mx-2">|</span>
+                        <span className="text-white/50">|</span>
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
-                        <span className="mx-2">|</span>
+                        <span className="text-white/50">|</span>
                         <a href="#" className="hover:text-white/90 transition-colors">서비스 이용약관</a>
-                        <span className="mx-2">|</span>
+                        <span className="text-white/50">|</span>
                         <a href="#" className="hover:text-white/90 transition-colors">개인정보 처리방침</a>
-                        <span className="mx-2">|</span>
+                        <span className="text-white/50">|</span>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowRefundPolicyModal(true); }} className="hover:text-white/90 transition-colors">취소/환불 규정</button>
+                        <span className="text-white/50">|</span>
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = '/admin'; }} className="text-white/60 hover:text-white/90 transition-colors" title="관리자">Admin</button>
                     </p>
                 </div>
@@ -476,6 +485,62 @@ const AppLayout = (props) => {
                     }} 
                     onLogin={handleLogin} 
                 />
+            ) : null}
+
+            {/* 취소/환불 규정 모달 */}
+            {showRefundPolicyModal ? (
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setShowRefundPolicyModal(false); }}>
+                        <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                            <div className="shrink-0 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
+                                <h3 className="text-xl font-bold text-dark">취소/환불 규정</h3>
+                                <button type="button" onClick={() => setShowRefundPolicyModal(false)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                                    <Icons.X size={24} className="text-gray-500" />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-6 modal-scroll text-gray-800 text-sm leading-relaxed">
+                                <h2 className="text-lg font-bold text-dark mb-6 text-center">[부산청년사업가 포럼] 취소 및 환불 규정</h2>
+                                <section className="mb-6">
+                                    <h3 className="font-bold text-dark mb-2">제1조 (목적)</h3>
+                                    <p className="mb-0">본 규정은 '부산청년사업가 포럼'(이하 "포럼")이 제공하는 유료 세미나 및 교육 프로그램의 취소 및 환불에 관한 사항을 규정함을 목적으로 합니다.</p>
+                                </section>
+                                <section className="mb-6">
+                                    <h3 className="font-bold text-dark mb-2">제2조 (환불 기준)</h3>
+                                    <p className="mb-4">회원은 세미나 시작 전까지 취소를 요청할 수 있으며, 환불액은 '소비자분쟁해결기준'에 의거하여 취소 시점에 따라 차등 적용됩니다.</p>
+                                    <div className="mb-4">
+                                        <h4 className="font-bold text-dark mb-3">1. 환불 적용 기간 및 비율</h4>
+                                        <ul className="list-none space-y-2 pl-0">
+                                            <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 개최 3일 전 (23:59까지): 결제 금액 100% 환불</span></li>
+                                            <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 개최 2일 전 (23:59까지): 결제 금액의 90% 환불 (위약금 10% 공제)</span></li>
+                                            <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 개최 1일 전 (23:59까지): 결제 금액의 80% 환불 (위약금 20% 공제)</span></li>
+                                            <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 당일 및 시작 시간 이후: 환불 불가 (노쇼 포함)</span></li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-dark mb-3">2. 패키지 상품 (세미나+자료) 예외 조항</h4>
+                                        <ul className="list-none space-y-2 pl-0">
+                                            <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 참가권과 디지털 자료(PDF, 영상 등)가 결합된 상품의 경우, 자료를 다운로드하거나 열람한 이력이 확인되면 해당 자료 비용(정가 기준)을 공제한 후 남은 차액에 대해 위 기간별 비율을 적용합니다.</span></li>
+                                        </ul>
+                                    </div>
+                                </section>
+                                <section className="mb-6">
+                                    <h3 className="font-bold text-dark mb-2">제3조 (환불 신청 방법)</h3>
+                                    <ol className="list-decimal list-inside space-y-2 pl-2">
+                                        <li>환불 신청은 [마이페이지 &gt; 결제내역]에서 직접 취소하거나, 포럼 공식 이메일(<a href={`mailto:${content?.footer_email || 'pujar@naver.com'}`} className="text-brand hover:underline">{content?.footer_email || 'pujar@naver.com'}</a>)로 접수해야 합니다.</li>
+                                        <li>유선(전화)을 통한 구두 취소는 정확한 시점 확인이 어려워 인정되지 않으며, 시스템상 기록이 남는 온라인 신청을 원칙으로 합니다.</li>
+                                    </ol>
+                                </section>
+                                <section className="mb-0">
+                                    <h3 className="font-bold text-dark mb-2">제4조 (포럼 귀책사유 및 폐강)</h3>
+                                    <ol className="list-decimal list-inside space-y-2 pl-2">
+                                        <li>천재지변, 강사 부재, 최소 인원 미달 등 포럼 측의 사정으로 세미나가 취소될 경우, 시점과 관계없이 결제 금액 100%를 전액 환불합니다.</li>
+                                        <li>환불 처리는 취소 확정일로부터 영업일 기준 3~5일 이내에 진행됩니다.</li>
+                                    </ol>
+                                </section>
+                            </div>
+                        </div>
+                    </div>
+                </ModalPortal>
             ) : null}
             
             {/* 문의하기 모달 */}

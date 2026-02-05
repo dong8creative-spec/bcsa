@@ -40,8 +40,13 @@ export default {
         'scroll-left-slow': 'scrollLeft 60s linear infinite',
         'fade-out': 'fadeOut 2s ease-in-out forwards',
         'fade-in-slow': 'fadeInSlow 2s ease-in-out forwards',
+        'program-image-fade-in': 'programImageFadeIn 0.5s ease-out forwards',
       },
       keyframes: {
+        programImageFadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
         fadeOut: {
           '0%': { opacity: '1' },
           '100%': { opacity: '0' },

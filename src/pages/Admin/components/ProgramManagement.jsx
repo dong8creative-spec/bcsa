@@ -15,6 +15,12 @@ const SORT_OPTIONS = [
   { value: 'title', label: '제목 가나다순 (ㄱ~ㅎ)' },
 ];
 
+const PROGRAM_CATEGORIES = [
+  { value: '네트워킹 모임', label: '네트워킹 모임' },
+  { value: '교육/세미나', label: '교육/세미나' },
+  { value: '커피챗', label: '커피챗' },
+];
+
 /** 프로그램 날짜 문자열을 비교용 타임스탬프로 변환 */
 const parseDateForSort = (dateStr) => {
   if (!dateStr || typeof dateStr !== 'string') return 0;
@@ -167,6 +173,45 @@ export const ProgramManagement = () => {
     setShowModal(true);
   };
 
+  const handleAddTestPrograms = async () => {
+    if (!confirm('테스트용 프로그램 2개(정원 30명, 강의료 5만원)를 추가하시겠습니까?')) return;
+    try {
+      const d = new Date();
+      const date1 = `${d.getFullYear()}.${String(d.getMonth() + 2).padStart(2, '0')}.15 14:00`;
+      const date2 = `${d.getFullYear()}.${String(d.getMonth() + 3).padStart(2, '0')}.01 10:00`;
+      const baseData = (title, desc, date, category) => ({
+        title,
+        description: desc,
+        desc: desc,
+        date,
+        location: '부산 해운대구 센텀시티',
+        capacity: '30',
+        maxParticipants: 30,
+        currentParticipants: 0,
+        category: category || '교육/세미나',
+        applicationFee: 50000,
+        imageUrls: [],
+        images: [],
+      });
+      await firebaseService.createSeminar(baseData(
+        '테스트 프로그램 1 - 비즈니스 세미나',
+        '정원 30명, 강의료 5만원 테스트용 프로그램입니다. 청년 사업가들을 위한 실전 비즈니스 인사이트를 공유합니다.',
+        date1
+      ));
+      await firebaseService.createSeminar(baseData(
+        '테스트 프로그램 2 - 스타트업 네트워킹',
+        '정원 30명, 강의료 5만원 테스트용 프로그램입니다. 스타트업 대표들과의 네트워킹 및 경험 공유의 장입니다.',
+        date2,
+        '네트워킹/모임'
+      ));
+      alert('테스트 프로그램 2개가 추가되었습니다.');
+      loadPrograms();
+    } catch (error) {
+      console.error('테스트 프로그램 추가 오류:', error);
+      alert('테스트 프로그램 추가에 실패했습니다.');
+    }
+  };
+
   const handleDelete = async (programId) => {
     if (!confirm('정말 이 프로그램을 삭제하시겠습니까?')) return;
 
@@ -253,13 +298,20 @@ export const ProgramManagement = () => {
           <Icons.Calendar size={28} />
           프로그램 관리
         </h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={loadPrograms}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2"
           >
             <Icons.RefreshCw size={18} />
             새로고침
+          </button>
+          <button
+            onClick={handleAddTestPrograms}
+            className="px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold hover:bg-amber-200 transition-colors flex items-center gap-2"
+          >
+            <Icons.Plus size={18} />
+            테스트 프로그램 2개 추가
           </button>
           <button
             onClick={() => {
@@ -446,12 +498,16 @@ export const ProgramManagement = () => {
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
-                <input
-                  type="text"
+                <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
-                />
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white"
+                >
+                  <option value="">선택하세요</option>
+                  {PROGRAM_CATEGORIES.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

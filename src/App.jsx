@@ -416,7 +416,81 @@ const App = () => {
     });
     const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
     const popupShownRef = useRef(false); // 팝업 설정 중복 실행 방지용 ref
-    
+    const programTrackRef = useRef(null);
+    const programScrollOffsetRef = useRef(0);
+    const [programScrollOffset, setProgramScrollOffset] = useState(0);
+    const programDragRef = useRef({ active: false, startX: 0, startOffset: 0, hasMoved: false });
+
+    // 프로그램 자동 흐름 애니메이션 (250초 주기) + 드래그 시 일시 정지
+    useEffect(() => {
+        programScrollOffsetRef.current = programScrollOffset;
+    }, [programScrollOffset]);
+
+    useEffect(() => {
+        if (!Array.isArray(seminarsData) || seminarsData.length === 0) return;
+        let rafId;
+        const tick = () => {
+            if (programDragRef.current.active) {
+                rafId = requestAnimationFrame(tick);
+                return;
+            }
+            const el = programTrackRef.current;
+            const contentWidth = el ? el.offsetWidth / 2 : 0;
+            if (contentWidth <= 0) {
+                rafId = requestAnimationFrame(tick);
+                return;
+            }
+            const speed = contentWidth / 250 / 60;
+            setProgramScrollOffset((prev) => {
+                let next = prev - speed;
+                if (next < -contentWidth) next += contentWidth;
+                if (next > 0) next -= contentWidth;
+                return next;
+            });
+            rafId = requestAnimationFrame(tick);
+        };
+        rafId = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(rafId);
+    }, [seminarsData.length]);
+
+    // 프로그램 섹션 마우스/터치 드래그 스크롤 (드래그 중에는 자동 흐름 일시 정지)
+    const handleProgramDragStart = (e) => {
+        const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+        programDragRef.current = {
+            active: true,
+            startX: clientX,
+            startOffset: programScrollOffsetRef.current,
+            hasMoved: false
+        };
+        const container = programTrackRef.current?.parentElement;
+        if (container) {
+            container.style.cursor = 'grabbing';
+            container.style.userSelect = 'none';
+        }
+        const onMove = (e2) => {
+            const x = e2.clientX ?? e2.touches?.[0]?.clientX ?? programDragRef.current.startX;
+            const dx = programDragRef.current.startX - x;
+            if (Math.abs(dx) > 5) programDragRef.current.hasMoved = true;
+            setProgramScrollOffset(programDragRef.current.startOffset - dx);
+            if (e2.cancelable) e2.preventDefault();
+        };
+        const onUp = () => {
+            programDragRef.current.active = false;
+            if (container) {
+                container.style.cursor = 'grab';
+                container.style.userSelect = '';
+            }
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.removeEventListener('touchmove', onMove, { passive: false });
+            document.removeEventListener('touchend', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onUp);
+    };
+
     // 카카오맵 SDK 로드 완료를 기다리는 헬퍼 함수
     const waitForKakaoMap = () => {
         return new Promise((resolve, reject) => {
@@ -657,7 +731,9 @@ const App = () => {
     // 카테고리별 컬러 반환 함수
     const getCategoryColor = (category) => {
         const colorMap = {
+            '네트워킹 모임': 'bg-green-100 text-green-700',
             '교육/세미나': 'bg-blue-100 text-blue-700',
+            '커피챗': 'bg-amber-100 text-amber-700',
             '네트워킹/모임': 'bg-green-100 text-green-700',
             '투자/IR': 'bg-orange-100 text-orange-700',
             '멘토링/상담': 'bg-purple-100 text-purple-700',
@@ -1015,10 +1091,26 @@ const App = () => {
             };
         };
         
+        // 강의일자(날짜) 기준 최신순 정렬 (맨 앞 = 가장 최신 강의)
+        const parseLectureDate = (dateStr) => {
+            if (!dateStr) return new Date(0);
+            let dateOnly = String(dateStr).trim().split(/[\sT]/)[0].replace(/-/g, '.').replace(/\//g, '.');
+            const parts = dateOnly.split('.');
+            if (parts.length >= 3) {
+                const y = parseInt(parts[0], 10), m = parseInt(parts[1], 10) - 1, d = parseInt(parts[2], 10);
+                if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return new Date(y, m, d);
+            }
+            if (dateOnly.length === 8 && /^\d+$/.test(dateOnly))
+                return new Date(parseInt(dateOnly.slice(0, 4), 10), parseInt(dateOnly.slice(4, 6), 10) - 1, parseInt(dateOnly.slice(6, 8), 10));
+            return new Date(0);
+        };
+        const sortByLectureDateDesc = (list) => {
+            return [...list].sort((a, b) => parseLectureDate(b.date).getTime() - parseLectureDate(a.date).getTime());
+        };
         if (firebaseService && firebaseService.subscribeSeminars) {
             const unsubscribe = firebaseService.subscribeSeminars((seminars) => {
                 const normalizedSeminars = seminars.map(normalizeSeminarImages);
-                setSeminarsData(normalizedSeminars);
+                setSeminarsData(sortByLectureDateDesc(normalizedSeminars));
             });
             return () => unsubscribe();
         } else {
@@ -1027,7 +1119,7 @@ const App = () => {
                     try {
                         const seminars = await firebaseService.getSeminars();
                         const normalizedSeminars = seminars.map(normalizeSeminarImages);
-                        setSeminarsData(normalizedSeminars);
+                        setSeminarsData(sortByLectureDateDesc(normalizedSeminars));
                     } catch (error) {
                         console.error('세미나 로드 오류:', error);
                     }
@@ -2991,269 +3083,7 @@ END:VCALENDAR`;
                 </section>
                 
                 {/* ============================================
-                    📍 섹션 2: SEMINAR REVIEWS (세미나 후기 자동 슬라이드)
-                    ============================================
-                    세미나 후기 자동 슬라이드입니다 (5초 간격, 왼쪽→오른쪽).
-                    별점과 함께 표시되며, 이미지는 최대 2장만 표시됩니다.
-                    ============================================ */}
-                {(() => {
-                    if (!menuEnabled['프로그램'] || !menuEnabled['커뮤니티']) {
-                        return null;
-                    }
-                    
-                    const reviewPosts = communityPosts.filter(p => p.category === '프로그램 후기' && p.rating);
-                    if (reviewPosts.length === 0) {
-                        return null;
-                    }
-                    
-                    const ReviewSlider = () => {
-                        const [currentIndex, setCurrentIndex] = useState(0);
-                        const [nextIndex, setNextIndex] = useState(null);
-                        const [isTransitioning, setIsTransitioning] = useState(false);
-                        const [animationKey, setAnimationKey] = useState(0); // animation 재시작을 위한 키
-                        const [nextOpacity, setNextOpacity] = useState(0); // 다음 슬라이드의 opacity
-                        const [currentOpacity, setCurrentOpacity] = useState(1); // 현재 슬라이드의 opacity
-                        
-                        useEffect(() => {
-                            const interval = setInterval(() => {
-                                setCurrentIndex((prev) => {
-                                    const newNextIndex = (prev + 1) % reviewPosts.length;
-                                    // 크로스 디졸브 시작: 다음 슬라이드 준비 및 애니메이션 시작
-                                    setNextIndex(newNextIndex);
-                                    setIsTransitioning(true);
-                                    setAnimationKey(prev => prev + 1); // 애니메이션 재시작
-                                    setCurrentOpacity(1); // 현재 슬라이드는 1에서 시작
-                                    setNextOpacity(0); // 다음 슬라이드는 0에서 시작
-                                    
-                                    // 브라우저가 초기 상태를 렌더링한 후 transition 시작
-                                    setTimeout(() => {
-                                        // 동시에 현재는 0으로, 다음은 1로 변경 (크로스 디졸브)
-                                        setCurrentOpacity(0); // 현재 슬라이드 페이드 아웃
-                                        setNextOpacity(1); // 다음 슬라이드 페이드 인
-                                    }, 50);
-                                    
-                                    // 크로스 디졸브: 순차 디졸브 완료 후 전환 종료
-                                    // 셀 2의 delay(2400ms) + transition(2000ms) + 여유(100ms) = 4500ms
-                                    setTimeout(() => {
-                                        setCurrentIndex(newNextIndex);
-                                        setNextIndex(null);
-                                        setIsTransitioning(false);
-                                        setCurrentOpacity(1);
-                                        setNextOpacity(0);
-                                    }, 4600); // 셀2 delay(2400ms) + transition(2000ms) + 여유(200ms)
-                                    
-                                    return prev; // currentIndex는 setTimeout 내부에서 업데이트
-                                });
-                            }, 7000); // 7초 간격 (순차 크로스 디졸브 전체 시간 4.6초 + 대기 2.4초)
-                            
-                            return () => clearInterval(interval);
-                        }, [reviewPosts.length]);
-                        
-                        // currentIndex가 유효한지 확인
-                        if (currentIndex < 0 || currentIndex >= reviewPosts.length) {
-                            return null;
-                        }
-                        
-                        const currentReview = reviewPosts[currentIndex];
-                        const transitioningReview = nextIndex !== null ? reviewPosts[nextIndex] : null;
-                    
-                        const renderReviewCard = (review, animationClass, zIndex, animKey, isTransitioning = false) => {
-                            // review가 없는 경우 null 반환
-                            if (!review) {
-                                return null;
-                            }
-                    return (
-                            <div 
-                                key={`${review.id}-${animKey}`}
-                                className={`bg-white shadow-md border border-blue-100 cursor-pointer hover:shadow-lg flex flex-col ${animationClass || ''}`}
-                                style={{ 
-                                    zIndex: zIndex,
-                                    height: '830px',
-                                    overflow: 'hidden',
-                                    pointerEvents: isTransitioning ? 'none' : 'auto',
-                                    borderRadius: '20px'
-                                }} 
-                                onClick={(e) => { 
-                                    e.preventDefault(); 
-                                    e.stopPropagation(); 
-                                    setCurrentView('community'); 
-                                    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); 
-                                }}
-                            >
-                                        <div className="p-4 flex flex-col">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-500 text-white rounded">프로그램 후기</span>
-                                                {review.rating ? (
-                                                    <div className="flex gap-0.5">
-                                                        {[1, 2, 3, 4, 5].map(star => (
-                                                            review.rating >= star ? (
-                                                                <Icons.Star key={star} className="w-3 h-3 text-yellow-400" style={{ fill: 'currentColor' }} />
-                                                            ) : (
-                                                                <Icons.Star key={star} className="w-3 h-3 text-gray-300" />
-                                                            )
-                                                        ))}
-                                                    </div>
-                                                ) : null}
-                                            </div>
-                                            <h4 className="font-bold text-dark text-base mb-2 break-keep">{review.title}</h4>
-                                            <p className="text-sm text-gray-600 break-keep">{review.content}</p>
-                                        </div>
-                                        {review.images && review.images.length > 0 ? (
-                                            <div className="flex flex-col px-4 pb-4 gap-[10px]" style={{ marginTop: '10px' }}>
-                                                {review.images.slice(0, 2).map((img, imgIdx) => (
-                                                    <div 
-                                                        key={imgIdx} 
-                                                        className="relative w-full"
-                                                        style={{ aspectRatio: '3/2' }}
-                                                    >
-                                                        <div className="w-full h-full flex items-center justify-center bg-gray-50 overflow-hidden" style={{ borderRadius: '20px' }}>
-                                                            <img 
-                                                                src={img} 
-                                                                alt={`${review.title} 이미지 ${imgIdx + 1}`} 
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                                            </div>
-                                        ) : null}
-                                    </div>
-                        );
-                    };
-                    
-                    // 모바일 감지
-                    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-                    
-                    useEffect(() => {
-                        const handleResize = () => setIsMobile(window.innerWidth < 768);
-                        window.addEventListener('resize', handleResize);
-                        return () => window.removeEventListener('resize', handleResize);
-                    }, []);
-                    
-                    // 최대 3개 후기를 동시에 표시하기 위한 로직 (모바일은 1개)
-                    const getVisibleReviews = () => {
-                        const maxVisible = isMobile ? 1 : 3;
-                        const visibleSet = new Set();
-                        const visible = [];
-                        
-                        // currentIndex부터 시작하여 최대 maxVisible개 추가
-                        for (let i = 0; i < maxVisible; i++) {
-                            const idx = (currentIndex + i) % reviewPosts.length;
-                            if (!visibleSet.has(idx)) {
-                                visibleSet.add(idx);
-                                visible.push({ review: reviewPosts[idx], index: idx, position: i });
-                            }
-                        }
-                        return visible;
-                    };
-                    
-                    const visibleReviews = getVisibleReviews();
-                    if (!visibleReviews || visibleReviews.length === 0) {
-                        return null;
-                    }
-                    return (
-                        <div className="relative w-full bg-gradient-to-r from-blue-50 to-indigo-50 py-6 overflow-hidden border-t border-b border-blue-200/30 mb-20">
-                                <div className="container mx-auto px-4">
-                                    {/* Grid 레이아웃: 모바일 1열, 태블릿 2열, 데스크톱 3열 */}
-                                    <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-3'}`} style={{ height: isMobile ? '500px' : '830px' }}>
-                                        {visibleReviews.map(({ review, index, position }) => {
-                                            // 각 셀은 자신의 인덱스에 해당하는 후기를 표시하고, 전환 시 다음 후기로 이동
-                                            // 모든 셀에 대해 크로스 디졸브 적용 (전환 중일 때)
-                                            const showOverlay = isTransitioning && nextIndex !== null;
-                                            
-                                            // 전환 중일 때 모든 셀에 크로스 디졸브 적용
-                                            if (showOverlay) {
-                                                
-                                                // 각 셀의 현재 후기와 다음 후기
-                                                const currentReview = reviewPosts[index];
-                                                const cellNextIndex = (index + 1) % reviewPosts.length;
-                                                const nextReview = reviewPosts[cellNextIndex];
-                                                
-                                                // review가 없는 경우 null 반환
-                                                if (!currentReview || !nextReview) {
-                                                    return null;
-                                                }
-                                                
-                                                // 각 셀의 position에 따라 순차적 디졸브 적용 (1.2초 간격)
-                                                const transitionDelay = position * 1200; // 셀 0: 0ms, 셀 1: 1200ms, 셀 2: 2400ms
-                                                
-                                                return (
-                                                    <div key={`review-overlay-${index}-${animationKey}`} className="relative" style={{ height: isMobile ? '480px' : '830px', willChange: 'opacity' }}>
-                                                        {/* 현재 슬라이드 (페이드 아웃) */}
-                                                        <div 
-                                                            className="absolute inset-0"
-                                                            style={{
-                                                                opacity: currentOpacity,
-                                                                transition: `opacity 2000ms ease-in-out ${transitionDelay}ms`,
-                                                                zIndex: 1,
-                                                                willChange: 'opacity'
-                                                            }}
-                                                        >
-                                                            {renderReviewCard(currentReview, '', 1, animationKey, true)}
-                                                    </div>
-                                                        {/* 다음 슬라이드 (페이드 인) */}
-                                                        <div 
-                                                            className="absolute inset-0"
-                                                            style={{
-                                                                opacity: nextOpacity,
-                                                                transition: `opacity 2000ms ease-in-out ${transitionDelay}ms`,
-                                                                zIndex: 2,
-                                                                willChange: 'opacity'
-                                                            }}
-                                                        >
-                                                            {renderReviewCard(nextReview, '', 2, animationKey, true)}
-                                            </div>
-                                        </div>
-                                                );
-                                            }
-                                            
-                                            // 일반 슬라이드 (겹치지 않음)
-                                            // review가 없는 경우 null 반환
-                                            if (!review) {
-                                                return null;
-                                            }
-                                            return (
-                                                <div 
-                                                    key={`review-${review.id}-${index}`} 
-                                                    className="relative"
-                                                    style={{ height: isMobile ? '480px' : '830px' }}
-                                                >
-                                                    {renderReviewCard(review, '', 1, animationKey)}
-                                        </div>
-                                            );
-                                        })}
-                                    </div>
-                                    {/* 슬라이드 인디케이터 */}
-                                    {reviewPosts.length > 1 ? (
-                                        <div className="flex justify-center gap-2 mt-4">
-                                            {reviewPosts.map((_, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        setIsTransitioning(false);
-                                                        setNextIndex(null);
-                                                        setCurrentIndex(idx);
-                                                    }}
-                                                    className={`w-2 h-2 rounded-full transition-all ${
-                                                        idx === currentIndex ? 'bg-brand w-6' : 'bg-gray-300'
-                                                    }`}
-                                                />
-                                ))}
-                                            </div>
-                                        ) : null}
-                            </div>
-                        </div>
-                    );
-                        };
-                        
-                        return <ReviewSlider />;
-                    })()}
-
-                {/* ============================================
-                    📍 섹션 3: STATS (통계 숫자)
+                    📍 섹션 2: STATS (통계 숫자)
                     ============================================
                     활동중인 사업가, 진행된 세미나, 투자 성공 사례 등의 통계를 표시합니다.
                     순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
@@ -3290,11 +3120,66 @@ END:VCALENDAR`;
                 </section>
 
                 {/* ============================================
-                    📍 섹션 5: ACTIVITIES (주요 활동 카드)
-                    ============================================
-                    "커뮤니티 주요 활동" 섹션입니다.
-                    비즈니스 세미나, 투자/지원사업, 네트워킹 등의 카드가 표시됩니다.
-                    순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
+                    📍 프로그램 (자동 흐름 + 드래그 스크롤, 클릭 시 신청 페이지 이동)
+                    ============================================ */}
+                {menuEnabled['프로그램'] && Array.isArray(seminarsData) && seminarsData.length > 0 ? (
+                <section className="py-20 px-6 overflow-hidden">
+                    <div className="container mx-auto max-w-7xl">
+                        <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
+                            <div><h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">프로그램</h2><p className="text-gray-500 text-sm md:text-base break-keep">진행 중인 프로그램을 확인하세요</p></div>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors shrink-0">전체 보기 <Icons.ArrowRight size={16} /></button>
+                        </div>
+                        <div
+                            role="region"
+                            aria-label="프로그램 목록"
+                            className="overflow-hidden cursor-grab select-none"
+                            style={{ marginLeft: '-1.5rem', marginRight: '-1.5rem' }}
+                            onMouseDown={handleProgramDragStart}
+                            onTouchStart={handleProgramDragStart}
+                        >
+                            <div
+                                ref={programTrackRef}
+                                className="flex gap-6 w-max"
+                                style={{ transform: `translateX(${programScrollOffset}px)` }}
+                            >
+                                {[...seminarsData, ...seminarsData].map((seminar, idx) => {
+                                    const img = (seminar.images && seminar.images[0]) || (seminar.imageUrls && seminar.imageUrls[0]) || seminar.imageUrl || seminar.img;
+                                    const fee = seminar.applicationFee != null ? Number(seminar.applicationFee) : 0;
+                                    const price = seminar.price != null ? Number(seminar.price) : 0;
+                                    const isPaid = fee > 0 || (seminar.requiresPayment && price > 0);
+                                    const amount = fee > 0 ? fee : price;
+                                    return (
+                                        <button
+                                            key={`${seminar.id}-${idx}`}
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (programDragRef.current?.hasMoved) return;
+                                                navigate(`/program/apply/${seminar.id}`);
+                                            }}
+                                            className="flex-shrink-0 w-[280px] md:w-[320px] bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:border-brand/30 transition-all text-left overflow-hidden group"
+                                        >
+                                            <div className="w-full aspect-[3/4] bg-gray-100 overflow-hidden">{img ? <img src={img} alt={seminar.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><Icons.Calendar size={48} /></div>}</div>
+                                            <div className="p-4">
+                                                <div className="flex flex-wrap gap-2 mb-2">
+                                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${seminar.status === '모집중' ? 'bg-blue-100 text-blue-700' : seminar.status === '마감임박' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>{seminar.status || '모집중'}</span>
+                                                    <span className="text-xs font-bold px-2 py-0.5 bg-brand/10 text-brand rounded-full">{isPaid ? `${amount.toLocaleString()}원` : '무료'}</span>
+                                                </div>
+                                                <h3 className="font-bold text-dark mb-1 line-clamp-2 group-hover:text-brand transition-colors">{seminar.title}</h3>
+                                                <p className="text-sm text-gray-500 flex items-center gap-1"><Icons.Calendar size={14} /> {seminar.date}</p>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                ) : null}
+
+                {/* ============================================
+                    📍 ACTIVITIES (커뮤니티 주요 활동 - 고정 카드 그리드)
                     ============================================ */}
                 {menuEnabled['프로그램'] ? (
                 <section className="py-20 px-6">

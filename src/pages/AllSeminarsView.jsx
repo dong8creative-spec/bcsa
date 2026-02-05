@@ -141,7 +141,9 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
 
     const getCategoryColor = (category) => {
         const colorMap = {
+            '네트워킹 모임': 'bg-green-100 text-green-700',
             '교육/세미나': 'bg-blue-100 text-blue-700',
+            '커피챗': 'bg-amber-100 text-amber-700',
             '네트워킹/모임': 'bg-green-100 text-green-700',
             '투자/IR': 'bg-orange-100 text-orange-700',
             '멘토링/상담': 'bg-purple-100 text-purple-700',
@@ -258,7 +260,13 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                             </span>
                                         )}
                                         <span className="text-xs font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">
-                                            {seminar.requiresPayment ? (seminar.price ? `${seminar.price.toLocaleString()}원` : '유료') : '무료'}
+                                            {(() => {
+                                                const fee = seminar.applicationFee != null ? Number(seminar.applicationFee) : 0;
+                                                const price = seminar.price != null ? Number(seminar.price) : 0;
+                                                const isPaid = fee > 0 || (seminar.requiresPayment && price > 0);
+                                                const amount = fee > 0 ? fee : price;
+                                                return isPaid ? (amount > 0 ? `${amount.toLocaleString()}원` : '유료') : '무료';
+                                            })()}
                                         </span>
                                     </div>
                                     <h3 className="text-lg font-bold text-dark mb-2 line-clamp-2">{seminar.title}</h3>
@@ -482,7 +490,13 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                             </span>
                                         )}
                                     <span className="text-xs font-bold px-2 py-1 bg-white/90 text-gray-700 rounded-full shadow-sm">
-                                            {selectedSeminar.requiresPayment ? (selectedSeminar.price ? `${selectedSeminar.price.toLocaleString()}원` : '유료') : '무료'}
+                                            {(() => {
+                                                const fee = selectedSeminar.applicationFee != null ? Number(selectedSeminar.applicationFee) : 0;
+                                                const price = selectedSeminar.price != null ? Number(selectedSeminar.price) : 0;
+                                                const isPaid = fee > 0 || (selectedSeminar.requiresPayment && price > 0);
+                                                const amount = fee > 0 ? fee : price;
+                                                return isPaid ? (amount > 0 ? `${amount.toLocaleString()}원` : '유료') : '무료';
+                                            })()}
                                         </span>
                                     </div>
                                 </div>
