@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { Icons } from '../../../components/Icons';
 import ModalPortal from '../../../components/ModalPortal';
-import { uploadImage } from '../../../utils/imageUtils';
+import { uploadImageForAdmin } from '../../../utils/imageUtils';
 
 const MAX_REVIEW_IMAGES = 10;
 
@@ -471,7 +471,7 @@ export const PostManagement = () => {
                             const uploadPromises = files.map(async (file) => {
                               try {
                                 if (!file.type.startsWith('image/')) return null;
-                                return await uploadImage(file, 'community');
+                                return await uploadImageForAdmin(file);
                               } catch (err) {
                                 alert(err?.message || `${file.name} 업로드 실패`);
                                 return null;

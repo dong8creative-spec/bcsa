@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Icons } from '../components/Icons';
+import { normalizeImagesList } from '../utils/imageUtils';
 
 const DISSOLVE_DURATION_MS = 1000;
 const DISPLAY_DURATION_MS = 3000;
@@ -89,20 +90,18 @@ const ProgramApplyView = ({
         let list = [];
         const raw = program.images || program.imageUrls;
         if (raw && Array.isArray(raw) && raw.length > 0) {
-            list = raw
-                .map(item => (typeof item === 'string' ? item : item?.url || item?.src))
-                .filter(url => url && typeof url === 'string' && url.trim() !== '');
+            list = normalizeImagesList(raw);
         }
         if (list.length === 0 && program.imageUrl) list = [program.imageUrl];
         if (list.length === 0 && program.img) {
             const img = program.img;
             if (Array.isArray(img)) {
-                list = img.filter(url => url && typeof url === 'string' && url.trim() !== '');
+                list = normalizeImagesList(img);
             } else if (typeof img === 'string' && img.trim() !== '') {
                 if (img.trim().startsWith('[')) {
                     try {
                         const parsed = JSON.parse(img);
-                        if (Array.isArray(parsed)) list = parsed.filter(url => url && typeof url === 'string' && url.trim() !== '');
+                        if (Array.isArray(parsed)) list = normalizeImagesList(parsed);
                         else list = [img];
                     } catch { list = [img]; }
                 } else {

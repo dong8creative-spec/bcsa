@@ -3,7 +3,7 @@ import { firebaseService } from '../../../services/firebaseService';
 import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
 import { KakaoMapModal } from './KakaoMapModal';
-import { uploadImage } from '../../../utils/imageUtils';
+import { uploadImageDual, normalizeImageItem, normalizeImagesList } from '../../../utils/imageUtils';
 import ModalPortal from '../../../components/ModalPortal';
 
 const MAX_IMAGES = 10;
@@ -62,7 +62,7 @@ export const ProgramManagement = () => {
     capacity: '',
     category: '',
     applicationFee: '', // 신청 비용 (원, 비어 있으면 무료)
-    imageUrls: []
+    imageEntries: [] // Array<{ firebase: string | null, imgbb: string | null }>
   });
   const [imageUploading, setImageUploading] = useState(false);
   const programImageInputRef = useRef(null);
@@ -140,8 +140,8 @@ export const ProgramManagement = () => {
       ...formData,
       applicationFee: feeNum != null && !isNaN(feeNum) && feeNum >= 0 ? feeNum : null,
       maxParticipants: capacityNum != null && !isNaN(capacityNum) ? capacityNum : null,
-      imageUrl: formData.imageUrls?.[0] || '',
-      images: formData.imageUrls || []
+      imageUrl: normalizeImageItem(formData.imageEntries?.[0]) || '',
+      images: formData.imageEntries || []
     };
     try {
       if (editingProgram) {
@@ -162,7 +162,14 @@ export const ProgramManagement = () => {
 
   const handleEdit = (program) => {
     setEditingProgram(program);
-    const urls = Array.isArray(program.imageUrls) ? program.imageUrls : (program.imageUrl ? [program.imageUrl] : []);
+    const rawImages = program.images || (program.imageUrls ? program.imageUrls : (program.imageUrl ? [program.imageUrl] : []));
+    const imageEntries = Array.isArray(rawImages)
+      ? rawImages.map((item) =>
+          typeof item === 'string'
+            ? { firebase: item, imgbb: null }
+            : { firebase: item?.firebase ?? null, imgbb: item?.imgbb ?? null }
+        )
+      : [];
     const rawCapacity = program.capacity != null && program.capacity !== ''
       ? Number(program.capacity)
       : (program.maxParticipants != null && program.maxParticipants !== '' ? Number(program.maxParticipants) : NaN);
@@ -181,7 +188,7 @@ export const ProgramManagement = () => {
       capacity: capacityNorm,
       category: program.category || '',
       applicationFee: program.applicationFee != null && program.applicationFee !== '' ? String(program.applicationFee) : '',
-      imageUrls: urls
+      imageEntries
     });
     setShowModal(true);
   };
@@ -250,14 +257,14 @@ export const ProgramManagement = () => {
       capacity: '',
       category: '',
       applicationFee: '',
-      imageUrls: []
+      imageEntries: []
     });
   };
 
   const handleProgramImageChange = async (e) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = '';
-    const current = formData.imageUrls || [];
+    const current = formData.imageEntries || [];
     if (current.length + files.length > MAX_IMAGES) {
       alert(`이미지는 최대 ${MAX_IMAGES}장까지 등록할 수 있습니다.`);
       return;
@@ -265,9 +272,14 @@ export const ProgramManagement = () => {
     setImageUploading(true);
     try {
       const toUpload = Array.from(files).filter((f) => f.type?.startsWith('image/'));
-      const uploadPromises = toUpload.map((file) => uploadImage(file, 'program'));
-      const uploaded = (await Promise.all(uploadPromises)).filter(Boolean);
-      setFormData({ ...formData, imageUrls: [...current, ...uploaded] });
+      const uploadPromises = toUpload.map((file) => uploadImageDual(file, 'program'));
+      const results = await Promise.all(uploadPromises);
+      const added = results.filter((r) => r.firebase || r.imgbb);
+      if (added.length === 0 && results.length > 0) {
+        alert('이미지 업로드에 실패했습니다.');
+        return;
+      }
+      setFormData({ ...formData, imageEntries: [...current, ...added] });
     } catch (err) {
       console.error(err);
       alert(err?.message || '이미지 업로드에 실패했습니다.');
@@ -277,8 +289,8 @@ export const ProgramManagement = () => {
   };
 
   const removeProgramImage = (index) => {
-    const next = (formData.imageUrls || []).filter((_, i) => i !== index);
-    setFormData({ ...formData, imageUrls: next });
+    const next = (formData.imageEntries || []).filter((_, i) => i !== index);
+    setFormData({ ...formData, imageEntries: next });
   };
 
   const handleLocationSelect = (location) => {
@@ -373,7 +385,7 @@ export const ProgramManagement = () => {
           </div>
         ) : (
           filteredAndSortedPrograms.map((program) => {
-            const thumb = (program.imageUrls?.[0] ?? program.imageUrl);
+            const thumb = normalizeImageItem(program.images?.[0]) || program.imageUrls?.[0] || program.imageUrl;
             return (
             <div key={program.id} className="bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
               {thumb && (
@@ -552,9 +564,9 @@ export const ProgramManagement = () => {
                   onChange={handleProgramImageChange}
                 />
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {(formData.imageUrls || []).map((url, idx) => (
+                  {(formData.imageEntries || []).map((entry, idx) => (
                     <div key={idx} className="relative group">
-                      <img src={url} alt={`이미지 ${idx + 1}`} className="w-20 h-20 object-cover rounded-xl border-2 border-blue-200" />
+                      <img src={normalizeImageItem(entry)} alt={`이미지 ${idx + 1}`} className="w-20 h-20 object-cover rounded-xl border-2 border-blue-200" />
                       <button
                         type="button"
                         onClick={() => removeProgramImage(idx)}
@@ -568,7 +580,7 @@ export const ProgramManagement = () => {
                 </div>
                 <button
                   type="button"
-                  disabled={(formData.imageUrls?.length || 0) >= MAX_IMAGES || imageUploading}
+                  disabled={(formData.imageEntries?.length || 0) >= MAX_IMAGES || imageUploading}
                   onClick={() => programImageInputRef.current?.click()}
                   className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >

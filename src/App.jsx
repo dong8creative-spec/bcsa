@@ -4,7 +4,7 @@ import { firebaseService } from './services/firebaseService';
 import { authService } from './services/authService';
 import { CONFIG } from './config';
 import { calculateStatus, fetchSheetData } from './utils';
-import { uploadImageToImgBB, uploadLogoOrFaviconToGitHub, resizeImage, fileToBase64 } from './utils/imageUtils';
+import { uploadImageToImgBB, uploadLogoOrFaviconToGitHub, resizeImage, fileToBase64, normalizeImagesList } from './utils/imageUtils';
 import { translateFirebaseError } from './utils/errorUtils';
 import { 
   loadUsersFromStorage, 
@@ -1042,27 +1042,16 @@ const App = () => {
             
             let images = [];
             
-            // images 필드 처리
+            // images 필드 처리 (문자열 배열 또는 { firebase, imgbb } 객체 배열 지원)
             if (seminar.images) {
                 if (Array.isArray(seminar.images)) {
-                    // 배열인 경우: 빈 문자열, null, undefined 필터링
-                    images = seminar.images.filter(img => 
-                        img !== null && 
-                        img !== undefined && 
-                        typeof img === 'string' && 
-                        img.trim() !== ''
-                    );
+                    images = normalizeImagesList(seminar.images);
                 } else if (typeof seminar.images === 'string' && seminar.images.trim() !== '') {
                     // 문자열인 경우 배열로 변환
                     try {
                         const parsed = JSON.parse(seminar.images);
                         if (Array.isArray(parsed)) {
-                            images = parsed.filter(img => 
-                                img !== null && 
-                                img !== undefined && 
-                                typeof img === 'string' && 
-                                img.trim() !== ''
-                            );
+                            images = normalizeImagesList(parsed);
                         } else {
                             images = [seminar.images];
                         }

@@ -158,7 +158,7 @@ export const firebaseService = {
         updatedAt: serverTimestamp()
       };
       
-      // 배열 필드 검증
+      // images: 배열만 검사. 요소는 문자열 또는 { firebase, imgbb } 이중 저장 형식 모두 허용
       if (dataToSave.images && !Array.isArray(dataToSave.images)) {
         console.warn('⚠️ images가 배열이 아닙니다. 배열로 변환합니다:', dataToSave.images);
         dataToSave.images = Array.isArray(dataToSave.images) ? dataToSave.images : [dataToSave.images].filter(Boolean);
@@ -204,7 +204,7 @@ export const firebaseService = {
         updatedAt: serverTimestamp()
       };
       
-      // 배열 필드 검증
+      // images: 배열만 검사. 요소는 문자열 또는 { firebase, imgbb } 이중 저장 형식 모두 허용
       if (dataToSave.images && !Array.isArray(dataToSave.images)) {
         console.warn('⚠️ images가 배열이 아닙니다. 배열로 변환합니다:', dataToSave.images);
         dataToSave.images = Array.isArray(dataToSave.images) ? dataToSave.images : [dataToSave.images].filter(Boolean);
