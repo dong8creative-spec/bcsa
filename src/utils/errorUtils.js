@@ -36,7 +36,12 @@ export const translateFirebaseError = (error) => {
             'unimplemented': '아직 구현되지 않은 기능입니다.',
             'internal': '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
             'unauthenticated': '인증이 필요합니다. 로그인해주세요.',
-            'resource-exhausted': '리소스가 부족합니다. 잠시 후 다시 시도해주세요.'
+            'resource-exhausted': '리소스가 부족합니다. 잠시 후 다시 시도해주세요.',
+            // Storage 에러
+            'storage/unauthorized': '이미지 업로드 권한이 없습니다. 로그인 후 다시 시도해주세요.',
+            'storage/unauthenticated': '이미지 업로드에는 로그인이 필요합니다. 홈에서 로그인한 뒤 다시 시도해주세요.',
+            'storage/retry-limit-exceeded': '네트워크가 불안정합니다. 잠시 후 다시 시도해주세요.',
+            'storage/object-not-found': '요청한 파일을 찾을 수 없습니다.'
         };
         
         if (errorMessages[error.code]) {

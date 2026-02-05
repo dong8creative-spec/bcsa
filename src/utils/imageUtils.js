@@ -9,21 +9,42 @@ import { CONFIG } from '../config';
 const IMAGE_TYPES = ['program', 'content', 'community', 'company'];
 
 /**
+ * Firebase Storage 권한/인증 관련 에러인지 여부
+ */
+const isStorageAuthError = (code) =>
+  code === 'storage/unauthorized' ||
+  code === 'storage/unauthenticated' ||
+  code === 'storage/object-not-found';
+
+/**
  * Firebase Storage에 이미지 파일 업로드
  * @param {File} file - 업로드할 이미지 파일
  * @param {string} type - 이미지 유형 (program | content | community | company)
  * @returns {Promise<string>} 다운로드 URL
  */
 export const uploadImageToStorage = async (file, type = 'program') => {
-  const safeType = IMAGE_TYPES.includes(type) ? type : 'program';
-  const ext = (file.name && file.name.split('.').pop()) || 'jpg';
-  const safeName = (file.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
-  const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `id_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-  const path = `images/${safeType}/${id}_${safeName}`;
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
-  const url = await getDownloadURL(storageRef);
-  return url;
+  try {
+    const safeType = IMAGE_TYPES.includes(type) ? type : 'program';
+    const safeName = (file.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `id_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const path = `images/${safeType}/${id}_${safeName}`;
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
+    const url = await getDownloadURL(storageRef);
+    return url;
+  } catch (error) {
+    const code = error?.code || error?.name || '';
+    if (isStorageAuthError(code)) {
+      throw new Error('이미지 업로드에는 로그인이 필요합니다. 홈에서 이메일/비밀번호로 로그인한 뒤 다시 시도해주세요. (관리자는 마스터 코드만이 아니라 회원 로그인도 필요할 수 있습니다.)');
+    }
+    if (code === 'storage/retry-limit-exceeded' || code === 'storage/unknown') {
+      throw new Error('네트워크가 불안정합니다. 잠시 후 다시 시도해주세요.');
+    }
+    if (error?.message) {
+      throw error;
+    }
+    throw new Error('이미지 업로드에 실패했습니다. 다시 시도해주세요.');
+  }
 };
 
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
