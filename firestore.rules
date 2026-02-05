@@ -1,10 +1,63 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 즐겨찾기: 로그인한 사용자만 자신의 bookmarks 읽기/쓰기
+    // 회원: 목록 공개, 쓰기는 로그인 사용자만 (관리자/회원가입 등)
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null;
+    }
+
+    // 프로그램/세미나: 읽기 공개, 쓰기는 로그인 사용자만
+    match /seminars/{seminarId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // 게시글(커뮤니티·후기): 읽기 공개, 쓰기는 로그인 사용자만
+    match /posts/{postId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // 프로그램 신청: 로그인 사용자만 읽기/쓰기
+    match /applications/{applicationId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // 앱 설정(메뉴 등): 읽기 공개, 쓰기는 로그인 사용자만
+    match /settings/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // 사이트 콘텐츠: 읽기 공개, 쓰기는 로그인 사용자만
+    match /siteContent/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // 검색 로그: 로그인 사용자만 생성·조회
+    match /searchLogs/{logId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // 맛집: 읽기 공개, 쓰기는 로그인 사용자만
+    match /restaurants/{restaurantId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // 즐겨찾기(루트 컬렉션, 나라장터 등): 본인 문서만 읽기/쓰기
+    match /bookmarks/{bookmarkId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // 사용자별 즐겨찾기(서브컬렉션)
     match /users/{userId}/bookmarks/{bookmarkId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    // 기타 컬렉션은 기존 콘솔 규칙 유지 시 여기서 덮어쓰지 않음 (필요 시 추가)
   }
 }

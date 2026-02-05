@@ -61,11 +61,13 @@ export const authService = {
     return firebaseOnAuthStateChanged(auth, callback);
   },
 
-  // Get user data from Firestore
+  // Get user data from Firestore (문서 id가 uid인 경우 단일 조회)
   async getUserData(uid) {
     try {
+      const userDoc = await firebaseService.getUser(uid);
+      if (userDoc) return userDoc;
       const users = await firebaseService.getUsers();
-      return users.find(u => u.uid === uid);
+      return users.find(u => u.uid === uid) || null;
     } catch (error) {
       console.error('Error getting user data:', error);
       throw error;

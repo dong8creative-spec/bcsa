@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { Icons } from '../../../components/Icons';
 import ModalPortal from '../../../components/ModalPortal';
+import { uploadImageToStorage } from '../../../utils/imageUtils';
+
+const MAX_REVIEW_IMAGES = 10;
 
 /**
  * 게시물 관리 컴포넌트
@@ -22,9 +25,11 @@ export const PostManagement = () => {
     title: '',
     content: '',
     rating: 5,
-    authorName: '관리자'
+    authorName: '관리자',
+    reviewImages: []
   });
-  
+  const [reviewImageUploading, setReviewImageUploading] = useState(false);
+
   // 상세 보기 모달
   const [selectedPost, setSelectedPost] = useState(null);
 
@@ -84,7 +89,8 @@ export const PostManagement = () => {
       title: '',
       content: '',
       rating: 5,
-      authorName: '관리자'
+      authorName: '관리자',
+      reviewImages: []
     });
     setIsReviewModalOpen(true);
   };
@@ -98,7 +104,8 @@ export const PostManagement = () => {
       title: post.title || '',
       content: post.content || '',
       rating: post.rating || 5,
-      authorName: post.authorName || '관리자'
+      authorName: post.authorName || '관리자',
+      reviewImages: post.reviewImages || post.images || []
     });
     setIsReviewModalOpen(true);
   };
@@ -128,7 +135,9 @@ export const PostManagement = () => {
         rating: reviewForm.rating,
         authorName: reviewForm.authorName,
         author: reviewForm.authorName,
-        isAdminPost: true
+        isAdminPost: true,
+        reviewImages: reviewForm.reviewImages || [],
+        images: reviewForm.reviewImages || []
       };
 
       if (editingReview) {
@@ -414,6 +423,71 @@ export const PostManagement = () => {
                   className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                   placeholder="작성자 이름"
                 />
+              </div>
+
+              {/* 후기 사진 (최대 10장) */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">후기 사진 (최대 {MAX_REVIEW_IMAGES}장)</label>
+                <div className="flex flex-wrap gap-3">
+                  {(reviewForm.reviewImages || []).map((img, idx) => (
+                    <div key={idx} className="relative">
+                      <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-24 h-24 object-cover rounded-xl border-2 border-blue-200" />
+                      <button
+                        type="button"
+                        onClick={() => setReviewForm(prev => ({ ...prev, reviewImages: (prev.reviewImages || []).filter((_, i) => i !== idx) }))}
+                        className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {(reviewForm.reviewImages || []).length < MAX_REVIEW_IMAGES && (
+                    <label className="w-24 h-24 border-2 border-dashed border-blue-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                      {reviewImageUploading ? (
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand mx-auto mb-1"></div>
+                          <span className="text-xs text-gray-500">업로드 중</span>
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <Icons.Plus size={20} className="text-gray-400 mx-auto mb-0.5" />
+                          <span className="text-xs text-gray-500">추가</span>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files || []);
+                          const current = reviewForm.reviewImages || [];
+                          if (current.length + files.length > MAX_REVIEW_IMAGES) {
+                            alert(`최대 ${MAX_REVIEW_IMAGES}장까지만 업로드할 수 있습니다. (현재 ${current.length}장)`);
+                            return;
+                          }
+                          setReviewImageUploading(true);
+                          try {
+                            const uploadPromises = files.map(async (file) => {
+                              try {
+                                if (!file.type.startsWith('image/')) return null;
+                                return await uploadImageToStorage(file, 'community');
+                              } catch (err) {
+                                alert(err?.message || `${file.name} 업로드 실패`);
+                                return null;
+                              }
+                            });
+                            const uploaded = (await Promise.all(uploadPromises)).filter(Boolean);
+                            setReviewForm(prev => ({ ...prev, reviewImages: [...(prev.reviewImages || []), ...uploaded] }));
+                          } finally {
+                            setReviewImageUploading(false);
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
 
               <button

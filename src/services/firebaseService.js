@@ -49,11 +49,16 @@ export const firebaseService = {
 
   async createUser(userData) {
     try {
-      const docRef = await addDoc(collection(db, 'users'), {
+      const data = {
         ...userData,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      });
+      };
+      if (userData.uid) {
+        await setDoc(doc(db, 'users', userData.uid), data);
+        return userData.uid;
+      }
+      const docRef = await addDoc(collection(db, 'users'), data);
       return docRef.id;
     } catch (error) {
       console.error('Error creating user:', error);

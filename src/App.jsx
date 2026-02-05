@@ -1338,15 +1338,7 @@ const App = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    useEffect(() => {
-        const storedUsers = loadUsersFromStorage();
-        if (storedUsers.length > 0) {
-            setUsers(storedUsers);
-        }
-        
-        // 자동 로그인 제거 - 사용자가 직접 로그인해야 함
-        // Firebase Auth의 onAuthStateChanged로만 처리
-    }, []);
+    // 사용자 목록은 Firebase subscribeUsers 또는 첫 번째 useEffect의 loadUsersFromStorage로만 로드 (중복 제거)
 
     const loadMembersFromCSV = async () => {
         try {
@@ -1564,54 +1556,18 @@ const App = () => {
         return () => clearInterval(intervalId);
     }, []);
     
-    // Firebase 세미나 구독 및 Google Sheets 세미나와 병합
+    // 세미나 CSV/로컬 로드: Firebase가 없을 때만 사용 (Firebase 단일 소스)
     useEffect(() => {
-        let firebaseUnsubscribe = null;
-        
-        // Firebase 세미나 구독
-        if (firebaseService && firebaseService.subscribeSeminars) {
-            firebaseUnsubscribe = firebaseService.subscribeSeminars((firebaseSeminars) => {
-                setSeminarsData(prev => {
-                    // Google Sheets 세미나와 병합
-                    const merged = [...prev, ...firebaseSeminars];
-                    // 중복 제거 (id 또는 title + date 기준)
-                    const unique = merged.filter((seminar, index, self) =>
-                        index === self.findIndex(s => 
-                            (s.id && seminar.id && s.id === seminar.id) || 
-                            (s.title === seminar.title && s.date === seminar.date)
-                        )
-                    );
-                    return unique;
-                });
-            });
-        }
-        
-        return () => {
-            if (firebaseUnsubscribe) {
-                firebaseUnsubscribe();
-            }
-        };
-    }, []);
-    
-    useEffect(() => {
+        const hasFirebaseSeminars = firebaseService && (firebaseService.subscribeSeminars || firebaseService.getSeminars);
+        if (hasFirebaseSeminars) return;
+
         const loadCSVData = async () => {
             const csvUrl = CONFIG.SHEET_URLS?.SEMINAR || '';
             
             if (csvUrl) {
                 const csvSeminars = await loadSeminarsFromCSV();
                 if (csvSeminars && csvSeminars.length > 0) {
-                    setSeminarsData(prev => {
-                        // Firebase 세미나와 병합
-                        const merged = [...csvSeminars, ...prev];
-                        // 중복 제거
-                        const unique = merged.filter((seminar, index, self) =>
-                            index === self.findIndex(s => 
-                                (s.id && seminar.id && s.id === seminar.id) || 
-                                (s.title === seminar.title && s.date === seminar.date)
-                            )
-                        );
-                        return unique;
-                    });
+                    setSeminarsData(csvSeminars);
                     // localStorage에도 저장 (캐시용)
                     try {
                         localStorage.setItem('busan_ycc_seminars', JSON.stringify(csvSeminars));
@@ -1643,31 +1599,16 @@ const App = () => {
                             }
                             
                             if (filtered && filtered.length > 0) {
-                                setSeminarsData(prev => {
-                                    // Firebase 세미나와 병합
-                                    const merged = [...filtered, ...prev];
-                                    const unique = merged.filter((seminar, index, self) =>
-                                        index === self.findIndex(s => 
-                                            (s.id && seminar.id && s.id === seminar.id) || 
-                                            (s.title === seminar.title && s.date === seminar.date)
-                                        )
-                                    );
-                                    return unique;
-                                });
-                                
+                                setSeminarsData(filtered);
                             }
                         }
-                    } catch (e) {
-                        
-                    }
+                    } catch (e) {}
                 }
             } else {
-                // CSV URL이 없으면 localStorage에서 로드
                 try {
                     const stored = localStorage.getItem('busan_ycc_seminars');
                     if (stored) {
                         const seminars = JSON.parse(stored);
-                        // 테스트 세미나 데이터 필터링
                         const filtered = seminars.filter(s => {
                             if (s.id === 1 || s.id === 2 || s.id === 3) return false;
                             const testTitles = [
@@ -1678,41 +1619,20 @@ const App = () => {
                             if (testTitles.includes(s.title)) return false;
                             return true;
                         });
-                        
                         if (filtered.length !== seminars.length) {
                             localStorage.setItem('busan_ycc_seminars', JSON.stringify(filtered));
-                            
                         }
-                        
                         if (filtered && filtered.length > 0) {
-                            setSeminarsData(prev => {
-                                // Firebase 세미나와 병합
-                                const merged = [...filtered, ...prev];
-                                const unique = merged.filter((seminar, index, self) =>
-                                    index === self.findIndex(s => 
-                                        (s.id && seminar.id && s.id === seminar.id) || 
-                                        (s.title === seminar.title && s.date === seminar.date)
-                                    )
-                                );
-                                return unique;
-                            });
+                            setSeminarsData(filtered);
                         }
                     }
-                } catch (e) {
-                    
-                }
+                } catch (e) {}
             }
         };
-        
+
         loadCSVData();
-        
-        // 주기적 갱신
-        const cacheDuration = CONFIG.SHEET_LOADING?.CACHE_DURATION || 5 * 60 * 1000; // 기본 5분
-        
-        const intervalId = setInterval(() => {
-            loadCSVData();
-        }, cacheDuration);
-        
+        const cacheDuration = CONFIG.SHEET_LOADING?.CACHE_DURATION || 5 * 60 * 1000;
+        const intervalId = setInterval(loadCSVData, cacheDuration);
         return () => clearInterval(intervalId);
     }, []);
     
@@ -1728,8 +1648,17 @@ const App = () => {
                 throw new Error('Firebase Auth가 초기화되지 않았습니다.');
             }
             
-            // Check for existing user by email
-            const allUsers = await loadUsersFromStorage();
+            // Check for existing user by email (Firebase 우선)
+            let allUsers = [];
+            if (firebaseService && firebaseService.getUsers) {
+                try {
+                    allUsers = await firebaseService.getUsers();
+                } catch (e) {
+                    allUsers = await loadUsersFromStorage();
+                }
+            } else {
+                allUsers = await loadUsersFromStorage();
+            }
             const existingUser = Array.isArray(allUsers) ? allUsers.find(u => {
                 if (u.email === userInfo.email) return true;
                 if (userInfo.businessRegistrationNumber && u.businessRegistrationNumber && 
@@ -1782,13 +1711,13 @@ const App = () => {
                 isIdentityVerified: false
             };
             
-            // Add to members data
+            // Firebase 구독이 있으면 실시간으로 users/membersData 반영되므로 낙관적 업데이트만
             setMembersData(prev => [...prev, newMember]);
-            
-            // Update users list
-            const updatedUsers = await loadUsersFromStorage();
-            setUsers(updatedUsers);
-            
+            if (!firebaseService?.subscribeUsers) {
+                const updatedUsers = await loadUsersFromStorage();
+                setUsers(updatedUsers);
+            }
+
             alert("회원가입이 완료되었습니다!\n\n계정 승인 대기 중입니다.\n승인 상태는 마이페이지에서 확인할 수 있습니다.");
             
         } catch (error) {
@@ -2391,7 +2320,18 @@ END:VCALENDAR`;
         }
 
         try {
-            // 로컬 스토리지에서 사용자 정보 업데이트
+            if (firebaseService && firebaseService.updateUser) {
+                const userId = currentUser.id || currentUser.uid;
+                if (!userId) throw new Error('사용자 ID를 찾을 수 없습니다.');
+                await firebaseService.updateUser(userId, updatedData);
+                const newCurrentUser = { ...currentUser, ...updatedData };
+                setCurrentUser(newCurrentUser);
+                try { saveCurrentUserToStorage(newCurrentUser); } catch (e) {}
+                alert("프로필이 수정되었습니다.");
+                return;
+            }
+
+            // Firebase 없을 때만 로컬 스토리지
             const storedUsers = loadUsersFromStorage();
             const userIndex = storedUsers.findIndex(u => 
                 u.id === currentUser.id || 
@@ -2403,7 +2343,6 @@ END:VCALENDAR`;
                 throw new Error('사용자를 찾을 수 없습니다.');
             }
 
-            // 사용자 정보 업데이트
             const updatedUser = {
                 ...storedUsers[userIndex],
                 ...updatedData,
@@ -2412,16 +2351,11 @@ END:VCALENDAR`;
 
             storedUsers[userIndex] = updatedUser;
             saveUsersToStorage(storedUsers);
-
-            // 현재 사용자 상태 업데이트
-            const newCurrentUser = { ...currentUser, ...updatedData };
-            setCurrentUser(newCurrentUser);
-            saveCurrentUserToStorage(newCurrentUser);
+            setCurrentUser(updatedUser);
+            saveCurrentUserToStorage(updatedUser);
             setUsers(storedUsers);
-
             alert("프로필이 수정되었습니다.");
         } catch (error) {
-            
             alert(`프로필 수정 실패: ${error.message}`);
         }
     };
