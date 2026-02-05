@@ -3,7 +3,7 @@ import { firebaseService } from '../../../services/firebaseService';
 import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
 import { KakaoMapModal } from './KakaoMapModal';
-import { uploadImageDual, normalizeImageItem, normalizeImagesList } from '../../../utils/imageUtils';
+import { uploadImageForAdmin, normalizeImageItem, normalizeImagesList } from '../../../utils/imageUtils';
 import ModalPortal from '../../../components/ModalPortal';
 
 const MAX_IMAGES = 10;
@@ -272,9 +272,12 @@ export const ProgramManagement = () => {
     setImageUploading(true);
     try {
       const toUpload = Array.from(files).filter((f) => f.type?.startsWith('image/'));
-      const uploadPromises = toUpload.map((file) => uploadImageDual(file, 'program'));
+      const uploadPromises = toUpload.map(async (file) => {
+        const url = await uploadImageForAdmin(file);
+        return { firebase: null, imgbb: url };
+      });
       const results = await Promise.all(uploadPromises);
-      const added = results.filter((r) => r.firebase || r.imgbb);
+      const added = results.filter((r) => r?.imgbb);
       if (added.length === 0 && results.length > 0) {
         alert('이미지 업로드에 실패했습니다.');
         return;
