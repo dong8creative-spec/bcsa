@@ -3,7 +3,7 @@ import { firebaseService } from '../../../services/firebaseService';
 import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
 import { KakaoMapModal } from './KakaoMapModal';
-import { uploadImageForAdmin, normalizeImageItem, normalizeImagesList } from '../../../utils/imageUtils';
+import { uploadImageForAdmin, normalizeImageItem } from '../../../utils/imageUtils';
 import ModalPortal from '../../../components/ModalPortal';
 
 const MAX_IMAGES = 10;
