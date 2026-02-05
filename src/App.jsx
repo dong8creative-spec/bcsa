@@ -3158,9 +3158,11 @@ END:VCALENDAR`;
                                                 if (programDragRef.current?.hasMoved) return;
                                                 navigate(`/program/apply/${seminar.id}`);
                                             }}
-                                            className="flex-shrink-0 w-[280px] md:w-[320px] bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:border-brand/30 transition-all text-left overflow-hidden group"
+                                            className="flex-shrink-0 w-[280px] md:w-[320px] bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:border-brand/30 transition-all text-left overflow-hidden group flex flex-col"
                                         >
-                                            <div className="w-full aspect-[3/4] bg-gray-100 overflow-hidden">{img ? <img src={img} alt={seminar.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><Icons.Calendar size={48} /></div>}</div>
+                                            <div className="w-full flex-shrink-0 aspect-[3/4] bg-gray-100 overflow-hidden">
+                                                {img ? <img src={img} alt={seminar.title} className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><Icons.Calendar size={48} /></div>}
+                                            </div>
                                             <div className="p-4">
                                                 <div className="flex flex-wrap gap-2 mb-2">
                                                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${seminar.status === '모집중' ? 'bg-blue-100 text-blue-700' : seminar.status === '마감임박' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>{seminar.status || '모집중'}</span>

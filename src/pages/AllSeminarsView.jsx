@@ -238,20 +238,25 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                     : seminar.imageUrl || seminar.img;
                             
                             return (
-                            <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-blue-200 hover:border-brand/20 cursor-pointer overflow-hidden" onClick={() => setSelectedSeminar(seminar)}>
-                                {displayImage && (
-                                    <div className="w-full overflow-hidden relative" style={{ aspectRatio: '3/4' }}>
-                                        <img src={displayImage} alt={seminar.title} className="w-full h-full object-cover" />
-                                        {/* 이미지가 여러 장일 경우 표시 */}
-                                        {((seminar.images && seminar.images.length > 1) || (seminar.imageUrls && seminar.imageUrls.length > 1)) && (
-                                            <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-                                                <Icons.Camera size={12} className="inline mr-1" />
-                                                {(seminar.images || seminar.imageUrls || []).length}
-                                            </div>
-                                        )}
+                            <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-blue-200 hover:border-brand/20 cursor-pointer overflow-hidden flex flex-col" onClick={() => setSelectedSeminar(seminar)}>
+                                <div className="w-full flex-shrink-0 overflow-hidden relative bg-gray-100" style={{ aspectRatio: '3/4' }}>
+                                    {displayImage ? (
+                                        <>
+                                            <img src={displayImage} alt={seminar.title} className="w-full h-full object-cover object-center" />
+                                            {((seminar.images && seminar.images.length > 1) || (seminar.imageUrls && seminar.imageUrls.length > 1)) && (
+                                                <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+                                                    <Icons.Camera size={12} className="inline mr-1" />
+                                                    {(seminar.images || seminar.imageUrls || []).length}
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                            <Icons.Calendar size={48} />
                                         </div>
-                                )}
-                                <div className="p-6">
+                                    )}
+                                </div>
+                                <div className="p-6 flex-1 flex flex-col">
                                     <div className="flex items-center gap-2 mb-3">
                                         <span className={`text-xs font-bold px-2 py-1 rounded-full ${getStatusColor(seminar.status)}`}>{seminar.status}</span>
                                         {seminar.category && (

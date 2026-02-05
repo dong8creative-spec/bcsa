@@ -125,9 +125,13 @@ const AppLayout = (props) => {
                                                 <img 
                                                     src={program.img} 
                                                     alt={program.title} 
-                                                    className="w-full h-full object-cover"
+                                                    className="w-full h-full object-cover object-center"
                                                 />
-                                            ) : null}
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                    <Icons.Calendar size={48} />
+                                                </div>
+                                            )}
                                         </div>
                                         {/* 더 자세히 알아보기 버튼 */}
                                         <button 
