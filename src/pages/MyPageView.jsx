@@ -1,7 +1,7 @@
 import React, { useState, Fragment, useEffect, useCallback, useRef } from 'react';
 import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
-import { uploadImageToStorage } from '../utils/imageUtils';
+import { uploadImage } from '../utils/imageUtils';
 import { firebaseService } from '../services/firebaseService';
 import { apiGet } from '../utils/api';
 import ModalPortal from '../components/ModalPortal';
@@ -120,7 +120,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
         if (!file || !file.type.startsWith('image/')) return;
         setCompanyImageUploading(true);
         try {
-            const url = await uploadImageToStorage(file, 'company');
+            const url = await uploadImage(file, 'company');
             setCompanyIntro(prev => ({ ...prev, companyMainImage: url }));
         } catch (err) {
             console.error(err);
@@ -143,7 +143,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
             const uploaded = [];
             for (const file of files) {
                 if (!file.type.startsWith('image/')) continue;
-                const url = await uploadImageToStorage(file, 'company');
+                const url = await uploadImage(file, 'company');
                 uploaded.push(url);
             }
             setCompanyIntro(prev => ({ ...prev, companyImages: [...prev.companyImages, ...uploaded] }));
@@ -777,7 +777,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                         const uploadPromises = files.map(async (file) => {
                                                             try {
                                                                 if (!file.type.startsWith('image/')) return null;
-                                                                const url = await uploadImageToStorage(file, 'community');
+                                                                const url = await uploadImage(file, 'community');
                                                                 return url;
                                                             } catch (error) {
                                                                 alert(`${file.name} 업로드에 실패했습니다.`);
@@ -849,7 +849,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                         const uploadPromises = files.map(async (file) => {
                                                             try {
                                                                 if (!file.type.startsWith('image/')) return null;
-                                                                const url = await uploadImageToStorage(file, 'community');
+                                                                const url = await uploadImage(file, 'community');
                                                                 return url;
                                                             } catch (error) {
                                                                 alert(`${file.name} 업로드에 실패했습니다.`);
@@ -922,7 +922,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                         const uploadPromises = files.map(async (file) => {
                                                             try {
                                                                 if (!file.type.startsWith('image/')) return null;
-                                                                const url = await uploadImageToStorage(file, 'community');
+                                                                const url = await uploadImage(file, 'community');
                                                                 return url;
                                                             } catch (error) {
                                                                 alert(`${file.name} 업로드에 실패했습니다.`);

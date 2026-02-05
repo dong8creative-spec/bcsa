@@ -2622,8 +2622,24 @@ END:VCALENDAR`;
             if (programApplyMatch) {
                 const programId = programApplyMatch[1];
                 const safeSeminars = Array.isArray(seminarsData) ? seminarsData : [];
-                const program = safeSeminars.find(s => String(s.id) === String(programId));
-                if (!currentUser) {
+                const isTestRoute = programId === 'test';
+                const program = isTestRoute
+                    ? {
+                        id: 'test',
+                        title: '자영업자들을 위한 릴스 편집특강(소개편)',
+                        date: '2026.03.15 14:00',
+                        location: '부산 부산진구 부전동 521-1',
+                        status: '모집중',
+                        category: '교육/세미나',
+                        applicationFee: 20000,
+                        desc: '정원 30명, 강의료 5만원 테스트용 프로그램입니다. 청년 사업가들을 위한 실전 비즈니스 인사이트를 공유합니다.',
+                        maxParticipants: 30,
+                        currentParticipants: 0,
+                        images: ['https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=800&q=80'],
+                    }
+                    : safeSeminars.find(s => String(s.id) === String(programId));
+                const canViewWithoutLogin = isTestRoute;
+                if (!currentUser && !canViewWithoutLogin) {
                     return (
                         <div className="pt-32 pb-20 px-4 min-h-screen bg-soft">
                             <div className="container mx-auto max-w-2xl">
@@ -2643,29 +2659,33 @@ END:VCALENDAR`;
                 return (
                     <ProgramApplyView
                         program={program}
-                        currentUser={currentUser}
+                        currentUser={isTestRoute ? null : currentUser}
+                        isTestPage={isTestRoute}
                         onBack={() => navigate(-1)}
-                        onApply={async (seminar, applicationData) => {
-                            try {
-                                const fee = seminar?.applicationFee != null ? Number(seminar.applicationFee) : 0;
-                                if (fee > 0) {
-                                    return await new Promise((resolve) => {
-                                        requestPortOnePayment(seminar, applicationData, async () => {
-                                            const ok = await handleSeminarApply(seminar, applicationData);
-                                            if (ok) generateAndDownloadCalendar(seminar);
-                                            resolve(ok);
-                                        }, () => resolve(false));
-                                    });
+                        onApply={isTestRoute
+                            ? async () => { alert('테스트용 프로그램입니다. 실제 신청은 프로그램 목록에서 진행해 주세요.'); return false; }
+                            : async (seminar, applicationData) => {
+                                try {
+                                    const fee = seminar?.applicationFee != null ? Number(seminar.applicationFee) : 0;
+                                    if (fee > 0) {
+                                        return await new Promise((resolve) => {
+                                            requestPortOnePayment(seminar, applicationData, async () => {
+                                                const ok = await handleSeminarApply(seminar, applicationData);
+                                                if (ok) generateAndDownloadCalendar(seminar);
+                                                resolve(ok);
+                                            }, () => resolve(false));
+                                        });
+                                    }
+                                    const ok = await handleSeminarApply(seminar, applicationData);
+                                    if (ok) generateAndDownloadCalendar(seminar);
+                                    return ok;
+                                } catch (err) {
+                                    console.error('프로그램 신청 오류:', err);
+                                    alert('프로그램 신청 중 오류가 발생했습니다.');
+                                    return false;
                                 }
-                                const ok = await handleSeminarApply(seminar, applicationData);
-                                if (ok) generateAndDownloadCalendar(seminar);
-                                return ok;
-                            } catch (err) {
-                                console.error('프로그램 신청 오류:', err);
-                                alert('프로그램 신청 중 오류가 발생했습니다.');
-                                return false;
                             }
-                        }}
+                        }
                     />
                 );
             }

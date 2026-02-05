@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Fragment } from 'react';
 import { firebaseService } from '../services/firebaseService';
 import { Icons } from './Icons';
-import { uploadImageToStorage } from '../utils/imageUtils';
+import { uploadImage } from '../utils/imageUtils';
 import ModalPortal from './ModalPortal';
 
 const CommunityView = ({ 
@@ -173,7 +173,7 @@ const CommunityView = ({
         const uploadPromises = Array.from(files).map(async (file) => {
             try {
                 if (!file.type.startsWith('image/')) return null;
-                const url = await uploadImageToStorage(file, 'community');
+                const url = await uploadImage(file, 'community');
                 return url;
             } catch (error) {
                 alert(`${file.name} 업로드에 실패했습니다.`);
@@ -1031,7 +1031,7 @@ if (files.length + (editingPost.storeImages || []).length > MAX_IMAGES) {
                                                             const uploadPromises = files.map(async (file) => {
                                                                 try {
                                                                     if (!file.type.startsWith('image/')) return null;
-                                                                    const url = await uploadImageToStorage(file, 'community');
+                                                                    const url = await uploadImage(file, 'community');
                                                                     return url;
                                                                 } catch (error) {
                                                                     alert(`${file.name} 업로드에 실패했습니다.`);
@@ -1103,7 +1103,7 @@ if (files.length + (editingPost.itemImages || []).length > MAX_IMAGES) {
                                                             const uploadPromises = files.map(async (file) => {
                                                                 try {
                                                                     if (!file.type.startsWith('image/')) return null;
-                                                                    const url = await uploadImageToStorage(file, 'community');
+                                                                    const url = await uploadImage(file, 'community');
                                                                     return url;
                                                                 } catch (error) {
                                                                     alert(`${file.name} 업로드에 실패했습니다.`);
@@ -1176,7 +1176,7 @@ if (files.length + ((editingPost.reviewImages || editingPost.images || []).lengt
                                                             const uploadPromises = files.map(async (file) => {
                                                                 try {
                                                                     if (!file.type.startsWith('image/')) return null;
-                                                                    const url = await uploadImageToStorage(file, 'community');
+                                                                    const url = await uploadImage(file, 'community');
                                                                     return url;
                                                                 } catch (error) {
                                                                     alert(`${file.name} 업로드에 실패했습니다.`);

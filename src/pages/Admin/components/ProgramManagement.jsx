@@ -3,7 +3,7 @@ import { firebaseService } from '../../../services/firebaseService';
 import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
 import { KakaoMapModal } from './KakaoMapModal';
-import { uploadImageToStorage } from '../../../utils/imageUtils';
+import { uploadImage } from '../../../utils/imageUtils';
 import ModalPortal from '../../../components/ModalPortal';
 
 const MAX_IMAGES = 10;
@@ -267,7 +267,7 @@ export const ProgramManagement = () => {
       const uploaded = [];
       for (const file of files) {
         if (!file.type.startsWith('image/')) continue;
-        const url = await uploadImageToStorage(file, 'program');
+        const url = await uploadImage(file, 'program');
         uploaded.push(url);
       }
       setFormData({ ...formData, imageUrls: [...current, ...uploaded] });

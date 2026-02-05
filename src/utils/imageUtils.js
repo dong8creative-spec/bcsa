@@ -50,6 +50,28 @@ export const uploadImageToStorage = async (file, type = 'program') => {
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
 
 /**
+ * 통합 이미지 업로드: Firebase Storage 시도 후 실패 시 ImgBB 폴백
+ * @param {File} file - 업로드할 이미지 파일
+ * @param {string} type - 이미지 유형 (program | content | community | company). Firebase 경로에만 사용됨.
+ * @returns {Promise<string>} 업로드된 이미지의 URL (Firebase 또는 ImgBB)
+ */
+export const uploadImage = async (file, type = 'program') => {
+  try {
+    return await uploadImageToStorage(file, type);
+  } catch (firebaseError) {
+    try {
+      const base64 = await fileToBase64(file);
+      const result = await uploadImageToImgBB(base64, file.name || 'image.jpg');
+      const url = result?.url ?? (typeof result === 'string' ? result : null);
+      if (url) return url;
+      throw new Error(result?.message || 'ImgBB 업로드 후 URL을 받지 못했습니다.');
+    } catch (imgbbError) {
+      throw imgbbError instanceof Error ? imgbbError : new Error(imgbbError?.message || '이미지 업로드에 실패했습니다.');
+    }
+  }
+};
+
+/**
  * 이미지를 ImgBB에 업로드
  */
 export const uploadImageToImgBB = async (base64Image, fileName) => {

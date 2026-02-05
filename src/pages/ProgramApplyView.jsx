@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Icons } from '../components/Icons';
 
 const DISSOLVE_DURATION_MS = 1000;
@@ -35,12 +36,15 @@ const getCategoryColor = (category) => {
 const ProgramApplyView = ({
     program,
     currentUser,
+    isTestPage = false,
     onApply,
     onBack,
 }) => {
     const [applicationData, setApplicationData] = useState({ reason: '', questions: ['', ''] });
     const [submitting, setSubmitting] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [enlargedImageUrl, setEnlargedImageUrl] = useState(null);
+    const [heroImageError, setHeroImageError] = useState(false);
     const [dissolvePhase, setDissolvePhase] = useState('idle'); // 'idle' | 'fadeOut' | 'fadeIn'
     const nextIndexRef = useRef(null);
     const intervalRef = useRef(null);
@@ -85,12 +89,33 @@ const ProgramApplyView = ({
         let list = [];
         const raw = program.images || program.imageUrls;
         if (raw && Array.isArray(raw) && raw.length > 0) {
-            list = raw.filter(img => img && typeof img === 'string' && img.trim() !== '');
+            list = raw
+                .map(item => (typeof item === 'string' ? item : item?.url || item?.src))
+                .filter(url => url && typeof url === 'string' && url.trim() !== '');
         }
         if (list.length === 0 && program.imageUrl) list = [program.imageUrl];
-        if (list.length === 0 && program.img) list = [program.img];
+        if (list.length === 0 && program.img) {
+            const img = program.img;
+            if (Array.isArray(img)) {
+                list = img.filter(url => url && typeof url === 'string' && url.trim() !== '');
+            } else if (typeof img === 'string' && img.trim() !== '') {
+                if (img.trim().startsWith('[')) {
+                    try {
+                        const parsed = JSON.parse(img);
+                        if (Array.isArray(parsed)) list = parsed.filter(url => url && typeof url === 'string' && url.trim() !== '');
+                        else list = [img];
+                    } catch { list = [img]; }
+                } else {
+                    list = [img];
+                }
+            }
+        }
         return list;
     }, [program]);
+
+    useEffect(() => {
+        setHeroImageError(false);
+    }, [currentImageIndex]);
 
     useEffect(() => {
         if (!program || images.length <= 1) {
@@ -105,6 +130,13 @@ const ProgramApplyView = ({
     }, [program, images.length]);
 
     useEffect(() => () => clearTimers(), []);
+
+    useEffect(() => {
+        if (!enlargedImageUrl) return;
+        const onEscape = (e) => { if (e.key === 'Escape') setEnlargedImageUrl(null); };
+        window.addEventListener('keydown', onEscape);
+        return () => window.removeEventListener('keydown', onEscape);
+    }, [enlargedImageUrl]);
 
     const handleSubmit = async () => {
         if (!program) return;
@@ -156,7 +188,8 @@ const ProgramApplyView = ({
     const isEnded = program.status === '종료';
 
     return (
-        <div className="pt-28 pb-20 px-4 min-h-screen bg-soft animate-fade-in">
+        <>
+        <div className="pt-28 pb-20 px-4 min-h-screen bg-soft animate-fade-in relative">
             <div className="container mx-auto max-w-3xl">
                 <button
                     type="button"
@@ -166,94 +199,168 @@ const ProgramApplyView = ({
                     <Icons.ArrowLeft size={20} /> 목록으로
                 </button>
 
-                {/* ========== 프로그램 상세 영역 ========== */}
-                <div className="bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden mb-6">
-                    <div className="p-6 md:p-8">
-                        <h1 className="text-2xl md:text-3xl font-bold text-dark mb-4">프로그램 상세</h1>
-                        <div className="flex flex-wrap items-center gap-2 mb-4">
+                {/* ========== 프로그램 상세 영역 (히어로형) ========== */}
+                <div className="bg-white rounded-2xl shadow-lg border border-blue-200 overflow-hidden mb-6">
+                    {/* 히어로: 풀폭 이미지 + 그라데이션 위에 프로그램명 강조 */}
+                    <div className="relative min-h-[260px] md:min-h-[320px] bg-gradient-to-br from-brand/20 to-brand/5">
+                        {displayImage && !heroImageError ? (
+                            <>
+                                <img
+                                    key={currentImageIndex}
+                                    src={displayImage}
+                                    alt=""
+                                    className={`absolute inset-0 w-full h-full object-cover block transition-opacity duration-[500ms] ${
+                                        dissolvePhase === 'fadeOut' ? 'opacity-0' : dissolvePhase === 'fadeIn' ? 'animate-program-image-fade-in' : 'opacity-100'
+                                    }`}
+                                    onError={() => setHeroImageError(true)}
+                                    onLoad={() => setHeroImageError(false)}
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                            </>
+                        ) : displayImage && heroImageError ? (
+                            <>
+                                <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
+                                    <Icons.Image className="w-16 h-16 text-gray-400" />
+                                </div>
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                            </>
+                        ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-brand/30 to-brand/10" />
+                        )}
+                        {/* 상단 뱃지: 상태, 카테고리 */}
+                        <div className="absolute top-4 left-4 right-4 flex flex-wrap gap-2 z-10">
                             {program.status && (
-                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${getStatusColor(program.status)}`}>
+                                <span className={`text-xs font-bold px-3 py-1.5 rounded-full shadow-md ${getStatusColor(program.status)} backdrop-blur-sm`}>
                                     {program.status}
                                 </span>
                             )}
                             {program.category && (
-                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${getCategoryColor(program.category)}`}>
+                                <span className={`text-xs font-bold px-3 py-1.5 rounded-full shadow-md ${getCategoryColor(program.category)} backdrop-blur-sm`}>
                                     {program.category}
                                 </span>
                             )}
-                            <span className="text-xs font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">
-                                {isPaid ? `${new Intl.NumberFormat('ko-KR').format(Number(program.applicationFee))}원` : '무료'}
-                            </span>
+                            {hasMultipleImages && (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => goToIndex((currentImageIndex - 1 + images.length) % images.length)}
+                                        className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center z-10"
+                                    >
+                                        <Icons.ChevronLeft size={20} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => goToIndex((currentImageIndex + 1) % images.length)}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center z-10"
+                                    >
+                                        <Icons.ChevronRight size={20} />
+                                    </button>
+                                    <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-2 py-1 rounded-full z-10">
+                                        {currentImageIndex + 1} / {images.length}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        {/* 프로그램명: 이미지 위 하단에 크게 */}
+                        <div className="absolute bottom-0 left-0 right-0 p-5 md:p-8 z-10">
+                            <h1 className="text-2xl md:text-4xl font-extrabold text-white leading-tight drop-shadow-lg">
+                                {program.title}
+                            </h1>
+                        </div>
+                    </div>
+
+                    {/* 썸네일 (이미지 여러 장일 때) */}
+                    {hasMultipleImages && images.length > 0 && (
+                        <div className="flex gap-2 p-3 overflow-x-auto bg-gray-50 border-b border-gray-100 scrollbar-thin">
+                            {images.map((img, idx) => (
+                                <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => goToIndex(idx)}
+                                    className={`flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${
+                                        idx === currentImageIndex ? 'border-brand ring-2 ring-brand/30' : 'border-gray-200 hover:border-brand/50'
+                                    }`}
+                                >
+                                    <img src={img} alt="" className="w-full h-full object-cover" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="p-6 md:p-8">
+                        {/* 신청 비용: 독립 카드로 강조 */}
+                        <div className={`rounded-2xl border-2 p-5 md:p-6 mb-6 ${isPaid ? 'bg-brand/5 border-brand/30' : 'bg-green-50 border-green-200'}`}>
+                            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">신청 비용</div>
+                            {isPaid ? (
+                                <div className="flex items-baseline gap-1 flex-wrap">
+                                    <span className="text-3xl md:text-4xl font-extrabold text-brand">
+                                        {new Intl.NumberFormat('ko-KR').format(Number(program.applicationFee))}
+                                    </span>
+                                    <span className="text-xl md:text-2xl font-bold text-brand">원</span>
+                                </div>
+                            ) : (
+                                <span className="inline-block text-2xl md:text-3xl font-extrabold text-green-700 bg-white/80 px-4 py-2 rounded-xl shadow-sm">
+                                    무료
+                                </span>
+                            )}
                         </div>
 
-                        {/* 이미지 갤러리 - 3초 표시, 1초 디졸브 자동 재생 + 하단 썸네일로 선택 */}
-                        {displayImage && (
+                        {/* 프로그램 첨부 이미지 갤러리: 비용 ~ 일시 사이, 최대 10장, 300×400px, 클릭 시 원본 크기 모달 */}
+                        {images.length > 0 && (
                             <div className="mb-6">
-                                <div className="rounded-xl overflow-hidden relative bg-gray-50">
-                                    <img
-                                        key={currentImageIndex}
-                                        src={displayImage}
-                                        alt={program.title}
-                                        className={`w-full h-auto max-w-full object-contain block transition-opacity duration-[500ms] ${
-                                            dissolvePhase === 'fadeOut' ? 'opacity-0' : dissolvePhase === 'fadeIn' ? 'animate-program-image-fade-in' : 'opacity-100'
-                                        }`}
-                                        onError={(e) => { e.target.style.display = 'none'; }}
-                                    />
-                                    {hasMultipleImages && (
-                                        <>
-                                            <button
-                                                type="button"
-                                                onClick={() => goToIndex((currentImageIndex - 1 + images.length) % images.length)}
-                                                className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center"
-                                            >
-                                                <Icons.ChevronLeft size={20} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => goToIndex((currentImageIndex + 1) % images.length)}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center"
-                                            >
-                                                <Icons.ChevronRight size={20} />
-                                            </button>
-                                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-                                                {currentImageIndex + 1} / {images.length}
-                                            </div>
-                                        </>
-                                    )}
+                                <h3 className="text-sm font-bold text-gray-700 mb-3">첨부 사진</h3>
+                                <div className="flex flex-wrap overflow-x-auto pb-2" style={{ gap: 10 }}>
+                                    {images.slice(0, 10).map((src, idx) => (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => setEnlargedImageUrl(src)}
+                                            className="flex-shrink-0 rounded-xl overflow-hidden border border-gray-200 hover:border-brand/50 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-brand/30"
+                                            style={{ width: 300, height: 400 }}
+                                        >
+                                            <img
+                                                src={src}
+                                                alt={`${program.title} ${idx + 1}`}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </button>
+                                    ))}
                                 </div>
-                                {hasMultipleImages && (
-                                    <div className="flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-thin">
-                                        {images.map((img, idx) => (
-                                            <button
-                                                key={idx}
-                                                type="button"
-                                                onClick={() => goToIndex(idx)}
-                                                className={`flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${
-                                                    idx === currentImageIndex
-                                                        ? 'border-brand ring-2 ring-brand/30'
-                                                        : 'border-gray-200 hover:border-brand/50'
-                                                }`}
-                                            >
-                                                <img
-                                                    src={img}
-                                                    alt={`${program.title} ${idx + 1}`}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                         )}
 
-                        <h2 className="text-xl font-bold text-dark mb-4">{program.title}</h2>
-                        <div className="space-y-2 text-gray-600 mb-6">
-                            <div className="flex items-center gap-2"><Icons.Calendar size={18} /> {program.date}</div>
+                        {/* 일시 · 장소 · 정원: 아이콘 카드 3열 */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                            <div className="flex items-start gap-3 p-4 rounded-xl bg-soft border border-blue-100">
+                                <div className="w-10 h-10 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+                                    <Icons.Calendar size={20} className="text-brand" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-0.5">일시</div>
+                                    <div className="text-sm font-semibold text-dark leading-snug">{program.date}</div>
+                                </div>
+                            </div>
                             {program.location && (
-                                <div className="flex items-center gap-2"><Icons.MapPin size={18} /> {program.location}</div>
+                                <div className="flex items-start gap-3 p-4 rounded-xl bg-soft border border-blue-100">
+                                    <div className="w-10 h-10 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+                                        <Icons.MapPin size={20} className="text-brand" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-0.5">장소</div>
+                                        <div className="text-sm font-semibold text-dark leading-snug line-clamp-2">{program.location}</div>
+                                    </div>
+                                </div>
                             )}
-                            <div className="text-sm text-gray-500">
-                                신청 인원: {program.currentParticipants ?? 0} / {program.maxParticipants ?? 0}명
+                            <div className="flex items-start gap-3 p-4 rounded-xl bg-soft border border-blue-100">
+                                <div className="w-10 h-10 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+                                    <Icons.Users size={20} className="text-brand" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-0.5">정원</div>
+                                    <div className="text-sm font-semibold text-dark">
+                                        {program.currentParticipants ?? 0} / {program.maxParticipants ?? 0}명
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -262,15 +369,6 @@ const ProgramApplyView = ({
                             <div className="bg-soft rounded-xl p-5 border border-brand/5 mb-4">
                                 <h3 className="text-sm font-bold text-gray-700 mb-2">상세 내용</h3>
                                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{program.desc}</p>
-                            </div>
-                        )}
-
-                        {isPaid && (
-                            <div className="flex items-center gap-2 p-4 bg-brand/5 rounded-xl border border-brand/20">
-                                <Icons.DollarSign size={20} className="text-brand" />
-                                <span className="font-bold text-brand">
-                                    신청 비용: {new Intl.NumberFormat('ko-KR').format(Number(program.applicationFee))}원
-                                </span>
                             </div>
                         )}
                     </div>
@@ -380,6 +478,34 @@ const ProgramApplyView = ({
                 </div>
             </div>
         </div>
+        {enlargedImageUrl && createPortal(
+            <div
+                className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+                role="dialog"
+                aria-modal="true"
+                aria-label="이미지 확대"
+                onClick={() => setEnlargedImageUrl(null)}
+            >
+                <div className="absolute inset-0 bg-black/85" />
+                <button
+                    type="button"
+                    onClick={() => setEnlargedImageUrl(null)}
+                    className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-white/90 text-gray-700 flex items-center justify-center hover:bg-white shadow-lg"
+                    aria-label="닫기"
+                >
+                    <Icons.X size={24} />
+                </button>
+                <div className="relative z-10 flex items-center justify-center max-w-[90vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+                    <img
+                        src={enlargedImageUrl}
+                        alt="확대 보기"
+                        className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-xl shadow-2xl"
+                    />
+                </div>
+            </div>,
+            document.body
+        )}
+    </>
     );
 };
 
