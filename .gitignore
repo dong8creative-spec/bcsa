@@ -13,6 +13,7 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 .firebaserc.local
+cors.json
 
 # 환경 변수
 .env
