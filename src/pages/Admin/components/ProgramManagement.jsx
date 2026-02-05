@@ -21,6 +21,9 @@ const PROGRAM_CATEGORIES = [
   { value: '커피챗', label: '커피챗' },
 ];
 
+/** 신청 비용 드롭다운 옵션: 1만원~10만원 (1만원 단위) */
+const FEE_OPTIONS = Array.from({ length: 10 }, (_, i) => (i + 1) * 10000);
+
 /** 프로그램 날짜 문자열을 비교용 타임스탬프로 변환 */
 const parseDateForSort = (dateStr) => {
   if (!dateStr || typeof dateStr !== 'string') return 0;
@@ -132,9 +135,11 @@ export const ProgramManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const feeNum = formData.applicationFee === '' ? null : (parseInt(String(formData.applicationFee).replace(/[,\s]/g, ''), 10) || null);
+    const capacityNum = formData.capacity ? parseInt(formData.capacity, 10) : null;
     const payload = {
       ...formData,
       applicationFee: feeNum != null && !isNaN(feeNum) && feeNum >= 0 ? feeNum : null,
+      maxParticipants: capacityNum != null && !isNaN(capacityNum) ? capacityNum : null,
       imageUrl: formData.imageUrls?.[0] || '',
       images: formData.imageUrls || []
     };
@@ -158,6 +163,14 @@ export const ProgramManagement = () => {
   const handleEdit = (program) => {
     setEditingProgram(program);
     const urls = Array.isArray(program.imageUrls) ? program.imageUrls : (program.imageUrl ? [program.imageUrl] : []);
+    const rawCapacity = program.capacity != null && program.capacity !== ''
+      ? Number(program.capacity)
+      : (program.maxParticipants != null && program.maxParticipants !== '' ? Number(program.maxParticipants) : NaN);
+    const capacityNorm = (() => {
+      if (isNaN(rawCapacity) || rawCapacity < 10 || rawCapacity > 500) return '';
+      if (rawCapacity < 100) return String(Math.min(90, Math.max(10, Math.round(rawCapacity / 10) * 10)));
+      return String(Math.min(500, Math.max(100, Math.round(rawCapacity / 100) * 100)));
+    })();
     setFormData({
       title: program.title || '',
       description: program.description || '',
@@ -165,7 +178,7 @@ export const ProgramManagement = () => {
       location: program.location || '',
       locationLat: program.locationLat || null,
       locationLng: program.locationLng || null,
-      capacity: program.capacity || '',
+      capacity: capacityNorm,
       category: program.category || '',
       applicationFee: program.applicationFee != null && program.applicationFee !== '' ? String(program.applicationFee) : '',
       imageUrls: urls
@@ -474,26 +487,47 @@ export const ProgramManagement = () => {
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">정원</label>
-                <input
-                  type="number"
+                <select
                   value={formData.capacity}
                   onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
-                />
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white"
+                >
+                  <option value="">선택 (명)</option>
+                  {[...Array.from({ length: 9 }, (_, i) => (i + 1) * 10), ...Array.from({ length: 5 }, (_, i) => (i + 1) * 100)].map((n) => (
+                    <option key={n} value={String(n)}>{n}명</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">10~90명은 10명 단위, 100명 이상은 100명 단위 (최대 500명)</p>
               </div>
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">신청 비용 (원)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={formData.applicationFee}
-                  onChange={(e) => setFormData({ ...formData, applicationFee: e.target.value })}
-                  placeholder="비워두면 무료"
-                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
-                />
-                <p className="text-xs text-gray-500 mt-1">비워두면 무료, 숫자 입력 시 해당 금액이 신청 화면에 표시되고 결제하기 버튼이 노출됩니다.</p>
+                <select
+                  value={formData.applicationFee === '' ? '' : FEE_OPTIONS.includes(Number(formData.applicationFee)) ? formData.applicationFee : 'direct'}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setFormData({ ...formData, applicationFee: v === 'direct' ? formData.applicationFee : v });
+                  }}
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white"
+                >
+                  <option value="">무료</option>
+                  {FEE_OPTIONS.map((n) => (
+                    <option key={n} value={String(n)}>{n >= 10000 ? `${n / 10000}만` : n}원</option>
+                  ))}
+                  <option value="direct">직접 입력</option>
+                </select>
+                {(formData.applicationFee === '' ? '' : FEE_OPTIONS.includes(Number(formData.applicationFee)) ? formData.applicationFee : 'direct') === 'direct' && (
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.applicationFee}
+                    onChange={(e) => setFormData({ ...formData, applicationFee: e.target.value })}
+                    placeholder="금액 입력 (원)"
+                    className="w-full mt-2 px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                  />
+                )}
+                <p className="text-xs text-gray-500 mt-1">무료 또는 1만~10만원 선택, 직접 입력도 가능합니다.</p>
               </div>
 
               <div>
