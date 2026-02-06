@@ -3,7 +3,7 @@ import { firebaseService } from '../../../services/firebaseService';
 import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
 import { KakaoMapModal } from './KakaoMapModal';
-import { uploadImageForAdmin, normalizeImageItem } from '../../../utils/imageUtils';
+import { uploadImageForAdmin, normalizeImageItem, normalizeImagesList } from '../../../utils/imageUtils';
 import ModalPortal from '../../../components/ModalPortal';
 
 const MAX_IMAGES = 10;
@@ -136,13 +136,30 @@ export const ProgramManagement = () => {
     e.preventDefault();
     const feeNum = formData.applicationFee === '' ? null : (parseInt(String(formData.applicationFee).replace(/[,\s]/g, ''), 10) || null);
     const capacityNum = formData.capacity ? parseInt(formData.capacity, 10) : null;
+    const imageUrls = normalizeImagesList(formData.imageEntries || []);
+    const firstImageUrl = imageUrls[0] || '';
     const payload = {
-      ...formData,
-      applicationFee: feeNum != null && !isNaN(feeNum) && feeNum >= 0 ? feeNum : null,
+      title: formData.title || '',
+      description: formData.description || '',
+      desc: formData.description || '',
+      date: formData.date || '',
+      location: formData.location || '',
+      locationLat: formData.locationLat ?? null,
+      locationLng: formData.locationLng ?? null,
+      capacity: capacityNum != null && !isNaN(capacityNum) ? capacityNum : null,
       maxParticipants: capacityNum != null && !isNaN(capacityNum) ? capacityNum : null,
-      imageUrl: normalizeImageItem(formData.imageEntries?.[0]) || '',
-      images: formData.imageEntries || []
+      category: formData.category || '',
+      applicationFee: feeNum != null && !isNaN(feeNum) && feeNum >= 0 ? feeNum : null,
+      imageUrl: firstImageUrl,
+      img: firstImageUrl,
+      images: imageUrls,
+      imageUrls
     };
+    if (!editingProgram) {
+      payload.currentParticipants = 0;
+    } else if (editingProgram.currentParticipants != null) {
+      payload.currentParticipants = editingProgram.currentParticipants;
+    }
     try {
       if (editingProgram) {
         await firebaseService.updateSeminar(editingProgram.id, payload);

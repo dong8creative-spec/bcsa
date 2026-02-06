@@ -538,7 +538,19 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                     <div className="space-y-2 text-sm text-gray-600 mb-6">
                                         <div className="flex items-center gap-2"><Icons.Calendar size={16} /> {selectedSeminar.date}</div>
                                         {selectedSeminar.location && <div className="flex items-center gap-2"><Icons.MapPin size={16} /> {selectedSeminar.location}</div>}
-                                        <div className="flex items-center gap-2 font-semibold text-dark">신청 비용: {getFeeLabel(selectedSeminar)}</div>
+                                        <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: '1.3em' }}>
+                                            <span className="inline-flex items-center px-3 py-1.5 rounded-xl border-2 border-blue-200 bg-blue-50/80 font-semibold text-dark">
+                                                {(() => {
+                                                    const fee = selectedSeminar.applicationFee != null ? Number(selectedSeminar.applicationFee) : 0;
+                                                    const price = selectedSeminar.price != null ? Number(selectedSeminar.price) : 0;
+                                                    const isPaid = fee > 0 || (selectedSeminar.requiresPayment && price > 0);
+                                                    return isPaid ? '유료' : '무료';
+                                                })()}
+                                            </span>
+                                            <span className="inline-flex items-center px-3 py-1.5 rounded-xl border-2 border-blue-200 bg-blue-50/80 font-semibold text-dark">
+                                                신청비용 {getFeeLabel(selectedSeminar)}
+                                            </span>
+                                        </div>
                                     </div>
                                     <div className="bg-soft p-6 rounded-2xl border border-brand/5 mb-6">
                                         <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{selectedSeminar.desc}</p>
