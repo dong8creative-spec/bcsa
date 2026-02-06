@@ -37,6 +37,7 @@ import DonationView from './components/DonationView';
 import ProgramApplyView from './pages/ProgramApplyView';
 import AppLayout from './components/AppLayout';
 import ModalPortal from './components/ModalPortal';
+import { KakaoMapModal } from './pages/Admin/components/KakaoMapModal';
 
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
 
@@ -415,6 +416,8 @@ const App = () => {
         questions: ['', ''] // 사전 질문 2개
     });
     const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
+    const [showKakaoMapModal, setShowKakaoMapModal] = useState(false);
+    const kakaoMapCallbackRef = useRef(null);
     const popupShownRef = useRef(false); // 팝업 설정 중복 실행 방지용 ref
     const programTrackRef = useRef(null);
     const programScrollOffsetRef = useRef(0);
@@ -579,153 +582,10 @@ const App = () => {
         });
     };
     
-    // 카카오맵 Places API를 활용한 장소 검색 함수
-    const openKakaoPlacesSearch = async (onComplete) => {
-        try {
-            // 카카오맵 SDK 로드 완료 대기
-            await waitForKakaoMap();
-            
-            // Places 서비스 초기화 확인
-            if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
-                alert('카카오맵 API가 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
-                return;
-            }
-        } catch (error) {
-            alert('카카오맵 API를 로드할 수 없습니다. 페이지를 새로고침해주세요.');
-            console.error('카카오맵 SDK 로드 오류:', error);
-            return;
-        }
-        
-        // 검색 모달 생성
-        const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 z-[500] flex items-center justify-center bg-black/50 backdrop-blur-md p-4';
-        modal.innerHTML = `
-            <div class="bg-white rounded-2xl shadow-2xl border border-blue-100 p-6 max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
-                <div class="flex items-center justify-between gap-3 mb-4 flex-shrink-0">
-                    <h3 class="text-xl font-bold text-dark whitespace-nowrap">장소 검색</h3>
-                    <button type="button" class="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0" onclick="this.closest('.fixed').remove()" aria-label="닫기">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-                <div class="flex gap-2 mb-4 flex-shrink-0">
-                    <input 
-                        type="text" 
-                        id="place-search-input" 
-                        placeholder="장소명, 도로명 주소, 건물명 입력" 
-                        class="flex-1 min-w-0 p-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
-                    />
-                    <button type="button" id="place-search-btn" class="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 flex-shrink-0 whitespace-nowrap">장소를 검색합니다</button>
-                </div>
-                <div id="place-search-results" class="flex-1 min-h-0 overflow-y-auto space-y-2"></div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        
-        const searchInput = modal.querySelector('#place-search-input');
-        const resultsContainer = modal.querySelector('#place-search-results');
-        const placesService = new window.kakao.maps.services.Places();
-        const geocoder = new window.kakao.maps.services.Geocoder();
-        
-        const renderPlaceItem = (name, address, lat, lng, phone) => {
-            const div = document.createElement('div');
-            div.className = 'p-3 border border-blue-200 rounded-xl hover:bg-blue-50 cursor-pointer flex items-center gap-2 min-w-0';
-            div.innerHTML = `<span class="font-bold text-dark truncate flex-shrink-0 max-w-[140px]">${name}</span><span class="text-sm text-gray-600 truncate flex-1 min-w-0">${address || ''}</span>${phone ? `<span class="text-xs text-gray-500 flex-shrink-0">${phone}</span>` : ''}`;
-            div.onclick = () => {
-                onComplete({ name, address, lat, lng, phone: phone || '', placeUrl: '' });
-                modal.remove();
-            };
-            resultsContainer.appendChild(div);
-        };
-        
-        // 검색 실행 함수 (키워드 검색 + 도로명 주소 검색)
-        const performSearch = (keyword) => {
-            if (!keyword.trim()) {
-                resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-4 text-sm">검색어를 입력해주세요.</p>';
-                return;
-            }
-            resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-4 text-sm">검색 중...</p>';
-            
-            let placeResults = [];
-            let addressResults = [];
-            let placeDone = false;
-            let addressDone = false;
-            
-            const tryRender = () => {
-                if (!placeDone || !addressDone) return;
-                resultsContainer.innerHTML = '';
-                const combined = [];
-                const seen = new Set();
-                placeResults.forEach((p) => {
-                    const key = `${p.lat},${p.lng}`;
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        combined.push(p);
-                    }
-                });
-                addressResults.forEach((a) => {
-                    const key = `${a.lat},${a.lng}`;
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        combined.push(a);
-                    }
-                });
-                if (combined.length === 0) {
-                    resultsContainer.innerHTML = '<p class="text-center text-gray-400 py-4 text-sm">검색 결과가 없습니다.</p>';
-                    return;
-                }
-                combined.forEach((r) => renderPlaceItem(r.name, r.address, r.lat, r.lng, r.phone));
-            };
-            
-            placesService.keywordSearch(keyword, (data, status) => {
-                placeDone = true;
-                if (status === window.kakao.maps.services.Status.OK && data && data.length > 0) {
-                    placeResults = data.map((place) => ({
-                        name: place.place_name,
-                        address: place.road_address_name || place.address_name,
-                        lat: parseFloat(place.y),
-                        lng: parseFloat(place.x),
-                        phone: place.phone || ''
-                    }));
-                }
-                tryRender();
-            });
-            
-            geocoder.addressSearch(keyword, (data, status) => {
-                addressDone = true;
-                if (status === window.kakao.maps.services.Status.OK && data && data.length > 0) {
-                    addressResults = data.map((addr) => {
-                        const road = addr.road_address;
-                        const jibun = addr.address;
-                        const addressName = road ? road.address_name : (jibun ? jibun.address_name : addr.address_name || '');
-                        return {
-                            name: addressName,
-                            address: addressName,
-                            lat: parseFloat(addr.y),
-                            lng: parseFloat(addr.x),
-                            phone: ''
-                        };
-                    });
-                }
-                tryRender();
-            });
-        };
-        
-        searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') performSearch(searchInput.value);
-        });
-        modal.querySelector('#place-search-btn').onclick = () => performSearch(searchInput.value);
-        
-        // 모달 외부 클릭 시 닫기
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.remove();
-            }
-        });
-        
-        // 포커스
-        setTimeout(() => searchInput.focus(), 100);
+    // 장소 선정: Admin 프로그램 등록과 동일한 KakaoMapModal 사용
+    const openKakaoPlacesSearch = (onComplete) => {
+        kakaoMapCallbackRef.current = onComplete;
+        setShowKakaoMapModal(true);
     };
     
     // 카테고리별 컬러 반환 함수
@@ -3229,6 +3089,7 @@ END:VCALENDAR`;
         }
     };
     return (
+    <>
         <AppLayout
             MobileMenu={MobileMenu}
             renderView={renderView}
@@ -3271,6 +3132,28 @@ END:VCALENDAR`;
             content={content}
             isMenuOpen={isMenuOpen}
         />
+        {showKakaoMapModal && (
+            <KakaoMapModal
+                onClose={() => setShowKakaoMapModal(false)}
+                onSelectLocation={(place) => {
+                    if (kakaoMapCallbackRef.current) {
+                        const displayAddress = place.name
+                            ? `${place.name}, ${(place.address || '').trim()}`.trim()
+                            : (place.address || '');
+                        kakaoMapCallbackRef.current({
+                            name: place.name,
+                            address: place.address,
+                            lat: place.lat,
+                            lng: place.lng,
+                            displayAddress
+                        });
+                    }
+                    setShowKakaoMapModal(false);
+                }}
+                initialLocation={null}
+            />
+        )}
+    </>
     );
 }
 

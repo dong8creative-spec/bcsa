@@ -185,13 +185,16 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
     setSearchResults([]);
   };
 
-  // 장소 확정
+  // 장소 확정 — 건물명이 있으면 건물명 우선, 그 뒤에 도로명 주소 표기
   const handleConfirm = () => {
     if (!selectedPlace) {
       alert('지도에서 장소를 선택해주세요.');
       return;
     }
-    onSelectLocation(selectedPlace);
+    const displayAddress = selectedPlace.name
+      ? `${selectedPlace.name}, ${(selectedPlace.address || '').trim()}`.trim()
+      : (selectedPlace.address || '');
+    onSelectLocation({ ...selectedPlace, displayAddress });
     onClose();
   };
 

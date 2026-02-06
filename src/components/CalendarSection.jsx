@@ -362,11 +362,23 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                         const amount = fee > 0 ? fee : price;
                                                         return isPaid ? (amount > 0 ? `${amount.toLocaleString()}원` : '유료') : '무료';
                                                     };
+                                                    const isEventEnded = (e) => {
+                                                        if (!e?.date) return false;
+                                                        const s = String(e.date).trim();
+                                                        const match = s.match(/(\d{4})[.-](\d{1,2})[.-](\d{1,2})/);
+                                                        if (!match) return true;
+                                                        const eventDate = new Date(parseInt(match[1], 10), parseInt(match[2], 10) - 1, parseInt(match[3], 10));
+                                                        eventDate.setHours(23, 59, 59, 999);
+                                                        return eventDate.getTime() <= Date.now();
+                                                    };
                                                     const getButtonConfig = () => {
                                                         if (ev.status === '종료') {
                                                             return { text: '종료된 일정', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
                                                         }
                                                         if (ev.status === '후기작성가능') {
+                                                            if (!isEventEnded(ev)) {
+                                                                return { text: '종료 후 후기 작성', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
+                                                            }
                                                             const hasApplied = applications?.some(app => 
                                                                 String(app.seminarId) === String(ev.id) && String(app.userId) === String(currentUser?.id)
                                                             );

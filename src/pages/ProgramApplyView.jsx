@@ -1,11 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useMemo } from 'react';
 import { Icons } from '../components/Icons';
 import { normalizeImagesList } from '../utils/imageUtils';
-
-const DISSOLVE_DURATION_MS = 1000;
-const DISPLAY_DURATION_MS = 3000;
-const AUTO_ADVANCE_INTERVAL_MS = DISPLAY_DURATION_MS + DISSOLVE_DURATION_MS;
 
 const getStatusColor = (status) => {
     switch (status) {
@@ -43,47 +38,7 @@ const ProgramApplyView = ({
 }) => {
     const [applicationData, setApplicationData] = useState({ reason: '', questions: ['', ''] });
     const [submitting, setSubmitting] = useState(false);
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [enlargedImageUrl, setEnlargedImageUrl] = useState(null);
     const [heroImageError, setHeroImageError] = useState(false);
-    const [dissolvePhase, setDissolvePhase] = useState('idle'); // 'idle' | 'fadeOut' | 'fadeIn'
-    const nextIndexRef = useRef(null);
-    const intervalRef = useRef(null);
-    const timeoutRefs = useRef([]);
-    const currentImageIndexRef = useRef(0);
-    const dissolvePhaseRef = useRef('idle');
-
-    currentImageIndexRef.current = currentImageIndex;
-    dissolvePhaseRef.current = dissolvePhase;
-
-    const clearTimers = () => {
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-        }
-        timeoutRefs.current.forEach((t) => t != null && clearTimeout(t));
-        timeoutRefs.current = [];
-    };
-
-    const goToIndex = (targetIndex) => {
-        if (dissolvePhaseRef.current !== 'idle') return;
-        if (targetIndex === currentImageIndex) return;
-        nextIndexRef.current = targetIndex;
-        setDissolvePhase('fadeOut');
-        dissolvePhaseRef.current = 'fadeOut';
-        const half = DISSOLVE_DURATION_MS / 2;
-        const t1 = setTimeout(() => {
-            setCurrentImageIndex(nextIndexRef.current);
-            setDissolvePhase('fadeIn');
-            dissolvePhaseRef.current = 'fadeIn';
-            const t2 = setTimeout(() => {
-                setDissolvePhase('idle');
-                dissolvePhaseRef.current = 'idle';
-            }, half);
-            timeoutRefs.current.push(t2);
-        }, half);
-        timeoutRefs.current.push(t1);
-    };
 
     const images = useMemo(() => {
         if (!program) return [];
@@ -111,31 +66,6 @@ const ProgramApplyView = ({
         }
         return list;
     }, [program]);
-
-    useEffect(() => {
-        setHeroImageError(false);
-    }, [currentImageIndex]);
-
-    useEffect(() => {
-        if (!program || images.length <= 1) {
-            clearTimers();
-            return;
-        }
-        intervalRef.current = setInterval(() => {
-            const next = (currentImageIndexRef.current + 1) % images.length;
-            goToIndex(next);
-        }, AUTO_ADVANCE_INTERVAL_MS);
-        return () => clearTimers();
-    }, [program, images.length]);
-
-    useEffect(() => () => clearTimers(), []);
-
-    useEffect(() => {
-        if (!enlargedImageUrl) return;
-        const onEscape = (e) => { if (e.key === 'Escape') setEnlargedImageUrl(null); };
-        window.addEventListener('keydown', onEscape);
-        return () => window.removeEventListener('keydown', onEscape);
-    }, [enlargedImageUrl]);
 
     const handleSubmit = async () => {
         if (!program) return;
@@ -180,8 +110,7 @@ const ProgramApplyView = ({
         );
     }
 
-    const displayImage = images.length > 0 ? images[Math.min(currentImageIndex, images.length - 1)] : null;
-    const hasMultipleImages = images.length > 1;
+    const displayImage = images.length > 0 ? images[0] : null;
 
     const isPaid = program.applicationFee != null && Number(program.applicationFee) > 0;
     const isEnded = program.status === '종료';
@@ -205,12 +134,9 @@ const ProgramApplyView = ({
                         {displayImage && !heroImageError ? (
                             <>
                                 <img
-                                    key={currentImageIndex}
                                     src={displayImage}
                                     alt=""
-                                    className={`absolute inset-0 w-full h-full object-cover block transition-opacity duration-[500ms] ${
-                                        dissolvePhase === 'fadeOut' ? 'opacity-0' : dissolvePhase === 'fadeIn' ? 'animate-program-image-fade-in' : 'opacity-100'
-                                    }`}
+                                    className="absolute inset-0 w-full h-full object-cover block"
                                     onError={() => setHeroImageError(true)}
                                     onLoad={() => setHeroImageError(false)}
                                 />
@@ -238,27 +164,6 @@ const ProgramApplyView = ({
                                     {program.category}
                                 </span>
                             )}
-                            {hasMultipleImages && (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={() => goToIndex((currentImageIndex - 1 + images.length) % images.length)}
-                                        className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center z-10"
-                                    >
-                                        <Icons.ChevronLeft size={20} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => goToIndex((currentImageIndex + 1) % images.length)}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center z-10"
-                                    >
-                                        <Icons.ChevronRight size={20} />
-                                    </button>
-                                    <div className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-2 py-1 rounded-full z-10">
-                                        {currentImageIndex + 1} / {images.length}
-                                    </div>
-                                </>
-                            )}
                         </div>
                         {/* 프로그램명: 이미지 위 하단에 크게 */}
                         <div className="absolute bottom-0 left-0 right-0 p-5 md:p-8 z-10">
@@ -267,24 +172,6 @@ const ProgramApplyView = ({
                             </h1>
                         </div>
                     </div>
-
-                    {/* 썸네일 (이미지 여러 장일 때) */}
-                    {hasMultipleImages && images.length > 0 && (
-                        <div className="flex gap-2 p-3 overflow-x-auto bg-gray-50 border-b border-gray-100 scrollbar-thin">
-                            {images.map((img, idx) => (
-                                <button
-                                    key={idx}
-                                    type="button"
-                                    onClick={() => goToIndex(idx)}
-                                    className={`flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${
-                                        idx === currentImageIndex ? 'border-brand ring-2 ring-brand/30' : 'border-gray-200 hover:border-brand/50'
-                                    }`}
-                                >
-                                    <img src={img} alt="" className="w-full h-full object-cover" />
-                                </button>
-                            ))}
-                        </div>
-                    )}
 
                     <div className="p-6 md:p-8">
                         {/* 신청 비용: 독립 카드로 강조 */}
@@ -304,25 +191,18 @@ const ProgramApplyView = ({
                             )}
                         </div>
 
-                        {/* 프로그램 첨부 이미지 갤러리: 비용 ~ 일시 사이, 최대 10장, 300×400px, 클릭 시 원본 크기 모달 */}
+                        {/* 첨부 사진: 신청 비용 박스와 동일 폭, 세로 나열 (상세페이지 스타일) */}
                         {images.length > 0 && (
                             <div className="mb-6">
                                 <h3 className="text-sm font-bold text-gray-700 mb-3">첨부 사진</h3>
-                                <div className="flex flex-wrap overflow-x-auto pb-2" style={{ gap: 10 }}>
-                                    {images.slice(0, 10).map((src, idx) => (
-                                        <button
+                                <div className="flex flex-col gap-3">
+                                    {images.map((src, idx) => (
+                                        <img
                                             key={idx}
-                                            type="button"
-                                            onClick={() => setEnlargedImageUrl(src)}
-                                            className="flex-shrink-0 rounded-xl overflow-hidden border border-gray-200 hover:border-brand/50 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-brand/30"
-                                            style={{ width: 300, height: 400 }}
-                                        >
-                                            <img
-                                                src={src}
-                                                alt={`${program.title} ${idx + 1}`}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </button>
+                                            src={src}
+                                            alt={`${program.title} ${idx + 1}`}
+                                            className="w-full max-w-full block rounded-xl object-contain border border-gray-200"
+                                        />
                                     ))}
                                 </div>
                             </div>
@@ -477,33 +357,6 @@ const ProgramApplyView = ({
                 </div>
             </div>
         </div>
-        {enlargedImageUrl && createPortal(
-            <div
-                className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-                role="dialog"
-                aria-modal="true"
-                aria-label="이미지 확대"
-                onClick={() => setEnlargedImageUrl(null)}
-            >
-                <div className="absolute inset-0 bg-black/85" />
-                <button
-                    type="button"
-                    onClick={() => setEnlargedImageUrl(null)}
-                    className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-white/90 text-gray-700 flex items-center justify-center hover:bg-white shadow-lg"
-                    aria-label="닫기"
-                >
-                    <Icons.X size={24} />
-                </button>
-                <div className="relative z-10 flex items-center justify-center max-w-[90vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-                    <img
-                        src={enlargedImageUrl}
-                        alt="확대 보기"
-                        className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-xl shadow-2xl"
-                    />
-                </div>
-            </div>,
-            document.body
-        )}
     </>
     );
 };

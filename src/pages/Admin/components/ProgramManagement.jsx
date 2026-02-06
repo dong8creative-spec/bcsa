@@ -297,9 +297,10 @@ export const ProgramManagement = () => {
   };
 
   const handleLocationSelect = (location) => {
+    const locationText = location.displayAddress || location.address;
     setFormData({
       ...formData,
-      location: location.address,
+      location: locationText,
       locationLat: location.lat,
       locationLng: location.lng
     });

@@ -648,7 +648,7 @@ const CommunityView = ({
                                                                 openKakaoPlacesSearch((place) => {
                                                                     setFormData((prev) => ({
                                                                         ...prev,
-                                                                        storeLocation: `${place.name} (${place.address})`
+                                                                        storeLocation: place.displayAddress || (place.name ? `${place.name}, ${place.address || ''}`.trim() : (place.address || ''))
                                                                     }));
                                                                 });
                                                             }}
@@ -771,7 +771,7 @@ const CommunityView = ({
                                                                 openKakaoPlacesSearch((place) => {
                                                                     setFormData((prev) => ({
                                                                         ...prev,
-                                                                        tradeLocation: `${place.name} (${place.address})`
+                                                                        tradeLocation: place.displayAddress || (place.name ? `${place.name}, ${place.address || ''}`.trim() : (place.address || ''))
                                                                     }));
                                                                 });
                                                             }}
