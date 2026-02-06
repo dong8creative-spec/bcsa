@@ -107,6 +107,15 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
         }
     };
 
+    // 금액 라벨 (무료 / 20,000원 등) — 버튼·태그 공통
+    const getFeeLabel = (seminar) => {
+        const fee = seminar.applicationFee != null ? Number(seminar.applicationFee) : 0;
+        const price = seminar.price != null ? Number(seminar.price) : 0;
+        const isPaid = fee > 0 || (seminar.requiresPayment && price > 0);
+        const amount = fee > 0 ? fee : price;
+        return isPaid ? (amount > 0 ? `${amount.toLocaleString()}원` : '유료') : '무료';
+    };
+
     // 버튼 설정 계산 함수
     const getButtonConfig = (seminar) => {
         if (seminar.status === '종료') {
@@ -121,7 +130,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                     text: '후기쓰기', 
                     disabled: false, 
                     onClick: () => onWriteReview && onWriteReview(seminar),
-                    className: 'bg-green-600 text-white hover:bg-green-700'
+                    className: 'bg-green-600 text-white hover:bg-green-700 shadow-md ring-2 ring-green-600/30'
                 };
             }
             return { 
@@ -132,10 +141,10 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
             };
         }
         return { 
-            text: '신청하기', 
+            text: getFeeLabel(seminar), 
             disabled: false, 
             onClick: () => onNavigateToApply ? onNavigateToApply(seminar) : (() => {}),
-            className: 'bg-brand text-white hover:bg-blue-700'
+            className: 'bg-brand text-white hover:bg-blue-700 shadow-md ring-2 ring-brand/30'
         };
     };
 
@@ -281,7 +290,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                         {seminar.location && <span className="flex items-center gap-1"><Icons.MapPin size={14} /> {seminar.location}</span>}
                                     </div>
                                 <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-500">신청: {seminar.currentParticipants || 0} / {seminar.maxParticipants || 0}명</span>
+                                        <span className="text-sm font-semibold text-dark flex items-center gap-1"><Icons.Users size={14} className="text-brand" /> 신청: {seminar.currentParticipants || 0} / {seminar.maxParticipants || 0}명</span>
                                         {currentUser && (() => {
                                             const btnConfig = getButtonConfig(seminar);
                                             return (
@@ -519,7 +528,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                     <div className="bg-soft p-6 rounded-2xl border border-brand/5 mb-6">
                                         <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{selectedSeminar.desc}</p>
                                     </div>
-                                    <p className="text-sm text-gray-500">신청: {selectedSeminar.currentParticipants || 0} / {selectedSeminar.maxParticipants || 0}명</p>
+                                    <p className="text-sm font-semibold text-dark flex items-center gap-2"><Icons.Users size={16} className="text-brand" /> 신청: {selectedSeminar.currentParticipants || 0} / {selectedSeminar.maxParticipants || 0}명</p>
                                 </div>
                                 <div className="shrink-0 border-t border-blue-200 p-4 flex flex-wrap items-center justify-between gap-3">
                                     <div className="flex flex-wrap items-center gap-2">

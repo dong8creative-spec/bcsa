@@ -336,8 +336,8 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                             <Icons.MapPin size={14} className="text-gray-400"/> {ev.location}
                                                         </span>
                                                     )}
-                                                    <span className="text-sm text-gray-600 font-medium flex items-center gap-2">
-                                                        <Icons.Users size={14} className="text-gray-400"/> 신청현황: <span className="text-gray-900 font-semibold">{ev.currentParticipants || 0}</span> / {ev.maxParticipants || 100}명
+                                                    <span className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                                                        <Icons.Users size={14} className="text-brand"/> 신청현황: {ev.currentParticipants || 0} / {ev.maxParticipants || 100}명
                                                     </span>
                                                 </div>
                                                 {ev.desc && (
@@ -355,6 +355,13 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                         로그인 후 신청 가능
                                                     </button>
                                                 ) : (() => {
+                                                    const getFeeLabel = (e) => {
+                                                        const fee = e.applicationFee != null ? Number(e.applicationFee) : 0;
+                                                        const price = e.price != null ? Number(e.price) : 0;
+                                                        const isPaid = fee > 0 || (e.requiresPayment && price > 0);
+                                                        const amount = fee > 0 ? fee : price;
+                                                        return isPaid ? (amount > 0 ? `${amount.toLocaleString()}원` : '유료') : '무료';
+                                                    };
                                                     const getButtonConfig = () => {
                                                         if (ev.status === '종료') {
                                                             return { text: '종료된 일정', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
@@ -368,16 +375,16 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                                     text: '후기쓰기', 
                                                                     disabled: false, 
                                                                     onClick: () => { onWriteReview && onWriteReview(ev); setSelectedDate(null); },
-                                                                    className: 'bg-green-600 text-white hover:bg-green-700 border border-green-700'
+                                                                    className: 'bg-green-600 text-white hover:bg-green-700 border border-green-700 shadow-md ring-2 ring-green-600/30'
                                                                 };
                                                             }
                                                             return { text: '참여자만', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
                                                         }
                                                         return { 
-                                                            text: '신청하기', 
+                                                            text: getFeeLabel(ev), 
                                                             disabled: false, 
                                                             onClick: () => { onSelectSeminar(ev); setSelectedDate(null); },
-                                                            className: 'bg-brand text-white hover:bg-blue-700 border border-blue-700'
+                                                            className: 'bg-brand text-white hover:bg-blue-700 border border-blue-700 shadow-md ring-2 ring-brand/30'
                                                         };
                                                     };
                                                     const btnConfig = getButtonConfig();

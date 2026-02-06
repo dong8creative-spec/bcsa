@@ -244,14 +244,20 @@ const AppLayout = (props) => {
                                                 </div>
                                             ) : null}
                                             
-                                            {/* 신청하기 버튼 */}
+                                            {/* 신청하기 버튼 (무료/금액 표기) */}
                                             {currentUser ? (
                                                 <button 
                                                     type="button"
                                                     onClick={() => handlePopupApply(program)}
                                                     className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
                                                 >
-                                                    신청하기
+                                                    {(() => {
+                                                        const fee = program.applicationFee != null ? Number(program.applicationFee) : 0;
+                                                        const price = program.price != null ? Number(program.price) : 0;
+                                                        const isPaid = fee > 0 || (program.requiresPayment && price > 0);
+                                                        const amount = fee > 0 ? fee : price;
+                                                        return isPaid ? (amount > 0 ? `${amount.toLocaleString()}원` : '유료') : '무료';
+                                                    })()}
                                                 </button>
                                             ) : (
                                                 <button
