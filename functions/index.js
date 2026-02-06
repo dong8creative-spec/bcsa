@@ -89,6 +89,18 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'API Proxy is running' });
 });
 
+// G2B API 키 설정 여부 진단 (키 값은 노출하지 않음, 502 원인 확인용)
+app.get('/api/diagnose-g2b', (req, res) => {
+  const serviceKey = process.env.G2B_API_KEY || process.env.G2B_SERVICE_KEY;
+  const g2bKeyConfigured = !!(serviceKey && String(serviceKey).trim());
+  res.status(200).json({
+    g2bKeyConfigured,
+    hint: g2bKeyConfigured
+      ? 'G2B key is set. If you still get 502, check Cloud Logging for [Bid Search] / [G2B] errors.'
+      : 'Set G2B_API_KEY or G2B_SERVICE_KEY in Firebase Console (Functions → environment variables) and redeploy.'
+  });
+});
+
 // Blaze 플랜 외부 네트워크 접속 테스트 엔드포인트
 app.get('/api/network-test', async (req, res, next) => {
   const testUrl = 'https://www.google.com/generate_204';
