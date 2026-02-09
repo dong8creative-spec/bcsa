@@ -1,6 +1,8 @@
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
+  signInWithPopup,
+  GoogleAuthProvider,
   signOut, 
   sendPasswordResetEmail,
   onAuthStateChanged as firebaseOnAuthStateChanged
@@ -37,6 +39,18 @@ export const authService = {
       return userCredential.user;
     } catch (error) {
       console.error('Error signing in:', error);
+      throw error;
+    }
+  },
+
+  // Sign in with Google
+  async signInWithGoogle() {
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      return userCredential.user;
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
       throw error;
     }
   },

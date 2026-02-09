@@ -24,6 +24,8 @@ export const translateFirebaseError = (error) => {
             'auth/invalid-credential': '이메일 또는 비밀번호가 올바르지 않습니다.',
             'auth/user-token-expired': '로그인 세션이 만료되었습니다. 다시 로그인해주세요.',
             'auth/requires-recent-login': '보안을 위해 다시 로그인해주세요.',
+            'auth/popup-closed-by-user': '로그인 창이 닫혔습니다.',
+            'auth/cancelled-popup-request': '로그인이 취소되었습니다.',
             // Firestore 에러
             'permission-denied': '권한이 없습니다. 관리자에게 문의해주세요.',
             'unavailable': '서비스를 사용할 수 없습니다. 잠시 후 다시 시도해주세요.',

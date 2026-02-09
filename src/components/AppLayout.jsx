@@ -48,6 +48,7 @@ const AppLayout = (props) => {
         handleProgramAlertConfirm,
         handleSignUp,
         handleLogin,
+        handleGoogleLogin,
         users,
         LoginModal,
         isMenuOpen,
@@ -493,7 +494,8 @@ const AppLayout = (props) => {
                         
                         setShowLoginModal(false);
                     }} 
-                    onLogin={handleLogin} 
+                    onLogin={handleLogin}
+                    onGoogleLogin={handleGoogleLogin}
                 />
             ) : null}
 

@@ -25,8 +25,12 @@ export const CONFIG = {
         MASTER_CODE: 'master9999'
     },
     
+    // 포트원(구 아임포트) 결제: 관리자 콘솔에서 발급한 가맹점 식별코드
+    // https://admin.portone.io 또는 https://admin.iamport.kr → 시스템 설정 → 가맹점 식별코드
     PORTONE: {
-        IMP_CODE: 'imp00000000'
+        IMP_CODE: typeof import.meta !== 'undefined' && import.meta.env?.VITE_PORTONE_IMP_CODE
+            ? import.meta.env.VITE_PORTONE_IMP_CODE
+            : 'imp00000000'
     },
     
     IMGBB: {
