@@ -250,7 +250,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                 </div>
                             ) : (
                                 <Fragment>
-                                    <h3 className="text-3xl font-light text-gray-900 mb-2">{user.name} <span className="text-sm font-normal text-gray-400">({user.id})</span></h3>
+                                    <h3 className="text-3xl font-light text-gray-900 mb-2">{user.name}</h3>
                                     <p className="text-sm text-gray-600 mb-3">{user.company} · {user.role}</p>
                                     <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium mt-1">{user.industry}</span>
                                     <button type="button" onClick={() => setIsEditingProfile(true)} className="mt-6 px-5 py-2 border border-blue-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
