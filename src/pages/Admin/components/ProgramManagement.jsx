@@ -410,7 +410,7 @@ export const ProgramManagement = () => {
             return (
             <div key={program.id} className="bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
               {thumb && (
-                <img src={thumb} alt={program.title} className="w-full h-40 object-cover rounded-xl mb-3" />
+                <img src={thumb} alt={program.title} className="w-full h-40 object-cover rounded-xl mb-3" loading="lazy" decoding="async" />
               )}
               <h3 className="font-bold text-lg text-dark mb-2">{program.title}</h3>
               <p className="text-sm text-gray-600 mb-3 line-clamp-2">{program.description}</p>
@@ -587,7 +587,7 @@ export const ProgramManagement = () => {
                 <div className="flex flex-wrap gap-2 mb-2">
                   {(formData.imageEntries || []).map((entry, idx) => (
                     <div key={idx} className="relative group">
-                      <img src={normalizeImageItem(entry)} alt={`이미지 ${idx + 1}`} className="w-20 h-20 object-cover rounded-xl border-2 border-blue-200" />
+                      <img src={normalizeImageItem(entry)} alt={`이미지 ${idx + 1}`} className="w-20 h-20 object-cover rounded-xl border-2 border-blue-200" loading="lazy" decoding="async" />
                       <button
                         type="button"
                         onClick={() => removeProgramImage(idx)}

@@ -129,7 +129,7 @@ export const ContentManagement = () => {
         <label className="block text-sm font-bold text-gray-700 mb-2">배경 이미지 (16:9)</label>
         <div className="flex items-center gap-4">
           {content.hero_bg && (
-            <img src={content.hero_bg} alt="Hero Background" className="w-32 h-18 object-cover rounded-xl" />
+            <img src={content.hero_bg} alt="Hero Background" className="w-32 h-18 object-cover rounded-xl" loading="lazy" decoding="async" />
           )}
           <button
             onClick={() => handleImageUpload('hero_bg', 16 / 9)}
@@ -153,7 +153,7 @@ export const ContentManagement = () => {
         <label className="block text-sm font-bold text-gray-700 mb-2">메인 이미지 (16:9)</label>
         <div className="flex items-center gap-4">
           {content.hero_image && (
-            <img src={content.hero_image} alt="Hero Image" className="w-32 h-18 object-cover rounded-xl" />
+            <img src={content.hero_image} alt="Hero Image" className="w-32 h-18 object-cover rounded-xl" loading="lazy" decoding="async" />
           )}
           <button
             onClick={() => handleImageUpload('hero_image', 16 / 9)}
@@ -208,7 +208,7 @@ export const ContentManagement = () => {
         <label className="block text-sm font-bold text-gray-700 mb-2">배경 이미지 (16:9)</label>
         <div className="flex items-center gap-4">
           {content.stat_bg && (
-            <img src={content.stat_bg} alt="Stats Background" className="w-32 h-18 object-cover rounded-xl" />
+            <img src={content.stat_bg} alt="Stats Background" className="w-32 h-18 object-cover rounded-xl" loading="lazy" decoding="async" />
           )}
           <button
             onClick={() => handleImageUpload('stat_bg', 16 / 9)}
@@ -274,7 +274,7 @@ export const ContentManagement = () => {
             <label className="block text-sm font-bold text-gray-700 mb-2">이미지 {num} (1:1)</label>
             <div className="flex flex-col gap-2">
               {content[`features_image_${num}`] && (
-                <img src={content[`features_image_${num}`]} alt={`Feature ${num}`} className="w-full h-32 object-cover rounded-xl" />
+                <img src={content[`features_image_${num}`]} alt={`Feature ${num}`} className="w-full h-32 object-cover rounded-xl" loading="lazy" decoding="async" />
               )}
               <div className="flex gap-2">
                 <button
@@ -361,7 +361,7 @@ export const ContentManagement = () => {
                   onClick={() => setPreviewImageUrl(content[`activity_${type}_image`])} 
                   className="cursor-pointer hover:opacity-80 transition-opacity"
                 >
-                  <img src={content[`activity_${type}_image`]} alt={type} className="w-32 h-24 object-cover rounded-xl border-2 border-blue-200" />
+                  <img src={content[`activity_${type}_image`]} alt={type} className="w-32 h-24 object-cover rounded-xl border-2 border-blue-200" loading="lazy" decoding="async" />
                 </div>
               )}
               <button
@@ -423,7 +423,7 @@ export const ContentManagement = () => {
         <label className="block text-sm font-bold text-gray-700 mb-2">이미지 (4:3)</label>
         <div className="flex items-center gap-4">
           {content.donation_image && (
-            <img src={content.donation_image} alt="Donation" className="w-32 h-24 object-cover rounded-xl" />
+            <img src={content.donation_image} alt="Donation" className="w-32 h-24 object-cover rounded-xl" loading="lazy" decoding="async" />
           )}
           <button
             onClick={() => handleImageUpload('donation_image', 4 / 3)}
@@ -491,6 +491,8 @@ export const ContentManagement = () => {
                       src={imageUrl} 
                       alt={imageMeta.name} 
                       className="w-full h-full object-cover" 
+                      loading="lazy"
+                      decoding="async"
                     />
                   </div>
                 </div>
@@ -602,6 +604,8 @@ export const ContentManagement = () => {
                     src={content.about_hero_image} 
                     alt="About Hero" 
                     className="w-48 h-27 object-cover rounded-xl border-2 border-blue-200" 
+                    loading="lazy"
+                    decoding="async"
                   />
                 </div>
               )}
@@ -891,6 +895,8 @@ export const ContentManagement = () => {
               src={previewImageUrl} 
               alt="미리보기" 
               className="w-full h-full object-contain rounded-xl"
+              loading="lazy"
+              decoding="async"
               onClick={(e) => e.stopPropagation()}
             />
           </div>

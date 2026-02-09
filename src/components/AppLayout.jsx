@@ -127,6 +127,8 @@ const AppLayout = (props) => {
                                                     src={program.img} 
                                                     alt={program.title} 
                                                     className="w-full h-full object-cover object-center"
+                                                    loading="lazy"
+                                                    decoding="async"
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -197,6 +199,8 @@ const AppLayout = (props) => {
                                                     alt={program.title} 
                                                     className="w-full h-full object-contain"
                                                     style={{ maxHeight: '90vh' }}
+                                                    loading="lazy"
+                                                    decoding="async"
                                                 />
                                             ) : null}
                                         </div>
@@ -369,7 +373,9 @@ const AppLayout = (props) => {
                         <img 
                             src="/assets/images/logo.png" 
                             alt="부산청년사업가들" 
-                            className="h-full w-auto object-contain hover:opacity-90 transition-opacity" 
+                            className="h-full w-auto object-contain hover:opacity-90 transition-opacity"
+                            loading="eager"
+                            decoding="async" 
                             onError={(e) => {
                                 e.target.onerror = null;
                                 // 절대 경로 사용 (Vite가 public을 루트로 복사)

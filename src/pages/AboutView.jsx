@@ -60,6 +60,8 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                                 src={content.about_hero_image} 
                                 alt="부청사 소개" 
                                 className="w-full h-full object-cover"
+                                loading="lazy"
+                                decoding="async"
                                 onError={(e) => {e.target.style.display='none'}}
                             />
                         )}

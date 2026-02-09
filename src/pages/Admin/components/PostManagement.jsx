@@ -431,7 +431,7 @@ export const PostManagement = () => {
                 <div className="flex flex-wrap gap-3">
                   {(reviewForm.reviewImages || []).map((img, idx) => (
                     <div key={idx} className="relative">
-                      <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-24 h-24 object-cover rounded-xl border-2 border-blue-200" />
+                      <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-24 h-24 object-cover rounded-xl border-2 border-blue-200" loading="lazy" decoding="async" />
                       <button
                         type="button"
                         onClick={() => setReviewForm(prev => ({ ...prev, reviewImages: (prev.reviewImages || []).filter((_, i) => i !== idx) }))}
@@ -555,7 +555,7 @@ export const PostManagement = () => {
                   <h4 className="text-sm font-bold text-gray-700 mb-3">첨부 이미지</h4>
                   <div className="grid grid-cols-3 gap-3">
                     {selectedPost.reviewImages.map((img, idx) => (
-                      <img key={idx} src={img} alt={`후기 이미지 ${idx + 1}`} className="w-full h-32 object-cover rounded-xl" />
+                      <img key={idx} src={img} alt={`후기 이미지 ${idx + 1}`} className="w-full h-32 object-cover rounded-xl" loading="lazy" decoding="async" />
                     ))}
                   </div>
                 </div>

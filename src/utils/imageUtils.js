@@ -49,8 +49,8 @@ export const uploadImageToStorage = async (file, type = 'program') => {
 
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
 
-const FIREBASE_UPLOAD_TIMEOUT_MS = 6 * 1000; // 6초 내 응답 없으면 ImgBB 폴백 (프로그램 업로드 속도 개선)
-const PROGRAM_RESIZE_THRESHOLD_BYTES = 400 * 1024; // 400KB 이상이면 프로그램 이미지 리사이즈
+const FIREBASE_UPLOAD_TIMEOUT_MS = 4 * 1000; // 4초 내 응답 없으면 ImgBB 폴백
+const PROGRAM_RESIZE_THRESHOLD_BYTES = 200 * 1024; // 200KB 이상이면 이미지 리사이즈 (업로드 용량 감소)
 const PROGRAM_MAX_SIZE = 1600; // 프로그램 이미지 최대 긴 변 1600px
 const PROGRAM_QUALITY = 0.82;
 
@@ -62,6 +62,9 @@ const dataURLToFile = (dataUrl, fileName, mimeType = 'image/jpeg') => {
     .then((r) => r.blob())
     .then((blob) => new File([blob], fileName, { type: blob.type || mimeType }));
 };
+
+/** 업로드용 파일명을 .webp 확장자로 변환 */
+const toWebpFileName = (name) => (name || 'image.jpg').replace(/\.[^.]+$/i, '.webp');
 
 /**
  * Admin 전용 이미지 업로드: ImgBB만 사용 (Firebase 미사용)
@@ -75,17 +78,20 @@ export const uploadImageForAdmin = async (file, options = {}) => {
   const maxSize = options.maxSize ?? PROGRAM_MAX_SIZE;
   const quality = options.quality ?? PROGRAM_QUALITY;
   let base64;
+  const outName = toWebpFileName(file.name || 'image.jpg');
   if (file.size > PROGRAM_RESIZE_THRESHOLD_BYTES) {
     try {
       const dataUrl = await fileToBase64(file);
-      base64 = await resizeImage(dataUrl, maxSize, maxSize, quality);
+      base64 = await resizeImage(dataUrl, maxSize, maxSize, quality, { outputMimeType: 'image/webp' });
     } catch (_) {
-      base64 = await fileToBase64(file);
+      const webpFile = await convertToWebP(file, quality);
+      base64 = await fileToBase64(webpFile);
     }
   } else {
-    base64 = await fileToBase64(file);
+    const webpFile = await convertToWebP(file, quality);
+    base64 = await fileToBase64(webpFile);
   }
-  const result = await uploadImageToImgBB(base64, file.name || 'image.jpg');
+  const result = await uploadImageToImgBB(base64, outName);
   const url = result?.url ?? (typeof result === 'string' ? result : null);
   if (url) return url;
   throw new Error(result?.message || '이미지 업로드에 실패했습니다.');
@@ -111,17 +117,19 @@ export const uploadImageDual = async (file, type = 'program') => {
   if (file.size > PROGRAM_RESIZE_THRESHOLD_BYTES) {
     try {
       const base64 = await fileToBase64(file);
-      const resized = await resizeImage(base64, PROGRAM_MAX_SIZE, PROGRAM_MAX_SIZE, PROGRAM_QUALITY);
-      fileToUse = await dataURLToFile(resized, file.name || 'image.jpg', file.type || 'image/jpeg');
+      const resized = await resizeImage(base64, PROGRAM_MAX_SIZE, PROGRAM_MAX_SIZE, PROGRAM_QUALITY, { outputMimeType: 'image/webp' });
+      fileToUse = await dataURLToFile(resized, toWebpFileName(file.name || 'image.jpg'), 'image/webp');
     } catch (_) {
-      fileToUse = file;
+      fileToUse = await convertToWebP(file);
     }
+  } else {
+    fileToUse = await convertToWebP(file);
   }
 
   if (isLocalOrigin()) {
     try {
       const base64 = await fileToBase64(fileToUse);
-      const result = await uploadImageToImgBB(base64, fileToUse.name || file.name || 'image.jpg');
+      const result = await uploadImageToImgBB(base64, fileToUse.name || toWebpFileName(file.name) || 'image.webp');
       const url = result?.url ?? (typeof result === 'string' ? result : null);
       return { firebase: null, imgbb: url || null };
     } catch (_) {
@@ -130,7 +138,7 @@ export const uploadImageDual = async (file, type = 'program') => {
   }
 
   const base64 = await fileToBase64(fileToUse);
-  const name = fileToUse.name || file.name || 'image.jpg';
+  const name = fileToUse.name || toWebpFileName(file.name) || 'image.webp';
   const [firebaseResult, imgbbResult] = await Promise.allSettled([
     uploadImageToStorage(fileToUse, type),
     uploadImageToImgBB(base64, name)
@@ -172,14 +180,16 @@ export const normalizeImagesList = (images) => {
  */
 export const uploadImage = async (file, type = 'program') => {
   let fileToUse = file;
-  if (type === 'program' && file.size > PROGRAM_RESIZE_THRESHOLD_BYTES) {
+  if (file.size > PROGRAM_RESIZE_THRESHOLD_BYTES) {
     try {
       const base64 = await fileToBase64(file);
-      const resized = await resizeImage(base64, PROGRAM_MAX_SIZE, PROGRAM_MAX_SIZE, PROGRAM_QUALITY);
-      fileToUse = await dataURLToFile(resized, file.name || 'image.jpg', file.type || 'image/jpeg');
+      const resized = await resizeImage(base64, PROGRAM_MAX_SIZE, PROGRAM_MAX_SIZE, PROGRAM_QUALITY, { outputMimeType: 'image/webp' });
+      fileToUse = await dataURLToFile(resized, toWebpFileName(file.name || 'image.jpg'), 'image/webp');
     } catch (_) {
-      fileToUse = file;
+      fileToUse = await convertToWebP(file);
     }
+  } else {
+    fileToUse = await convertToWebP(file);
   }
 
   let firebaseError;
@@ -196,7 +206,7 @@ export const uploadImage = async (file, type = 'program') => {
   }
   try {
     const base64 = await fileToBase64(fileToUse);
-    const result = await uploadImageToImgBB(base64, fileToUse.name || file.name || 'image.jpg');
+    const result = await uploadImageToImgBB(base64, fileToUse.name || toWebpFileName(file.name) || 'image.webp');
     const url = result?.url ?? (typeof result === 'string' ? result : null);
     if (url) return url;
     throw new Error(result?.message || 'ImgBB 업로드 후 URL을 받지 못했습니다.');
@@ -289,57 +299,56 @@ export const fileToBase64 = (file) => {
 
 /**
  * 이미지 리사이징 (base64 문자열 또는 File 객체 모두 지원)
+ * @param {Object} options - { outputMimeType?: 'image/webp' } 출력을 WebP로 할 때 사용 (미지원 브라우저는 원본 포맷으로 폴백)
  */
-export const resizeImage = (input, maxWidth, maxHeight = null, quality = 0.9) => {
+export const resizeImage = (input, maxWidth, maxHeight = null, quality = 0.9, options = {}) => {
     return new Promise((resolve, reject) => {
-        // maxHeight가 없으면 maxWidth와 동일하게 설정
         const maxH = maxHeight || maxWidth;
-        
-        // input이 base64 문자열인지 File 객체인지 확인
         const isBase64 = typeof input === 'string' && (input.startsWith('data:') || !input.includes('/'));
-        
+        const outputMimeType = options.outputMimeType || null;
+
         const processImage = (imageSrc, mimeType = 'image/jpeg') => {
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
                 let width = img.width;
                 let height = img.height;
-                
-                // 비율 유지하면서 리사이징
                 if (width > maxWidth || height > maxH) {
                     const ratio = Math.min(maxWidth / width, maxH / height);
                     width = width * ratio;
                     height = height * ratio;
                 }
-                
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                
-                canvas.toBlob((blob) => {
-                    if (blob) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve(reader.result);
-                        reader.onerror = reject;
-                        reader.readAsDataURL(blob);
-                    } else {
-                        reject(new Error('이미지 리사이징 실패'));
-                    }
-                }, mimeType, quality);
+
+                const tryBlob = (outMime) => {
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(blob);
+                        } else if (outMime === 'image/webp') {
+                            tryBlob(mimeType);
+                        } else {
+                            reject(new Error('이미지 리사이징 실패'));
+                        }
+                    }, outMime, quality);
+                };
+                tryBlob(outputMimeType === 'image/webp' ? 'image/webp' : mimeType);
             };
             img.onerror = reject;
             img.src = imageSrc;
         };
-        
+
         if (isBase64) {
-            // base64 문자열인 경우
-            const mimeType = input.startsWith('data:') 
-                ? input.split(',')[0].split(':')[1].split(';')[0] 
+            const mimeType = input.startsWith('data:')
+                ? input.split(',')[0].split(':')[1].split(';')[0]
                 : 'image/jpeg';
             processImage(input, mimeType);
         } else {
-            // File 객체인 경우
             const reader = new FileReader();
             reader.onload = (e) => {
                 processImage(e.target.result, input.type || 'image/jpeg');
@@ -348,6 +357,39 @@ export const resizeImage = (input, maxWidth, maxHeight = null, quality = 0.9) =>
             reader.readAsDataURL(input);
         }
     });
+};
+
+/**
+ * 이미지를 WebP로 변환 (용량 절감, 업로드 전 사용)
+ * @param {File} file - 원본 이미지 파일
+ * @param {number} quality - 0~1 (기본 0.82)
+ * @returns {Promise<File>} WebP File (미지원 브라우저는 원본 반환)
+ */
+export const convertToWebP = (file, quality = PROGRAM_QUALITY) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(new File([blob], toWebpFileName(file.name), { type: 'image/webp' }));
+        } else {
+          resolve(file);
+        }
+      }, 'image/webp', quality);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
 };
 
 /**

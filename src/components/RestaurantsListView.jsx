@@ -82,6 +82,8 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                             src={restaurant.images[0]} 
                                             alt={restaurant.title} 
                                             className="w-full h-full object-cover" 
+                                            loading="lazy"
+                                            decoding="async"
                                             onError={(e) => { e.target.style.display = 'none'; }}
                                         />
                                     </div>

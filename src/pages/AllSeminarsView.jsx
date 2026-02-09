@@ -311,7 +311,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                 <div className="w-full flex-shrink-0 overflow-hidden relative bg-gray-100" style={{ aspectRatio: '3/4' }}>
                                     {displayImage ? (
                                         <>
-                                            <img src={displayImage} alt={seminar.title} className="w-full h-full object-cover object-center" />
+                                            <img src={displayImage} alt={seminar.title} className="w-full h-full object-cover object-center" loading="lazy" decoding="async" />
                                             {((seminar.images && seminar.images.length > 1) || (seminar.imageUrls && seminar.imageUrls.length > 1)) && (
                                                 <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
                                                     <Icons.Camera size={12} className="inline mr-1" />
@@ -468,6 +468,8 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                                         src={src}
                                                         alt={`${selectedSeminar.title} ${idx + 1}`}
                                                         className="w-full h-full object-contain"
+                                                        loading="lazy"
+                                                        decoding="async"
                                                         onLoad={(e) => {
                                                             if (e.target.naturalWidth && e.target.naturalHeight) {
                                                                 const ratio = e.target.naturalWidth / e.target.naturalHeight;

@@ -67,6 +67,8 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                                 src={restaurant.images[currentImageIndex]} 
                                 alt={restaurant.title}
                                 className="w-full h-full object-cover rounded-xl"
+                                loading="lazy"
+                                decoding="async"
                             />
                             {restaurant.images.length > 1 ? (
                                 <>

@@ -198,10 +198,10 @@ export const ImageCropModal = ({
       const croppedImageBase64 = await createCroppedImage();
 
       // 이미지 리사이징 (최대 1920px)
-      const resizedImage = await resizeImage(croppedImageBase64, 1920);
+      const resizedImage = await resizeImage(croppedImageBase64, 1920, null, 0.9, { outputMimeType: 'image/webp' });
 
       // ImgBB에 업로드
-      const result = await uploadImageToImgBB(resizedImage, `cropped_${Date.now()}.jpg`);
+      const result = await uploadImageToImgBB(resizedImage, `cropped_${Date.now()}.webp`);
 
       if (result.success && result.url) {
         onImageCropped(result.url);

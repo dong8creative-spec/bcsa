@@ -225,7 +225,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                     <div className="flex flex-col md:flex-row items-start gap-8">
                         <div className="relative">
                             <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-5xl overflow-hidden border border-blue-300">
-                                {editFormData.img ? <img src={editFormData.img} className="w-full h-full object-cover"/> : "👤"}
+                                {editFormData.img ? <img src={editFormData.img} className="w-full h-full object-cover" loading="lazy" decoding="async" /> : "👤"}
                             </div>
                             {isEditingProfile && (
                                 <label className="absolute bottom-0 right-0 w-10 h-10 bg-gray-800 text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-700 transition-colors border-2 border-white">
@@ -488,7 +488,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     />
                                     {companyIntro.companyMainImage ? (
                                         <div className="relative inline-block">
-                                            <img src={companyIntro.companyMainImage} alt="대표 이미지" className="w-full max-w-md h-64 object-cover border border-blue-200 rounded-lg" />
+                                            <img src={companyIntro.companyMainImage} alt="대표 이미지" className="w-full max-w-md h-64 object-cover border border-blue-200 rounded-lg" loading="lazy" decoding="async" />
                                             <button
                                                 type="button"
                                                 onClick={() => setCompanyIntro(prev => ({ ...prev, companyMainImage: '' }))}
@@ -544,7 +544,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     <div className="flex flex-wrap gap-3 mb-3">
                                         {(companyIntro.companyImages || []).map((url, idx) => (
                                             <div key={idx} className="relative group">
-                                                <img src={url} alt={`추가 사진 ${idx + 1}`} className="w-24 h-24 object-cover rounded-lg border border-blue-200" />
+                                                <img src={url} alt={`추가 사진 ${idx + 1}`} className="w-24 h-24 object-cover rounded-lg border border-blue-200" loading="lazy" decoding="async" />
                                                 <button
                                                     type="button"
                                                     onClick={() => removeCompanyImage(idx)}
@@ -731,7 +731,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.storeImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover border border-blue-200" />
+                                                <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover border border-blue-200" loading="lazy" decoding="async" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -801,7 +801,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.itemImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" />
+                                                <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -875,7 +875,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.reviewImages || editingPost.images || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" />
+                                                <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {

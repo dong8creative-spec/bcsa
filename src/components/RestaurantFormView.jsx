@@ -50,8 +50,8 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
         setUploadingImages(true);
         try {
             // 3:2 비율로 리사이징
-            const resizedImage = await resizeImage(file, 1200, 800, 0.9);
-            const result = await uploadImageToImgBB(resizedImage, `restaurant_${Date.now()}_${index}.jpg`);
+            const resizedImage = await resizeImage(file, 1200, 800, 0.9, { outputMimeType: 'image/webp' });
+            const result = await uploadImageToImgBB(resizedImage, `restaurant_${Date.now()}_${index}.webp`);
             
             if (result.success) {
                 const newImages = [...formData.images];
@@ -173,7 +173,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
                                     <div key={index} className="relative" style={{ aspectRatio: '3/2' }}>
                                         {formData.images[index] ? (
                                             <div className="relative w-full h-full group">
-                                                <img src={formData.images[index]} alt={`사진 ${index + 1}`} className="w-full h-full object-cover rounded-xl" />
+                                                <img src={formData.images[index]} alt={`사진 ${index + 1}`} className="w-full h-full object-cover rounded-xl" loading="lazy" decoding="async" />
                                                 <button
                                                     type="button"
                                                     onClick={() => {

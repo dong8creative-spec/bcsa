@@ -410,7 +410,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                             
                                             <div className="flex flex-col items-center mb-6 p-6 bg-gray-50 rounded-2xl border-2 border-dashed border-blue-200">
                                                 <div className="w-24 h-24 rounded-full bg-gradient-to-br from-brand/20 to-brand/10 overflow-hidden mb-3 relative group border-4 border-brand/20">
-                                                    {formData.img ? <img src={formData.img} className="w-full h-full object-cover" alt="Profile" /> : <Icons.Users className="w-12 h-12 text-brand/40 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />}
+                                                    {formData.img ? <img src={formData.img} className="w-full h-full object-cover" alt="Profile" loading="lazy" decoding="async" /> : <Icons.Users className="w-12 h-12 text-brand/40 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />}
                                                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                                                         <Icons.Camera className="text-white w-5 h-5" />
                                                     </div>

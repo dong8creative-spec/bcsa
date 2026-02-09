@@ -184,7 +184,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                     <Fragment>
                                                         <div className="flex-shrink-0">
                                                             <div className="w-20 h-20 rounded-full overflow-hidden mb-2 border-4 border-soft group-hover:border-brand/20 transition-colors">
-                                                                <img src={member.img} alt={member.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
+                                                                <img src={member.img} alt={member.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
                                                             </div>
                                                             <h3 className="text-lg font-bold text-dark mb-1 text-center">{member.name}</h3>
                                                             <p className="text-xs text-brand font-medium mb-2 text-center">{member.company}</p>
@@ -199,7 +199,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                             </h4>
                                                             {member.companyMainImage && (
                                                                 <div className="relative w-full h-32 rounded-lg overflow-hidden mb-2">
-                                                                    <img src={member.companyMainImage} alt="회사 대표 이미지" className="w-full h-full object-cover" />
+                                                                    <img src={member.companyMainImage} alt="회사 대표 이미지" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                                                                 </div>
                                                             )}
                                                             {member.companyDescription && (
@@ -209,7 +209,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                                 <div className="grid grid-cols-3 gap-1">
                                                                     {member.companyImages.slice(0, 3).map((img, imgIdx) => (
                                                                         <div key={imgIdx} className="relative aspect-square rounded overflow-hidden">
-                                                                            <img src={img} alt={`회사 사진 ${imgIdx + 1}`} className="w-full h-full object-cover" />
+                                                                            <img src={img} alt={`회사 사진 ${imgIdx + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -222,7 +222,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                 ) : (
                                                     <Fragment>
                                                         <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-soft group-hover:border-brand/20 transition-colors">
-                                                            <img src={member.img} alt={member.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
+                                                            <img src={member.img} alt={member.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
                                                         </div>
                                                         <h3 className="text-xl font-bold text-dark mb-1">{member.name}</h3>
                                                         <p className="text-sm text-brand font-medium mb-2">{member.company} {member.role}</p>
@@ -276,7 +276,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                     <Fragment>
                                         <div className="flex-shrink-0">
                                             <div className="w-20 h-20 rounded-full overflow-hidden mb-2 border-4 border-soft group-hover:border-brand/20 transition-colors">
-                                                <img src={member.img} alt={member.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
+                                                <img src={member.img} alt={member.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
                                             </div>
                                             <h3 className="text-lg font-bold text-dark mb-1 text-center">{member.name}</h3>
                                             <p className="text-xs text-brand font-medium mb-2 text-center">{member.company}</p>
@@ -291,7 +291,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                             </h4>
                                             {member.companyMainImage && (
                                                 <div className="relative w-full h-32 rounded-lg overflow-hidden mb-2">
-                                                    <img src={member.companyMainImage} alt="회사 대표 이미지" className="w-full h-full object-cover" />
+                                                    <img src={member.companyMainImage} alt="회사 대표 이미지" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                                                 </div>
                                             )}
                                             {member.companyDescription && (
@@ -301,7 +301,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                 <div className="grid grid-cols-3 gap-1">
                                                     {member.companyImages.slice(0, 3).map((img, imgIdx) => (
                                                         <div key={imgIdx} className="relative aspect-square rounded overflow-hidden">
-                                                            <img src={img} alt={`회사 사진 ${imgIdx + 1}`} className="w-full h-full object-cover" />
+                                                            <img src={img} alt={`회사 사진 ${imgIdx + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                                                         </div>
                                                     ))}
                                                 </div>
@@ -314,7 +314,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                 ) : (
                                     <Fragment>
                                         <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-soft group-hover:border-brand/20 transition-colors">
-                                            <img src={member.img} alt={member.name} className="w-full h-full object-cover" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
+                                            <img src={member.img} alt={member.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
                                         </div>
                                         <h3 className="text-xl font-bold text-dark mb-1">{member.name}</h3>
                                         <p className="text-sm text-brand font-medium mb-2">{member.company} {member.role}</p>
@@ -367,7 +367,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                     <div className="space-y-2 max-h-48 overflow-y-auto">
                                         {filteredMembers.filter(m => m.hasDonated).map((m, idx) => (
                                             <div key={idx} className="bg-white rounded-lg p-2 flex items-center gap-2 cursor-pointer hover:bg-yellow-50" onClick={() => setSelectedMember(m)}>
-                                                <img src={m.img || `https://ui-avatars.com/api/?name=${m.name}&background=random`} alt={m.name} className="w-10 h-10 rounded-full object-cover" />
+                                                <img src={m.img || `https://ui-avatars.com/api/?name=${m.name}&background=random`} alt={m.name} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />
                                                 <div className="flex-1 min-w-0">
                                                     <div className="text-xs font-bold text-dark truncate">{m.name}</div>
                                                     <div className="text-[10px] text-gray-500 truncate">{m.company}</div>
@@ -388,7 +388,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                     <div className="space-y-2 max-h-48 overflow-y-auto">
                                         {filteredMembers.filter(m => !m.hasDonated && m.businessType === '사업자').map((m, idx) => (
                                             <div key={idx} className="bg-white rounded-lg p-2 flex items-center gap-2 cursor-pointer hover:bg-green-50" onClick={() => setSelectedMember(m)}>
-                                                <img src={m.img || `https://ui-avatars.com/api/?name=${m.name}&background=random`} alt={m.name} className="w-10 h-10 rounded-full object-cover" />
+                                                <img src={m.img || `https://ui-avatars.com/api/?name=${m.name}&background=random`} alt={m.name} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />
                                                 <div className="flex-1 min-w-0">
                                                     <div className="text-xs font-bold text-dark truncate">{m.name}</div>
                                                     <div className="text-[10px] text-gray-500 truncate">{m.company}</div>
@@ -409,7 +409,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                     <div className="space-y-2 max-h-48 overflow-y-auto">
                                         {filteredMembers.filter(m => !m.hasDonated && m.businessType === '예비창업자').map((m, idx) => (
                                             <div key={idx} className="bg-white rounded-lg p-2 flex items-center gap-2 cursor-pointer hover:bg-purple-50" onClick={() => setSelectedMember(m)}>
-                                                <img src={m.img || `https://ui-avatars.com/api/?name=${m.name}&background=random`} alt={m.name} className="w-10 h-10 rounded-full object-cover" />
+                                                <img src={m.img || `https://ui-avatars.com/api/?name=${m.name}&background=random`} alt={m.name} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />
                                                 <div className="flex-1 min-w-0">
                                                     <div className="text-xs font-bold text-dark truncate">{m.name}</div>
                                                     <div className="text-[10px] text-gray-500 truncate">{m.company || '예비창업자'}</div>
@@ -431,6 +431,8 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                             src={selectedMember.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name || '회원')}&background=random`} 
                                             alt={selectedMember.name || '회원 프로필'} 
                                             className="w-full h-full object-cover" 
+                                            loading="lazy"
+                                            decoding="async"
                                             onError={(e) => { 
                                                 e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name || '회원')}&background=random`; 
                                             }} 
@@ -549,7 +551,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                             <div className="mb-4">
                                                 <label className="block text-xs font-bold text-gray-700 mb-2">대표 이미지</label>
                                                 <div className="relative w-full h-64 rounded-xl overflow-hidden">
-                                                    <img src={selectedMember.companyMainImage} alt="회사 대표 이미지" className="w-full h-full object-cover" />
+                                                    <img src={selectedMember.companyMainImage} alt="회사 대표 이미지" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                                                 </div>
                                             </div>
                                         )}
@@ -571,7 +573,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                 <div className="grid grid-cols-3 gap-3">
                                                     {selectedMember.companyImages.slice(0, 3).map((img, idx) => (
                                                         <div key={idx} className="relative aspect-square rounded-xl overflow-hidden">
-                                                            <img src={img} alt={`회사 사진 ${idx + 1}`} className="w-full h-full object-cover" />
+                                                            <img src={img} alt={`회사 사진 ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                                                         </div>
                                                     ))}
                                                 </div>
