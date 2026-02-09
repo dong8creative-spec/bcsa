@@ -139,7 +139,7 @@ const LoginModal = ({ onClose, onLogin, onGoogleLogin }) => {
     return (
         <ModalPortal>
             <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md z-10 flex flex-col max-h-[calc(90vh-100px)] relative border-[0.5px] border-brand scale-[0.667] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md z-10 flex flex-col max-h-[calc(90vh-100px)] relative border-[0.5px] border-brand scale-[1.2] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
                     <div className="flex-1 min-h-0 overflow-hidden p-8 text-center">
                         <div className="mb-8">
                             <div className="w-16 h-16 bg-gradient-to-br from-brand to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand/30">
