@@ -1860,8 +1860,8 @@ const App = () => {
             if (onFail) onFail();
             return;
         }
-        const paymentId = `order_${seminar.id}_${currentUser?.id || 'anon'}_${Date.now()}`;
         const orderName = (seminar.title || '프로그램 신청').substring(0, 50);
+        const paymentId = `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`.slice(0, 40);
 
         if (typeof window !== 'undefined' && window.PortOne) {
             (async () => {
@@ -1887,7 +1887,8 @@ const App = () => {
                     }
                     if (onSuccess) onSuccess(response);
                 } catch (e) {
-                    alert(e?.message || '결제 요청 중 오류가 발생했습니다.');
+                    const msg = e?.message || e?.errorMessage || '결제 요청 중 오류가 발생했습니다.';
+                    alert(msg);
                     if (onFail) onFail();
                 }
             })();
