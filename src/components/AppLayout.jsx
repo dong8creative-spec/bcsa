@@ -270,7 +270,7 @@ const AppLayout = (props) => {
                                                     type="button"
                                                     onClick={() => {
                                                         closePopupAndMarkAsShown();
-                                                        setShowLoginModal(true);
+                                                        setShowSignUpChoiceModal(true);
                                                     }}
                                                     className="w-full py-3 bg-gray-300 text-gray-500 font-bold rounded-xl cursor-not-allowed"
                                                     disabled
@@ -412,7 +412,7 @@ const AppLayout = (props) => {
                                 <button type="button" onClick={(e) => { 
                                     e.preventDefault(); 
                                     e.stopPropagation(); 
-                                    setShowLoginModal(true); 
+                                    setShowSignUpChoiceModal(true); 
                                 }} className="text-xs font-semibold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">로그인</button>
                                 <button type="button" onClick={(e) => { 
                                     e.preventDefault(); 
