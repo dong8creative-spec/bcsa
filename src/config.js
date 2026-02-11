@@ -30,7 +30,10 @@ export const CONFIG = {
     PORTONE: {
         IMP_CODE: typeof import.meta !== 'undefined' && import.meta.env?.VITE_PORTONE_IMP_CODE
             ? import.meta.env.VITE_PORTONE_IMP_CODE
-            : 'imp00000000'
+            : 'imp00000000',
+        CHANNEL_KEY: typeof import.meta !== 'undefined' && import.meta.env?.VITE_PORTONE_CHANNEL_KEY
+            ? import.meta.env.VITE_PORTONE_CHANNEL_KEY
+            : ''
     },
     
     IMGBB: {

@@ -16,7 +16,7 @@ import {
   loadCurrentUserFromStorage,
   saveCurrentUserToStorage
 } from './utils/authUtils';
-import { PORTONE_IMP_CODE } from './constants';
+import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from './constants';
 import { defaultContent } from './constants/content';
 import PageTitle from './components/PageTitle';
 import NoticeView from './pages/NoticeView';
@@ -1843,16 +1843,15 @@ const App = () => {
          alert("회원 탈퇴가 완료되었습니다.\n세미나 후기와 사진은 유지됩니다.");
     };
 
-    /** PortOne 결제 요청 후 성공 시 onSuccess, 실패/취소 시 onFail 호출 */
+    /** PortOne 결제 요청 후 성공 시 onSuccess, 실패/취소 시 onFail 호출 (V2 SDK 우선, 없으면 레거시 IMP) */
     const requestPortOnePayment = (seminar, applicationData, onSuccess, onFail) => {
-        const IMP = typeof window !== 'undefined' ? window.IMP : null;
-        if (!IMP) {
-            alert('결제를 불러올 수 없습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.');
+        if (!PORTONE_IMP_CODE || PORTONE_IMP_CODE === 'imp00000000') {
+            alert('결제가 설정되지 않았습니다. 관리자에게 문의해주세요.');
             if (onFail) onFail();
             return;
         }
-        if (!PORTONE_IMP_CODE || PORTONE_IMP_CODE === 'imp00000000') {
-            alert('결제가 설정되지 않았습니다. 관리자에게 문의해주세요.');
+        if (!PORTONE_CHANNEL_KEY) {
+            alert('결제 채널이 설정되지 않았습니다. 관리자에게 문의해주세요.');
             if (onFail) onFail();
             return;
         }
@@ -1861,13 +1860,52 @@ const App = () => {
             if (onFail) onFail();
             return;
         }
+        const paymentId = `order_${seminar.id}_${currentUser?.id || 'anon'}_${Date.now()}`;
+        const orderName = (seminar.title || '프로그램 신청').substring(0, 50);
+
+        if (typeof window !== 'undefined' && window.PortOne) {
+            (async () => {
+                try {
+                    const response = await window.PortOne.requestPayment({
+                        storeId: PORTONE_IMP_CODE,
+                        channelKey: PORTONE_CHANNEL_KEY,
+                        paymentId,
+                        orderName,
+                        totalAmount: amount,
+                        currency: 'CURRENCY_KRW',
+                        payMethod: 'CARD',
+                        customer: {
+                            fullName: currentUser?.name || '',
+                            phoneNumber: currentUser?.phone || '',
+                            email: currentUser?.email || ''
+                        }
+                    });
+                    if (response?.code != null) {
+                        alert(response.message || '결제 실패');
+                        if (onFail) onFail();
+                        return;
+                    }
+                    if (onSuccess) onSuccess(response);
+                } catch (e) {
+                    alert(e?.message || '결제 요청 중 오류가 발생했습니다.');
+                    if (onFail) onFail();
+                }
+            })();
+            return;
+        }
+
+        const IMP = typeof window !== 'undefined' ? window.IMP : null;
+        if (!IMP) {
+            alert('결제를 불러올 수 없습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.');
+            if (onFail) onFail();
+            return;
+        }
         IMP.init(PORTONE_IMP_CODE);
-        const merchantUid = `order_${seminar.id}_${currentUser?.id || 'anon'}_${Date.now()}`;
         IMP.request_pay({
-            pg: undefined,
+            channelKey: PORTONE_CHANNEL_KEY,
             pay_method: 'card',
-            merchant_uid: merchantUid,
-            name: (seminar.title || '프로그램 신청').substring(0, 50),
+            merchant_uid: paymentId,
+            name: orderName,
             amount,
             buyer_email: currentUser?.email || '',
             buyer_name: currentUser?.name || '',
@@ -3031,13 +3069,15 @@ END:VCALENDAR`;
                                             <div className="w-full flex-shrink-0 aspect-[3/4] bg-gray-100 overflow-hidden">
                                                 {img ? <img src={img} alt={seminar.title} className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><Icons.Calendar size={48} /></div>}
                                             </div>
-                                            <div className="p-4">
-                                                <div className="flex flex-wrap gap-2 mb-2">
+                                            <div className="p-4 flex flex-col flex-shrink-0 w-full min-h-[8.5rem] h-[8.5rem] box-border">
+                                                <div className="flex flex-wrap gap-2 mb-2 flex-shrink-0">
                                                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${seminar.status === '모집중' ? 'bg-blue-100 text-blue-700' : seminar.status === '마감임박' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>{seminar.status || '모집중'}</span>
                                                     <span className="text-xs font-bold px-2 py-0.5 bg-brand/10 text-brand rounded-full">{isPaid ? `${amount.toLocaleString()}원` : '무료'}</span>
                                                 </div>
-                                                <h3 className="font-bold text-dark mb-1 line-clamp-2 group-hover:text-brand transition-colors">{seminar.title}</h3>
-                                                <p className="text-sm text-gray-500 flex items-center gap-1"><Icons.Calendar size={14} /> {seminar.date}</p>
+                                                <div className="flex-1 min-h-0 flex flex-col justify-end">
+                                                    <h3 className="font-bold text-dark mb-1 line-clamp-2 group-hover:text-brand transition-colors text-[15.5px]">{seminar.title}</h3>
+                                                    <p className="text-sm text-gray-500 flex items-center gap-1 pt-2 flex-shrink-0"><Icons.Calendar size={14} /> {seminar.date}</p>
+                                                </div>
                                             </div>
                                         </button>
                                     );
