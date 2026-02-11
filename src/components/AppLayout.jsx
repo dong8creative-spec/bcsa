@@ -40,6 +40,7 @@ const AppLayout = (props) => {
         setShowLoginModal,
         showSignUpModal,
         setShowSignUpModal,
+        setShowSignUpChoiceModal,
         isInquiryModalOpen,
         setIsInquiryModalOpen,
         handleInquirySubmit,
@@ -416,7 +417,7 @@ const AppLayout = (props) => {
                                 <button type="button" onClick={(e) => { 
                                     e.preventDefault(); 
                                     e.stopPropagation(); 
-                                    setShowSignUpModal(true); 
+                                    setShowSignUpChoiceModal(true); 
                                 }} className="px-3 md:px-4 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover whitespace-nowrap flex-shrink-0">가입하기</button>
                             </div>
                         )}

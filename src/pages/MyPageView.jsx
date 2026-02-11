@@ -346,28 +346,49 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
 
                 {/* 탭 컨텐츠 */}
                 <div className="min-h-[400px] mb-20">
-                    {activeTab === 'seminars' && (
-                        <ul className="space-y-3">
-                            {mySeminars.length > 0 ? mySeminars.map((s, idx) => (
-                                <li key={idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:bg-gray-50 transition-all">
-                                    <div>
-                                        <div className="font-medium text-gray-900 text-base mb-1">{s.title}</div>
-                                        <div className="text-xs text-gray-500">{s.date} · {s.location}</div>
-                                    </div>
-                                    <div className="flex gap-3 items-center">
-                                        <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1 font-medium">신청완료</span>
-                                        <button type="button" onClick={() => {
-                                            if(confirm("세미나 신청을 취소하시겠습니까?")) {
-                                                if (onCancelSeminar) {
-                                                    onCancelSeminar(s.id);
-                                                }
-                                            }
-                                        }} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1 border border-blue-300 hover:bg-gray-50 transition-colors">취소</button>
-                                    </div>
-                                </li>
-                            )) : <li className="text-center text-gray-500 py-16 text-sm">신청한 모임이 없습니다.</li>}
-                        </ul>
-                    )}
+                    {activeTab === 'seminars' && (() => {
+                        const categories = [
+                            { key: '교육/세미나', label: '교육·세미나' },
+                            { key: '네트워킹 모임', label: '네트워킹 모임' },
+                            { key: '커피챗', label: '커피챗' },
+                            { key: '', label: '기타' }
+                        ];
+                        const renderItem = (s, idx) => (
+                            <li key={s.id || idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:bg-gray-50 transition-all">
+                                <div>
+                                    <div className="font-medium text-gray-900 text-base mb-1">{s.title}</div>
+                                    <div className="text-xs text-gray-500">{s.date} · {s.location}</div>
+                                </div>
+                                <div className="flex gap-3 items-center">
+                                    <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1 font-medium">신청완료</span>
+                                    <button type="button" onClick={() => {
+                                        if (confirm("세미나 신청을 취소하시겠습니까?")) {
+                                            if (onCancelSeminar) onCancelSeminar(s.id);
+                                        }
+                                    }} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1 border border-blue-300 hover:bg-gray-50 transition-colors">취소</button>
+                                </div>
+                            </li>
+                        );
+                        if (mySeminars.length === 0) {
+                            return <ul className="space-y-3"><li className="text-center text-gray-500 py-16 text-sm">신청한 모임이 없습니다.</li></ul>;
+                        }
+                        return (
+                            <div className="space-y-10">
+                                {categories.map(({ key, label }) => {
+                                    const items = mySeminars.filter((s) => (s.category || '') === key);
+                                    if (items.length === 0) return null;
+                                    return (
+                                        <div key={key || 'other'}>
+                                            <h4 className="text-lg font-bold text-dark mb-4">{label}</h4>
+                                            <ul className="space-y-3">
+                                                {items.map((s, idx) => renderItem(s, idx))}
+                                            </ul>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()}
                     {activeTab === 'posts' && (
                         <ul className="space-y-3">
                             {myPosts.length > 0 ? myPosts.map((p, idx) => (

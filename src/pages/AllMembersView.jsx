@@ -66,7 +66,9 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
         });
         setFilteredMembers(filtered);
     }, [searchName, searchIndustry, searchRegion, selectedIndustryFilter, selectedGradeFilter, members]);
-    
+
+    const hasActiveFilter = Boolean(searchName || searchIndustry || searchRegion || selectedIndustryFilter !== '전체' || selectedGradeFilter !== '전체');
+
     // 등급별로 그룹화
     const membersByGrade = {
         '파트너사': filteredMembers.filter(m => m.memberGrade === '파트너사'),
@@ -158,7 +160,11 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                         </div>
                     </div>
                     <div className="text-xs text-gray-500 mt-4 px-4">
-                        검색 결과: <span className="font-bold text-brand">{filteredMembers.length}</span>명
+                        {hasActiveFilter ? (
+                            <>검색 결과: <span className="font-bold text-brand">{filteredMembers.length}</span>명</>
+                        ) : (
+                            <>전체: <span className="font-bold text-brand">{filteredMembers.length}</span>명</>
+                        )}
                     </div>
                 </div>
 

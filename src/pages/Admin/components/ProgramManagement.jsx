@@ -24,6 +24,8 @@ const PROGRAM_CATEGORIES = [
 /** 신청 비용 드롭다운 옵션: 1만원~10만원 (1만원 단위) */
 const FEE_OPTIONS = Array.from({ length: 10 }, (_, i) => (i + 1) * 10000);
 
+const PAGE_SIZE = 6;
+
 /** 프로그램 날짜 문자열을 비교용 타임스탬프로 변환 */
 const parseDateForSort = (dateStr) => {
   if (!dateStr || typeof dateStr !== 'string') return 0;
@@ -66,6 +68,9 @@ export const ProgramManagement = () => {
   });
   const [imageUploading, setImageUploading] = useState(false);
   const programImageInputRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showApplicantModal, setShowApplicantModal] = useState(false);
+  const [applicantModalProgram, setApplicantModalProgram] = useState(null);
 
   useEffect(() => {
     loadPrograms();
@@ -131,6 +136,22 @@ export const ProgramManagement = () => {
     });
     return sorted;
   }, [programs, searchQuery, sortBy, applicationCountBySeminarId]);
+
+  /** 현재 페이지에 표시할 프로그램 (6개) */
+  const displayPrograms = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredAndSortedPrograms.slice(start, start + PAGE_SIZE);
+  }, [filteredAndSortedPrograms, currentPage]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedPrograms.length / PAGE_SIZE));
+
+  const goToPage = (page) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, sortBy]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -405,14 +426,23 @@ export const ProgramManagement = () => {
             </p>
           </div>
         ) : (
-          filteredAndSortedPrograms.map((program) => {
+          displayPrograms.map((program) => {
             const thumb = normalizeImageItem(program.images?.[0]) || program.imageUrls?.[0] || program.imageUrl;
             return (
-            <div key={program.id} className="bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
+            <div key={program.id} className="relative bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
+              <button
+                type="button"
+                onClick={() => handleDelete(program.id)}
+                className="absolute top-3 right-3 z-10 p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="프로그램 삭제"
+                aria-label="삭제"
+              >
+                <Icons.Trash2 size={18} />
+              </button>
               {thumb && (
                 <img src={thumb} alt={program.title} className="w-full h-40 object-cover rounded-xl mb-3" loading="lazy" decoding="async" />
               )}
-              <h3 className="font-bold text-lg text-dark mb-2">{program.title}</h3>
+              <h3 className="font-bold text-lg text-dark mb-2 pr-8">{program.title}</h3>
               <p className="text-sm text-gray-600 mb-3 line-clamp-2">{program.description}</p>
               <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -439,11 +469,14 @@ export const ProgramManagement = () => {
                   수정
                 </button>
                 <button
-                  onClick={() => handleDelete(program.id)}
-                  className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                  onClick={() => {
+                    setApplicantModalProgram(program);
+                    setShowApplicantModal(true);
+                  }}
+                  className="flex-1 px-3 py-2 bg-green-50 text-green-700 rounded-xl font-bold hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
                 >
-                  <Icons.Trash2 size={16} />
-                  삭제
+                  <Icons.Users size={16} />
+                  신청자명단
                 </button>
               </div>
             </div>
@@ -451,6 +484,31 @@ export const ProgramManagement = () => {
           })
         )}
       </div>
+
+      {/* 페이징 */}
+      {filteredAndSortedPrograms.length > PAGE_SIZE && (
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <button
+            type="button"
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage <= 1}
+            className="px-4 py-2 rounded-xl font-bold border-2 border-blue-200 text-gray-700 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            이전
+          </button>
+          <span className="px-4 py-2 text-sm font-bold text-gray-700">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            className="px-4 py-2 rounded-xl font-bold border-2 border-blue-200 text-gray-700 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            다음
+          </button>
+        </div>
+      )}
 
       {/* 프로그램 추가/수정 모달 (ESC 미적용) */}
       {showModal && (
@@ -640,6 +698,128 @@ export const ProgramManagement = () => {
         </div>
         </ModalPortal>
       )}
+
+      {/* 신청자명단 모달 */}
+      {showApplicantModal && applicantModalProgram && (() => {
+        const programId = String(applicantModalProgram.id);
+        const list = (applications || []).filter((app) => String(app.seminarId) === programId);
+        const formatDate = (v) => {
+          if (!v) return '-';
+          if (v.toDate && typeof v.toDate === 'function') return v.toDate().toLocaleString('ko-KR');
+          if (v.seconds != null) return new Date(v.seconds * 1000).toLocaleString('ko-KR');
+          return String(v);
+        };
+        const headers = ['번호', '이름', '이메일', '연락처', '신청일', '신청사유'];
+        const toCsvRow = (arr) => arr.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',');
+        const csvContent = [
+          '\uFEFF' + toCsvRow(headers),
+          ...list.map((app, i) => toCsvRow([
+            i + 1,
+            app.userName || '',
+            app.userEmail || '',
+            app.userPhone || '',
+            formatDate(app.createdAt),
+            (app.reason || '').replace(/\n/g, ' ')
+          ]))
+        ].join('\n');
+        const tsvContent = [
+          headers.join('\t'),
+          ...list.map((app, i) => [
+            i + 1,
+            app.userName || '',
+            app.userEmail || '',
+            app.userPhone || '',
+            formatDate(app.createdAt),
+            (app.reason || '').replace(/\n/g, ' ')
+          ].join('\t'))
+        ].join('\n');
+        const handleCsvDownload = () => {
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `신청자명단_${(applicantModalProgram.title || programId).replace(/[/\\?%*:|"]/g, '_')}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+          alert('CSV 파일이 다운로드되었습니다. Google 스프레드시트에서 파일 → 가져오기로 업로드할 수 있습니다.');
+        };
+        const handleCopyForSheets = async () => {
+          try {
+            await navigator.clipboard.writeText(tsvContent);
+            alert('신청자명단이 클립보드에 복사되었습니다. Google 스프레드시트에서 붙여넣기(Ctrl+V) 하세요.');
+          } catch (e) {
+            alert('복사에 실패했습니다. 브라우저에서 클립보드 권한을 허용해 주세요.');
+          }
+        };
+        return (
+          <ModalPortal>
+            <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
+              <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl">
+                <div className="flex items-center justify-between p-4 border-b border-blue-200">
+                  <h3 className="text-xl font-bold text-dark">
+                    신청자명단: {applicantModalProgram.title || '(제목 없음)'}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => { setShowApplicantModal(false); setApplicantModalProgram(null); }}
+                    className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+                    aria-label="닫기"
+                  >
+                    <Icons.X size={24} />
+                  </button>
+                </div>
+                <div className="flex gap-2 p-4 border-b border-blue-100">
+                  <button
+                    type="button"
+                    onClick={handleCsvDownload}
+                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl font-bold hover:bg-blue-200 transition-colors flex items-center gap-2"
+                  >
+                    <Icons.FileText size={18} />
+                    CSV 다운로드
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyForSheets}
+                    className="px-4 py-2 bg-green-100 text-green-700 rounded-xl font-bold hover:bg-green-200 transition-colors flex items-center gap-2"
+                  >
+                    스프레드시트에 붙여넣기
+                  </button>
+                </div>
+                <div className="flex-1 min-h-0 overflow-auto p-4">
+                  {list.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">신청자가 없습니다.</p>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-blue-200">
+                          <th className="px-3 py-2 text-left font-bold text-gray-700">번호</th>
+                          <th className="px-3 py-2 text-left font-bold text-gray-700">이름</th>
+                          <th className="px-3 py-2 text-left font-bold text-gray-700">이메일</th>
+                          <th className="px-3 py-2 text-left font-bold text-gray-700">연락처</th>
+                          <th className="px-3 py-2 text-left font-bold text-gray-700">신청일</th>
+                          <th className="px-3 py-2 text-left font-bold text-gray-700">신청사유</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {list.map((app, i) => (
+                          <tr key={app.id || i} className="border-b border-blue-100">
+                            <td className="px-3 py-2 text-gray-600">{i + 1}</td>
+                            <td className="px-3 py-2">{app.userName || '-'}</td>
+                            <td className="px-3 py-2">{app.userEmail || '-'}</td>
+                            <td className="px-3 py-2">{app.userPhone || '-'}</td>
+                            <td className="px-3 py-2 text-gray-600">{formatDate(app.createdAt)}</td>
+                            <td className="px-3 py-2 max-w-[200px] truncate" title={app.reason || ''}>{app.reason || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          </ModalPortal>
+        );
+      })()}
 
       {/* 카카오맵 모달 */}
       {showMapModal && (

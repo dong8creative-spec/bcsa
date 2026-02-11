@@ -1,8 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { firebaseService } from '../services/firebaseService';
-import { hashPassword } from '../utils/authUtils';
+import { authService } from '../services/authService';
+import { hashPassword, loadUsersFromStorage } from '../utils/authUtils';
 import { Icons } from './Icons';
 import ModalPortal from './ModalPortal';
+
+const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 
 const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
     const [formData, setFormData] = useState({ 
@@ -32,7 +35,15 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [isCreatingAccount, setIsCreatingAccount] = useState(false);
     const [firebaseUser, setFirebaseUser] = useState(null);
-    
+    const [emailCheckResult, setEmailCheckResult] = useState(null);
+    const [phoneCheckResult, setPhoneCheckResult] = useState(null);
+    const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+    const [duplicateCheckModal, setDuplicateCheckModal] = useState({ open: false, message: '', isError: false });
+
+    const showDuplicateCheckModal = (message, isError = false) => {
+        setDuplicateCheckModal({ open: true, message, isError });
+    };
+
     useEffect(() => {
         return () => {
             // Cleanup
@@ -67,6 +78,58 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         const cleaned = phone.replace(/[^0-9]/g, '');
         const phoneRegex = /^(010|011|016|017|018|019)[0-9]{7,8}$/;
         return phoneRegex.test(cleaned);
+    };
+
+    const fetchAllUsers = async () => {
+        if (firebaseService?.getUsers) return await firebaseService.getUsers();
+        return await loadUsersFromStorage();
+    };
+
+    const handleCheckEmailDuplicate = async () => {
+        if (!formData.email?.trim()) {
+            showDuplicateCheckModal('이메일을 입력한 뒤 중복 확인해주세요.', true);
+            return;
+        }
+        if (!validateEmail(formData.email)) {
+            showDuplicateCheckModal('올바른 이메일 형식을 입력해주세요.', true);
+            return;
+        }
+        setIsCheckingDuplicate(true);
+        try {
+            const allUsers = await fetchAllUsers();
+            const exists = allUsers.some(u => (u.email || '').toLowerCase() === formData.email.trim().toLowerCase());
+            setEmailCheckResult(exists ? 'duplicate' : 'available');
+            if (exists) showDuplicateCheckModal('이미 사용 중인 이메일(아이디)입니다.', true);
+            else showDuplicateCheckModal('사용 가능한 이메일입니다.', false);
+        } catch (e) {
+            showDuplicateCheckModal('중복 확인에 실패했습니다. 다시 시도해주세요.', true);
+        } finally {
+            setIsCheckingDuplicate(false);
+        }
+    };
+
+    const handleCheckPhoneDuplicate = async () => {
+        if (!formData.phone?.trim()) {
+            showDuplicateCheckModal('연락처를 입력한 뒤 중복 확인해주세요.', true);
+            return;
+        }
+        if (!validatePhone(formData.phone)) {
+            showDuplicateCheckModal('올바른 전화번호 형식을 입력해주세요. (예: 010-1234-5678)', true);
+            return;
+        }
+        setIsCheckingDuplicate(true);
+        try {
+            const allUsers = await fetchAllUsers();
+            const inputNorm = normalizePhone(formData.phone);
+            const exists = allUsers.some(u => normalizePhone(u.phone || u.phoneNumber) === inputNorm);
+            setPhoneCheckResult(exists ? 'duplicate' : 'available');
+            if (exists) showDuplicateCheckModal('이미 사용 중인 연락처입니다.', true);
+            else showDuplicateCheckModal('사용 가능한 연락처입니다.', false);
+        } catch (e) {
+            showDuplicateCheckModal('중복 확인에 실패했습니다. 다시 시도해주세요.', true);
+        } finally {
+            setIsCheckingDuplicate(false);
+        }
     };
 
     const validateBusinessNumber = (businessNumber) => {
@@ -163,13 +226,25 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
             
             setIsCreatingAccount(true);
             try {
-                const allUsers = await loadUsersFromStorage();
-                const existingUser = allUsers.find(u => u.email === formData.email);
-                if (existingUser) {
+                const raw = firebaseService?.getUsers
+                    ? await firebaseService.getUsers()
+                    : await loadUsersFromStorage();
+                const allUsers = Array.isArray(raw) ? raw : [];
+                const existingByEmail = allUsers.find(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase());
+                const phoneNorm = normalizePhone(formData.phone);
+                const existingByPhone = phoneNorm ? allUsers.find(u => normalizePhone(u.phone || u.phoneNumber) === phoneNorm) : null;
+                if (existingByEmail && existingByPhone) {
                     setIsCreatingAccount(false);
-                    return alert("이미 사용 중인 이메일입니다.");
+                    return alert("이미 사용 중인 이메일(아이디)과 연락처입니다. 로그인을 시도해주세요.");
                 }
-                
+                if (existingByEmail) {
+                    setIsCreatingAccount(false);
+                    return alert("이미 사용 중인 이메일(아이디)입니다. 로그인을 시도해주세요.");
+                }
+                if (existingByPhone) {
+                    setIsCreatingAccount(false);
+                    return alert("이미 사용 중인 연락처입니다. 다른 번호를 입력해주세요.");
+                }
                 if (authService && authService.signUp) {
                     const user = await authService.signUp(formData.email, formData.password, {
                         name: formData.name,
@@ -328,6 +403,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
     };
     
     return (
+        <>
         <ModalPortal>
             <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
                 <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70 backdrop-blur-lg"></div>
@@ -393,7 +469,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                         >
                                             <div className="flex items-center gap-3 mb-3">
                                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${formData.userType === '예비창업자' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-400'}`}>
-                                                    <Star size={24} />
+                                                    <Icons.Star size={24} />
                                                 </div>
                                                 <h5 className="text-lg font-bold text-dark">예비창업자</h5>
                                             </div>
@@ -421,8 +497,13 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">이메일 <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(로그인에 사용)</span></label>
-                                                    <input type="email" placeholder="example@email.com" className="w-full p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2">이메일(아이디) <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(로그인에 사용)</span></label>
+                                                    <div className="flex gap-2">
+                                                        <input type="email" placeholder="example@email.com" className="flex-1 p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.email} onChange={e => { setFormData({...formData, email: e.target.value}); setEmailCheckResult(null); }} />
+                                                        <button type="button" onClick={handleCheckEmailDuplicate} disabled={isCheckingDuplicate} className="shrink-0 px-4 py-3.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-bold text-gray-700 disabled:opacity-50 transition-colors">중복 확인</button>
+                                                    </div>
+                                                    {emailCheckResult === 'available' && <p className="mt-1.5 text-xs text-green-600 font-medium">사용 가능한 이메일입니다.</p>}
+                                                    {emailCheckResult === 'duplicate' && <p className="mt-1.5 text-xs text-red-600 font-medium">이미 사용 중인 이메일입니다.</p>}
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">이름 <span className="text-red-500">*</span></label>
@@ -461,8 +542,13 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     ) : null}
                                                 </div>
                                                 <div className="md:col-span-2">
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">전화번호 <span className="text-red-500">*</span></label>
-                                                    <input type="tel" placeholder="010-1234-5678" className="w-full p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors text-sm" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2">연락처(전화번호) <span className="text-red-500">*</span></label>
+                                                    <div className="flex gap-2">
+                                                        <input type="tel" placeholder="010-1234-5678" className="flex-1 p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors text-sm" value={formData.phone} onChange={e => { setFormData({...formData, phone: e.target.value}); setPhoneCheckResult(null); }} />
+                                                        <button type="button" onClick={handleCheckPhoneDuplicate} disabled={isCheckingDuplicate} className="shrink-0 px-4 py-3.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-bold text-gray-700 disabled:opacity-50 transition-colors">중복 확인</button>
+                                                    </div>
+                                                    {phoneCheckResult === 'available' && <p className="mt-1.5 text-xs text-green-600 font-medium">사용 가능한 연락처입니다.</p>}
+                                                    {phoneCheckResult === 'duplicate' && <p className="mt-1.5 text-xs text-red-600 font-medium">이미 사용 중인 연락처입니다.</p>}
                                                 </div>
                                             </div>
                                             
@@ -904,6 +990,27 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                 </div>
             </div>
         </ModalPortal>
+
+        {/* 중복 확인 안내 모달 (화면 중앙) */}
+        {duplicateCheckModal.open && (
+            <ModalPortal>
+                <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDuplicateCheckModal({ open: false, message: '', isError: false })}>
+                    <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center transform animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                        <p className={`text-base font-medium mb-6 ${duplicateCheckModal.isError ? 'text-red-600' : 'text-gray-800'}`}>
+                            {duplicateCheckModal.message}
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setDuplicateCheckModal({ open: false, message: '', isError: false })}
+                            className={`w-full py-3 rounded-xl font-bold transition-colors ${duplicateCheckModal.isError ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-brand text-white hover:bg-blue-700'}`}
+                        >
+                            확인
+                        </button>
+                    </div>
+                </div>
+            </ModalPortal>
+        )}
+        </>
     );
 };
 

@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { Icons } from '../../../components/Icons';
 
+const MEMBER_GRADE_OPTIONS = [
+  { value: '', label: '등급 없음' },
+  { value: '파트너사', label: '파트너사' },
+  { value: '운영진', label: '운영진' },
+  { value: '사업자', label: '사업자' },
+  { value: '예창', label: '예창' },
+];
+
 /**
  * 회원 관리 컴포넌트
  */
@@ -10,10 +18,6 @@ export const UserManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
 
   const loadUsers = async () => {
     try {
@@ -28,28 +32,48 @@ export const UserManagement = () => {
     }
   };
 
+  useEffect(() => {
+    if (firebaseService.subscribeUsers) {
+      setIsLoading(true);
+      const unsubscribe = firebaseService.subscribeUsers((usersData) => {
+        setUsers(usersData);
+        setIsLoading(false);
+      });
+      return () => unsubscribe();
+    }
+    loadUsers();
+  }, []);
+
   const handleDeleteUser = async (userId) => {
-    if (!confirm('정말 이 회원을 삭제하시겠습니까?')) return;
+    if (!confirm('정말 이 회원을 강제 탈퇴 처리하시겠습니까?')) return;
 
     try {
       await firebaseService.deleteUser(userId);
-      alert('회원이 삭제되었습니다.');
-      loadUsers();
+      alert('회원이 강제 탈퇴 처리되었습니다.');
+      if (!firebaseService.subscribeUsers) loadUsers();
     } catch (error) {
       console.error('회원 삭제 오류:', error);
-      alert('회원 삭제에 실패했습니다.');
+      alert('회원 강제 탈퇴에 실패했습니다.');
     }
   };
 
-  const handleToggleRole = async (userId, currentRole) => {
-    const newRole = currentRole === 'admin' ? 'user' : 'admin';
-    
+  const handleGradeChange = async (userId, value) => {
+    try {
+      await firebaseService.updateUser(userId, { memberGrade: value || '' });
+      if (!firebaseService.subscribeUsers) loadUsers();
+    } catch (error) {
+      console.error('회원등급 변경 오류:', error);
+      alert('회원등급 변경에 실패했습니다.');
+    }
+  };
+
+  const handleRoleChange = async (userId, newRole) => {
     if (!confirm(`이 회원을 ${newRole === 'admin' ? '관리자' : '일반 회원'}으로 변경하시겠습니까?`)) return;
 
     try {
       await firebaseService.updateUser(userId, { role: newRole });
       alert('권한이 변경되었습니다.');
-      loadUsers();
+      if (!firebaseService.subscribeUsers) loadUsers();
     } catch (error) {
       console.error('권한 변경 오류:', error);
       alert('권한 변경에 실패했습니다.');
@@ -138,17 +162,21 @@ export const UserManagement = () => {
         <table className="w-full">
           <thead>
             <tr className="border-b border-blue-200">
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">이름</th>
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">이메일</th>
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">권한</th>
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">가입일</th>
-              <th className="px-4 py-3 text-center text-sm font-bold text-gray-700">관리</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">회원명</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">회사명</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">회원 연락처</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">지역</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">가입일자</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">회원등급</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">승인 여부</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">관리자 기능</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-gray-700">회원 강제탈퇴</th>
             </tr>
           </thead>
           <tbody>
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
+                <td colSpan="9" className="px-4 py-8 text-center text-gray-500">
                   회원이 없습니다.
                 </td>
               </tr>
@@ -156,34 +184,48 @@ export const UserManagement = () => {
               filteredUsers.map((user) => (
                 <tr key={user.id} className="border-b border-blue-100 hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm text-dark font-medium">{user.name || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{user.email || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{user.company || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{user.phone || user.phoneNumber || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{user.address || user.region || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {user.createdAt?.toDate?.().toLocaleDateString('ko-KR') ?? user.createdAt ?? '-'}
+                  </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
-                      user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {user.role === 'admin' ? '관리자' : '일반'}
+                    <select
+                      value={user.memberGrade || ''}
+                      onChange={(e) => handleGradeChange(user.id, e.target.value)}
+                      className="w-full max-w-[140px] px-2 py-1.5 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none bg-white"
+                    >
+                      {MEMBER_GRADE_OPTIONS.map((opt) => (
+                        <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
+                      !user.approvalStatus || user.approvalStatus === 'approved' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                    }`} title={!user.approvalStatus || user.approvalStatus === 'approved' ? '회원명단(부청사 회원)에 표시됨' : '승인 대기 중'}>
+                      {!user.approvalStatus || user.approvalStatus === 'approved' ? '승인' : '대기'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {user.createdAt?.toDate?.().toLocaleDateString() || '-'}
-                  </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => handleToggleRole(user.id, user.role)}
-                        className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                        title={user.role === 'admin' ? '일반 회원으로 변경' : '관리자로 변경'}
-                      >
-                        <Icons.Shield size={18} className="text-blue-600" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                        title="회원 삭제"
-                      >
-                        <Icons.Trash2 size={18} className="text-red-600" />
-                      </button>
-                    </div>
+                    <select
+                      value={user.role === 'admin' ? 'admin' : 'user'}
+                      onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                      className="w-full max-w-[100px] px-2 py-1.5 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none bg-white"
+                    >
+                      <option value="user">부</option>
+                      <option value="admin">여</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUser(user.id)}
+                      className="px-3 py-1.5 text-sm font-bold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                    >
+                      회원 강제탈퇴
+                    </button>
                   </td>
                 </tr>
               ))
