@@ -436,6 +436,14 @@ const App = () => {
     });
     const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
     const [showKakaoMapModal, setShowKakaoMapModal] = useState(false);
+    const [paymentInfoModalOpen, setPaymentInfoModalOpen] = useState(false);
+    const [pendingPaymentContext, setPendingPaymentContext] = useState(null);
+    const [paymentInfoPhone, setPaymentInfoPhone] = useState('');
+    const [paymentInfoEmail, setPaymentInfoEmail] = useState('');
+    const [showGoogleSignupExtraInfoModal, setShowGoogleSignupExtraInfoModal] = useState(false);
+    const [googleSignupExtraInfoUser, setGoogleSignupExtraInfoUser] = useState(null);
+    const [googleSignupExtraPhone, setGoogleSignupExtraPhone] = useState('');
+    const [googleSignupExtraEmail, setGoogleSignupExtraEmail] = useState('');
     const kakaoMapCallbackRef = useRef(null);
     const popupShownRef = useRef(false); // 팝업 설정 중복 실행 방지용 ref
     const programTrackRef = useRef(null);
@@ -1664,6 +1672,15 @@ const App = () => {
             setCurrentUser(userDoc);
             setShowLoginModal(false);
             setMyPosts(communityPosts.filter(p => p.author === userDoc.name));
+            const hasPhone = (userDoc.phone || userDoc.phoneNumber || '').toString().trim();
+            const hasEmail = (userDoc.email || '').toString().trim();
+            if (!hasPhone || !hasEmail) {
+                setGoogleSignupExtraPhone((userDoc.phone || userDoc.phoneNumber || '').toString().trim());
+                setGoogleSignupExtraEmail((userDoc.email || '').toString().trim());
+                setGoogleSignupExtraInfoUser(userDoc);
+                setShowGoogleSignupExtraInfoModal(true);
+                return true;
+            }
             const approvalStatus = userDoc.approvalStatus || 'pending';
             if (approvalStatus === 'pending') {
                 alert("로그인 성공!\n\n회원가입 승인 대기 중입니다.");
@@ -1843,8 +1860,8 @@ const App = () => {
          alert("회원 탈퇴가 완료되었습니다.\n세미나 후기와 사진은 유지됩니다.");
     };
 
-    /** PortOne 결제 요청 후 성공 시 onSuccess, 실패/취소 시 onFail 호출 (V2 SDK 우선, 없으면 레거시 IMP) */
-    const requestPortOnePayment = (seminar, applicationData, onSuccess, onFail) => {
+    /** PortOne 결제 요청. overrideCustomer 있으면 해당 값 사용(구글 로그인 등 연락처 없을 때 입력값 전달용) */
+    const requestPortOnePayment = (seminar, applicationData, onSuccess, onFail, overrideCustomer) => {
         if (!PORTONE_IMP_CODE || PORTONE_IMP_CODE === 'imp00000000') {
             alert('결제가 설정되지 않았습니다. 관리자에게 문의해주세요.');
             if (onFail) onFail();
@@ -1860,6 +1877,16 @@ const App = () => {
             if (onFail) onFail();
             return;
         }
+        let phoneNumber = overrideCustomer?.phoneNumber?.trim() || (currentUser?.phone || currentUser?.phoneNumber || '').toString().trim();
+        let email = overrideCustomer?.email?.trim() || (currentUser?.email || '').toString().trim();
+        if (!phoneNumber || !email) {
+            setPaymentInfoPhone((currentUser?.phone || currentUser?.phoneNumber || '').toString().trim());
+            setPaymentInfoEmail((currentUser?.email || '').toString().trim());
+            setPendingPaymentContext({ seminar, applicationData, onSuccess, onFail });
+            setPaymentInfoModalOpen(true);
+            return;
+        }
+        const fullName = (overrideCustomer?.fullName || currentUser?.name || '').toString().trim() || '구매자';
         const orderName = (seminar.title || '프로그램 신청').substring(0, 50);
         const paymentId = `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`.slice(0, 40);
 
@@ -1874,11 +1901,7 @@ const App = () => {
                         totalAmount: amount,
                         currency: 'CURRENCY_KRW',
                         payMethod: 'CARD',
-                        customer: {
-                            fullName: currentUser?.name || '',
-                            phoneNumber: currentUser?.phone || '',
-                            email: currentUser?.email || ''
-                        }
+                        customer: { fullName, phoneNumber, email }
                     });
                     if (response?.code != null) {
                         alert(response.message || '결제 실패');
@@ -1908,9 +1931,9 @@ const App = () => {
             merchant_uid: paymentId,
             name: orderName,
             amount,
-            buyer_email: currentUser?.email || '',
-            buyer_name: currentUser?.name || '',
-            buyer_tel: currentUser?.phone || ''
+            buyer_email: email,
+            buyer_name: fullName,
+            buyer_tel: phoneNumber
         }, (rsp) => {
             if (rsp.success) {
                 if (onSuccess) onSuccess(rsp);
@@ -3075,8 +3098,9 @@ END:VCALENDAR`;
                                                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${seminar.status === '모집중' ? 'bg-blue-100 text-blue-700' : seminar.status === '마감임박' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>{seminar.status || '모집중'}</span>
                                                     <span className="text-xs font-bold px-2 py-0.5 bg-brand/10 text-brand rounded-full">{isPaid ? `${amount.toLocaleString()}원` : '무료'}</span>
                                                 </div>
-                                                <div className="flex-1 min-h-0 flex flex-col justify-end">
-                                                    <h3 className="font-bold text-dark mb-1 line-clamp-2 group-hover:text-brand transition-colors text-[15.5px]">{seminar.title}</h3>
+                                                <div className="flex-1 min-h-0 flex flex-col">
+                                                    <h3 className="font-bold text-dark mb-1 line-clamp-2 group-hover:text-brand transition-colors text-[15.5px] flex-shrink-0">{seminar.title}</h3>
+                                                    <div className="flex-1 min-h-0" />
                                                     <p className="text-sm text-gray-500 flex items-center gap-1 pt-2 flex-shrink-0"><Icons.Calendar size={14} /> {seminar.date}</p>
                                                 </div>
                                             </div>
@@ -3259,6 +3283,139 @@ END:VCALENDAR`;
                 }}
                 initialLocation={null}
             />
+        )}
+        {showGoogleSignupExtraInfoModal && googleSignupExtraInfoUser && (
+            <ModalPortal>
+                <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) { setShowGoogleSignupExtraInfoModal(false); setGoogleSignupExtraInfoUser(null); } }}>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold text-dark mb-2">이니시스 결제 시 필요한 추가 개인정보</h3>
+                        <p className="text-sm text-gray-500 mb-4">구글 로그인만으로는 결제에 필요한 연락처 정보가 없습니다. 아래 항목을 필수로 입력해주세요.</p>
+                        <div className="space-y-3 mb-5">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">휴대폰 번호 *</label>
+                                <input
+                                    type="tel"
+                                    placeholder="010-0000-0000"
+                                    className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+                                    value={googleSignupExtraPhone}
+                                    onChange={(e) => setGoogleSignupExtraPhone(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">이메일 *</label>
+                                <input
+                                    type="email"
+                                    placeholder="example@email.com"
+                                    className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+                                    value={googleSignupExtraEmail}
+                                    onChange={(e) => setGoogleSignupExtraEmail(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                const phone = googleSignupExtraPhone.trim();
+                                const email = googleSignupExtraEmail.trim();
+                                if (!phone) { alert('휴대폰 번호를 입력해주세요.'); return; }
+                                if (!email) { alert('이메일을 입력해주세요.'); return; }
+                                const user = googleSignupExtraInfoUser;
+                                const userId = user.id || user.uid;
+                                if (!userId) return;
+                                try {
+                                    if (firebaseService?.updateUser) {
+                                        await firebaseService.updateUser(userId, { phone, email });
+                                    }
+                                    setCurrentUser(prev => prev ? { ...prev, phone, email, phoneNumber: phone } : prev);
+                                } catch (e) {
+                                    alert('저장에 실패했습니다. 다시 시도해주세요.');
+                                    return;
+                                }
+                                setShowGoogleSignupExtraInfoModal(false);
+                                setGoogleSignupExtraInfoUser(null);
+                                const approvalStatus = user.approvalStatus || 'pending';
+                                if (approvalStatus === 'pending') {
+                                    alert("로그인 성공!\n\n회원가입 승인 대기 중입니다.");
+                                } else if (approvalStatus === 'rejected') {
+                                    alert("로그인 성공!\n\n회원가입이 거부되었습니다. 관리자에게 문의해주세요.");
+                                } else {
+                                    alert("로그인 성공!");
+                                }
+                                if (pendingView) {
+                                    setCurrentView(pendingView);
+                                    setPendingView(null);
+                                }
+                            }}
+                            className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700"
+                        >
+                            저장하고 계속
+                        </button>
+                    </div>
+                </div>
+            </ModalPortal>
+        )}
+        {paymentInfoModalOpen && pendingPaymentContext && (
+            <ModalPortal>
+                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) { setPaymentInfoModalOpen(false); setPendingPaymentContext(null); pendingPaymentContext.onFail?.(); } }}>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold text-dark mb-2">결제를 위해 연락처를 입력해주세요</h3>
+                        <p className="text-sm text-gray-500 mb-4">구글 로그인 시 연락처가 없을 수 있습니다. 입력한 정보는 프로필에 저장됩니다.</p>
+                        <div className="space-y-3 mb-5">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">휴대폰 번호 *</label>
+                                <input
+                                    type="tel"
+                                    placeholder="010-0000-0000"
+                                    className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+                                    value={paymentInfoPhone}
+                                    onChange={(e) => setPaymentInfoPhone(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">이메일 *</label>
+                                <input
+                                    type="email"
+                                    placeholder="example@email.com"
+                                    className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+                                    value={paymentInfoEmail}
+                                    onChange={(e) => setPaymentInfoEmail(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setPaymentInfoModalOpen(false);
+                                    setPendingPaymentContext(null);
+                                    pendingPaymentContext.onFail?.();
+                                }}
+                                className="flex-1 py-3 border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50"
+                            >
+                                취소
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    const phone = paymentInfoPhone.trim();
+                                    const email = paymentInfoEmail.trim();
+                                    if (!phone) { alert('휴대폰 번호를 입력해주세요.'); return; }
+                                    if (!email) { alert('이메일을 입력해주세요.'); return; }
+                                    const ctx = pendingPaymentContext;
+                                    if (!ctx) return;
+                                    try { await handleUpdateProfile({ phone, email }); } catch (_) {}
+                                    setPaymentInfoModalOpen(false);
+                                    setPendingPaymentContext(null);
+                                    requestPortOnePayment(ctx.seminar, ctx.applicationData, ctx.onSuccess, ctx.onFail, { phoneNumber: phone, email });
+                                }}
+                                className="flex-1 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700"
+                            >
+                                확인 후 결제
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </ModalPortal>
         )}
     </>
     );
