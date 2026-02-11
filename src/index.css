@@ -35,6 +35,15 @@
   html {
     scroll-behavior: smooth;
   }
+  
+  /* 모바일 최적화: 관리자 제외 메인 앱에서 글자 최소 15px (관리자 페이지는 .app-main 바깥) */
+  .app-main {
+    font-size: 15px;
+  }
+  .app-main .text-xs,
+  .app-main .text-sm {
+    font-size: 15px;
+  }
 }
 
 @layer utilities {

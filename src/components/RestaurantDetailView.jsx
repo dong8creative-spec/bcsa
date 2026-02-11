@@ -41,7 +41,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
     
     if (!restaurant) {
         return (
-            <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+            <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in overflow-y-auto min-h-0">
                 <div className="container mx-auto max-w-7xl text-center">
                     <p className="text-gray-500">맛집 정보를 찾을 수 없습니다.</p>
                     <button onClick={onBack} className="mt-4 px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">
@@ -53,7 +53,7 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
     }
     
     return (
-        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in overflow-y-auto min-h-0">
             <div className="container mx-auto max-w-7xl">
                 <button onClick={onBack} className="mb-6 flex items-center gap-2 text-brand font-bold hover:underline">
                     <Icons.ArrowLeft size={20} /> 목록으로

@@ -207,7 +207,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
     };
 
     return (
-        <div className="pt-32 pb-20 px-6 md:px-8 min-h-screen bg-white animate-fade-in">
+        <div className="pt-32 pb-20 px-6 md:px-8 min-h-screen bg-white animate-fade-in overflow-y-auto min-h-0">
             <div className="container mx-auto max-w-5xl">
                 {/* 헤더 */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-6">

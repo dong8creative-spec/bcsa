@@ -418,7 +418,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                             {[1, 2].map(step => (
                                 <div key={step} className="flex items-center">
                                     <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all ${currentStep >= step ? 'bg-white text-brand' : 'bg-white/20 text-white/60'}`}>
-                                        {currentStep > step ? <CheckCircle size={18} /> : step}
+                                        {currentStep > step ? <Icons.CheckCircle size={18} /> : step}
                                     </div>
                                     {step < 2 && <div className={`w-8 h-1 mx-1 transition-all ${currentStep > step ? 'bg-white' : 'bg-white/20'}`} />}
                                 </div>
@@ -784,9 +784,9 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                 formData.userType === '사업자' ? 'bg-blue-500' : 'bg-gray-400'
                                             }`}>
                                                 {formData.userType === '사업자' ? (
-                                                    <CheckCircle className="w-6 h-6 text-white" />
+                                                    <Icons.CheckCircle className="w-6 h-6 text-white" />
                                                 ) : (
-                                                    <Info className="w-6 h-6 text-white" />
+                                                    <Icons.Info className="w-6 h-6 text-white" />
                                                 )}
                                             </div>
                                             <div className="flex-1">
@@ -894,7 +894,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     >
                                                         {formData.businessVerificationStatus === 'api_verified' ? (
                                                             <span className="flex items-center gap-2">
-                                                                <CheckCircle size={16} />
+                                                                <Icons.CheckCircle size={16} />
                                                                 검증완료
                                                             </span>
                                                         ) : formData.businessVerificationStatus === 'api_verifying' ? (
@@ -912,13 +912,13 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                 <div className="mt-3 space-y-2">
                                                     {formData.businessVerificationStatus === 'format_valid' ? (
                                                         <p className="text-xs text-blue-600 flex items-center gap-1">
-                                                            <CheckCircle size={12} />
+                                                            <Icons.CheckCircle size={12} />
                                                             형식 검증 완료
                                                         </p>
                                                     ) : null}
                                                     {formData.businessVerificationStatus === 'api_verified' ? (
                                                         <p className="text-xs text-green-600 flex items-center gap-1">
-                                                            <CheckCircle size={12} />
+                                                            <Icons.CheckCircle size={12} />
                                                             운영 중인 사업자로 확인되었습니다.
                                                         </p>
                                                     ) : null}

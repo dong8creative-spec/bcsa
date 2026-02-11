@@ -83,7 +83,7 @@ const AppLayout = (props) => {
     }, []);
 
     return (
-        <div className="min-h-screen bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">
+        <div className="min-h-screen flex flex-col bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">
             {/* 프로그램 팝업 (최대 3개 동시 표시, 1회만 표시) */}
             {popupPrograms && popupPrograms.length > 0 ? (
                 <ModalPortal>
@@ -426,6 +426,7 @@ const AppLayout = (props) => {
                 </div>
             </header>
             
+            <main className="min-h-0 flex-1 overflow-y-auto">
             {(() => {
                 try {
                     const viewResult = renderView();
@@ -458,6 +459,7 @@ const AppLayout = (props) => {
                     return null;
                 }
             })()}
+            </main>
 
             <footer ref={footerRef} className="py-12 px-6 text-white bg-[#0046a5]">
                 <div className="container mx-auto max-w-6xl text-left">

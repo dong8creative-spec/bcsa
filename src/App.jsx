@@ -2949,8 +2949,9 @@ END:VCALENDAR`;
             );
         }
         
-        // currentView가 'home'이거나 null/undefined인 경우 홈 화면 렌더링
+        // currentView가 'home'이거나 null/undefined인 경우 홈 화면 렌더링 (모바일 스크롤 보장)
         const homeView = (
+            <div className="min-h-screen overflow-y-auto">
             <Fragment>
                 {/* ============================================
                     📍 섹션 1: HERO & SEARCH (메인 히어로 + 검색)
@@ -3182,6 +3183,7 @@ END:VCALENDAR`;
                     </div>
                 </section>
             </Fragment>
+            </div>
         );
         // currentView가 'home'이거나 null/undefined인 경우 홈 화면 렌더링
         // homeView는 항상 유효한 React 요소이므로 null 체크 불필요
@@ -3218,7 +3220,7 @@ END:VCALENDAR`;
         }
     };
     return (
-    <>
+    <div className="app-main">
         <AppLayout
             MobileMenu={MobileMenu}
             renderView={renderView}
@@ -3455,7 +3457,7 @@ END:VCALENDAR`;
                 </div>
             </ModalPortal>
         )}
-    </>
+    </div>
     );
 }
 

@@ -13,7 +13,7 @@ const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, mem
     };
 
     return (
-        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in overflow-y-auto min-h-0">
             <div className="container mx-auto max-w-4xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
                     <div>

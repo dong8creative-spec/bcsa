@@ -27,7 +27,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
     ];
 
     return (
-        <div className="min-h-screen bg-white font-sans text-slate-800">
+        <div className="min-h-screen bg-white font-sans text-slate-800 overflow-y-auto min-h-0">
             {/* 1. Hero Section */}
             <section className="pt-32 pb-16 px-6 bg-gray-50 border-b border-blue-100">
                 <div className="container mx-auto max-w-3xl text-center">

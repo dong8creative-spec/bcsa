@@ -91,7 +91,7 @@ const ProgramApplyView = ({
 
     if (!program) {
         return (
-            <div className="pt-32 pb-20 px-4 min-h-screen bg-soft">
+            <div className="pt-32 pb-20 px-4 min-h-screen bg-soft overflow-y-auto min-h-0">
                 <div className="container mx-auto max-w-2xl">
                     <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 text-center">
                         <Icons.AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
@@ -117,7 +117,7 @@ const ProgramApplyView = ({
 
     return (
         <>
-        <div className="pt-28 pb-20 px-4 min-h-screen bg-soft animate-fade-in relative">
+        <div className="pt-28 pb-20 px-4 min-h-screen bg-soft animate-fade-in relative overflow-y-auto min-h-0">
             <div className="container mx-auto max-w-3xl">
                 <button
                     type="button"
