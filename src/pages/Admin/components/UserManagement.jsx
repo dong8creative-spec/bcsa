@@ -18,6 +18,9 @@ export const UserManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [memberModalUser, setMemberModalUser] = useState(null);
+  const [bulkGradeValue, setBulkGradeValue] = useState('');
 
   const loadUsers = async () => {
     try {
@@ -44,22 +47,35 @@ export const UserManagement = () => {
     loadUsers();
   }, []);
 
-  const handleDeleteUser = async (userId) => {
+  const handleDeleteUser = async (user) => {
     if (!confirm('정말 이 회원을 강제 탈퇴 처리하시겠습니까?')) return;
 
+    const uid = user?.uid || user?.id;
+    const userId = user?.id || user?.uid;
+
     try {
+      if (firebaseService.deleteAuthUser && uid) {
+        await firebaseService.deleteAuthUser(uid);
+      }
       await firebaseService.deleteUser(userId);
       alert('회원이 강제 탈퇴 처리되었습니다.');
       if (!firebaseService.subscribeUsers) loadUsers();
     } catch (error) {
       console.error('회원 삭제 오류:', error);
-      alert('회원 강제 탈퇴에 실패했습니다.');
+      alert(error?.message || '회원 강제 탈퇴에 실패했습니다.');
     }
   };
 
+  /** 회원등급 지정 시 승인 처리 + 역할 지정(운영진=관리자, 그 외=일반 회원) */
   const handleGradeChange = async (userId, value) => {
     try {
-      await firebaseService.updateUser(userId, { memberGrade: value || '' });
+      const grade = value || '';
+      const role = grade === '운영진' ? 'admin' : 'user';
+      await firebaseService.updateUser(userId, {
+        memberGrade: grade,
+        approvalStatus: 'approved',
+        role,
+      });
       if (!firebaseService.subscribeUsers) loadUsers();
     } catch (error) {
       console.error('회원등급 변경 오류:', error);
@@ -77,6 +93,76 @@ export const UserManagement = () => {
     } catch (error) {
       console.error('권한 변경 오류:', error);
       alert('권한 변경에 실패했습니다.');
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size >= filteredUsers.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredUsers.map(u => u.id)));
+    }
+  };
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkGradeChange = async () => {
+    if (selectedIds.size === 0) {
+      alert('등급을 변경할 회원을 선택해주세요.');
+      return;
+    }
+    if (!confirm(`선택한 ${selectedIds.size}명의 회원 등급을 "${MEMBER_GRADE_OPTIONS.find(o => o.value === bulkGradeValue)?.label || bulkGradeValue || '등급 없음'}"(으)로 변경하시겠습니까?`)) return;
+
+    try {
+      const grade = bulkGradeValue || '';
+      const role = grade === '운영진' ? 'admin' : 'user';
+      for (const id of selectedIds) {
+        await firebaseService.updateUser(id, {
+          memberGrade: grade,
+          approvalStatus: 'approved',
+          role,
+        });
+      }
+      alert(`${selectedIds.size}명 회원 등급·승인·역할이 적용되었습니다.`);
+      setSelectedIds(new Set());
+      setBulkGradeValue('');
+      if (!firebaseService.subscribeUsers) loadUsers();
+    } catch (error) {
+      console.error('일괄 등급 변경 오류:', error);
+      alert('일괄 등급 변경에 실패했습니다.');
+    }
+  };
+
+  const handleBulkWithdraw = async () => {
+    if (selectedIds.size === 0) {
+      alert('탈퇴 처리할 회원을 선택해주세요.');
+      return;
+    }
+    if (!confirm(`선택한 ${selectedIds.size}명 회원을 강제 탈퇴 처리하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) return;
+
+    try {
+      const list = filteredUsers.filter(u => selectedIds.has(u.id));
+      for (const user of list) {
+        const uid = user.uid || user.id;
+        if (firebaseService.deleteAuthUser && uid) {
+          await firebaseService.deleteAuthUser(uid);
+        }
+        await firebaseService.deleteUser(user.id);
+      }
+      alert(`${selectedIds.size}명 회원이 탈퇴 처리되었습니다.`);
+      setSelectedIds(new Set());
+      setMemberModalUser(null);
+      if (!firebaseService.subscribeUsers) loadUsers();
+    } catch (error) {
+      console.error('일괄 탈퇴 오류:', error);
+      alert(error?.message || '일괄 탈퇴 처리에 실패했습니다.');
     }
   };
 
@@ -157,38 +243,83 @@ export const UserManagement = () => {
         </div>
       </div>
 
-      {/* 회원 목록 */}
+      {/* 일괄 작업 버튼 */}
+      <div className="flex flex-wrap items-center gap-3 mb-4 p-4 bg-gray-50 rounded-xl border border-blue-100">
+        <button
+          type="button"
+          onClick={toggleSelectAll}
+          className="px-4 py-2 bg-white border-2 border-blue-200 rounded-xl font-bold text-gray-700 hover:border-brand hover:bg-brand/5 transition-colors"
+        >
+          {selectedIds.size >= filteredUsers.length && filteredUsers.length > 0 ? '전체 해제' : '전체선택'}
+        </button>
+        {selectedIds.size > 0 && (
+          <>
+            <span className="text-sm text-gray-600 font-medium">선택 {selectedIds.size}명</span>
+            <select
+              value={bulkGradeValue}
+              onChange={(e) => setBulkGradeValue(e.target.value)}
+              className="px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white focus:border-brand focus:outline-none"
+            >
+              <option value="">등급 선택</option>
+              {MEMBER_GRADE_OPTIONS.filter(o => o.value).map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleBulkGradeChange}
+              disabled={!bulkGradeValue}
+              className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              선택 회원 등급 일괄 변경
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkWithdraw}
+              className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
+            >
+              선택 회원 일괄 탈퇴
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* 회원 목록: 회원등급 | 회원명 | 가입일자 | 탈퇴 */}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-blue-200">
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">회원명</th>
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">회사명</th>
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">회원 연락처</th>
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">지역</th>
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">가입일자</th>
+              <th className="px-4 py-3 text-left w-12">
+                <input
+                  type="checkbox"
+                  checked={filteredUsers.length > 0 && selectedIds.size === filteredUsers.length}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand"
+                />
+              </th>
               <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">회원등급</th>
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">승인 여부</th>
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">관리자 기능</th>
-              <th className="px-4 py-3 text-center text-sm font-bold text-gray-700">회원 강제탈퇴</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">회원명</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">가입일자</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-gray-700">탈퇴</th>
             </tr>
           </thead>
           <tbody>
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan="9" className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                   회원이 없습니다.
                 </td>
               </tr>
             ) : (
               filteredUsers.map((user) => (
                 <tr key={user.id} className="border-b border-blue-100 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-dark font-medium">{user.name || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{user.company || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{user.phone || user.phoneNumber || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{user.address || user.region || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {user.createdAt?.toDate?.().toLocaleDateString('ko-KR') ?? user.createdAt ?? '-'}
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(user.id)}
+                      onChange={() => toggleSelectOne(user.id)}
+                      className="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand"
+                    />
                   </td>
                   <td className="px-4 py-3">
                     <select
@@ -202,29 +333,24 @@ export const UserManagement = () => {
                     </select>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
-                      !user.approvalStatus || user.approvalStatus === 'approved' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                    }`} title={!user.approvalStatus || user.approvalStatus === 'approved' ? '회원명단(부청사 회원)에 표시됨' : '승인 대기 중'}>
-                      {!user.approvalStatus || user.approvalStatus === 'approved' ? '승인' : '대기'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <select
-                      value={user.role === 'admin' ? 'admin' : 'user'}
-                      onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                      className="w-full max-w-[100px] px-2 py-1.5 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none bg-white"
+                    <button
+                      type="button"
+                      onClick={() => setMemberModalUser(user)}
+                      className="text-sm font-bold text-brand hover:underline text-left"
                     >
-                      <option value="user">부</option>
-                      <option value="admin">여</option>
-                    </select>
+                      {user.name || '-'}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {user.createdAt?.toDate?.().toLocaleDateString('ko-KR') ?? (typeof user.createdAt === 'string' ? new Date(user.createdAt).toLocaleDateString('ko-KR') : user.createdAt) ?? '-'}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <button
                       type="button"
-                      onClick={() => handleDeleteUser(user.id)}
+                      onClick={() => handleDeleteUser(user)}
                       className="px-3 py-1.5 text-sm font-bold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
                     >
-                      회원 강제탈퇴
+                      탈퇴
                     </button>
                   </td>
                 </tr>
@@ -233,6 +359,33 @@ export const UserManagement = () => {
           </tbody>
         </table>
       </div>
+
+      {/* 회원 정보 모달 */}
+      {memberModalUser && (
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setMemberModalUser(null)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-blue-100 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-dark">회원 정보</h3>
+              <button type="button" onClick={() => setMemberModalUser(null)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg">×</button>
+            </div>
+            <div className="p-5 overflow-y-auto space-y-3 text-sm">
+              <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">회원명</span><span className="text-dark">{memberModalUser.name || '-'}</span></div>
+              <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">이메일</span><span className="text-dark">{memberModalUser.email || '-'}</span></div>
+              <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">회사명</span><span className="text-dark">{memberModalUser.company || '-'}</span></div>
+              <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">연락처</span><span className="text-dark">{memberModalUser.phone || memberModalUser.phoneNumber || '-'}</span></div>
+              <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">지역/주소</span><span className="text-dark">{memberModalUser.address || memberModalUser.roadAddress || memberModalUser.region || '-'}</span></div>
+              <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">가입일자</span><span className="text-dark">{memberModalUser.createdAt?.toDate?.().toLocaleString('ko-KR') ?? (typeof memberModalUser.createdAt === 'string' ? new Date(memberModalUser.createdAt).toLocaleString('ko-KR') : memberModalUser.createdAt) ?? '-'}</span></div>
+              <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">회원등급</span><span className="text-dark">{memberModalUser.memberGrade || '-'}</span></div>
+              <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">승인 여부</span><span className="text-dark">{!memberModalUser.approvalStatus || memberModalUser.approvalStatus === 'approved' ? '승인' : '대기'}</span></div>
+              <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">권한</span><span className="text-dark">{memberModalUser.role === 'admin' ? '관리자' : '일반 회원'}</span></div>
+            </div>
+            <div className="p-5 border-t border-blue-100 flex gap-2 justify-end">
+              <button type="button" onClick={() => { handleDeleteUser(memberModalUser); setMemberModalUser(null); }} className="px-4 py-2 text-sm font-bold text-red-600 border border-red-200 rounded-xl hover:bg-red-50">강제 탈퇴</button>
+              <button type="button" onClick={() => setMemberModalUser(null)} className="px-4 py-2 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">닫기</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

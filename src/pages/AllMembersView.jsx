@@ -1,9 +1,11 @@
-import React, { useState, useEffect, Fragment } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 import { firebaseService } from '../services/firebaseService';
 import { translateFirebaseError } from '../utils/errorUtils';
 import ModalPortal from '../components/ModalPortal';
+
+const PAGE_SIZE = 10;
 
 const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
     const [searchName, setSearchName] = useState('');
@@ -13,6 +15,9 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
     const [selectedGradeFilter, setSelectedGradeFilter] = useState('전체');
     const [selectedMember, setSelectedMember] = useState(null);
     const [filteredMembers, setFilteredMembers] = useState(members);
+    const [sortKey, setSortKey] = useState('memberGrade');
+    const [sortOrder, setSortOrder] = useState('asc');
+    const [currentPage, setCurrentPage] = useState(1);
     
     // ESC 키로 모달 닫기
     useEffect(() => {
@@ -30,19 +35,25 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
         }
     }, [selectedMember]);
     
-    // 회원 강퇴 핸들러
-    const handleDeleteMember = async (memberId) => {
+    // 회원 강퇴 핸들러 (Auth 삭제 후 Firestore 삭제 → 재가입 가능)
+    const handleDeleteMember = async (member) => {
         if (!confirm('정말 이 회원을 강퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
             return;
         }
-        
+
+        const uid = member?.uid || member?.id;
+        const memberId = member?.id || member?.uid;
+
         if (firebaseService && firebaseService.deleteUser) {
             try {
+                if (firebaseService.deleteAuthUser && uid) {
+                    await firebaseService.deleteAuthUser(uid);
+                }
                 await firebaseService.deleteUser(memberId);
                 setFilteredMembers(filteredMembers.filter(m => m.id !== memberId && m.uid !== memberId));
                 alert('회원이 강퇴되었습니다.');
             } catch (error) {
-                const errorMessage = translateFirebaseError ? translateFirebaseError(error) : '회원 강퇴 중 오류가 발생했습니다.';
+                const errorMessage = translateFirebaseError ? translateFirebaseError(error) : (error?.message || '회원 강퇴 중 오류가 발생했습니다.');
                 alert(`회원 강퇴에 실패했습니다.\n${errorMessage}`);
             }
         } else {
@@ -65,17 +76,46 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
             return matchName && matchIndustry && matchRegion && matchIndustryFilter && matchGradeFilter;
         });
         setFilteredMembers(filtered);
+        setCurrentPage(1);
     }, [searchName, searchIndustry, searchRegion, selectedIndustryFilter, selectedGradeFilter, members]);
 
     const hasActiveFilter = Boolean(searchName || searchIndustry || searchRegion || selectedIndustryFilter !== '전체' || selectedGradeFilter !== '전체');
 
-    // 등급별로 그룹화
-    const membersByGrade = {
-        '파트너사': filteredMembers.filter(m => m.memberGrade === '파트너사'),
-        '운영진': filteredMembers.filter(m => m.memberGrade === '운영진'),
-        '사업자': filteredMembers.filter(m => m.memberGrade === '사업자'),
-        '예창': filteredMembers.filter(m => m.memberGrade === '예창'),
-        '등급 없음': filteredMembers.filter(m => !m.memberGrade)
+    const sortedMembers = React.useMemo(() => {
+        const getVal = (m, k) => {
+            if (k === 'createdAt') {
+                const c = m.createdAt;
+                if (!c) return 0;
+                if (typeof c.toDate === 'function') return c.toDate().getTime();
+                if (typeof c === 'string') return new Date(c).getTime();
+                return 0;
+            }
+            return (m[k] || '').toString().trim().toLowerCase();
+        };
+        const list = [...filteredMembers];
+        const order = sortOrder === 'asc' ? 1 : -1;
+        list.sort((a, b) => {
+            const va = getVal(a, sortKey);
+            const vb = getVal(b, sortKey);
+            if (sortKey === 'createdAt') return order * (va - vb);
+            if (va < vb) return -1 * order;
+            if (va > vb) return 1 * order;
+            return 0;
+        });
+        return list;
+    }, [filteredMembers, sortKey, sortOrder]);
+
+    const totalPages = Math.max(1, Math.ceil(sortedMembers.length / PAGE_SIZE));
+    const paginatedMembers = sortedMembers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+    const handleSort = (key) => {
+        if (sortKey === key) {
+            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortKey(key);
+            setSortOrder('asc');
+        }
+        setCurrentPage(1);
     };
 
     return (
@@ -168,192 +208,121 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                     </div>
                 </div>
 
-                {/* 등급별 회원 목록 */}
-                {selectedGradeFilter === '전체' ? (
-                    <div className="space-y-12">
-                        {Object.entries(membersByGrade).map(([grade, gradeMembers]) => {
-                            if (gradeMembers.length === 0) return null;
-                            return (
-                                <div key={grade}>
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <h3 className="text-2xl font-bold text-dark">
-                                            {grade === '등급 없음' ? '등급 없음' : `${grade} 등급`}
-                                        </h3>
-                                        <span className="px-4 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-bold">
-                                            {gradeMembers.length}명
+                {/* 회원명단 테이블: 회원등급 | 회원명 | 회사명 | 가입일자 (정렬 가능, 10명 단위 페이지네이션) */}
+                <div className="bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden mb-6">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-blue-200 bg-blue-50/50">
+                                    <th
+                                        className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
+                                        onClick={() => handleSort('memberGrade')}
+                                    >
+                                        <span className="flex items-center gap-1">
+                                            회원등급
+                                            {sortKey === 'memberGrade' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
                                         </span>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                        {gradeMembers.map((member, idx) => (
-                                            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md transition-all hover:border-brand/20 ${member.memberGrade === '파트너사' && member.hasDonated ? 'flex flex-row items-start gap-4 p-4' : 'flex flex-col items-center text-center p-6'} group cursor-pointer`} onClick={() => setSelectedMember(member)}>
-                                                {member.memberGrade === '파트너사' && member.hasDonated ? (
-                                                    <Fragment>
-                                                        <div className="flex-shrink-0">
-                                                            <div className="w-20 h-20 rounded-full overflow-hidden mb-2 border-4 border-soft group-hover:border-brand/20 transition-colors">
-                                                                <img src={member.img} alt={member.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
-                                                            </div>
-                                                            <h3 className="text-lg font-bold text-dark mb-1 text-center">{member.name}</h3>
-                                                            <p className="text-xs text-brand font-medium mb-2 text-center">{member.company}</p>
-                                                            <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
-                                                                <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px] font-bold">{member.industry || '업종 미지정'}</span>
-                                                                <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-500 to-yellow-700 text-white rounded-full text-[10px] font-bold shadow-lg" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.2)' }}>파트너사</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <h4 className="text-sm font-bold text-yellow-700 mb-2 flex items-center gap-1">
-                                                                <Icons.Star className="w-4 h-4" /> 회사 소개
-                                                            </h4>
-                                                            {member.companyMainImage && (
-                                                                <div className="relative w-full h-32 rounded-lg overflow-hidden mb-2">
-                                                                    <img src={member.companyMainImage} alt="회사 대표 이미지" className="w-full h-full object-cover" loading="lazy" decoding="async" />
-                                                                </div>
-                                                            )}
-                                                            {member.companyDescription && (
-                                                                <p className="text-xs text-gray-600 line-clamp-3 mb-2">{member.companyDescription}</p>
-                                                            )}
-                                                            {member.companyImages && member.companyImages.length > 0 && (
-                                                                <div className="grid grid-cols-3 gap-1">
-                                                                    {member.companyImages.slice(0, 3).map((img, imgIdx) => (
-                                                                        <div key={imgIdx} className="relative aspect-square rounded overflow-hidden">
-                                                                            <img src={img} alt={`회사 사진 ${imgIdx + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                            {!member.companyMainImage && !member.companyDescription && (
-                                                                <p className="text-xs text-gray-400">회사 소개가 등록되지 않았습니다.</p>
-                                                            )}
-                                                        </div>
-                                                    </Fragment>
-                                                ) : (
-                                                    <Fragment>
-                                                        <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-soft group-hover:border-brand/20 transition-colors">
-                                                            <img src={member.img} alt={member.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
-                                                        </div>
-                                                        <h3 className="text-xl font-bold text-dark mb-1">{member.name}</h3>
-                                                        <p className="text-sm text-brand font-medium mb-2">{member.company} {member.role}</p>
-                                                        <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
-                                                            <span className="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-xs font-bold">{member.industry || member.businessCategory || '업종 미지정'}</span>
-                                                            {member.memberGrade && (
-                                                                <span className={`px-3 py-1 text-xs font-bold rounded-full ${
-                                                                    member.memberGrade === '파트너사' ? 'bg-gradient-to-r from-yellow-500 to-yellow-700 text-white shadow-lg' :
-                                                                    member.memberGrade === '운영진' ? 'bg-white text-red-600 border-2 border-red-600' :
-                                                                    member.memberGrade === '사업자' ? 'bg-gray-200 text-blue-700' :
-                                                                    'bg-gray-200 text-gray-900'
-                                                                }`} style={member.memberGrade === '파트너사' ? { textShadow: '0 1px 2px rgba(0,0,0,0.3)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.2)' } : {}}>
-                                                                    {member.memberGrade}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-1 mb-4">
-                                                            <Icons.Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                                                            <span className="text-xs text-gray-500">4.5</span>
-                                                            <span className="text-xs text-gray-400">(12)</span>
-                                                        </div>
-                                                        <div className="w-full flex gap-2">
-                                                            <button className="flex-1 py-2.5 rounded-xl border border-blue-200 text-sm font-bold text-gray-600 hover:bg-brand hover:text-white hover:border-brand transition-all">프로필 보기</button>
-                                                            {currentUser && member.id !== currentUser?.id && member.uid !== currentUser?.uid && (
-                                                                <button 
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleDeleteMember(member.id || member.uid);
-                                                                    }}
-                                                                    className="px-3 py-2.5 bg-red-100 text-red-700 rounded-xl text-sm font-bold hover:bg-red-200 transition-colors"
-                                                                    title="회원 강퇴"
-                                                                >
-                                                                    <Icons.Trash size={16} />
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </Fragment>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                ) : filteredMembers.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {filteredMembers.map((member, idx) => (
-                            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md transition-all hover:border-brand/20 ${member.memberGrade === '파트너사' && member.hasDonated ? 'flex flex-row items-start gap-4 p-4' : 'flex flex-col items-center text-center p-6'} group cursor-pointer`} onClick={() => setSelectedMember(member)}>
-                                {member.memberGrade === '파트너사' && member.hasDonated ? (
-                                    <Fragment>
-                                        <div className="flex-shrink-0">
-                                            <div className="w-20 h-20 rounded-full overflow-hidden mb-2 border-4 border-soft group-hover:border-brand/20 transition-colors">
-                                                <img src={member.img} alt={member.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
-                                            </div>
-                                            <h3 className="text-lg font-bold text-dark mb-1 text-center">{member.name}</h3>
-                                            <p className="text-xs text-brand font-medium mb-2 text-center">{member.company}</p>
-                                            <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
-                                                <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[10px] font-bold">{member.industry || '업종 미지정'}</span>
-                                                <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-500 to-yellow-700 text-white rounded-full text-[10px] font-bold shadow-lg" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.2)' }}>파트너사</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="text-sm font-bold text-yellow-700 mb-2 flex items-center gap-1">
-                                                <Icons.Star className="w-4 h-4" /> 회사 소개
-                                            </h4>
-                                            {member.companyMainImage && (
-                                                <div className="relative w-full h-32 rounded-lg overflow-hidden mb-2">
-                                                    <img src={member.companyMainImage} alt="회사 대표 이미지" className="w-full h-full object-cover" loading="lazy" decoding="async" />
-                                                </div>
-                                            )}
-                                            {member.companyDescription && (
-                                                <p className="text-xs text-gray-600 line-clamp-3 mb-2">{member.companyDescription}</p>
-                                            )}
-                                            {member.companyImages && member.companyImages.length > 0 && (
-                                                <div className="grid grid-cols-3 gap-1">
-                                                    {member.companyImages.slice(0, 3).map((img, imgIdx) => (
-                                                        <div key={imgIdx} className="relative aspect-square rounded overflow-hidden">
-                                                            <img src={img} alt={`회사 사진 ${imgIdx + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            {!member.companyMainImage && !member.companyDescription && (
-                                                <p className="text-xs text-gray-400">회사 소개가 등록되지 않았습니다.</p>
-                                            )}
-                                        </div>
-                                    </Fragment>
+                                    </th>
+                                    <th
+                                        className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
+                                        onClick={() => handleSort('name')}
+                                    >
+                                        <span className="flex items-center gap-1">
+                                            회원명
+                                            {sortKey === 'name' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                                        </span>
+                                    </th>
+                                    <th
+                                        className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
+                                        onClick={() => handleSort('company')}
+                                    >
+                                        <span className="flex items-center gap-1">
+                                            회사명
+                                            {sortKey === 'company' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                                        </span>
+                                    </th>
+                                    <th
+                                        className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
+                                        onClick={() => handleSort('createdAt')}
+                                    >
+                                        <span className="flex items-center gap-1">
+                                            가입일자
+                                            {sortKey === 'createdAt' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                                        </span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paginatedMembers.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={4} className="px-4 py-12 text-center text-gray-500">
+                                            조건에 맞는 회원이 없습니다.
+                                        </td>
+                                    </tr>
                                 ) : (
-                                    <Fragment>
-                                        <div className="w-24 h-24 rounded-full overflow-hidden mb-4 border-4 border-soft group-hover:border-brand/20 transition-colors">
-                                            <img src={member.img} alt={member.name} className="w-full h-full object-cover" loading="lazy" decoding="async" onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${member.name}&background=random`; }} />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-dark mb-1">{member.name}</h3>
-                                        <p className="text-sm text-brand font-medium mb-2">{member.company} {member.role}</p>
-                                        <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
-                                            <span className="px-3 py-1 bg-gray-100 text-gray-500 rounded-full text-xs font-bold">{member.industry || member.businessCategory || '업종 미지정'}</span>
-                                            {member.memberGrade && (
-                                                <span className={`px-3 py-1 text-xs font-bold rounded-full ${
-                                                    member.memberGrade === '파트너사' ? 'bg-gradient-to-r from-yellow-500 to-yellow-700 text-white shadow-lg' :
-                                                    member.memberGrade === '운영진' ? 'bg-white text-red-600 border-2 border-red-600' :
-                                                    member.memberGrade === '사업자' ? 'bg-gray-200 text-blue-700' :
-                                                    'bg-gray-200 text-gray-900'
-                                                }`} style={member.memberGrade === '파트너사' ? { textShadow: '0 1px 2px rgba(0,0,0,0.3)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.2)' } : {}}>
-                                                    {member.memberGrade}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-1 mb-4">
-                                            <Icons.Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                                            <span className="text-xs text-gray-500">4.5</span>
-                                            <span className="text-xs text-gray-400">(12)</span>
-                                        </div>
-                                        <button className="w-full py-2.5 rounded-xl border border-blue-200 text-sm font-bold text-gray-600 hover:bg-brand hover:text-white hover:border-brand transition-all">프로필 보기</button>
-                                    </Fragment>
+                                    paginatedMembers.map((member, idx) => (
+                                        <tr
+                                            key={member.id || member.uid || idx}
+                                            className="border-b border-blue-100 hover:bg-brand/5 cursor-pointer transition-colors"
+                                            onClick={() => setSelectedMember(member)}
+                                        >
+                                            <td className="px-4 py-3 text-sm text-gray-700">
+                                                {member.memberGrade ? (
+                                                    <span className={`inline-block px-2 py-0.5 text-xs font-bold rounded-full ${
+                                                        member.memberGrade === '파트너사' ? 'bg-gradient-to-r from-yellow-500 to-yellow-700 text-white' :
+                                                        member.memberGrade === '운영진' ? 'bg-white text-red-600 border border-red-600' :
+                                                        member.memberGrade === '사업자' ? 'bg-gray-200 text-blue-700' :
+                                                        'bg-gray-200 text-gray-700'
+                                                    }`}>
+                                                        {member.memberGrade}
+                                                    </span>
+                                                ) : '-'}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm font-medium text-dark">{member.name || '-'}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-600">{member.company || '-'}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-600">
+                                                {member.createdAt?.toDate?.().toLocaleDateString('ko-KR') ?? (typeof member.createdAt === 'string' ? new Date(member.createdAt).toLocaleDateString('ko-KR') : null) ?? '-'}
+                                            </td>
+                                        </tr>
+                                    ))
                                 )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* 페이지네이션: 10명 초과 시 표시 */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between px-4 py-3 border-t border-blue-100 bg-gray-50/50">
+                            <p className="text-sm text-gray-600">
+                                전체 <span className="font-bold text-brand">{sortedMembers.length}</span>명
+                                {sortedMembers.length > PAGE_SIZE && (
+                                    <> · {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, sortedMembers.length)}번 표시</>
+                                )}
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage <= 1}
+                                    className="px-3 py-1.5 rounded-lg border border-blue-200 text-sm font-bold text-gray-700 hover:bg-brand/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    이전
+                                </button>
+                                <span className="text-sm text-gray-600">
+                                    {currentPage} / {totalPages}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage >= totalPages}
+                                    className="px-3 py-1.5 rounded-lg border border-blue-200 text-sm font-bold text-gray-700 hover:bg-brand/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    다음
+                                </button>
                             </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-20 text-gray-500">
-                        <Icons.Info className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                        <p>조건에 맞는 회원이 없습니다.</p>
-                    </div>
-                )}
+                        </div>
+                    )}
+                </div>
 
                 {/* 회원 상세 모달 (ESC로 닫기) */}
                 {selectedMember && (

@@ -5,6 +5,7 @@ import {
   GoogleAuthProvider,
   signOut, 
   sendPasswordResetEmail,
+  deleteUser,
   onAuthStateChanged as firebaseOnAuthStateChanged
 } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -104,6 +105,20 @@ export const authService = {
       await sendPasswordResetEmail(auth, email);
     } catch (error) {
       console.error('Error sending password reset email:', error);
+      throw error;
+    }
+  },
+
+  /** 현재 로그인한 Firebase Auth 사용자 삭제 (자진 탈퇴 시 재가입 가능하도록) */
+  async deleteCurrentUser() {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('로그인된 사용자가 없습니다.');
+    }
+    try {
+      await deleteUser(user);
+    } catch (error) {
+      console.error('Error deleting current user:', error);
       throw error;
     }
   }

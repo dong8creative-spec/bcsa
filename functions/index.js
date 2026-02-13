@@ -1,4 +1,4 @@
-import { onRequest } from 'firebase-functions/v2/https';
+import { onRequest, onCall, HttpsError } from 'firebase-functions/v2/https';
 import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
@@ -1413,6 +1413,36 @@ app.use((err, req, res, next) => {
     details: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
+
+// 관리자 강제 탈퇴 시 Firebase Auth 사용자 삭제 (재가입 가능하도록)
+export const deleteAuthUser = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const callerUid = request.auth.uid;
+    const targetUid = request.data?.uid;
+    if (!targetUid || typeof targetUid !== 'string') {
+      throw new HttpsError('invalid-argument', 'uid is required');
+    }
+    const callerDoc = await db.collection('users').doc(callerUid).get();
+    if (!callerDoc.exists) {
+      throw new HttpsError('permission-denied', '권한이 없습니다.');
+    }
+    const role = callerDoc.data()?.role;
+    if (role !== 'admin') {
+      throw new HttpsError('permission-denied', '관리자만 실행할 수 있습니다.');
+    }
+    try {
+      await admin.auth().deleteUser(targetUid);
+      return { success: true };
+    } catch (err) {
+      console.error('[deleteAuthUser]', err.message);
+      throw new HttpsError('internal', err.message || 'Auth 사용자 삭제에 실패했습니다.');
+    }
+  }
+);
 
 // Express 앱을 Firebase Functions로 내보내기
 // asia-northeast3 (서울) 지역 사용

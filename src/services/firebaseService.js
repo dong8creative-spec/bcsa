@@ -16,7 +16,8 @@ import {
   serverTimestamp,
   Timestamp
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import app, { db } from '../firebase';
 
 // Firebase Data Service Layer
 export const firebaseService = {
@@ -84,6 +85,18 @@ export const firebaseService = {
       await deleteDoc(doc(db, 'users', userId));
     } catch (error) {
       console.error('Error deleting user:', error);
+      throw error;
+    }
+  },
+
+  /** 관리자 강제 탈퇴 시 Firebase Auth 사용자 삭제 (Cloud Function 호출, 재가입 가능하도록) */
+  async deleteAuthUser(uid) {
+    try {
+      const functions = getFunctions(app, 'asia-northeast3');
+      const callable = httpsCallable(functions, 'deleteAuthUser');
+      await callable({ uid });
+    } catch (error) {
+      console.error('Error deleting Auth user:', error);
       throw error;
     }
   },

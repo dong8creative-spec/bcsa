@@ -1837,26 +1837,48 @@ const App = () => {
         }
     };
     
-    const handleWithdraw = () => {
-         // 세미나 후기와 사진은 유지하고, 나머지 게시글만 삭제
-         const updatedPosts = communityPosts.filter(p => {
-             // 프로그램 후기는 유지 (작성자가 탈퇴 회원이어도)
-             if (p.category === '프로그램 후기' && p.author === currentUser.name) {
-                 return true; // 세미나 후기는 유지
+    const handleWithdraw = async () => {
+         if (!currentUser) return;
+         const userId = currentUser.id || currentUser.uid;
+
+         // 1) Auth 삭제 먼저 (실패 시 Firestore 삭제하지 않음 → 재가입 가능하도록)
+         if (authService && authService.deleteCurrentUser) {
+             try {
+                 await authService.deleteCurrentUser();
+             } catch (err) {
+                 const code = err?.code || err?.message || '';
+                 if (code === 'auth/requires-recent-login') {
+                     alert('보안을 위해 다시 로그인한 뒤 탈퇴를 시도해 주세요.');
+                 } else {
+                     alert('계정 삭제에 실패했습니다. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요.');
+                 }
+                 return;
              }
-             // 나머지 게시글은 작성자가 탈퇴 회원이면 삭제
+         }
+
+         // 2) Firestore 사용자 문서 삭제 (Firebase 사용 시)
+         if (firebaseService && firebaseService.deleteUser && userId) {
+             try {
+                 await firebaseService.deleteUser(userId);
+             } catch (err) {
+                 console.error('Firestore 사용자 삭제 오류:', err);
+             }
+         }
+
+         // 3) 로컬 상태 정리: 세미나 후기와 사진은 유지, 나머지 게시글만 정리
+         const updatedPosts = communityPosts.filter(p => {
+             if (p.category === '프로그램 후기' && p.author === currentUser.name) return true;
              return p.author !== currentUser.name;
          });
          setCommunityPosts(updatedPosts);
-         
-         // 사용자 및 멤버 데이터에서 제거
-         const updatedUsers = users.filter(u => u.id !== currentUser.id);
+
+         const updatedUsers = users.filter(u => u.id !== currentUser.id && u.uid !== currentUser.uid);
          setUsers(updatedUsers);
          saveUsersToStorage(updatedUsers);
-         
+
          const updatedMembers = membersData.filter(m => m.name !== currentUser.name);
          setMembersData(updatedMembers);
-         
+
          handleLogout();
          alert("회원 탈퇴가 완료되었습니다.\n세미나 후기와 사진은 유지됩니다.");
     };
