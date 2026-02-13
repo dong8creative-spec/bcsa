@@ -71,10 +71,29 @@ export const ProgramManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showApplicantModal, setShowApplicantModal] = useState(false);
   const [applicantModalProgram, setApplicantModalProgram] = useState(null);
+  const [applicantModalUsers, setApplicantModalUsers] = useState([]);
 
   useEffect(() => {
     loadPrograms();
   }, []);
+
+  /** 신청자 명단 모달 열릴 때 회원 목록 로드 (기본 정보 CSV용) */
+  useEffect(() => {
+    if (!showApplicantModal || !applicantModalProgram) {
+      setApplicantModalUsers([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const users = firebaseService.getUsers ? await firebaseService.getUsers() : [];
+        if (!cancelled) setApplicantModalUsers(Array.isArray(users) ? users : []);
+      } catch (e) {
+        if (!cancelled) setApplicantModalUsers([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [showApplicantModal, applicantModalProgram]);
 
   const loadPrograms = async () => {
     try {
@@ -460,10 +479,10 @@ export const ProgramManagement = () => {
                   </div>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full">
                 <button
                   onClick={() => handleEdit(program)}
-                  className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                  className="flex-[2] min-w-0 px-3 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
                 >
                   <Icons.Edit2 size={16} />
                   수정
@@ -473,7 +492,7 @@ export const ProgramManagement = () => {
                     setApplicantModalProgram(program);
                     setShowApplicantModal(true);
                   }}
-                  className="flex-1 px-3 py-2 bg-green-50 text-green-700 rounded-xl font-bold hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
+                  className="flex-[5] min-w-0 px-3 py-2 bg-green-50 text-green-700 rounded-xl font-bold hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
                 >
                   <Icons.Users size={16} />
                   신청자명단
@@ -703,35 +722,53 @@ export const ProgramManagement = () => {
       {showApplicantModal && applicantModalProgram && (() => {
         const programId = String(applicantModalProgram.id);
         const list = (applications || []).filter((app) => String(app.seminarId) === programId);
+        const userMap = {};
+        (applicantModalUsers || []).forEach((u) => {
+          if (u.id) userMap[u.id] = u;
+          if (u.uid) userMap[u.uid] = u;
+        });
         const formatDate = (v) => {
           if (!v) return '-';
           if (v.toDate && typeof v.toDate === 'function') return v.toDate().toLocaleString('ko-KR');
           if (v.seconds != null) return new Date(v.seconds * 1000).toLocaleString('ko-KR');
           return String(v);
         };
-        const headers = ['번호', '이름', '이메일', '연락처', '신청일', '신청사유'];
-        const toCsvRow = (arr) => arr.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',');
+        const getCell = (val) => (val == null || val === undefined ? '' : String(val).replace(/\n/g, ' ').replace(/"/g, '""'));
+        // 기본 정보(가입 정보) + 세미나 신청 시 항목
+        const headers = [
+          '번호', '이름', '닉네임(부청사활동)', '성별', '생년월일', '연락처', '이메일',
+          '업종/업태', '협업 업종', '핵심 고객',
+          '참여 경로', '강연 신청 계기', '강연 사전 질문', '강연 후 식사 여부', '개인정보 동의', '신청일'
+        ];
+        const toCsvRow = (arr) => arr.map((cell) => `"${getCell(cell)}"`).join(',');
+        const rowForApp = (app, i) => {
+          const user = userMap[app.userId] || userMap[app.userId?.toString()];
+          return [
+            i + 1,
+            app.userName || user?.name || '',
+            user?.nickname || '',
+            user?.gender || '',
+            user?.birthdate || '',
+            app.userPhone || user?.phone || user?.phoneNumber || '',
+            app.userEmail || user?.email || '',
+            user?.industry || user?.businessCategory || '',
+            user?.collaborationIndustry || '',
+            user?.keyCustomers || '',
+            app.participationPath || '',
+            app.applyReason || '',
+            app.preQuestions || '',
+            app.mealAfter || '',
+            app.privacyAgreed === true ? '동의' : '',
+            formatDate(app.createdAt || app.appliedAt)
+          ];
+        };
         const csvContent = [
           '\uFEFF' + toCsvRow(headers),
-          ...list.map((app, i) => toCsvRow([
-            i + 1,
-            app.userName || '',
-            app.userEmail || '',
-            app.userPhone || '',
-            formatDate(app.createdAt),
-            (app.reason || '').replace(/\n/g, ' ')
-          ]))
+          ...list.map((app, i) => toCsvRow(rowForApp(app, i)))
         ].join('\n');
         const tsvContent = [
           headers.join('\t'),
-          ...list.map((app, i) => [
-            i + 1,
-            app.userName || '',
-            app.userEmail || '',
-            app.userPhone || '',
-            formatDate(app.createdAt),
-            (app.reason || '').replace(/\n/g, ' ')
-          ].join('\t'))
+          ...list.map((app, i) => rowForApp(app, i).map((c) => String(c ?? '').replace(/\t/g, ' ')).join('\t'))
         ].join('\n');
         const handleCsvDownload = () => {
           const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
@@ -789,30 +826,55 @@ export const ProgramManagement = () => {
                   {list.length === 0 ? (
                     <p className="text-gray-500 text-center py-8">신청자가 없습니다.</p>
                   ) : (
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-blue-200">
-                          <th className="px-3 py-2 text-left font-bold text-gray-700">번호</th>
-                          <th className="px-3 py-2 text-left font-bold text-gray-700">이름</th>
-                          <th className="px-3 py-2 text-left font-bold text-gray-700">이메일</th>
-                          <th className="px-3 py-2 text-left font-bold text-gray-700">연락처</th>
-                          <th className="px-3 py-2 text-left font-bold text-gray-700">신청일</th>
-                          <th className="px-3 py-2 text-left font-bold text-gray-700">신청사유</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {list.map((app, i) => (
-                          <tr key={app.id || i} className="border-b border-blue-100">
-                            <td className="px-3 py-2 text-gray-600">{i + 1}</td>
-                            <td className="px-3 py-2">{app.userName || '-'}</td>
-                            <td className="px-3 py-2">{app.userEmail || '-'}</td>
-                            <td className="px-3 py-2">{app.userPhone || '-'}</td>
-                            <td className="px-3 py-2 text-gray-600">{formatDate(app.createdAt)}</td>
-                            <td className="px-3 py-2 max-w-[200px] truncate" title={app.reason || ''}>{app.reason || '-'}</td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm min-w-[900px]">
+                        <thead>
+                          <tr className="border-b border-blue-200">
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">번호</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">이름</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">닉네임</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">성별</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">생년월일</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">연락처</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">이메일</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">업종/업태</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">협업 업종</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">핵심 고객</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">참여 경로</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">강연 신청 계기</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">강연 사전 질문</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">식사 여부</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">개인정보 동의</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">신청일</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {list.map((app, i) => {
+                            const user = userMap[app.userId] || userMap[app.userId?.toString()];
+                            return (
+                              <tr key={app.id || i} className="border-b border-blue-100">
+                                <td className="px-2 py-2 text-gray-600">{i + 1}</td>
+                                <td className="px-2 py-2">{app.userName || user?.name || '-'}</td>
+                                <td className="px-2 py-2 text-gray-600">{user?.nickname || '-'}</td>
+                                <td className="px-2 py-2 text-gray-600">{user?.gender || '-'}</td>
+                                <td className="px-2 py-2 text-gray-600">{user?.birthdate || '-'}</td>
+                                <td className="px-2 py-2">{app.userPhone || user?.phone || user?.phoneNumber || '-'}</td>
+                                <td className="px-2 py-2">{app.userEmail || user?.email || '-'}</td>
+                                <td className="px-2 py-2 max-w-[120px] truncate" title={user?.industry || user?.businessCategory || ''}>{user?.industry || user?.businessCategory || '-'}</td>
+                                <td className="px-2 py-2 max-w-[100px] truncate" title={user?.collaborationIndustry || ''}>{user?.collaborationIndustry || '-'}</td>
+                                <td className="px-2 py-2 max-w-[100px] truncate" title={user?.keyCustomers || ''}>{user?.keyCustomers || '-'}</td>
+                                <td className="px-2 py-2">{app.participationPath || '-'}</td>
+                                <td className="px-2 py-2 max-w-[150px] truncate" title={app.applyReason || ''}>{app.applyReason || '-'}</td>
+                                <td className="px-2 py-2 max-w-[150px] truncate" title={app.preQuestions || ''}>{app.preQuestions || '-'}</td>
+                                <td className="px-2 py-2">{app.mealAfter || '-'}</td>
+                                <td className="px-2 py-2">{app.privacyAgreed === true ? '동의' : '-'}</td>
+                                <td className="px-2 py-2 text-gray-600">{formatDate(app.createdAt || app.appliedAt)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
               </div>

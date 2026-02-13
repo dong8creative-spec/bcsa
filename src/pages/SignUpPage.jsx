@@ -7,6 +7,9 @@ import { loadUsersFromStorage } from '../utils/authUtils';
 
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 
+/** 이메일 도메인 선택 (드롭다운 + 직접입력) */
+const EMAIL_DOMAINS = ['naver.com', 'daum.net', 'gmail.com', 'kakao.com', 'nate.com', 'hanmail.net', 'yahoo.co.kr', '직접입력'];
+
 const BUSINESS_CATEGORIES = [
     '식품제조업', '의류제조업', '화학제조업', '전자제품제조업', '기계제조업', '기타 제조업',
     '도매업', '소매업', '온라인 쇼핑몰', '편의점/마트',
@@ -41,6 +44,9 @@ const SignUpPage = ({ onSignUp }) => {
         birthdate: '',
         phone: '',
         email: '',
+        emailId: '',
+        emailDomain: 'naver.com',
+        emailDomainCustom: '',
         password: '',
         passwordConfirm: '',
         company: '',
@@ -64,6 +70,13 @@ const SignUpPage = ({ onSignUp }) => {
     const [error, setError] = useState('');
 
     const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || '');
+    /** 이메일 앞부분 + 도메인(드롭다운/직접입력) 조합 */
+    const composeEmail = (id, domain, custom) => {
+        const i = (id || '').trim();
+        const d = domain === '직접입력' ? (custom || '').trim() : (domain || '');
+        if (!i || !d) return '';
+        return `${i}@${d}`;
+    };
     const validatePassword = (password) => {
         if (!password || password.length < 8) return { valid: false, message: '비밀번호는 최소 8자 이상이어야 합니다.' };
         if (!/[a-zA-Z]/.test(password)) return { valid: false, message: '비밀번호에 영문이 포함되어야 합니다.' };
@@ -318,7 +331,16 @@ const SignUpPage = ({ onSignUp }) => {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">이메일 <span className="text-red-500">*</span></label>
-                                        <input type="email" required placeholder="example@email.com" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+                                        <div className="flex flex-wrap gap-2 items-center">
+                                            <input type="text" inputMode="email" required placeholder="example" className="flex-1 min-w-[100px] p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.emailId} onChange={e => setForm(f => ({ ...f, emailId: e.target.value, email: composeEmail(e.target.value, f.emailDomain, f.emailDomainCustom) }))} />
+                                            <span className="text-slate-500">@</span>
+                                            <select className="p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={form.emailDomain} onChange={e => setForm(f => ({ ...f, emailDomain: e.target.value, email: composeEmail(f.emailId, e.target.value, f.emailDomainCustom) }))}>
+                                                {EMAIL_DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
+                                            </select>
+                                            {form.emailDomain === '직접입력' && (
+                                                <input type="text" placeholder="도메인 입력" className="flex-1 min-w-[120px] p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.emailDomainCustom} onChange={e => setForm(f => ({ ...f, emailDomainCustom: e.target.value, email: composeEmail(f.emailId, f.emailDomain, e.target.value) }))} />
+                                            )}
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">비밀번호 <span className="text-red-500">*</span></label>

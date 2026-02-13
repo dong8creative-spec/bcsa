@@ -7,10 +7,16 @@ import ModalPortal from './ModalPortal';
 
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 
+/** 이메일 도메인 선택 (드롭다운 + 직접입력) */
+const EMAIL_DOMAINS = ['naver.com', 'daum.net', 'gmail.com', 'kakao.com', 'nate.com', 'hanmail.net', 'yahoo.co.kr', '직접입력'];
+
 const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
     const [formData, setFormData] = useState({ 
         userType: '',
         email: '',
+        emailId: '',
+        emailDomain: 'naver.com',
+        emailDomainCustom: '',
         password: '', 
         passwordConfirm: '',
         name: '', 
@@ -64,6 +70,13 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
     const validateEmail = (email) => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
+    };
+    /** 이메일 앞부분 + 도메인(드롭다운/직접입력) 조합 */
+    const composeEmail = (id, domain, custom) => {
+        const i = (id || '').trim();
+        const d = domain === '직접입력' ? (custom || '').trim() : (domain || '');
+        if (!i || !d) return '';
+        return `${i}@${d}`;
     };
 
     const validatePassword = (password) => {
@@ -516,8 +529,15 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">이메일(아이디) <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(로그인에 사용)</span></label>
-                                                    <div className="flex gap-2">
-                                                        <input type="email" placeholder="example@email.com" className="flex-1 p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.email} onChange={e => { setFormData({...formData, email: e.target.value}); setEmailCheckResult(null); }} />
+                                                    <div className="flex flex-wrap gap-2 items-center">
+                                                        <input type="text" inputMode="email" placeholder="example" className="flex-1 min-w-[100px] p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.emailId} onChange={e => { setFormData(f => ({ ...f, emailId: e.target.value, email: (() => { const i = e.target.value.trim(); const d = f.emailDomain === '직접입력' ? (f.emailDomainCustom || '').trim() : (f.emailDomain || ''); return (i && d) ? `${i}@${d}` : ''; })() })); setEmailCheckResult(null); }} />
+                                                        <span className="text-slate-500">@</span>
+                                                        <select className="p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none bg-white text-sm" value={formData.emailDomain} onChange={e => { setFormData(f => ({ ...f, emailDomain: e.target.value, email: (() => { const i = (f.emailId || '').trim(); const d = e.target.value === '직접입력' ? (f.emailDomainCustom || '').trim() : e.target.value; return (i && d) ? `${i}@${d}` : ''; })() })); setEmailCheckResult(null); }}>
+                                                            {EMAIL_DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
+                                                        </select>
+                                                        {formData.emailDomain === '직접입력' && (
+                                                            <input type="text" placeholder="도메인 입력" className="flex-1 min-w-[120px] p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none text-sm" value={formData.emailDomainCustom} onChange={e => { setFormData(f => ({ ...f, emailDomainCustom: e.target.value, email: (() => { const i = (f.emailId || '').trim(); const d = (e.target.value || '').trim(); return (i && d) ? `${i}@${d}` : ''; })() })); setEmailCheckResult(null); }} />
+                                                        )}
                                                         <button type="button" onClick={handleCheckEmailDuplicate} disabled={isCheckingDuplicate} className="shrink-0 px-4 py-3.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-bold text-gray-700 disabled:opacity-50 transition-colors">중복 확인</button>
                                                     </div>
                                                     {emailCheckResult === 'available' && <p className="mt-1.5 text-xs text-green-600 font-medium">사용 가능한 이메일입니다.</p>}

@@ -1422,23 +1422,35 @@ export const deleteAuthUser = onCall(
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
     }
     const callerUid = request.auth.uid;
-    const targetUid = request.data?.uid;
-    if (!targetUid || typeof targetUid !== 'string') {
+    const targetUid = typeof request.data?.uid === 'string' ? request.data.uid.trim() : null;
+    if (!targetUid) {
       throw new HttpsError('invalid-argument', 'uid is required');
     }
-    const callerDoc = await db.collection('users').doc(callerUid).get();
+
+    // 관리자 확인: 문서 id가 uid인 경우 또는 users 컬렉션에서 uid 필드로 조회
+    let callerDoc = await db.collection('users').doc(callerUid).get();
     if (!callerDoc.exists) {
+      const byUid = await db.collection('users').where('uid', '==', callerUid).limit(1).get();
+      if (!byUid.empty) callerDoc = byUid.docs[0];
+    }
+    if (!callerDoc || !callerDoc.exists) {
       throw new HttpsError('permission-denied', '권한이 없습니다.');
     }
     const role = callerDoc.data()?.role;
     if (role !== 'admin') {
       throw new HttpsError('permission-denied', '관리자만 실행할 수 있습니다.');
     }
+
     try {
       await admin.auth().deleteUser(targetUid);
+      console.log('[deleteAuthUser] deleted Auth uid:', targetUid);
       return { success: true };
     } catch (err) {
-      console.error('[deleteAuthUser]', err.message);
+      if (err.code === 'auth/user-not-found') {
+        console.log('[deleteAuthUser] user not found (already deleted):', targetUid);
+        return { success: true };
+      }
+      console.error('[deleteAuthUser]', err.code, err.message);
       throw new HttpsError('internal', err.message || 'Auth 사용자 삭제에 실패했습니다.');
     }
   }

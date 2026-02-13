@@ -91,13 +91,18 @@ export const firebaseService = {
 
   /** 관리자 강제 탈퇴 시 Firebase Auth 사용자 삭제 (Cloud Function 호출, 재가입 가능하도록) */
   async deleteAuthUser(uid) {
+    const uidStr = typeof uid === 'string' ? uid.trim() : (uid ? String(uid).trim() : '');
+    if (!uidStr) {
+      throw new Error('삭제할 사용자 uid가 없습니다.');
+    }
     try {
       const functions = getFunctions(app, 'asia-northeast3');
       const callable = httpsCallable(functions, 'deleteAuthUser');
-      await callable({ uid });
+      await callable({ uid: uidStr });
     } catch (error) {
+      const msg = error?.message || error?.details || 'Auth 사용자 삭제 실패';
       console.error('Error deleting Auth user:', error);
-      throw error;
+      throw new Error(typeof msg === 'string' ? msg : 'Auth 사용자 삭제에 실패했습니다.');
     }
   },
 
