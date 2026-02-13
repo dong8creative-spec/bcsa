@@ -158,12 +158,12 @@ const LoginModal = ({ onClose, onLogin, onGoogleLogin }) => {
                         <form onSubmit={handleSubmit} className="space-y-3 text-left">
                             <div>
                                 <label className="block text-xs font-bold text-gray-600 mb-1">아이디 또는 이메일</label>
-                                <input type="text" placeholder="아이디 또는 이메일을 입력하세요" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={id} onChange={e => setId(e.target.value)} />
+                                <input type="text" placeholder="아이디 또는 이메일을 입력하세요" autoComplete="username" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={id} onChange={e => setId(e.target.value)} />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-600 mb-1">비밀번호</label>
                                 <div className="relative">
-                                    <input type={showPassword ? "text" : "password"} placeholder="비밀번호를 입력하세요" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors pr-10 text-sm" value={password} onChange={e => setPassword(e.target.value)} />
+                                    <input type={showPassword ? "text" : "password"} placeholder="비밀번호를 입력하세요" autoComplete="current-password" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors pr-10 text-sm" value={password} onChange={e => setPassword(e.target.value)} />
                                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
                                         {showPassword ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
                                     </button>
@@ -238,6 +238,35 @@ const App = () => {
         }
     }, []);
 
+    // 모바일 메뉴 열림 시 배경 스크롤 완전 잠금 (iOS 포함)
+    const menuScrollYRef = useRef(0);
+    useEffect(() => {
+        if (!isMenuOpen) return;
+        menuScrollYRef.current = window.scrollY ?? window.pageYOffset ?? 0;
+        const style = document.body.style;
+        const prevOverflow = style.overflow;
+        const prevPosition = style.position;
+        const prevTop = style.top;
+        const prevLeft = style.left;
+        const prevRight = style.right;
+        const prevWidth = style.width;
+        style.overflow = 'hidden';
+        style.position = 'fixed';
+        style.left = '0';
+        style.right = '0';
+        style.top = `-${menuScrollYRef.current}px`;
+        style.width = '100%';
+        return () => {
+            style.overflow = prevOverflow;
+            style.position = prevPosition;
+            style.top = prevTop;
+            style.left = prevLeft;
+            style.right = prevRight;
+            style.width = prevWidth;
+            window.scrollTo(0, menuScrollYRef.current);
+        };
+    }, [isMenuOpen]);
+
     // 개발 모드에서 콘솔에서 접근 가능하도록 전역 함수 노출
     useEffect(() => {
         if (import.meta.env.MODE === 'development') {
@@ -256,12 +285,16 @@ const App = () => {
                     // IMP_CODE가 기본값이 아닌 경우에만 초기화
                     if (PORTONE_IMP_CODE && PORTONE_IMP_CODE !== 'imp00000000') {
                         window.IMP.init(PORTONE_IMP_CODE);
-                        console.log('PortOne 초기화 완료');
-                    } else {
-                        console.warn('PortOne IMP_CODE가 설정되지 않았습니다. config.js에서 설정해주세요.');
                     }
                 } catch (error) {
-                    console.error('PortOne 초기화 오류:', error);
+                    const msg = error?.message || String(error);
+                    if (/PG|설정|등록/.test(msg)) {
+                        if (import.meta.env.MODE === 'development') {
+                            console.warn('PortOne: PG가 등록되지 않았습니다. 결제 테스트 시 config에서 IMP_CODE와 PG를 설정해주세요.');
+                        }
+                    } else {
+                        console.warn('PortOne 초기화:', msg);
+                    }
                 }
             } else {
                 // SDK가 아직 로드되지 않은 경우, 로드될 때까지 대기
@@ -693,6 +726,13 @@ const App = () => {
                     ...s,
                     isDeadlineSoon: isDeadlineSoon(s)
                 }));
+                // 팝업 이미지 사전 로딩 (모달 열리기 전에 캐시에 올려 두기)
+                seminarsWithDeadline.slice(0, 3).forEach((p) => {
+                    if (p.img && typeof p.img === 'string') {
+                        const img = new Image();
+                        img.src = p.img;
+                    }
+                });
                 // 팝업 설정 전에 ref를 true로 설정하여 중복 방지
                 popupShownRef.current = true;
                 setPopupPrograms(seminarsWithDeadline);
@@ -2507,41 +2547,43 @@ END:VCALENDAR`;
 
 
     
-    // 🌟 모바일 메뉴 열기/닫기 컴포넌트
+    // 🌟 모바일 메뉴 열기/닫기 컴포넌트 (최상단, 배경 스크롤 잠금, 100% 불투명 버튼)
     const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames, menuOrder }) => {
         if (!isOpen) return null;
         return (
             <ModalPortal>
-            <div className="fixed inset-0 z-[500] bg-white flex flex-col items-center justify-center animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-                <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2.5 text-dark rounded-full transition-colors duration-150 active:bg-gray-200 active:opacity-100 hover:bg-gray-100 touch-manipulation"><Icons.X size={28}/></button>
-                <nav className="flex flex-col gap-6 text-center" onClick={(e) => e.stopPropagation()}>
+            <div
+                className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center animate-fade-in opacity-100"
+                style={{ touchAction: 'none', overflow: 'hidden' }}
+                onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+            >
+                <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2.5 text-dark rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 touch-manipulation opacity-100"><Icons.X size={28}/></button>
+                <nav className="flex flex-col gap-3 text-center w-full max-w-sm px-4" onClick={(e) => e.stopPropagation()}>
                     {menuOrder.filter(item => menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')).map((item, idx) => (
-                        <div key={idx} className="flex flex-col items-center gap-2">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onNavigate(item); onClose(); }} className="text-2xl font-bold text-dark hover:text-brand transition-colors">
-                                {menuNames[item] || item}
-                            </button>
-                        </div>
+                        <button
+                            key={idx}
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onClose();
+                                setTimeout(() => onNavigate(item), 220);
+                            }}
+                            className="w-full py-4 px-6 text-lg font-bold text-dark bg-gray-100 border-2 border-gray-200 rounded-xl active:bg-gray-200 hover:bg-gray-200 hover:border-brand touch-manipulation opacity-100 animate-fade-in-down opacity-0"
+                            style={{ animationDelay: `${idx * 55}ms`, animationFillMode: 'forwards' }}
+                        >
+                            {menuNames[item] || item}
+                        </button>
                     ))}
                     {!currentUser ? (
-                        <div className="flex flex-col gap-4 mt-8 w-64">
-                            <button type="button" onClick={(e) => { 
-                                e.preventDefault(); 
-                                e.stopPropagation(); 
-                                
-                                setShowLoginModal(true); 
-                                onClose(); 
-                            }} className="w-full py-3 border-[0.5px] border-dark text-dark font-bold rounded-xl hover:bg-gray-50">로그인</button>
-                            <button type="button" onClick={(e) => { 
-                                e.preventDefault(); 
-                                e.stopPropagation(); 
-                                navigate('/signup'); 
-                                onClose(); 
-                            }} className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">가입하기</button>
+                        <div className="flex flex-col gap-3 mt-6 w-full">
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-dark bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-100 active:bg-gray-100 touch-manipulation opacity-0 animate-fade-in-down" style={{ animationDelay: `${(menuOrder?.length || 5) * 55}ms`, animationFillMode: 'forwards' }}>로그인</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate('/signup'); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-white bg-brand border-2 border-brand rounded-xl hover:bg-blue-700 active:bg-blue-800 touch-manipulation opacity-0 animate-fade-in-down" style={{ animationDelay: `${((menuOrder?.length || 5) + 1) * 55}ms`, animationFillMode: 'forwards' }}>가입하기</button>
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-4 mt-8 w-64">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); onClose(); }} className="w-full py-3 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5">마이페이지</button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); onClose(); }} className="w-full py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300">로그아웃</button>
+                        <div className="flex flex-col gap-3 mt-6 w-full">
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); setTimeout(() => { setCurrentView('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }, 220); }} className="w-full py-4 px-6 text-base font-bold text-brand bg-white border-2 border-brand rounded-xl hover:bg-blue-50 active:bg-blue-50 touch-manipulation opacity-0 animate-fade-in-down" style={{ animationDelay: `${(menuOrder?.length || 5) * 55}ms`, animationFillMode: 'forwards' }}>마이페이지</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-gray-700 bg-gray-200 border-2 border-gray-300 rounded-xl hover:bg-gray-300 active:bg-gray-400 touch-manipulation opacity-0 animate-fade-in-down" style={{ animationDelay: `${((menuOrder?.length || 5) + 1) * 55}ms`, animationFillMode: 'forwards' }}>로그아웃</button>
                         </div>
                     )}
                 </nav>
@@ -2551,15 +2593,6 @@ END:VCALENDAR`;
     };
 
     const handleNavigation = (item) => {
-        // 개발 모드 디버깅 로깅
-        if (import.meta.env.MODE === 'development') {
-            console.log(`[Navigation] 메뉴 클릭: "${item}"`, {
-                menuEnabled: menuEnabled[item],
-                menuOrder: menuOrder,
-                currentView: currentView
-            });
-        }
-        
         // 비활성화된 메뉴 클릭 시 준비중 알림 (개발 모드에서는 입찰공고 테스트 필드 허용)
         const testFieldOpen = import.meta.env.MODE === 'development' && item === '입찰공고';
         if (!testFieldOpen && !menuEnabled[item]) {
@@ -2622,13 +2655,6 @@ END:VCALENDAR`;
 
     const renderView = () => {
         // 개발 모드 디버깅 로깅
-        if (import.meta.env.MODE === 'development') {
-            console.log(`[RenderView] 현재 뷰 렌더링: "${currentView}"`, {
-                menuEnabled: menuEnabled,
-                currentUser: currentUser ? 'logged in' : 'not logged in'
-            });
-        }
-        
         try {
             // 회원가입 전용 페이지 (URL: /signup)
             if (location.pathname === '/signup') {
@@ -3103,9 +3129,12 @@ END:VCALENDAR`;
                 {menuEnabled['프로그램'] && Array.isArray(seminarsData) && seminarsData.length > 0 ? (
                 <section className="py-20 px-6 overflow-hidden">
                     <div className="container mx-auto max-w-7xl">
-                        <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
-                            <div><h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">프로그램</h2><p className="text-gray-500 text-sm md:text-base break-keep">진행 중인 프로그램을 확인하세요</p></div>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors shrink-0">전체 보기 <Icons.ArrowRight size={16} /></button>
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
+                            <div className="w-full md:w-auto text-left">
+                                <h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">프로그램</h2>
+                                <p className="text-gray-600 text-sm md:text-base break-keep">진행 중인 프로그램을 확인하세요</p>
+                            </div>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="self-end md:self-auto text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors shrink-0">전체 보기 <Icons.ArrowRight size={16} /></button>
                         </div>
                         <div
                             role="region"
@@ -3141,16 +3170,13 @@ END:VCALENDAR`;
                                             <div className="w-full flex-shrink-0 aspect-[3/4] bg-gray-100 overflow-hidden">
                                                 {img ? <img src={img} alt={seminar.title} className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><Icons.Calendar size={48} /></div>}
                                             </div>
-                                            <div className="p-4 flex flex-col flex-shrink-0 w-full min-h-[8.5rem] h-[8.5rem] box-border">
-                                                <div className="flex flex-wrap gap-2 mb-2 flex-shrink-0 min-h-[2rem]">
+                                            <div className="p-4 flex flex-col flex-shrink-0 w-full min-h-[7rem] box-border">
+                                                <div className="flex flex-wrap gap-2 mb-2 flex-shrink-0">
                                                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${seminar.status === '모집중' ? 'bg-blue-100 text-blue-700' : seminar.status === '마감임박' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>{seminar.status || '모집중'}</span>
                                                     <span className="text-xs font-bold px-2 py-0.5 bg-brand/10 text-brand rounded-full">{isPaid ? `${amount.toLocaleString()}원` : '무료'}</span>
                                                 </div>
-                                                <div className="flex-1 min-h-0 flex flex-col">
-                                                    <h3 className="font-bold text-dark mb-1 line-clamp-2 group-hover:text-brand transition-colors text-[15.5px] flex-shrink-0">{seminar.title}</h3>
-                                                    <div className="flex-1 min-h-0" />
-                                                    <p className="text-sm text-gray-500 flex items-center gap-1 pt-2 flex-shrink-0"><Icons.Calendar size={14} /> {seminar.date}</p>
-                                                </div>
+                                                <h3 className="font-bold text-base text-dark mb-1 line-clamp-2 group-hover:text-brand transition-colors leading-snug">{seminar.title}</h3>
+                                                <p className="text-sm text-gray-600 flex items-center gap-1 mt-auto pt-2"><Icons.Calendar size={14} /> {seminar.date}</p>
                                             </div>
                                         </button>
                                     );
@@ -3167,15 +3193,18 @@ END:VCALENDAR`;
                 {menuEnabled['프로그램'] ? (
                 <section className="py-20 px-6">
                     <div className="container mx-auto max-w-7xl">
-                        <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
-                            <div><h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">{content.activities_title || '커뮤니티 주요 활동'}</h2><p className="text-gray-500 text-sm md:text-base break-keep">{content.activities_subtitle || '사업 역량 강화와 네트워크 확장을 위한 다양한 프로그램'}</p></div>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors">{content.activities_view_all || '전체 프로그램 보기'} <Icons.ArrowRight size={16} /></button>
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
+                            <div className="w-full md:w-auto text-left">
+                                <h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">{content.activities_title || '커뮤니티 주요 활동'}</h2>
+                                <p className="text-gray-600 text-sm md:text-base break-keep">{content.activities_subtitle || '사업 역량 강화와 네트워크 확장을 위한 다양한 프로그램'}</p>
+                            </div>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="self-end md:self-auto text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors">{content.activities_view_all || '전체 프로그램 보기'} <Icons.ArrowRight size={16} /></button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_seminar_image && <img src={content.activity_seminar_image} className="w-full h-full object-cover" alt="비즈니스 세미나" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-brand shadow-sm">SEMINAR</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">{content.activity_seminar_title || '비즈니스 세미나'}</h3></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">{content.activity_seminar_desc || '매월 진행되는 창업 트렌드 및 마케팅 실무 세미나'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_seminar_schedule || '매월 2째주 목요일'}</span></div></div></button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_investment_image && <img src={content.activity_investment_image} className="w-full h-full object-cover" alt="투자 & 지원사업" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-green-600 shadow-sm">INVESTMENT</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">{content.activity_investment_title || '투자 & 지원사업'}</h3></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">{content.activity_investment_desc || '최신 정부 지원사업 큐레이션 및 IR 피칭 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_investment_schedule || '수시 모집'}</span></div></div></button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_networking_image && <img src={content.activity_networking_image} className="w-full h-full object-cover" alt="사업가 네트워킹" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-accent shadow-sm">NETWORK</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-lg font-bold text-dark group-hover:text-brand transition-colors">{content.activity_networking_title || '사업가 네트워킹'}</h3></div><p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10 break-keep">{content.activity_networking_desc || '다양한 업종의 대표님들과 교류하며 비즈니스 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_networking_schedule || '매주 금요일'}</span></div></div></button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-soft rounded-3xl p-6 flex flex-col justify-center items-center text-center hover:bg-brand hover:text-white transition-colors duration-300 cursor-pointer group shadow-deep-blue border-none w-full"><div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-brand mb-4 shadow-sm group-hover:scale-110 transition-transform"><Icons.ArrowRight size={24} /></div><h3 className="text-lg font-bold mb-2">{content.activity_more_title || 'More Programs'}</h3><p className="text-sm opacity-70 group-hover:opacity-90 break-keep">{content.activity_more_desc || '멘토링, 워크샵 등 더 많은 활동 보기'}</p></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_seminar_image && <img src={content.activity_seminar_image} className="w-full h-full object-cover" alt="비즈니스 세미나" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-brand shadow-sm">SEMINAR</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_seminar_title || '비즈니스 세미나'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_seminar_desc || '매월 진행되는 창업 트렌드 및 마케팅 실무 세미나'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_seminar_schedule || '매월 2째주 목요일'}</span></div></div></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_investment_image && <img src={content.activity_investment_image} className="w-full h-full object-cover" alt="투자 & 지원사업" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-green-600 shadow-sm">INVESTMENT</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_investment_title || '투자 & 지원사업'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_investment_desc || '최신 정부 지원사업 큐레이션 및 IR 피칭 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_investment_schedule || '수시 모집'}</span></div></div></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_networking_image && <img src={content.activity_networking_image} className="w-full h-full object-cover" alt="사업가 네트워킹" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-accent shadow-sm">NETWORK</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_networking_title || '사업가 네트워킹'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_networking_desc || '다양한 업종의 대표님들과 교류하며 비즈니스 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_networking_schedule || '매주 금요일'}</span></div></div></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-soft rounded-3xl p-6 flex flex-col justify-center items-center text-center hover:bg-brand hover:text-white transition-colors duration-300 cursor-pointer group shadow-deep-blue border-none w-full"><div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-brand mb-4 shadow-sm group-hover:scale-110 transition-transform"><Icons.ArrowRight size={24} /></div><h3 className="text-lg font-bold mb-2 text-dark group-hover:text-white">{content.activity_more_title || 'More Programs'}</h3><p className="text-sm text-gray-700 group-hover:text-white break-keep">{content.activity_more_desc || '멘토링, 워크샵 등 더 많은 활동 보기'}</p></button>
                         </div>
                     </div>
                 </section>

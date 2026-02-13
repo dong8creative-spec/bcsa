@@ -28,7 +28,6 @@ export const authService = {
       
       return user;
     } catch (error) {
-      console.error('Error signing up:', error);
       throw error;
     }
   },
@@ -39,7 +38,7 @@ export const authService = {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       return userCredential.user;
     } catch (error) {
-      console.error('Error signing in:', error);
+      // 호출부(handleLogin)에서 translateFirebaseError로 사용자 안내
       throw error;
     }
   },
@@ -51,7 +50,6 @@ export const authService = {
       const userCredential = await signInWithPopup(auth, provider);
       return userCredential.user;
     } catch (error) {
-      console.error('Error signing in with Google:', error);
       throw error;
     }
   },

@@ -53,9 +53,9 @@ const AppLayout = (props) => {
         handleGoogleLogin,
         users,
         LoginModal,
+        content,
         isMenuOpen,
         setIsMenuOpen,
-        content,
     } = props;
 
     useEffect(() => {
@@ -129,7 +129,8 @@ const AppLayout = (props) => {
                                                     src={program.img} 
                                                     alt={program.title} 
                                                     className="w-full h-full object-cover object-center"
-                                                    loading="lazy"
+                                                    loading="eager"
+                                                    fetchPriority="high"
                                                     decoding="async"
                                                 />
                                             ) : (
@@ -201,7 +202,8 @@ const AppLayout = (props) => {
                                                     alt={program.title} 
                                                     className="w-full h-full object-contain"
                                                     style={{ maxHeight: '90vh' }}
-                                                    loading="lazy"
+                                                    loading="eager"
+                                                    fetchPriority="high"
                                                     decoding="async"
                                                 />
                                             ) : null}
@@ -400,6 +402,7 @@ const AppLayout = (props) => {
                             <div className="flex items-center gap-2">
                                 <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hidden md:block text-xs font-bold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">마이페이지</button>
                                 <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); }} className="px-3 md:px-4 py-2 bg-gray-200 text-gray-600 rounded-full text-xs font-medium hover:bg-gray-300 transition-colors whitespace-nowrap flex-shrink-0">로그아웃</button>
+                                <button type="button" aria-label="메뉴 열기" className="md:hidden p-2.5 text-dark flex-shrink-0 rounded-xl bg-transparent hover:bg-gray-100 active:bg-gray-200 touch-manipulation opacity-100 min-w-[44px] min-h-[44px] flex items-center justify-center" style={{ WebkitTapHighlightColor: 'transparent' }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(true); }}><Icons.Menu size={24} className="opacity-100" /></button>
                             </div>
                         ) : (
                             <div className="flex items-center gap-3">
@@ -415,12 +418,12 @@ const AppLayout = (props) => {
                                 }} className="px-3 md:px-4 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover whitespace-nowrap flex-shrink-0">가입하기</button>
                             </div>
                         )}
-                        <button type="button" aria-label="메뉴 열기" className="md:hidden p-2.5 text-dark flex-shrink-0 rounded-xl transition-colors duration-150 active:bg-gray-200/80 active:opacity-100 hover:bg-gray-100 touch-manipulation" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(true); }}><Icons.Menu size={24} /></button>
                     </div>
                 </div>
             </header>
             
             <main className="min-h-0 flex-1 overflow-y-auto">
+            <div key={currentView} className="min-h-full animate-fade-in">
             {(() => {
                 try {
                     const viewResult = renderView();
@@ -453,6 +456,7 @@ const AppLayout = (props) => {
                     return null;
                 }
             })()}
+            </div>
             </main>
 
             <footer ref={footerRef} className="py-12 px-6 text-white bg-[#0046a5]">
@@ -657,9 +661,9 @@ const AppLayout = (props) => {
                 </div>
                 </ModalPortal>
             ) : null}
-            {/* 🌟 모바일 메뉴 오버레이 */}
-            <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onNavigate={handleNavigation} menuEnabled={menuEnabled} menuNames={menuNames} menuOrder={menuOrder} />
 
+            {/* 모바일 메뉴 (로그인 시에만 햄버거로 열림) */}
+            <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onNavigate={handleNavigation} menuEnabled={menuEnabled} menuNames={menuNames} menuOrder={menuOrder} />
 
             {/* 플로팅 소셜 아이콘 (푸터 전까지 따라다니다가 푸터에 닿으면 멈춤) */}
             <div ref={fabRef} className="z-50 flex flex-col gap-3 transition-[top] duration-150" style={fabStyle}>
