@@ -387,7 +387,7 @@ const AppLayout = (props) => {
                         />
                     </div>
                     <nav className={`hidden md:flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-3 relative whitespace-nowrap ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md shadow-glass'}`}>
-                        {menuOrder.filter(item => menuEnabled[item]).map((item, idx) => (
+                        {menuOrder.filter(item => menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')).map((item, idx) => (
                             <div key={idx} className="flex flex-col items-center gap-1 relative flex-shrink-0 min-w-fit">
                                 <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} relative`}>
                                     {menuNames[item] || item}
@@ -415,7 +415,7 @@ const AppLayout = (props) => {
                                 }} className="px-3 md:px-4 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover whitespace-nowrap flex-shrink-0">가입하기</button>
                             </div>
                         )}
-                        <button type="button" className="md:hidden p-2 text-dark flex-shrink-0" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(true); }}><Icons.Menu /></button>
+                        <button type="button" aria-label="메뉴 열기" className="md:hidden p-2.5 text-dark flex-shrink-0 rounded-xl transition-colors duration-150 active:bg-gray-200/80 active:opacity-100 hover:bg-gray-100 touch-manipulation" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(true); }}><Icons.Menu size={24} /></button>
                     </div>
                 </div>
             </header>

@@ -3,8 +3,12 @@ import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 import CalendarSection from '../components/CalendarSection';
 import ModalPortal from '../components/ModalPortal';
+import { ProgramAddModal } from '../components/ProgramAddModal';
 
-const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [], communityPosts = [] }) => {
+const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [], communityPosts = [], onProgramAdded }) => {
+    /** 운영진 또는 관리자 권한: 프로그램 등록 가능 (admin 채널 없이 바로 등록) */
+    const canManagePrograms = currentUser && (currentUser.memberGrade === '운영진' || currentUser.role === 'admin' || currentUser.role === 'master');
+    const [showProgramAddModal, setShowProgramAddModal] = useState(false);
     // props 안전성 검증
     const safeSeminars = Array.isArray(seminars) ? seminars : [];
     const safeApplications = Array.isArray(applications) ? applications : [];
@@ -230,6 +234,11 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                         <p className="text-gray-500 text-sm">비즈니스 세미나 및 네트워킹</p>
                                 </div>
                     <div className="flex items-center gap-3">
+                        {canManagePrograms && (
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowProgramAddModal(true); }} className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold bg-brand text-white hover:bg-blue-700 transition-colors">
+                                <Icons.Plus size={20} /> 프로그램 등록
+                            </button>
+                        )}
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
                             <Icons.ArrowLeft size={20} /> 메인으로
                         </button>
@@ -621,6 +630,12 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
 );
                 })()}
 
+                {showProgramAddModal && (
+                    <ProgramAddModal
+                        onClose={() => setShowProgramAddModal(false)}
+                        onSuccess={() => { onProgramAdded?.(); }}
+                    />
+                )}
                 </div>
             </div>
     );

@@ -21,6 +21,8 @@ export const UserManagement = () => {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [memberModalUser, setMemberModalUser] = useState(null);
   const [bulkGradeValue, setBulkGradeValue] = useState('');
+  const [sortKey, setSortKey] = useState('memberGrade');
+  const [sortOrder, setSortOrder] = useState('asc');
 
   const loadUsers = async () => {
     try {
@@ -167,12 +169,45 @@ export const UserManagement = () => {
   };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === 'all' || user.role === filterRole;
     return matchesSearch && matchesRole;
   });
+
+  const sortedUsers = React.useMemo(() => {
+    const getVal = (u, k) => {
+      if (k === 'createdAt') {
+        const c = u.createdAt;
+        if (!c) return 0;
+        if (typeof c.toDate === 'function') return c.toDate().getTime();
+        if (typeof c === 'string') return new Date(c).getTime();
+        return 0;
+      }
+      return (u[k] || '').toString().trim().toLowerCase();
+    };
+    const list = [...filteredUsers];
+    const order = sortOrder === 'asc' ? 1 : -1;
+    list.sort((a, b) => {
+      const va = getVal(a, sortKey);
+      const vb = getVal(b, sortKey);
+      if (sortKey === 'createdAt') return order * (va - vb);
+      if (va < vb) return -1 * order;
+      if (va > vb) return 1 * order;
+      return 0;
+    });
+    return list;
+  }, [filteredUsers, sortKey, sortOrder]);
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortOrder('asc');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -284,11 +319,11 @@ export const UserManagement = () => {
         )}
       </div>
 
-      {/* 회원 목록: 회원등급 | 회원명 | 가입일자 | 탈퇴 */}
+      {/* 회원 목록: 회원등급 | 회원명 | 가입일자 | 탈퇴 (항목별 오름/내림차순 정렬) */}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-blue-200">
+            <tr className="border-b border-blue-200 bg-blue-50/50">
               <th className="px-4 py-3 text-left w-12">
                 <input
                   type="checkbox"
@@ -297,21 +332,54 @@ export const UserManagement = () => {
                   className="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand"
                 />
               </th>
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">회원등급</th>
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">회원명</th>
-              <th className="px-4 py-3 text-left text-sm font-bold text-gray-700">가입일자</th>
+              <th
+                className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
+                onClick={() => handleSort('memberGrade')}
+              >
+                <span className="flex items-center gap-1.5">
+                  회원등급
+                  {sortKey === 'memberGrade' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                </span>
+              </th>
+              <th
+                className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
+                onClick={() => handleSort('name')}
+              >
+                <span className="flex items-center gap-1.5">
+                  회원명
+                  {sortKey === 'name' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                </span>
+              </th>
+              <th
+                className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
+                onClick={() => handleSort('company')}
+              >
+                <span className="flex items-center gap-1.5">
+                  회사명
+                  {sortKey === 'company' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                </span>
+              </th>
+              <th
+                className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
+                onClick={() => handleSort('createdAt')}
+              >
+                <span className="flex items-center gap-1.5">
+                  가입일자
+                  {sortKey === 'createdAt' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                </span>
+              </th>
               <th className="px-4 py-3 text-center text-sm font-bold text-gray-700">탈퇴</th>
             </tr>
           </thead>
           <tbody>
-            {filteredUsers.length === 0 ? (
+            {sortedUsers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                   회원이 없습니다.
                 </td>
               </tr>
             ) : (
-              filteredUsers.map((user) => (
+              sortedUsers.map((user) => (
                 <tr key={user.id} className="border-b border-blue-100 hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <input
@@ -341,6 +409,7 @@ export const UserManagement = () => {
                       {user.name || '-'}
                     </button>
                   </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{user.company || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {user.createdAt?.toDate?.().toLocaleDateString('ko-KR') ?? (typeof user.createdAt === 'string' ? new Date(user.createdAt).toLocaleDateString('ko-KR') : user.createdAt) ?? '-'}
                   </td>

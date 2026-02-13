@@ -218,7 +218,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                         className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
                                         onClick={() => handleSort('memberGrade')}
                                     >
-                                        <span className="flex items-center gap-1">
+                                        <span className="flex items-center gap-1.5">
                                             회원등급
                                             {sortKey === 'memberGrade' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
                                         </span>
@@ -227,7 +227,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                         className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
                                         onClick={() => handleSort('name')}
                                     >
-                                        <span className="flex items-center gap-1">
+                                        <span className="flex items-center gap-1.5">
                                             회원명
                                             {sortKey === 'name' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
                                         </span>
@@ -236,7 +236,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                         className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
                                         onClick={() => handleSort('company')}
                                     >
-                                        <span className="flex items-center gap-1">
+                                        <span className="flex items-center gap-1.5">
                                             회사명
                                             {sortKey === 'company' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
                                         </span>
@@ -245,7 +245,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                         className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
                                         onClick={() => handleSort('createdAt')}
                                     >
-                                        <span className="flex items-center gap-1">
+                                        <span className="flex items-center gap-1.5">
                                             가입일자
                                             {sortKey === 'createdAt' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
                                         </span>

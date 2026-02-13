@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authService } from '../../services/authService';
 import { AdminLayout } from './components/AdminLayout';
 import { UserManagement } from './components/UserManagement';
@@ -8,13 +8,24 @@ import { PostManagement } from './components/PostManagement';
 import { ContentManagement } from './components/ContentManagement';
 import { MenuManagement } from './components/MenuManagement';
 
+const VALID_TABS = ['users', 'programs', 'posts', 'content', 'menu'];
+
 /**
  * 관리자 대시보드 메인 컴포넌트
  */
 export const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState('users');
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const initialTab = VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'users';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (tabFromUrl && VALID_TABS.includes(tabFromUrl) && activeTab !== tabFromUrl) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
   useEffect(() => {
     const loadUser = async () => {

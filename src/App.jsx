@@ -2512,10 +2512,10 @@ END:VCALENDAR`;
         if (!isOpen) return null;
         return (
             <ModalPortal>
-            <div className="fixed inset-0 z-[500] bg-white/95 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2 text-dark hover:bg-gray-100 rounded-full"><Icons.X size={32}/></button>
+            <div className="fixed inset-0 z-[500] bg-white flex flex-col items-center justify-center animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+                <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2.5 text-dark rounded-full transition-colors duration-150 active:bg-gray-200 active:opacity-100 hover:bg-gray-100 touch-manipulation"><Icons.X size={28}/></button>
                 <nav className="flex flex-col gap-6 text-center" onClick={(e) => e.stopPropagation()}>
-                    {menuOrder.filter(item => menuEnabled[item]).map((item, idx) => (
+                    {menuOrder.filter(item => menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')).map((item, idx) => (
                         <div key={idx} className="flex flex-col items-center gap-2">
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onNavigate(item); onClose(); }} className="text-2xl font-bold text-dark hover:text-brand transition-colors">
                                 {menuNames[item] || item}
@@ -2560,8 +2560,9 @@ END:VCALENDAR`;
             });
         }
         
-        // 비활성화된 메뉴 클릭 시 준비중 알림
-        if (!menuEnabled[item]) {
+        // 비활성화된 메뉴 클릭 시 준비중 알림 (개발 모드에서는 입찰공고 테스트 필드 허용)
+        const testFieldOpen = import.meta.env.MODE === 'development' && item === '입찰공고';
+        if (!testFieldOpen && !menuEnabled[item]) {
             alert('준비중인 서비스입니다.');
             return;
         }
@@ -2957,7 +2958,7 @@ END:VCALENDAR`;
             return null;
         }
         if (currentView === 'about') return <AboutView onBack={() => setCurrentView('home')} content={content} pageTitles={pageTitles} />;
-        if (currentView === 'tenderTest' && !menuEnabled['입찰공고']) {
+        if (currentView === 'tenderTest' && !menuEnabled['입찰공고'] && import.meta.env.MODE !== 'development') {
             alert('준비중인 서비스입니다.');
             setCurrentView('home');
             return null;
