@@ -36,7 +36,7 @@ const ProgramApplyView = ({
     onApply,
     onBack,
 }) => {
-    const [applicationData, setApplicationData] = useState({ reason: '', questions: ['', ''] });
+    const [applicationData, setApplicationData] = useState({ participationPath: '', applyReason: '', preQuestions: '', mealAfter: '', privacyAgreed: false });
     const [submitting, setSubmitting] = useState(false);
     const [heroImageError, setHeroImageError] = useState(false);
 
@@ -69,19 +69,23 @@ const ProgramApplyView = ({
 
     const handleSubmit = async () => {
         if (!program) return;
-        if (!applicationData.reason.trim()) {
-            alert('신청사유를 입력해주세요.');
+        if (!applicationData.participationPath) {
+            alert('참여 경로를 선택해주세요.');
             return;
         }
-        if (!applicationData.questions[0].trim() || !applicationData.questions[1].trim()) {
-            alert('사전질문 2개를 모두 입력해주세요.');
+        if (!applicationData.mealAfter) {
+            alert('강연 후 식사 여부를 선택해주세요.');
+            return;
+        }
+        if (!applicationData.privacyAgreed) {
+            alert('개인정보 동의에 체크해주세요.');
             return;
         }
         setSubmitting(true);
         try {
             const success = await onApply(program, applicationData);
             if (success) {
-                setApplicationData({ reason: '', questions: ['', ''] });
+                setApplicationData({ participationPath: '', applyReason: '', preQuestions: '', mealAfter: '', privacyAgreed: false });
                 onBack();
             }
         } finally {
@@ -305,40 +309,33 @@ const ProgramApplyView = ({
                     </div>
                     <div className="p-6 md:p-8 space-y-4">
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">신청사유 *</label>
-                            <textarea
-                                className="w-full p-3 border border-blue-200 rounded-lg focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 h-32 resize-none"
-                                value={applicationData.reason}
-                                onChange={(e) => setApplicationData({ ...applicationData, reason: e.target.value })}
-                                placeholder="이 프로그램에 신청하는 이유를 작성해주세요"
-                            />
+                            <label className="block text-sm font-bold text-gray-700 mb-2">참여 경로 <span className="text-red-500">*</span></label>
+                            <div className="flex flex-wrap gap-2">
+                                {['부청사 오픈채팅', 'SNS', '지인 추천', '기타'].map((opt) => (
+                                    <button key={opt} type="button" onClick={() => setApplicationData({ ...applicationData, participationPath: opt })} className={`px-4 py-2 rounded-xl border-2 text-sm font-bold transition-colors ${applicationData.participationPath === opt ? 'border-brand bg-brand/10 text-brand' : 'border-gray-200 text-gray-600 hover:border-brand/50'}`}>{opt}</button>
+                                ))}
+                            </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">사전질문 *</label>
-                            <div className="space-y-3">
-                                <input
-                                    type="text"
-                                    className="w-full p-3 border border-blue-200 rounded-lg focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
-                                    value={applicationData.questions[0]}
-                                    onChange={(e) => {
-                                        const q = [...applicationData.questions];
-                                        q[0] = e.target.value;
-                                        setApplicationData({ ...applicationData, questions: q });
-                                    }}
-                                    placeholder="사전질문 1"
-                                />
-                                <input
-                                    type="text"
-                                    className="w-full p-3 border border-blue-200 rounded-lg focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
-                                    value={applicationData.questions[1]}
-                                    onChange={(e) => {
-                                        const q = [...applicationData.questions];
-                                        q[1] = e.target.value;
-                                        setApplicationData({ ...applicationData, questions: q });
-                                    }}
-                                    placeholder="사전질문 2"
-                                />
+                            <label className="block text-sm font-bold text-gray-700 mb-2">강연 신청 계기 <span className="text-gray-400 text-xs">(선택)</span></label>
+                            <textarea className="w-full p-3 border border-blue-200 rounded-lg focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 h-24 resize-none" value={applicationData.applyReason} onChange={(e) => setApplicationData({ ...applicationData, applyReason: e.target.value })} placeholder="신청 계기를 입력해주세요" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">강연 사전 질문 <span className="text-gray-400 text-xs">(선택)</span></label>
+                            <textarea className="w-full p-3 border border-blue-200 rounded-lg focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 h-24 resize-none" value={applicationData.preQuestions} onChange={(e) => setApplicationData({ ...applicationData, preQuestions: e.target.value })} placeholder="사전 질문을 입력해주세요" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">강연 후 식사 여부 <span className="text-red-500">*</span></label>
+                            <div className="flex gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="mealAfter" checked={applicationData.mealAfter === '참석'} onChange={() => setApplicationData({ ...applicationData, mealAfter: '참석' })} className="w-4 h-4 text-brand" /> 참석</label>
+                                <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="mealAfter" checked={applicationData.mealAfter === '미참석'} onChange={() => setApplicationData({ ...applicationData, mealAfter: '미참석' })} className="w-4 h-4 text-brand" /> 미참석</label>
                             </div>
+                        </div>
+                        <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" checked={applicationData.privacyAgreed} onChange={(e) => setApplicationData({ ...applicationData, privacyAgreed: e.target.checked })} className="w-4 h-4 text-brand rounded" />
+                                <span className="text-sm font-bold text-gray-700">개인정보 수집·이용에 동의합니다 <span className="text-red-500">*</span></span>
+                            </label>
                         </div>
                         <button
                             type="button"

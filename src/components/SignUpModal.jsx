@@ -75,9 +75,8 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
     };
 
     const validatePhone = (phone) => {
-        const cleaned = phone.replace(/[^0-9]/g, '');
-        const phoneRegex = /^(010|011|016|017|018|019)[0-9]{7,8}$/;
-        return phoneRegex.test(cleaned);
+        const cleaned = (phone || '').replace(/[^0-9]/g, '');
+        return cleaned.length === 11 && /^01[0-9][0-9]{8}$/.test(cleaned);
     };
 
     const fetchAllUsers = async () => {
@@ -114,7 +113,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
             return;
         }
         if (!validatePhone(formData.phone)) {
-            showDuplicateCheckModal('올바른 전화번호 형식을 입력해주세요. (예: 010-1234-5678)', true);
+            showDuplicateCheckModal('연락처는 숫자 11자리만 입력 가능합니다. (예: 01012345678)', true);
             return;
         }
         setIsCheckingDuplicate(true);
@@ -199,6 +198,19 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         }
     };
 
+    // 1단계 필수 항목 모두 충족 여부 (다음 버튼 활성화용)
+    const isStep1RequiredFilled = useMemo(() => {
+        if (!formData.userType || !formData.email?.trim() || !formData.name?.trim() || !formData.phone?.trim()) return false;
+        if (!formData.password || !formData.passwordConfirm) return false;
+        if (!validateEmail(formData.email)) return false;
+        const pv = validatePassword(formData.password);
+        if (!pv.valid) return false;
+        if (formData.password !== formData.passwordConfirm) return false;
+        if (!validatePhone(formData.phone)) return false;
+        if (!formData.privacyAgreed) return false;
+        return true;
+    }, [formData.userType, formData.email, formData.name, formData.phone, formData.password, formData.passwordConfirm, formData.privacyAgreed]);
+
     const handleNextStep = async () => {
         if (currentStep === 1) {
             if (!formData.userType) {
@@ -218,7 +230,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                 return alert("비밀번호가 일치하지 않습니다.");
             }
             if (!validatePhone(formData.phone)) {
-                return alert("올바른 전화번호 형식을 입력해주세요. (예: 010-1234-5678)");
+                return alert("연락처는 숫자 11자리만 입력 가능합니다. (예: 01012345678)");
             }
             if (!formData.privacyAgreed) {
                 return alert("개인정보 수집 및 이용에 동의해주세요.");
@@ -412,7 +424,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                     <div className="bg-gradient-to-r from-brand to-blue-600 text-white p-6 relative">
                         <div className="text-center">
                             <h3 className="text-3xl font-bold mb-2">회원가입</h3>
-                            <p className="text-blue-100 text-sm">부청사 커뮤니티에 가입하세요</p>
+                            <p className="text-blue-100 text-sm">필수 항목(*)을 모두 입력해주세요</p>
                         </div>
                         <div className="flex items-center justify-center gap-1 mt-6">
                             {[1, 2].map(step => (
@@ -434,8 +446,14 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {currentStep === 1 ? (
                                 <div className="space-y-5 animate-fade-in">
+                                    <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                        <p className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                                            <Icons.AlertCircle className="w-5 h-5 shrink-0" />
+                                            표시(*)된 항목은 필수 입력입니다. 모두 입력한 후 다음 단계로 진행할 수 있습니다.
+                                        </p>
+                                    </div>
                                     <div className="mb-6 text-center">
-                                        <h4 className="text-2xl font-bold text-dark mb-2">회원 유형 선택</h4>
+                                        <h4 className="text-2xl font-bold text-dark mb-2">회원 유형 선택 <span className="text-red-500">*</span></h4>
                                         <p className="text-sm text-gray-500">본인의 분류를 선택해주세요</p>
                                     </div>
 
@@ -542,9 +560,19 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     ) : null}
                                                 </div>
                                                 <div className="md:col-span-2">
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">연락처(전화번호) <span className="text-red-500">*</span></label>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2">연락처(전화번호) <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(숫자 11자리)</span></label>
                                                     <div className="flex gap-2">
-                                                        <input type="tel" placeholder="010-1234-5678" className="flex-1 p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors text-sm" value={formData.phone} onChange={e => { setFormData({...formData, phone: e.target.value}); setPhoneCheckResult(null); }} />
+                                                        <input type="tel" inputMode="numeric" placeholder="01012345678" maxLength={11} className="flex-1 p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors text-sm" value={formData.phone} onChange={e => {
+                                                            const raw = e.target.value.replace(/\D/g, '');
+                                                            if (raw.length > 11) {
+                                                                alert('연락처는 숫자 11자리만 입력 가능합니다.');
+                                                                setFormData({ ...formData, phone: raw.slice(0, 11) });
+                                                                setPhoneCheckResult(null);
+                                                            } else {
+                                                                setFormData({ ...formData, phone: raw });
+                                                                setPhoneCheckResult(null);
+                                                            }
+                                                        }} />
                                                         <button type="button" onClick={handleCheckPhoneDuplicate} disabled={isCheckingDuplicate} className="shrink-0 px-4 py-3.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-bold text-gray-700 disabled:opacity-50 transition-colors">중복 확인</button>
                                                     </div>
                                                     {phoneCheckResult === 'available' && <p className="mt-1.5 text-xs text-green-600 font-medium">사용 가능한 연락처입니다.</p>}
@@ -585,6 +613,12 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
 
                             {currentStep === 2 ? (
                                 <div className="space-y-5 animate-fade-in">
+                                    <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                        <p className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                                            <Icons.AlertCircle className="w-5 h-5 shrink-0" />
+                                            본인인증, 주소{formData.userType === '사업자' ? ', 사업자 정보' : ''} 등 표시(*)된 항목을 모두 완료한 후 가입하기를 눌러주세요.
+                                        </p>
+                                    </div>
                                     <div className="mb-6">
                                         <h4 className="text-xl font-bold text-dark mb-1">상세 정보</h4>
                                         <p className="text-sm text-gray-500">
@@ -958,9 +992,9 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                 <button 
                                     type="button" 
                                     onClick={handleNextStep} 
-                                    disabled={isCreatingAccount || !formData.userType}
+                                    disabled={isCreatingAccount || !isStep1RequiredFilled}
                                     className={`py-3 px-8 bg-gradient-to-r from-brand to-blue-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-brand/30 transition-all ${
-                                        isCreatingAccount || !formData.userType ? 'opacity-50 cursor-not-allowed' : ''
+                                        isCreatingAccount || !isStep1RequiredFilled ? 'opacity-50 cursor-not-allowed' : ''
                                     }`}
                                 >
                                     {isCreatingAccount ? '계정 생성 중...' : '다음 단계'}

@@ -25,6 +25,7 @@ import MyPageView from './pages/MyPageView';
 import AllMembersView from './pages/AllMembersView';
 import AllSeminarsView from './pages/AllSeminarsView';
 import { TenderTestView } from './pages/TenderTestView';
+import SignUpPage from './pages/SignUpPage';
 import CalendarSection from './components/CalendarSection';
 import { Icons } from './components/Icons';
 import CommunityView from './components/CommunityView';
@@ -118,6 +119,12 @@ const LoginModal = ({ onClose, onLogin, onGoogleLogin }) => {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     
+    // 모달 열릴 때 배경 스크롤 방지
+    useEffect(() => {
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = prev; };
+    }, []);
     // ESC 키로 모달 닫기
     useEffect(() => {
         const handleEscKey = (e) => {
@@ -139,52 +146,33 @@ const LoginModal = ({ onClose, onLogin, onGoogleLogin }) => {
     return (
         <ModalPortal>
             <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md z-10 flex flex-col max-h-[calc(90vh-100px)] relative border-[0.5px] border-brand scale-[0.95] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
-                    <div className="flex-1 min-h-0 overflow-hidden p-8 text-center">
-                        <div className="mb-8">
-                            <div className="w-16 h-16 bg-gradient-to-br from-brand to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand/30">
-                                <Icons.Users className="w-8 h-8 text-white" />
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm z-10 flex flex-col max-h-[90vh] relative border-[0.5px] border-brand scale-90 origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                    <div className="flex-1 min-h-0 overflow-hidden p-4 text-center">
+                        <div className="mb-4">
+                            <div className="w-12 h-12 bg-gradient-to-br from-brand to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-lg shadow-brand/30">
+                                <Icons.Users className="w-6 h-6 text-white" />
                             </div>
-                            <h3 className="text-3xl font-bold text-dark mb-2">로그인</h3>
-                            <p className="text-sm text-gray-500">부청사 커뮤니티에 오신 것을 환영합니다</p>
+                            <h3 className="text-xl font-bold text-dark mb-0.5">로그인</h3>
+                            <p className="text-xs text-gray-500">부청사 커뮤니티에 오신 것을 환영합니다</p>
                         </div>
-                        <form onSubmit={handleSubmit} className="space-y-5 text-left">
+                        <form onSubmit={handleSubmit} className="space-y-3 text-left">
                             <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-2">아이디 또는 이메일</label>
-                                <input type="text" placeholder="아이디 또는 이메일을 입력하세요" className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors" value={id} onChange={e => setId(e.target.value)} />
+                                <label className="block text-xs font-bold text-gray-600 mb-1">아이디 또는 이메일</label>
+                                <input type="text" placeholder="아이디 또는 이메일을 입력하세요" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={id} onChange={e => setId(e.target.value)} />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-2">비밀번호</label>
+                                <label className="block text-xs font-bold text-gray-600 mb-1">비밀번호</label>
                                 <div className="relative">
-                                    <input type={showPassword ? "text" : "password"} placeholder="비밀번호를 입력하세요" className="w-full p-4 border-[0.5px] border-brand/30 rounded-2xl focus:border-brand focus:outline-none transition-colors pr-12" value={password} onChange={e => setPassword(e.target.value)} />
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                                        {showPassword ? <Icons.EyeOff size={20} /> : <Icons.Eye size={20} />}
+                                    <input type={showPassword ? "text" : "password"} placeholder="비밀번호를 입력하세요" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors pr-10 text-sm" value={password} onChange={e => setPassword(e.target.value)} />
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                                        {showPassword ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
                                     </button>
                                 </div>
                             </div>
-                            <button type="submit" className="w-full py-4 bg-gradient-to-r from-brand to-blue-600 text-white font-bold rounded-2xl hover:shadow-lg hover:shadow-brand/30 transition-all mt-6 text-lg">
+                            <button type="submit" className="w-full py-2.5 bg-gradient-to-r from-brand to-blue-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-brand/30 transition-all mt-2 text-sm">
                                 로그인
                             </button>
                         </form>
-                        {onGoogleLogin && (
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onGoogleLogin();
-                                }}
-                                className="w-full mt-4 py-3 px-4 border border-gray-300 rounded-2xl font-semibold text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                                </svg>
-                                Google로 로그인
-                            </button>
-                        )}
                         <button 
                             type="button" 
                             onClick={(e) => { 
@@ -192,13 +180,13 @@ const LoginModal = ({ onClose, onLogin, onGoogleLogin }) => {
                                 e.stopPropagation(); 
                                 alert('아이디/비밀번호 찾기는 관리자에게 문의해주세요.');
                             }} 
-                            className="w-full mt-3 text-sm text-brand hover:text-blue-700 font-medium transition-colors underline"
+                            className="w-full mt-2 text-xs text-brand hover:text-blue-700 font-medium transition-colors underline"
                         >
                             아이디/비밀번호 찾기
                         </button>
                     </div>
-                    <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
-                        <button type="button" onClick={onClose} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                    <div className="shrink-0 border-t border-blue-200 p-2.5 flex justify-end">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-brand text-white font-bold rounded-lg hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200 text-sm">
                             닫기
                         </button>
                     </div>
@@ -432,8 +420,11 @@ const App = () => {
     const [applySeminarFromPopup, setApplySeminarFromPopup] = useState(null);
     const [isPopupApplyModalOpen, setIsPopupApplyModalOpen] = useState(false);
     const [popupApplicationData, setPopupApplicationData] = useState({ 
-        reason: '', 
-        questions: ['', ''] // 사전 질문 2개
+        participationPath: '',
+        applyReason: '',
+        preQuestions: '',
+        mealAfter: '',
+        privacyAgreed: false,
     });
     const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
     const [showKakaoMapModal, setShowKakaoMapModal] = useState(false);
@@ -638,6 +629,14 @@ const App = () => {
     useEffect(() => {
         
     }, [showLoginModal]);
+    
+    // 회원가입 선택 모달 열릴 때 배경 스크롤 방지
+    useEffect(() => {
+        if (!showSignUpChoiceModal) return;
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = prev; };
+    }, [showSignUpChoiceModal]);
     
     // 마감임박 판단 함수
     const isDeadlineSoon = (seminar) => {
@@ -1959,8 +1958,13 @@ const App = () => {
             userName: currentUser.name,
             userEmail: currentUser.email,
             userPhone: currentUser.phone || '',
-            reason: applicationData?.reason || '',
-            questions: applicationData?.questions || ['', ''], // 사전 질문 2개로 변경
+            participationPath: applicationData?.participationPath || '',
+            applyReason: applicationData?.applyReason || '',
+            preQuestions: applicationData?.preQuestions || '',
+            mealAfter: applicationData?.mealAfter || '',
+            privacyAgreed: applicationData?.privacyAgreed === true,
+            reason: [applicationData?.participationPath, applicationData?.applyReason].filter(Boolean).join(' / ') || '',
+            questions: [applicationData?.preQuestions].filter(Boolean),
             appliedAt: new Date().toISOString()
         };
         
@@ -2000,8 +2004,13 @@ const App = () => {
                     userName: currentUser.name,
                     userEmail: currentUser.email,
                     userPhone: currentUser.phone || '',
-                    reason: applicationData?.reason || '',
-                    questions: applicationData?.questions || ['', ''],
+                    participationPath: applicationData?.participationPath || '',
+                    applyReason: applicationData?.applyReason || '',
+                    preQuestions: applicationData?.preQuestions || '',
+                    mealAfter: applicationData?.mealAfter || '',
+                    privacyAgreed: applicationData?.privacyAgreed === true,
+                    reason: [applicationData?.participationPath, applicationData?.applyReason].filter(Boolean).join(' / ') || '',
+                    questions: [applicationData?.preQuestions].filter(Boolean),
                     appliedAt: new Date().toISOString()
                 });
             }
@@ -2038,7 +2047,7 @@ const App = () => {
     const handleWriteReview = (seminar) => {
         if (!currentUser) {
             alert("로그인이 필요한 서비스입니다.");
-            setShowSignUpChoiceModal(true);
+            setShowLoginModal(true);
             return;
         }
         
@@ -2079,7 +2088,7 @@ const App = () => {
     // 팝업에서 신청하기 버튼 클릭 핸들러
     const handlePopupApply = async (program) => {
         if (!currentUser) {
-            setShowSignUpChoiceModal(true);
+            setShowLoginModal(true);
             closePopupAndMarkAsShown();
             return;
         }
@@ -2133,12 +2142,16 @@ const App = () => {
 
     // 팝업 신청 제출 (유료 프로그램이면 결제 후 신청)
     const handlePopupApplySubmit = () => {
-        if (!popupApplicationData.reason.trim()) {
-            alert('신청사유를 입력해주세요.');
+        if (!popupApplicationData.participationPath) {
+            alert('참여 경로를 선택해주세요.');
             return;
         }
-        if (!popupApplicationData.questions[0].trim() || !popupApplicationData.questions[1].trim()) {
-            alert('사전질문 2개를 모두 입력해주세요.');
+        if (!popupApplicationData.mealAfter) {
+            alert('강연 후 식사 여부를 선택해주세요.');
+            return;
+        }
+        if (!popupApplicationData.privacyAgreed) {
+            alert('개인정보 동의에 체크해주세요.');
             return;
         }
         const fee = applySeminarFromPopup?.applicationFee != null ? Number(applySeminarFromPopup.applicationFee) : 0;
@@ -2151,7 +2164,7 @@ const App = () => {
                     setIsPopupApplyModalOpen(false);
                     closePopupAndMarkAsShown();
                     setApplySeminarFromPopup(null);
-                    setPopupApplicationData({ reason: '', questions: ['', ''] });
+                    setPopupApplicationData({ participationPath: '', applyReason: '', preQuestions: '', mealAfter: '', privacyAgreed: false });
                 }
             }, () => {
                 alert('결제가 취소되었거나 실패했습니다.');
@@ -2165,7 +2178,7 @@ const App = () => {
                 setIsPopupApplyModalOpen(false);
                 closePopupAndMarkAsShown();
                 setApplySeminarFromPopup(null);
-                setPopupApplicationData({ reason: '', questions: ['', ''] });
+                setPopupApplicationData({ participationPath: '', applyReason: '', preQuestions: '', mealAfter: '', privacyAgreed: false });
             }
         })();
     };
@@ -2493,13 +2506,13 @@ END:VCALENDAR`;
                                 e.preventDefault(); 
                                 e.stopPropagation(); 
                                 
-                                setShowSignUpChoiceModal(true); 
+                                setShowLoginModal(true); 
                                 onClose(); 
                             }} className="w-full py-3 border-[0.5px] border-dark text-dark font-bold rounded-xl hover:bg-gray-50">로그인</button>
                             <button type="button" onClick={(e) => { 
                                 e.preventDefault(); 
                                 e.stopPropagation(); 
-                                setShowSignUpChoiceModal(true); 
+                                navigate('/signup'); 
                                 onClose(); 
                             }} className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">가입하기</button>
                         </div>
@@ -2547,7 +2560,7 @@ END:VCALENDAR`;
             if (!currentUser) {
                 alert('로그인이 필요한 서비스입니다.');
                 setPendingView('community'); // 로그인 후 커뮤니티로 이동할 의도 저장
-                setShowSignUpChoiceModal(true);
+                setShowLoginModal(true);
                 return;
             }
             setCurrentView('community'); 
@@ -2594,6 +2607,16 @@ END:VCALENDAR`;
         }
         
         try {
+            // 회원가입 전용 페이지 (URL: /signup)
+            if (location.pathname === '/signup') {
+                return (
+                    <SignUpPage
+                        onSignUp={(userData) => {
+                            setMembersData(prev => [...(prev || []), { ...userData, id: userData.uid }]);
+                        }}
+                    />
+                );
+            }
             // 프로그램 신청 전용 페이지 (URL: /program/apply/:programId)
             const programApplyMatch = location.pathname.match(/^\/program\/apply\/([^/]+)/);
             if (programApplyMatch) {
@@ -2625,7 +2648,7 @@ END:VCALENDAR`;
                                     <h2 className="text-xl font-bold text-dark mb-2">로그인이 필요합니다</h2>
                                     <p className="text-gray-600 mb-6">프로그램 신청을 위해 로그인해 주세요.</p>
                                     <div className="flex flex-wrap justify-center gap-3">
-                                        <button type="button" onClick={() => setShowSignUpChoiceModal(true)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">로그인</button>
+                                        <button type="button" onClick={() => setShowLoginModal(true)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">로그인</button>
                                         <button type="button" onClick={() => navigate(-1)} className="px-6 py-3 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5">돌아가기</button>
                                     </div>
                                 </div>
@@ -2678,7 +2701,7 @@ END:VCALENDAR`;
                                     <p className="text-gray-600 mb-6">이 페이지를 보려면 로그인이 필요합니다.</p>
                                     <button
                                         type="button"
-                                        onClick={() => setShowSignUpChoiceModal(true)}
+                                        onClick={() => setShowLoginModal(true)}
                                         className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
                                     >
                                         로그인하기
@@ -2781,7 +2804,7 @@ END:VCALENDAR`;
         if (currentView === 'community' && !currentUser) {
             alert('로그인이 필요한 서비스입니다.');
             setPendingView('community'); // 로그인 후 커뮤니티로 이동할 의도 저장
-            setShowSignUpChoiceModal(true);
+            setShowLoginModal(true);
             setCurrentView('home');
             return null;
         }
@@ -2795,7 +2818,7 @@ END:VCALENDAR`;
                 currentUser={currentUser} 
                 onNotifyAdmin={handleNotifyAdmin} 
                 seminars={seminarsData} 
-                setShowLoginModal={setShowSignUpChoiceModal} 
+                setShowLoginModal={setShowLoginModal} 
                 pageTitles={pageTitles} 
                 menuNames={menuNames} 
                 reviewSeminar={reviewSeminar} 
@@ -3174,8 +3197,7 @@ END:VCALENDAR`;
                                     <button type="button" onClick={(e) => { 
                                         e.preventDefault(); 
                                         e.stopPropagation(); 
-                                        setShowSignUpChoiceModal(true); 
-                                        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); 
+                                        navigate('/signup'); 
                                     }} className="px-8 py-4 bg-white text-brand font-bold rounded-2xl hover:bg-gray-50 transition-all shadow-lg btn-hover">{content.cta_join_button || '지금 가입하기'}</button>
                                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsInquiryModalOpen(true); }} className="px-8 py-4 bg-transparent border border-white/30 text-white font-bold rounded-2xl hover:bg-white/10 transition-all">{content.cta_contact_button || '문의하기'}</button>
                                 </div>
@@ -3251,6 +3273,7 @@ END:VCALENDAR`;
             showSignUpModal={showSignUpModal}
             setShowSignUpModal={setShowSignUpModal}
             setShowSignUpChoiceModal={setShowSignUpChoiceModal}
+            onSignUpClick={() => navigate('/signup')}
             isInquiryModalOpen={isInquiryModalOpen}
             setIsInquiryModalOpen={setIsInquiryModalOpen}
             handleInquirySubmit={handleInquirySubmit}
@@ -3290,47 +3313,22 @@ END:VCALENDAR`;
         {showSignUpChoiceModal && (
             <ModalPortal>
                 <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setShowSignUpChoiceModal(false); }}>
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold text-dark mb-2 text-center">로그인 / 회원가입</h3>
-                        <p className="text-sm text-gray-500 mb-6 text-center">방법을 선택해주세요.</p>
-                        <div className="space-y-3">
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    setShowSignUpChoiceModal(false);
-                                    try {
-                                        await handleGoogleLogin();
-                                    } catch (err) {
-                                        console.error('구글 로그인/회원가입 오류:', err);
-                                    }
-                                }}
-                                className="w-full py-4 px-4 bg-white border-2 border-gray-300 rounded-xl font-bold text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <span className="flex items-center justify-center w-6 h-6"><svg viewBox="0 0 24 24" className="w-5 h-5"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg></span>
-                                구글로 로그인
-                            </button>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 scale-90 origin-center" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold text-dark mb-1 text-center">회원가입</h3>
+                        <p className="text-xs text-gray-500 mb-4 text-center">개인정보를 입력해 가입해주세요.</p>
+                        <div className="space-y-2">
                             <button
                                 type="button"
                                 onClick={() => {
                                     setShowSignUpChoiceModal(false);
                                     setShowSignUpModal(true);
                                 }}
-                                className="w-full py-4 px-4 bg-blue-50 text-blue-700 border-2 border-blue-200 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                                className="w-full py-3 px-4 bg-blue-50 text-blue-700 border-2 border-blue-200 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 text-sm"
                             >
                                 개인정보로 회원가입
                             </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowSignUpChoiceModal(false);
-                                    setShowLoginModal(true);
-                                }}
-                                className="w-full py-3 px-4 border border-gray-200 rounded-xl font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-                            >
-                                아이디/비밀번호 로그인
-                            </button>
                         </div>
-                        <button type="button" onClick={() => setShowSignUpChoiceModal(false)} className="w-full mt-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 font-medium">취소</button>
+                        <button type="button" onClick={() => setShowSignUpChoiceModal(false)} className="w-full mt-3 py-2 text-xs text-gray-500 hover:text-gray-700 font-medium">취소</button>
                     </div>
                 </div>
             </ModalPortal>

@@ -41,6 +41,7 @@ const AppLayout = (props) => {
         showSignUpModal,
         setShowSignUpModal,
         setShowSignUpChoiceModal,
+        onSignUpClick,
         isInquiryModalOpen,
         setIsInquiryModalOpen,
         handleInquirySubmit,
@@ -270,7 +271,7 @@ const AppLayout = (props) => {
                                                     type="button"
                                                     onClick={() => {
                                                         closePopupAndMarkAsShown();
-                                                        setShowSignUpChoiceModal(true);
+                                                        setShowLoginModal(true);
                                                     }}
                                                     className="w-full py-3 bg-gray-300 text-gray-500 font-bold rounded-xl cursor-not-allowed"
                                                     disabled
@@ -317,40 +318,33 @@ const AppLayout = (props) => {
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">신청사유 *</label>
-                                <textarea 
-                                    className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none h-32 resize-none" 
-                                    value={popupApplicationData.reason}
-                                    onChange={(e) => setPopupApplicationData({...popupApplicationData, reason: e.target.value})}
-                                    placeholder="이 프로그램에 신청하는 이유를 작성해주세요"
-                                />
+                                <label className="block text-sm font-bold text-gray-700 mb-2">참여 경로 <span className="text-red-500">*</span></label>
+                                <div className="flex flex-wrap gap-2">
+                                    {['부청사 오픈채팅', 'SNS', '지인 추천', '기타'].map((opt) => (
+                                        <button key={opt} type="button" onClick={() => setPopupApplicationData({...popupApplicationData, participationPath: opt})} className={`px-4 py-2 rounded-xl border-2 text-sm font-bold transition-colors ${popupApplicationData.participationPath === opt ? 'border-brand bg-brand/10 text-brand' : 'border-gray-200 text-gray-600 hover:border-brand/50'}`}>{opt}</button>
+                                    ))}
+                                </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">사전질문 *</label>
-                                <div className="space-y-3">
-                                    <input 
-                                        type="text" 
-                                        className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none"
-                                        value={popupApplicationData.questions[0]}
-                                        onChange={(e) => {
-                                            const newQuestions = [...popupApplicationData.questions];
-                                            newQuestions[0] = e.target.value;
-                                            setPopupApplicationData({...popupApplicationData, questions: newQuestions});
-                                        }}
-                                        placeholder="사전질문 1"
-                                    />
-                                    <input 
-                                        type="text" 
-                                        className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none"
-                                        value={popupApplicationData.questions[1]}
-                                        onChange={(e) => {
-                                            const newQuestions = [...popupApplicationData.questions];
-                                            newQuestions[1] = e.target.value;
-                                            setPopupApplicationData({...popupApplicationData, questions: newQuestions});
-                                        }}
-                                        placeholder="사전질문 2"
-                                    />
+                                <label className="block text-sm font-bold text-gray-700 mb-2">강연 신청 계기 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                <textarea className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none h-24 resize-none" value={popupApplicationData.applyReason} onChange={(e) => setPopupApplicationData({...popupApplicationData, applyReason: e.target.value})} placeholder="신청 계기를 입력해주세요" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">강연 사전 질문 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                <textarea className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none h-24 resize-none" value={popupApplicationData.preQuestions} onChange={(e) => setPopupApplicationData({...popupApplicationData, preQuestions: e.target.value})} placeholder="사전 질문을 입력해주세요" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">강연 후 식사 여부 <span className="text-red-500">*</span></label>
+                                <div className="flex gap-3">
+                                    <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="mealAfter" checked={popupApplicationData.mealAfter === '참석'} onChange={() => setPopupApplicationData({...popupApplicationData, mealAfter: '참석'})} className="w-4 h-4 text-brand" /> 참석</label>
+                                    <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="mealAfter" checked={popupApplicationData.mealAfter === '미참석'} onChange={() => setPopupApplicationData({...popupApplicationData, mealAfter: '미참석'})} className="w-4 h-4 text-brand" /> 미참석</label>
                                 </div>
+                            </div>
+                            <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" checked={popupApplicationData.privacyAgreed} onChange={(e) => setPopupApplicationData({...popupApplicationData, privacyAgreed: e.target.checked})} className="w-4 h-4 text-brand rounded" />
+                                    <span className="text-sm font-bold text-gray-700">개인정보 수집·이용에 동의합니다 <span className="text-red-500">*</span></span>
+                                </label>
                             </div>
                             <button type="button" onClick={handlePopupApplySubmit} className="w-full py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 mt-6">
                                     {applySeminarFromPopup.applicationFee != null && Number(applySeminarFromPopup.applicationFee) > 0 ? '결제하기' : '신청하기'}
@@ -412,12 +406,12 @@ const AppLayout = (props) => {
                                 <button type="button" onClick={(e) => { 
                                     e.preventDefault(); 
                                     e.stopPropagation(); 
-                                    setShowSignUpChoiceModal(true); 
+                                    setShowLoginModal(true); 
                                 }} className="text-xs font-semibold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">로그인</button>
                                 <button type="button" onClick={(e) => { 
                                     e.preventDefault(); 
                                     e.stopPropagation(); 
-                                    setShowSignUpChoiceModal(true); 
+                                    if (onSignUpClick) onSignUpClick(); else setShowSignUpChoiceModal(true); 
                                 }} className="px-3 md:px-4 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover whitespace-nowrap flex-shrink-0">가입하기</button>
                             </div>
                         )}
