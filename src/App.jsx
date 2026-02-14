@@ -435,6 +435,27 @@ const App = () => {
             setPageTitles(defaultContent.pageTitles || {});
         }
     }, [content.pageTitles]);
+
+    // LCP 개선: hero_image 동적 preload (Content에서 URL을 알게 되는 시점에 head에 삽입)
+    const heroPreloadId = 'hero-image-preload';
+    useEffect(() => {
+        const url = content?.hero_image;
+        if (!url || typeof url !== 'string' || !url.startsWith('http')) return;
+        let link = document.getElementById(heroPreloadId);
+        if (link && link.getAttribute('href') === url) return;
+        if (link) link.remove();
+        link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'image';
+        link.href = url;
+        link.id = heroPreloadId;
+        document.head.appendChild(link);
+        return () => {
+            const el = document.getElementById(heroPreloadId);
+            if (el) el.remove();
+        };
+    }, [content?.hero_image]);
+
     const [showSignUpModal, setShowSignUpModal] = useState(false);
     const [showSignUpChoiceModal, setShowSignUpChoiceModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
@@ -680,6 +701,37 @@ const App = () => {
         return daysLeft <= 3 || participantRatio >= 0.8;
     };
     
+    // 홈 + 세미나 데이터 있을 때 팝업 후보 이미지 미리 preload (팝업 표시 전에 캐시 적재)
+    useEffect(() => {
+        if (currentView !== 'home' || !seminarsData?.length) return;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const upcoming = seminarsData
+            .filter(s => s.status !== '종료')
+            .map(s => {
+                const matches = s.date ? s.date.match(/(\d{4})[\.-](\d{2})[\.-](\d{2})/) : null;
+                if (!matches) return null;
+                const year = parseInt(matches[1]);
+                const month = parseInt(matches[2]) - 1;
+                const day = parseInt(matches[3]);
+                const seminarDate = new Date(year, month, day);
+                seminarDate.setHours(0, 0, 0, 0);
+                if (seminarDate >= today) return { ...s, dateObj: seminarDate };
+                return null;
+            })
+            .filter(s => s !== null)
+            .filter(s => !!s.img)
+            .filter(s => (s.currentParticipants || 0) < (s.maxParticipants || 999))
+            .sort((a, b) => a.dateObj - b.dateObj)
+            .slice(0, 3);
+        upcoming.forEach((p) => {
+            if (p.img && typeof p.img === 'string') {
+                const img = new Image();
+                img.src = p.img;
+            }
+        });
+    }, [currentView, seminarsData]);
+
     // 메인페이지 진입 시 다가오는 프로그램 팝업 표시 (최대 3개)
     useEffect(() => {
         // 이미 표시된 경우 또는 설정 중인 경우 return
@@ -726,7 +778,7 @@ const App = () => {
                     ...s,
                     isDeadlineSoon: isDeadlineSoon(s)
                 }));
-                // 팝업 이미지 사전 로딩 (모달 열리기 전에 캐시에 올려 두기)
+                // 팝업 이미지 사전 로딩 (캐시 미적중 시 대비, 위 useEffect에서 이미 앞당겨 preload함)
                 seminarsWithDeadline.slice(0, 3).forEach((p) => {
                     if (p.img && typeof p.img === 'string') {
                         const img = new Image();
@@ -1954,30 +2006,28 @@ const App = () => {
         const paymentId = `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`.slice(0, 40);
 
         if (typeof window !== 'undefined' && window.PortOne) {
-            (async () => {
-                try {
-                    const response = await window.PortOne.requestPayment({
-                        storeId: PORTONE_IMP_CODE,
-                        channelKey: PORTONE_CHANNEL_KEY,
-                        paymentId,
-                        orderName,
-                        totalAmount: amount,
-                        currency: 'CURRENCY_KRW',
-                        payMethod: 'CARD',
-                        customer: { fullName, phoneNumber, email }
-                    });
-                    if (response?.code != null) {
-                        alert(response.message || '결제 실패');
-                        if (onFail) onFail();
-                        return;
-                    }
-                    if (onSuccess) onSuccess(response);
-                } catch (e) {
-                    const msg = e?.message || e?.errorMessage || '결제 요청 중 오류가 발생했습니다.';
-                    alert(msg);
+            const paymentPromise = window.PortOne.requestPayment({
+                storeId: PORTONE_IMP_CODE,
+                channelKey: PORTONE_CHANNEL_KEY,
+                paymentId,
+                orderName,
+                totalAmount: amount,
+                currency: 'CURRENCY_KRW',
+                payMethod: 'CARD',
+                customer: { fullName, phoneNumber, email }
+            });
+            paymentPromise.then((response) => {
+                if (response?.code != null) {
+                    alert(response.message || '결제 실패');
                     if (onFail) onFail();
+                    return;
                 }
-            })();
+                if (onSuccess) onSuccess(response);
+            }).catch((e) => {
+                const msg = e?.message || e?.errorMessage || '결제 요청 중 오류가 발생했습니다.';
+                alert(msg);
+                if (onFail) onFail();
+            });
             return;
         }
 
@@ -3055,7 +3105,7 @@ END:VCALENDAR`;
                         </div>
                         <div className="relative w-full">
                             <div className="relative w-full rounded-4xl md:rounded-5xl overflow-hidden shadow-deep-blue group z-0" style={{ aspectRatio: '16/9' }}>
-                                {content.hero_image && <img src={content.hero_image} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Hero" loading="eager" decoding="async" />}
+                                {content.hero_image && <img src={content.hero_image} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Hero" loading="eager" fetchPriority="high" decoding="async" sizes="(max-width: 768px) 100vw, 1280px" />}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
                             </div>
                             
@@ -3497,17 +3547,17 @@ END:VCALENDAR`;
                             </button>
                             <button
                                 type="button"
-                                onClick={async () => {
+                                onClick={() => {
                                     const phone = paymentInfoPhone.trim();
                                     const email = paymentInfoEmail.trim();
                                     if (!phone) { alert('휴대폰 번호를 입력해주세요.'); return; }
                                     if (!email) { alert('이메일을 입력해주세요.'); return; }
                                     const ctx = pendingPaymentContext;
                                     if (!ctx) return;
-                                    try { await handleUpdateProfile({ phone, email }); } catch (_) {}
                                     setPaymentInfoModalOpen(false);
                                     setPendingPaymentContext(null);
                                     requestPortOnePayment(ctx.seminar, ctx.applicationData, ctx.onSuccess, ctx.onFail, { phoneNumber: phone, email });
+                                    handleUpdateProfile({ phone, email }).catch(() => {});
                                 }}
                                 className="flex-1 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700"
                             >
