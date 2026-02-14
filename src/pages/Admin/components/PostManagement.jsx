@@ -179,6 +179,38 @@ export const PostManagement = () => {
     return matchesSearch && matchesCategory;
   });
 
+  // 후기 리스트: 프로그램 후기는 연동된 세미나의 운영일자순(최신 먼저), 그 외는 작성일 기준
+  const sortedPosts = React.useMemo(() => {
+    const parseDate = (val) => {
+      if (!val) return 0;
+      if (typeof val?.toDate === 'function') return val.toDate().getTime();
+      if (val instanceof Date) return val.getTime();
+      const str = String(val).trim();
+      const match = str.match(/(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
+      if (match) {
+        const [, y, m, d] = match;
+        return new Date(Number(y), Number(m) - 1, Number(d)).getTime();
+      }
+      return 0;
+    };
+    return [...filteredPosts].sort((a, b) => {
+      let timeA = 0, timeB = 0;
+      if (a.category === '프로그램 후기' && a.seminarId) {
+        const seminarA = seminars.find(s => String(s.id) === String(a.seminarId));
+        timeA = seminarA ? parseDate(seminarA.date) : (a.createdAt?.toDate?.()?.getTime?.() ?? parseDate(a.date) ?? 0);
+      } else {
+        timeA = a.createdAt?.toDate?.()?.getTime?.() ?? parseDate(a.date) ?? 0;
+      }
+      if (b.category === '프로그램 후기' && b.seminarId) {
+        const seminarB = seminars.find(s => String(s.id) === String(b.seminarId));
+        timeB = seminarB ? parseDate(seminarB.date) : (b.createdAt?.toDate?.()?.getTime?.() ?? parseDate(b.date) ?? 0);
+      } else {
+        timeB = b.createdAt?.toDate?.()?.getTime?.() ?? parseDate(b.date) ?? 0;
+      }
+      return timeB - timeA; // 최신(운영일자) 먼저
+    });
+  }, [filteredPosts, seminars]);
+
   const categories = ['인력구인', '중고거래', '프로그램 후기', '자유게시판'];
 
   // 별점 렌더링
@@ -280,15 +312,15 @@ export const PostManagement = () => {
         ))}
       </div>
 
-      {/* 게시물 목록 */}
+      {/* 게시물 목록 (후기는 연동 프로그램 운영일자순) */}
       <div className="space-y-3">
-        {filteredPosts.length === 0 ? (
+        {sortedPosts.length === 0 ? (
           <div className="text-center py-12">
             <Icons.MessageSquare size={48} className="text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500">게시물이 없습니다.</p>
           </div>
         ) : (
-          filteredPosts.map((post) => (
+          sortedPosts.map((post) => (
             <div key={post.id} className="bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
               <div className="flex items-start justify-between">
                 <div className="flex-1 cursor-pointer" onClick={() => setSelectedPost(post)}>

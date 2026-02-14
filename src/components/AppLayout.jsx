@@ -460,7 +460,7 @@ const AppLayout = (props) => {
                 </div>
             </header>
 
-            <main className="min-h-0 flex-1 overflow-y-auto pr-20 md:pr-0">
+            <main className="min-h-0 flex-1 overflow-y-auto">
             <div key={currentView} className="min-h-full animate-fade-in">
             {(() => {
                 try {
@@ -737,8 +737,8 @@ const AppLayout = (props) => {
             {/* 모바일 메뉴 (로그인 시에만 햄버거로 열림) */}
             <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onNavigate={handleNavigation} menuEnabled={menuEnabled} menuNames={menuNames} menuOrder={menuOrder} />
 
-            {/* 플로팅 소셜 아이콘 (푸터 전까지 따라다니다가 푸터에 닿으면 멈춤) */}
-            <div ref={fabRef} className="z-40 flex flex-col gap-2 md:gap-3 transition-[top] duration-150" style={fabStyle}>
+            {/* 플로팅 소셜 아이콘 (데스크톱만 표시, 모바일에서는 숨김) */}
+            <div ref={fabRef} className="hidden md:flex z-40 flex-col gap-2 md:gap-3 transition-[top] duration-150" style={fabStyle}>
                 <a
                     href="https://open.kakao.com/o/gMWryRA"
                     target="_blank"

@@ -2576,11 +2576,11 @@ END:VCALENDAR`;
         return (
             <ModalPortal>
             <div
-                className="fixed inset-0 z-[9999] flex flex-col items-center justify-center animate-fade-in"
-                style={{ touchAction: 'none', overflow: 'hidden', backgroundColor: '#ffffff' }}
+                className="fixed inset-0 z-[9999] flex flex-col items-center justify-center animate-fade-in bg-black"
+                style={{ touchAction: 'none', overflow: 'hidden' }}
                 onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
             >
-                <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2.5 text-dark rounded-full touch-manipulation z-10" style={{ backgroundColor: '#e5e7eb' }}><Icons.X size={28}/></button>
+                <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2.5 text-white rounded-full touch-manipulation z-10 hover:bg-white/10 active:bg-white/20"><Icons.X size={28} className="text-white"/></button>
                 <nav className="flex flex-col gap-3 text-center w-full max-w-sm px-4" onClick={(e) => e.stopPropagation()}>
                     {menuOrder.filter(item => menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')).map((item, idx) => (
                         <button
@@ -2592,21 +2592,21 @@ END:VCALENDAR`;
                                 onClose();
                                 setTimeout(() => onNavigate(item), 220);
                             }}
-                            className="w-full py-4 px-6 text-lg font-bold text-dark rounded-xl border-2 border-gray-300 touch-manipulation animate-fade-in-down hover:bg-gray-300 active:bg-gray-400"
-                            style={{ animationDelay: `${idx * 55}ms`, animationFillMode: 'forwards', backgroundColor: '#e5e7eb' }}
+                            className="w-full py-4 px-6 text-lg font-bold text-white rounded-xl border border-white/30 touch-manipulation animate-fade-in-down hover:bg-white/10 active:bg-white/20"
+                            style={{ animationDelay: `${idx * 55}ms`, animationFillMode: 'forwards' }}
                         >
                             {menuNames[item] || item}
                         </button>
                     ))}
                     {!currentUser ? (
                         <div className="flex flex-col gap-3 mt-6 w-full">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-dark rounded-xl border-2 border-gray-300 hover:bg-gray-100 active:bg-gray-100 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${(menuOrder?.length || 5) * 55}ms`, animationFillMode: 'forwards', backgroundColor: '#ffffff' }}>로그인</button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate('/signup'); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-white rounded-xl border-2 border-brand hover:bg-blue-700 active:bg-blue-800 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${((menuOrder?.length || 5) + 1) * 55}ms`, animationFillMode: 'forwards', backgroundColor: '#0046a5' }}>가입하기</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-white rounded-xl border border-white/30 hover:bg-white/10 active:bg-white/20 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${(menuOrder?.length || 5) * 55}ms`, animationFillMode: 'forwards' }}>로그인</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate('/signup'); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-black rounded-xl border-2 border-white bg-white hover:bg-gray-100 active:bg-gray-200 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${((menuOrder?.length || 5) + 1) * 55}ms`, animationFillMode: 'forwards' }}>가입하기</button>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-3 mt-6 w-full">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); setTimeout(() => { setCurrentView('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }, 220); }} className="w-full py-4 px-6 text-base font-bold text-brand rounded-xl border-2 border-brand hover:bg-blue-50 active:bg-blue-50 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${(menuOrder?.length || 5) * 55}ms`, animationFillMode: 'forwards', backgroundColor: '#ffffff' }}>마이페이지</button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-gray-700 rounded-xl border-2 border-gray-300 hover:bg-gray-300 active:bg-gray-400 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${((menuOrder?.length || 5) + 1) * 55}ms`, animationFillMode: 'forwards', backgroundColor: '#d1d5db' }}>로그아웃</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); setTimeout(() => { setCurrentView('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }, 220); }} className="w-full py-4 px-6 text-base font-bold text-white rounded-xl border border-white/30 hover:bg-white/10 active:bg-white/20 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${(menuOrder?.length || 5) * 55}ms`, animationFillMode: 'forwards' }}>마이페이지</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-white rounded-xl border border-white/30 hover:bg-white/10 active:bg-white/20 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${((menuOrder?.length || 5) + 1) * 55}ms`, animationFillMode: 'forwards' }}>로그아웃</button>
                         </div>
                     )}
                 </nav>
