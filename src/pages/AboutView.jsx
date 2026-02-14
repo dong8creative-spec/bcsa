@@ -29,7 +29,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
     return (
         <div className="min-h-screen bg-white font-sans text-slate-800 overflow-y-auto min-h-0">
             {/* 1. Hero Section */}
-            <section className="pt-32 pb-16 px-6 bg-gray-50 border-b border-blue-100">
+            <section className="pt-32 pb-10 md:pb-16 px-6 bg-gray-50 border-b border-blue-100">
                 <div className="container mx-auto max-w-3xl text-center">
                     <div className="flex justify-center mb-4 animate-fade-in-up">
                         <div className="inline-block px-4 py-1.5 bg-blue-100 text-brand rounded-full text-sm font-bold shadow-sm">
@@ -71,7 +71,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                 </section>
 
             {/* 2. Mission & Intro */}
-            <section className="py-20 px-6 bg-white">
+            <section className="py-12 md:py-20 px-6 bg-white">
                 <div className="container mx-auto max-w-4xl">
                     <div className="flex flex-col md:flex-row gap-10 items-center">
                         <div className="flex-1">
@@ -123,7 +123,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                 </section>
 
             {/* 3. Why We Need It */}
-            <section className="py-20 px-6 bg-slate-50 border-y border-blue-100">
+            <section className="py-12 md:py-20 px-6 bg-slate-50 border-y border-blue-100">
                 <div className="container mx-auto max-w-5xl">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold text-dark mb-2">
@@ -157,7 +157,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                 </section>
 
             {/* 4. History */}
-            <section className="py-20 px-6 bg-white overflow-hidden">
+            <section className="py-12 md:py-20 px-6 bg-white overflow-hidden">
                 <div className="container mx-auto max-w-3xl">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold text-dark">{content.about_history_title || "HISTORY"}</h2>
@@ -181,7 +181,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                 </section>
 
             {/* 5. Future Plans */}
-            <section className="py-20 px-6 bg-gray-50 border-y border-blue-100">
+            <section className="py-12 md:py-20 px-6 bg-gray-50 border-y border-blue-100">
                 <div className="container mx-auto max-w-5xl">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold text-dark mb-3">{content.about_future_title || "향후 계획 및 목표"}</h2>
@@ -200,7 +200,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                 </section>
 
             {/* 6. Contact */}
-            <section className="py-20 px-6 bg-gray-50">
+            <section className="py-12 md:py-20 px-6 bg-gray-50">
                 <div className="container mx-auto max-w-3xl">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold text-dark mb-2">CONTACT</h2>

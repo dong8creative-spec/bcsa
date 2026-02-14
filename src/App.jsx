@@ -3061,8 +3061,8 @@ END:VCALENDAR`;
                     메인 타이틀, 설명, 배경 이미지, 검색 기능이 포함되어 있습니다.
                     순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
                     ============================================ */}
-                <section className="pt-32 pb-16 px-4 md:px-6">
-                     <div className="container mx-auto max-w-7xl relative mb-24 md:mb-20">
+                <section className="pt-32 pb-10 md:pb-16 px-4 md:px-6">
+                     <div className="container mx-auto max-w-7xl relative mb-12 md:mb-24">
                         <div className="flex flex-col md:flex-row items-center md:items-center justify-between mb-8 px-2 text-center md:text-right">
                             <div className="flex-1">
                                 <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-tight break-keep text-dark whitespace-pre-line text-center md:text-left">
@@ -3120,9 +3120,9 @@ END:VCALENDAR`;
                     활동중인 사업가, 진행된 세미나, 투자 성공 사례 등의 통계를 표시합니다.
                     순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
                     ============================================ */}
-                <section className="pt-32 pb-20 md:py-20 bg-soft/50">
+                <section className="pt-52 pb-10 md:py-20 bg-soft/50">
                     <div className="container mx-auto max-w-6xl px-6">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 text-center">
                             <div><div className="text-3xl md:text-4xl font-bold text-brand mb-2">{content.stat_1_val}</div><div className="text-sm text-gray-500 font-medium break-keep">{content.stat_1_desc}</div></div>
                             <div><div className="text-3xl md:text-4xl font-bold text-brand mb-2">{content.stat_2_val}</div><div className="text-sm text-gray-500 font-medium break-keep">{content.stat_2_desc}</div></div>
                             <div><div className="text-3xl md:text-4xl font-bold text-brand mb-2">{content.stat_3_val}</div><div className="text-sm text-gray-500 font-medium break-keep">{content.stat_3_desc}</div></div>
@@ -3138,15 +3138,15 @@ END:VCALENDAR`;
                     다양한 네트워크, 검증된 전문가, 성공 사례 공유를 소개합니다.
                     순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
                     ============================================ */}
-                <section className="py-20 px-6 bg-white">
+                <section className="py-12 md:py-20 px-6 bg-white">
                     <div className="container mx-auto max-w-6xl">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
                             <div className="relative h-[300px] md:h-[500px]">
                                 {content.features_image_1 && <div className="absolute top-0 left-0 w-3/5 rounded-3xl overflow-hidden shadow-deep-blue z-10" style={{ aspectRatio: '1/1' }}><img src={content.features_image_1} className="w-full h-full object-cover" alt="Office" loading="lazy" decoding="async" /></div>}
                                 {content.features_image_2 && <div className="absolute bottom-0 right-0 w-3/5 rounded-3xl overflow-hidden shadow-deep-blue z-20 border-4 border-white" style={{ aspectRatio: '1/1' }}><img src={content.features_image_2} className="w-full h-full object-cover" alt="Meeting" loading="lazy" decoding="async" /></div>}
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-50 rounded-full -z-10 blur-3xl"></div>
                             </div>
-                            <div><h2 className="text-2xl md:text-5xl font-bold text-dark mb-6 leading-tight break-keep">{content.features_title || '함께할 때 더 멀리 갈 수 있습니다'}</h2><div className="space-y-8 mt-10"><div className="flex gap-4"><div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-brand shrink-0"><Icons.Users /></div><div><h3 className="text-lg md:text-xl font-bold text-dark mb-1">{content.features_network_title || '다양한 네트워크'}</h3><p className="text-gray-500 text-sm leading-relaxed break-keep">{content.features_network_desc || 'IT, 제조, 유통 등 다양한 산업군의 대표님들과 연결되어 새로운 비즈니스 기회를 창출합니다.'}</p></div></div><div className="flex gap-4"><div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-500 shrink-0"><Icons.CheckCircle /></div><div><h3 className="text-lg md:text-xl font-bold text-dark mb-1">{content.features_expert_title || '검증된 전문가'}</h3><p className="text-gray-500 text-sm leading-relaxed break-keep">{content.features_expert_desc || '세무, 노무, 마케팅 등 각 분야 전문가 멘토링을 통해 사업 운영의 어려움을 해결해드립니다.'}</p></div></div><div className="flex gap-4"><div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-500 shrink-0"><Icons.Star /></div><div><h3 className="text-lg md:text-xl font-bold text-dark mb-1">{content.features_success_title || '성공 사례 공유'}</h3><p className="text-gray-500 text-sm leading-relaxed break-keep">{content.features_success_desc || '선배 창업가들의 생생한 성공 및 실패 사례를 통해 시행착오를 줄이고 빠르게 성장하세요.'}</p></div></div></div></div>
+                            <div><h2 className="text-2xl md:text-5xl font-bold text-dark mb-6 leading-tight break-keep">{content.features_title || '함께할 때 더 멀리 갈 수 있습니다'}</h2><div className="space-y-4 md:space-y-8 mt-6 md:mt-10"><div className="flex gap-4"><div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-brand shrink-0"><Icons.Users /></div><div><h3 className="text-lg md:text-xl font-bold text-dark mb-1">{content.features_network_title || '다양한 네트워크'}</h3><p className="text-gray-500 text-sm leading-relaxed break-keep">{content.features_network_desc || 'IT, 제조, 유통 등 다양한 산업군의 대표님들과 연결되어 새로운 비즈니스 기회를 창출합니다.'}</p></div></div><div className="flex gap-4"><div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-500 shrink-0"><Icons.CheckCircle /></div><div><h3 className="text-lg md:text-xl font-bold text-dark mb-1">{content.features_expert_title || '검증된 전문가'}</h3><p className="text-gray-500 text-sm leading-relaxed break-keep">{content.features_expert_desc || '세무, 노무, 마케팅 등 각 분야 전문가 멘토링을 통해 사업 운영의 어려움을 해결해드립니다.'}</p></div></div><div className="flex gap-4"><div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-500 shrink-0"><Icons.Star /></div><div><h3 className="text-lg md:text-xl font-bold text-dark mb-1">{content.features_success_title || '성공 사례 공유'}</h3><p className="text-gray-500 text-sm leading-relaxed break-keep">{content.features_success_desc || '선배 창업가들의 생생한 성공 및 실패 사례를 통해 시행착오를 줄이고 빠르게 성장하세요.'}</p></div></div></div></div>
                         </div>
                     </div>
                 </section>
@@ -3155,9 +3155,9 @@ END:VCALENDAR`;
                     📍 프로그램 (자동 흐름 + 드래그 스크롤, 클릭 시 신청 페이지 이동)
                     ============================================ */}
                 {menuEnabled['프로그램'] && Array.isArray(seminarsData) && seminarsData.length > 0 ? (
-                <section className="py-20 px-6 overflow-hidden">
+                <section className="py-12 md:py-20 px-6 overflow-hidden">
                     <div className="container mx-auto max-w-7xl">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 md:mb-10 gap-4">
                             <div className="w-full md:w-auto text-left">
                                 <h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">프로그램</h2>
                                 <p className="text-gray-600 text-sm md:text-base break-keep">진행 중인 프로그램을 확인하세요</p>
@@ -3219,9 +3219,9 @@ END:VCALENDAR`;
                     📍 ACTIVITIES (커뮤니티 주요 활동 - 고정 카드 그리드)
                     ============================================ */}
                 {menuEnabled['프로그램'] ? (
-                <section className="py-20 px-6">
+                <section className="py-12 md:py-20 px-6">
                     <div className="container mx-auto max-w-7xl">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 md:mb-10 gap-4">
                             <div className="w-full md:w-auto text-left">
                                 <h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">{content.activities_title || '커뮤니티 주요 활동'}</h2>
                                 <p className="text-gray-600 text-sm md:text-base break-keep">{content.activities_subtitle || '사업 역량 강화와 네트워크 확장을 위한 다양한 프로그램'}</p>
@@ -3245,7 +3245,7 @@ END:VCALENDAR`;
                     순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
                     ============================================ */}
                 {menuEnabled['후원'] ? (
-                <section className="py-24 px-6 bg-gradient-to-br from-green-50 to-emerald-50">
+                <section className="py-12 md:py-24 px-6 bg-gradient-to-br from-green-50 to-emerald-50">
                     <div className="container mx-auto max-w-6xl">
                         <div className="relative rounded-4xl overflow-hidden bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center text-center px-6 shadow-2xl shadow-green-500/40" style={{ aspectRatio: '16/9' }}>
                             {content.donation_image && <div className="absolute inset-0"><img src={content.donation_image} className="w-full h-full object-cover opacity-20 mix-blend-overlay" alt="Support" loading="lazy" decoding="async" /></div>}
@@ -3266,7 +3266,7 @@ END:VCALENDAR`;
                     가입하기, 문의하기 버튼이 포함된 마지막 홍보 섹션입니다.
                     순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
                     ============================================ */}
-                <section className="py-24 px-6">
+                <section className="py-12 md:py-24 px-6">
                     <div className="container mx-auto max-w-6xl">
                         <div className="relative rounded-4xl overflow-hidden bg-brand h-[400px] flex items-center justify-center text-center px-6 shadow-2xl shadow-brand/40">
                             {content.cta_image && <div className="absolute inset-0"><img src={content.cta_image} className="w-full h-full object-cover opacity-30 mix-blend-overlay" alt="Building" loading="lazy" decoding="async" /></div>}
