@@ -158,6 +158,23 @@ export const PostManagement = () => {
     }
   };
 
+  // 드롭다운용: 운영일자 최신순 정렬된 프로그램 목록
+  const seminarsByDateDesc = React.useMemo(() => {
+    const parseDate = (val) => {
+      if (!val) return 0;
+      if (typeof val?.toDate === 'function') return val.toDate().getTime();
+      if (val instanceof Date) return val.getTime();
+      const str = String(val).trim().split(' ')[0];
+      const match = str.match(/(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
+      if (match) {
+        const [, y, m, d] = match;
+        return new Date(Number(y), Number(m) - 1, Number(d)).getTime();
+      }
+      return 0;
+    };
+    return [...(seminars || [])].sort((a, b) => parseDate(b.date) - parseDate(a.date));
+  }, [seminars]);
+
   // 프로그램 선택 시 제목 자동 설정
   const handleSeminarSelect = (seminarId) => {
     const seminar = seminars.find(s => String(s.id) === String(seminarId));
@@ -408,7 +425,7 @@ export const PostManagement = () => {
                   className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                 >
                   <option value="">프로그램을 선택하세요</option>
-                  {seminars.map((seminar) => (
+                  {seminarsByDateDesc.map((seminar) => (
                     <option key={seminar.id} value={seminar.id}>
                       {seminar.title} ({seminar.date})
                     </option>
