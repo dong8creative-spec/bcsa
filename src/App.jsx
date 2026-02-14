@@ -3084,7 +3084,7 @@ END:VCALENDAR`;
                     순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
                     ============================================ */}
                 <section className="pt-32 pb-16 px-4 md:px-6">
-                     <div className="container mx-auto max-w-7xl relative mb-52 md:mb-20">
+                     <div className="container mx-auto max-w-7xl relative mb-24 md:mb-20">
                         <div className="flex flex-col md:flex-row items-center md:items-center justify-between mb-8 px-2 text-center md:text-right">
                             <div className="flex-1">
                                 <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-tight break-keep text-dark whitespace-pre-line text-center md:text-left">
@@ -3109,21 +3109,21 @@ END:VCALENDAR`;
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
                             </div>
                             
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-[95%] md:w-auto md:min-w-[800px] bg-white rounded-3xl shadow-float flex flex-col transition-all duration-300 ease-in-out z-20 overflow-hidden -mt-10 md:-mt-12">
-                                <div className="flex flex-col md:flex-row gap-2 md:gap-0 items-center p-3 relative bg-white z-30">
-                                    <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-brand/10 py-2 md:py-0">
-                                        <div className="flex items-center gap-3 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.Search size={14} className="text-accent" /> 키워드 검색</div>
-                                        <input type="text" className="w-full font-bold text-dark bg-transparent outline-none text-sm placeholder-gray-300" placeholder="관심 주제를 입력하세요 (예: 투자, 마케팅)" value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSearch()}/>
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-[95%] md:w-auto md:min-w-[800px] bg-white rounded-2xl md:rounded-3xl shadow-float flex flex-col transition-all duration-300 ease-in-out z-20 overflow-hidden mt-4 md:-mt-12">
+                                <div className="flex flex-col md:flex-row gap-1 md:gap-0 items-center p-2 md:p-3 relative bg-white z-30">
+                                    <div className="flex-1 w-full px-3 md:px-4 border-b md:border-b-0 md:border-r border-brand/10 py-1.5 md:py-0">
+                                        <div className="flex items-center gap-2 mb-0.5 md:mb-1 text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.Search size={12} className="text-accent md:w-3.5 md:h-3.5" /> 키워드 검색</div>
+                                        <input type="text" className="w-full font-bold text-dark bg-transparent outline-none text-xs md:text-sm placeholder-gray-300 py-0.5" placeholder="관심 주제 (예: 투자, 마케팅)" value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSearch()}/>
                                     </div>
-                                    <div className="w-full md:w-48 px-4 border-b md:border-b-0 md:border-r border-brand/10 py-2 md:py-0">
-                                        <div className="flex items-center gap-3 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.Tag size={14} className="text-accent" /> 카테고리</div>
-                                        <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-sm" value={searchCategory} onChange={(e) => setSearchCategory(e.target.value)}><option value="">전체 카테고리</option><option value="교육/세미나">📚 교육 · 세미나</option><option value="네트워킹/모임">🤝 네트워킹 · 모임</option><option value="투자/IR">💰 투자 · IR</option><option value="멘토링/상담">💡 멘토링 · 상담</option><option value="기타">🎸 기타</option></select>
+                                    <div className="w-full md:w-48 px-3 md:px-4 border-b md:border-b-0 md:border-r border-brand/10 py-1.5 md:py-0">
+                                        <div className="flex items-center gap-2 mb-0.5 md:mb-1 text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.Tag size={12} className="text-accent md:w-3.5 md:h-3.5" /> 카테고리</div>
+                                        <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-xs md:text-sm py-0.5" value={searchCategory} onChange={(e) => setSearchCategory(e.target.value)}><option value="">전체 카테고리</option><option value="교육/세미나">📚 교육 · 세미나</option><option value="네트워킹/모임">🤝 네트워킹 · 모임</option><option value="투자/IR">💰 투자 · IR</option><option value="멘토링/상담">💡 멘토링 · 상담</option><option value="기타">🎸 기타</option></select>
                                     </div>
-                                    <div className="w-full md:w-40 px-4 py-2 md:py-0">
-                                        <div className="flex items-center gap-3 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.CheckCircle size={14} className="text-accent" /> 모집 상태</div>
-                                        <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-sm" value={searchStatus} onChange={(e) => setSearchStatus(e.target.value)}><option value="">전체 상태</option><option value="모집중">모집중</option><option value="마감임박">마감임박</option><option value="종료">종료</option></select>
+                                    <div className="w-full md:w-40 px-3 md:px-4 py-1.5 md:py-0">
+                                        <div className="flex items-center gap-2 mb-0.5 md:mb-1 text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.CheckCircle size={12} className="text-accent md:w-3.5 md:h-3.5" /> 모집 상태</div>
+                                        <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-xs md:text-sm py-0.5" value={searchStatus} onChange={(e) => setSearchStatus(e.target.value)}><option value="">전체 상태</option><option value="모집중">모집중</option><option value="마감임박">마감임박</option><option value="종료">종료</option></select>
                                     </div>
-                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSearch(); }} className="w-full md:w-16 h-12 md:h-14 bg-brand rounded-2xl flex items-center justify-center text-white shadow-lg shadow-brand/30 hover:bg-blue-800 transition-colors shrink-0"><Icons.Search /></button>
+                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSearch(); }} className="w-full md:w-16 h-10 md:h-14 bg-brand rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-brand/30 hover:bg-blue-800 transition-colors shrink-0"><Icons.Search className="w-5 h-5 md:w-6 md:h-6" /></button>
                                 </div>
                                 <div className={`transition-all duration-300 ease-in-out bg-soft ${isSearchExpanded ? 'max-h-[400px] opacity-100 border-t border-brand/10' : 'max-h-0 opacity-0'}`}>
                                     <div className="p-4 md:p-6 overflow-y-auto max-h-[400px]">
