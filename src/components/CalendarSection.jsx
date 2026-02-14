@@ -77,36 +77,39 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
     // 주 범위 표시 문자열
     const weekRangeText = `${formatDate(weekDays[0])} ~ ${formatDate(weekDays[6])}`;
     
-    // 날짜 문자열을 표준 형식(YYYY.MM.DD)으로 변환하는 함수
+    // 날짜 문자열 또는 객체(Timestamp/Date)를 표준 형식(YYYY.MM.DD)으로 변환하는 함수
     const normalizeDateString = (dateStr) => {
-        if (!dateStr) return null;
-        
+        if (dateStr == null) return null;
+        // Firestore Timestamp 또는 Date 객체
+        if (typeof dateStr === 'object') {
+            const d = typeof dateStr.toDate === 'function' ? dateStr.toDate() : dateStr;
+            if (d instanceof Date && !isNaN(d.getTime())) {
+                return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+            }
+            return null;
+        }
+        const str = String(dateStr).trim();
+        if (!str) return null;
         // 시간 부분 제거 (예: "2024.01.15 14:00" -> "2024.01.15")
-        let dateOnly = dateStr.trim();
+        let dateOnly = str;
         if (dateOnly.includes(' ')) {
             dateOnly = dateOnly.split(' ')[0];
         }
         if (dateOnly.includes('T')) {
             dateOnly = dateOnly.split('T')[0];
         }
-        
         // 다양한 구분자 처리 (., -, /)
         dateOnly = dateOnly.replace(/-/g, '.').replace(/\//g, '.');
-        
-        // 날짜 파싱
         const parts = dateOnly.split('.');
         if (parts.length < 3) {
-            // 다른 형식 시도 (예: "20240115")
             if (dateOnly.length === 8 && /^\d+$/.test(dateOnly)) {
                 return `${dateOnly.substring(0, 4)}.${dateOnly.substring(4, 6)}.${dateOnly.substring(6, 8)}`;
             }
             return null;
         }
-        
         const year = parts[0];
         const month = parts[1].padStart(2, '0');
         const day = parts[2].padStart(2, '0');
-        
         return `${year}.${month}.${day}`;
     };
     
@@ -157,13 +160,16 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
             const eventDate = parseDateString(ev.date);
             if (!eventDate) return false;
             eventDate.setHours(0, 0, 0, 0);
-            return eventDate >= today && (ev.status === '모집중' || ev.status === '마감임박');
+            const isFutureOrToday = eventDate >= today;
+            const status = ev.status || '';
+            return isFutureOrToday && (status === '모집중' || status === '마감임박' || (status !== '종료' && status !== '후기작성가능'));
         }).length;
         const endedEvents = weekEvents.filter(ev => {
             const eventDate = parseDateString(ev.date);
             if (!eventDate) return false;
             eventDate.setHours(0, 0, 0, 0);
-            return eventDate < today || ev.status === '종료';
+            const status = ev.status || '';
+            return eventDate < today || status === '종료';
         }).length;
         
         return { totalEvents, ongoingEvents, endedEvents };

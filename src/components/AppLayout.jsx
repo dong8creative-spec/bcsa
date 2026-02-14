@@ -482,6 +482,34 @@ const AppLayout = (props) => {
                     </div>
                 </div>
             </header>
+
+            {showProfileIncompleteBanner && (
+                <div className="flex items-center justify-between gap-4 px-4 py-3 bg-amber-50 border-b border-amber-200 text-sm">
+                    <p className="text-amber-900 font-medium flex-1">
+                        필수 회원정보가 입력되지 않았습니다. 서비스 이용을 위해 마이페이지에서 입력해주세요.
+                    </p>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setCurrentView('myPage');
+                                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                            }}
+                            className="px-3 py-1.5 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 transition-colors"
+                        >
+                            마이페이지에서 입력하기
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleProfileIncompleteDismiss}
+                            className="text-amber-700 hover:text-amber-900 font-medium"
+                            aria-label="오늘 하루 안 보기"
+                        >
+                            오늘 하루 안 보기
+                        </button>
+                    </div>
+                </div>
+            )}
             
             <main className="min-h-0 flex-1 overflow-y-auto">
             <div key={currentView} className="min-h-full animate-fade-in">
