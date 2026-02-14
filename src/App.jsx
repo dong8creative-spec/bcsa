@@ -751,16 +751,25 @@ const App = () => {
         if (currentView === 'home' && seminarsData.length > 0) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            
+            // date가 문자열 또는 Timestamp/Date 객체 모두 처리
+            const toDateObj = (dateVal) => {
+                if (dateVal == null) return null;
+                if (typeof dateVal.toDate === 'function') return dateVal.toDate();
+                if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
+                const str = String(dateVal).trim();
+                const matches = str ? str.match(/(\d{4})[\.\-/](\d{1,2})[\.\-/](\d{1,2})/) : null;
+                if (!matches) return null;
+                const year = parseInt(matches[1], 10);
+                const month = parseInt(matches[2], 10) - 1;
+                const day = parseInt(matches[3], 10);
+                const d = new Date(year, month, day);
+                return isNaN(d.getTime()) ? null : d;
+            };
             const upcomingSeminars = seminarsData
                 .filter(s => s.status !== '종료')
                 .map(s => {
-                    const matches = s.date ? s.date.match(/(\d{4})[\.-](\d{2})[\.-](\d{2})/) : null;
-                    if (!matches) return null;
-                    const year = parseInt(matches[1]);
-                    const month = parseInt(matches[2]) - 1;
-                    const day = parseInt(matches[3]);
-                    const seminarDate = new Date(year, month, day);
+                    const seminarDate = toDateObj(s.date);
+                    if (!seminarDate) return null;
                     seminarDate.setHours(0, 0, 0, 0);
                     if (seminarDate >= today) {
                         return { ...s, dateObj: seminarDate };
@@ -2151,6 +2160,9 @@ const App = () => {
         window.resetPopupShown = () => {
             try {
                 localStorage.removeItem('busan_ycc_popup_shown');
+                if (import.meta.env.MODE === 'development') {
+                    console.log('[개발] 프로그램 팝업 표시 기록 초기화됨. 새로고침 후 홈에서 다시 뜹니다.');
+                }
             } catch {}
         };
     }

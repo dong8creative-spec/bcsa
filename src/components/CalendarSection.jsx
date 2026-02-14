@@ -156,12 +156,13 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
         
         const weekEvents = weekDays.flatMap(date => getEventsForDate(date));
         const totalEvents = weekEvents.length;
-        const ongoingEvents = weekEvents.filter(ev => {
-            const eventDate = parseDateString(ev.date);
+        // 진행 중: 전체 프로그램(safeSeminars) 기준 — 날짜가 오늘 이상이고 모집중/마감임박 등
+        const ongoingEvents = safeSeminars.filter(s => {
+            const eventDate = parseDateString(s.date);
             if (!eventDate) return false;
             eventDate.setHours(0, 0, 0, 0);
             const isFutureOrToday = eventDate >= today;
-            const status = ev.status || '';
+            const status = s.status || '';
             return isFutureOrToday && (status === '모집중' || status === '마감임박' || (status !== '종료' && status !== '후기작성가능'));
         }).length;
         const endedEvents = weekEvents.filter(ev => {

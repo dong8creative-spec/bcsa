@@ -6,7 +6,6 @@ import ModalPortal from './ModalPortal';
 
 const FAB_GAP_PX = 16;
 const FAB_ESTIMATE_HEIGHT_PX = 152;
-const PROFILE_INCOMPLETE_DISMISSED_KEY = 'profile_incomplete_alert_dismissed';
 
 /** 필수 회원정보 미기입 여부 (SignUpPage 필수 항목과 동일 기준) */
 function isProfileIncomplete(user) {
@@ -40,7 +39,7 @@ const AppLayout = (props) => {
     const prevViewRef = useRef(null);
     const [fabStyle, setFabStyle] = useState({ position: 'fixed', right: '1.5rem', bottom: '10rem' });
     const [showRefundPolicyModal, setShowRefundPolicyModal] = useState(false);
-    const [profileIncompleteDismissed, setProfileIncompleteDismissed] = useState(false);
+    const [profileIncompleteModalClosed, setProfileIncompleteModalClosed] = useState(false);
     const {
         MobileMenu,
         renderView,
@@ -120,29 +119,7 @@ const AppLayout = (props) => {
         console.info('[RenderView] currentView:', currentView);
     }, [currentView]);
 
-    // 필수정보 미기입 알람 "오늘 하루 안 보기" 세션 복원
-    useEffect(() => {
-        try {
-            const uid = currentUser?.id || currentUser?.uid;
-            setProfileIncompleteDismissed(
-                !!uid && typeof sessionStorage !== 'undefined' && sessionStorage.getItem(PROFILE_INCOMPLETE_DISMISSED_KEY) === String(uid)
-            );
-        } catch (_) {
-            setProfileIncompleteDismissed(false);
-        }
-    }, [currentUser?.id, currentUser?.uid]);
-
-    const showProfileIncompleteBanner = currentUser && isProfileIncomplete(currentUser) && !profileIncompleteDismissed;
-
-    const handleProfileIncompleteDismiss = () => {
-        try {
-            const uid = currentUser?.id || currentUser?.uid;
-            if (uid && typeof sessionStorage !== 'undefined') {
-                sessionStorage.setItem(PROFILE_INCOMPLETE_DISMISSED_KEY, String(uid));
-            }
-            setProfileIncompleteDismissed(true);
-        } catch (_) {}
-    };
+    const showProfileIncompleteBanner = currentUser && isProfileIncomplete(currentUser) && !profileIncompleteModalClosed;
 
     return (
         <div className="min-h-screen flex flex-col bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">
@@ -483,34 +460,6 @@ const AppLayout = (props) => {
                 </div>
             </header>
 
-            {showProfileIncompleteBanner && (
-                <div className="flex items-center justify-between gap-4 px-4 py-3 bg-amber-50 border-b border-amber-200 text-sm">
-                    <p className="text-amber-900 font-medium flex-1">
-                        필수 회원정보가 입력되지 않았습니다. 서비스 이용을 위해 마이페이지에서 입력해주세요.
-                    </p>
-                    <div className="flex items-center gap-2 shrink-0">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setCurrentView('myPage');
-                                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
-                            }}
-                            className="px-3 py-1.5 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 transition-colors"
-                        >
-                            마이페이지에서 입력하기
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleProfileIncompleteDismiss}
-                            className="text-amber-700 hover:text-amber-900 font-medium"
-                            aria-label="오늘 하루 안 보기"
-                        >
-                            오늘 하루 안 보기
-                        </button>
-                    </div>
-                </div>
-            )}
-            
             <main className="min-h-0 flex-1 overflow-y-auto">
             <div key={currentView} className="min-h-full animate-fade-in">
             {(() => {
@@ -659,6 +608,40 @@ const AppLayout = (props) => {
                     onSubmit={handleInquirySubmit}
                 />
             ) : null}
+
+            {/* 필수 회원정보 입력 안내 팝업 */}
+            {showProfileIncompleteBanner && (
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setProfileIncompleteModalClosed(true); }}>
+                        <div className="bg-white rounded-2xl shadow-xl border border-amber-200 w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-start gap-3 mb-5">
+                                <div className="shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                                    <Icons.AlertCircle className="w-5 h-5 text-amber-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-dark mb-1">필수 회원정보 입력 안내</h3>
+                                    <p className="text-sm text-gray-600 leading-relaxed">
+                                        필수 회원정보가 입력되지 않았습니다. 서비스 이용을 위해 마이페이지에서 입력해주세요.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setProfileIncompleteModalClosed(true);
+                                        setCurrentView('myPage');
+                                        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                                    }}
+                                    className="px-4 py-2.5 text-sm font-bold text-white bg-amber-600 rounded-xl hover:bg-amber-700 transition-colors"
+                                >
+                                    마이페이지에서 입력하기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </ModalPortal>
+            )}
             
             {/* 프로그램 알람 모달 */}
             {showProgramAlertModal && programAlerts.length > 0 && currentUser ? (

@@ -8,6 +8,79 @@ import ModalPortal from '../components/ModalPortal';
 
 const COMPANY_IMAGES_MAX = 10;
 
+// 회원가입 페이지와 동일한 상수·헬퍼 (회원정보 수정 폼 일치용)
+const normalizePhone = (p) => (p || '').replace(/\D/g, '');
+const EMAIL_DOMAINS = ['naver.com', 'daum.net', 'gmail.com', 'kakao.com', 'nate.com', 'hanmail.net', 'yahoo.co.kr', '직접입력'];
+const BUSINESS_CATEGORIES = [
+    '식품제조업', '의류제조업', '화학제조업', '전자제품제조업', '기계제조업', '기타 제조업',
+    '도매업', '소매업', '온라인 쇼핑몰', '편의점/마트',
+    'IT/소프트웨어', '웹/앱 개발', '디자인/광고', '컨설팅', '교육/학원', '의료/병원', '미용/네일',
+    '요식업 (한식)', '요식업 (양식)', '요식업 (중식)', '요식업 (일식)', '요식업 (카페)',
+    '숙박업', '운송업', '부동산', '법률/회계', '기타 서비스업',
+    '건설업', '인테리어', '토목공사', '농업', '축산업', '임업', '어업', '기타 사업',
+];
+const BUSINESS_DOC_MAX_SIZE = 600 * 1024;
+
+const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || '');
+const composeEmail = (id, domain, custom) => {
+    const i = (id || '').trim();
+    const d = domain === '직접입력' ? (custom || '').trim() : (domain || '');
+    if (!i || !d) return '';
+    return `${i}@${d}`;
+};
+const validatePhone = (phone) => {
+    const cleaned = (phone || '').replace(/[^0-9]/g, '');
+    return cleaned.length === 11 && /^01[0-9][0-9]{8}$/.test(cleaned);
+};
+const parseBirthdateInput = (value) => {
+    if (!value || typeof value !== 'string') return '';
+    const trimmed = value.trim();
+    const digitsOnly = trimmed.replace(/\D/g, '');
+    if (digitsOnly.length >= 8) {
+        const yyyy = digitsOnly.slice(0, 4), mm = digitsOnly.slice(4, 6), dd = digitsOnly.slice(6, 8);
+        const y = parseInt(yyyy, 10), m = parseInt(mm, 10), d = parseInt(dd, 10);
+        if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31) return `${yyyy}-${mm}-${dd}`;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        const [y, m, d] = trimmed.split('-').map(Number);
+        if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31) return trimmed;
+    }
+    return value;
+};
+/** user 객체로 수정 폼 초기값 생성 (이메일 id/도메인 분리) */
+function getInitialEditForm(user) {
+    const u = user || {};
+    const email = (u.email || '').trim();
+    let emailId = '', emailDomain = 'naver.com', emailDomainCustom = '';
+    if (email && email.includes('@')) {
+        const [id, domain] = email.split('@');
+        emailId = id || '';
+        emailDomain = EMAIL_DOMAINS.includes(domain) ? domain : '직접입력';
+        if (emailDomain === '직접입력') emailDomainCustom = domain || '';
+    }
+    return {
+        name: u.name || '',
+        nickname: u.nickname || '',
+        birthdate: u.birthdate || '',
+        gender: u.gender || '',
+        phone: (u.phone || u.phoneNumber || '').replace(/\D/g, '').slice(0, 11),
+        email: email,
+        emailId,
+        emailDomain,
+        emailDomainCustom,
+        company: u.company || '',
+        businessRegistrationNumber: (u.businessRegistrationNumber || '').replace(/\D/g, '').slice(0, 10),
+        position: u.position || u.role || '',
+        businessCategory: u.businessCategory || u.industry || '',
+        collaborationIndustry: u.collaborationIndustry || '',
+        keyCustomers: u.keyCustomers || '',
+        desiredIndustry: u.desiredIndustry || '',
+        businessRegistrationDoc: u.businessRegistrationDoc || '',
+        businessRegistrationFileName: u.businessRegistrationFileName || '',
+        img: u.img || '',
+    };
+}
+
 const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, pageTitles, onUpdatePost }) => {
     const [activeTab, setActiveTab] = useState('seminars');
     const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -22,15 +95,9 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
     const [companyImageUploading, setCompanyImageUploading] = useState(false);
     const companyMainImageInputRef = useRef(null);
     const companyImagesInputRef = useRef(null);
-    const [editFormData, setEditFormData] = useState({
-        name: user.name || '',
-        company: user.company || '',
-        role: user.role || '',
-        industry: user.industry || user.businessCategory || '',
-        address: user.address || '',
-        phone: user.phone || '',
-        img: user.img || ''
-    });
+    const [editFormData, setEditFormData] = useState(() => getInitialEditForm(user));
+    const [profileEditError, setProfileEditError] = useState('');
+    const [editUserType, setEditUserType] = useState(user?.userType || '');
     
     // 즐겨찾기 관련 상태
     const [bookmarks, setBookmarks] = useState([]);
@@ -127,6 +194,13 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
         }
     }, [user?.companyMainImage, user?.companyDescription, user?.companyImages]);
 
+    useEffect(() => {
+        if (user && !isEditingProfile) {
+            setEditFormData(getInitialEditForm(user));
+            setEditUserType(user.userType || '');
+        }
+    }, [user?.id, user?.uid, isEditingProfile]);
+
     const handleCompanyMainImageChange = async (e) => {
         const file = e.target.files?.[0];
         e.target.value = '';
@@ -204,20 +278,108 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
         }
     };
 
+    const businessNumberDigits = (editFormData.businessRegistrationNumber || '').replace(/\D/g, '');
+    const isBusinessNumberValid = businessNumberDigits.length === 10;
+
     const handleSaveProfile = async () => {
-        if (!editFormData.name) {
-            return alert("이름은 필수 항목입니다.");
+        setProfileEditError('');
+        const email = composeEmail(editFormData.emailId, editFormData.emailDomain, editFormData.emailDomainCustom);
+        const normalizedBirthdate = parseBirthdateInput(editFormData.birthdate);
+
+        if (!editFormData.name?.trim()) {
+            setProfileEditError('이름을 입력해주세요.');
+            return;
         }
-        if (onUpdateProfile) {
-            await onUpdateProfile(editFormData);
-            setIsEditingProfile(false);
-        } else {
+        if (!normalizedBirthdate) {
+            setProfileEditError('생년월일을 YYYY-MM-DD 형식으로 입력해주세요.');
+            return;
+        }
+        if (!editFormData.gender) {
+            setProfileEditError('성별을 선택해주세요.');
+            return;
+        }
+        if (!validatePhone(editFormData.phone)) {
+            setProfileEditError('연락처는 010 등 11자리 숫자로 입력해주세요.');
+            return;
+        }
+        if (!validateEmail(email)) {
+            setProfileEditError('올바른 이메일 형식을 입력해주세요.');
+            return;
+        }
+        if (editUserType === '사업자') {
+            if (!editFormData.company?.trim()) {
+                setProfileEditError('상호명을 입력해주세요.');
+                return;
+            }
+            if (!isBusinessNumberValid) {
+                setProfileEditError('사업자등록번호 10자리 숫자를 입력해주세요.');
+                return;
+            }
+            if (!editFormData.businessCategory) {
+                setProfileEditError('업종/업태를 선택해주세요.');
+                return;
+            }
+            if (!editFormData.collaborationIndustry?.trim()) {
+                setProfileEditError('협업 업종을 입력해주세요.');
+                return;
+            }
+            if (!editFormData.keyCustomers?.trim()) {
+                setProfileEditError('핵심고객을 입력해주세요.');
+                return;
+            }
+        }
+        if (!onUpdateProfile) {
             alert("프로필 수정 기능이 준비되지 않았습니다.");
+            return;
         }
-    }
+
+        const updatedData = {
+            name: editFormData.name.trim(),
+            nickname: (editFormData.nickname || '').trim(),
+            birthdate: normalizedBirthdate,
+            gender: editFormData.gender || '',
+            phone: editFormData.phone.trim(),
+            email: email.trim(),
+            userType: editUserType,
+            img: editFormData.img || user?.img || '',
+            company: editUserType === '사업자' ? (editFormData.company || '').trim() : '',
+            businessRegistrationNumber: editUserType === '사업자' ? businessNumberDigits : '',
+            position: editUserType === '사업자' ? (editFormData.position || '').trim() : '',
+            role: editUserType === '사업자' ? (editFormData.position || '').trim() : '',
+            businessCategory: editUserType === '사업자' ? editFormData.businessCategory : '',
+            industry: editUserType === '사업자' ? editFormData.businessCategory : '',
+            collaborationIndustry: editUserType === '사업자' ? (editFormData.collaborationIndustry || '').trim() : '',
+            keyCustomers: editUserType === '사업자' ? (editFormData.keyCustomers || '').trim() : '',
+            desiredIndustry: editUserType === '예창' ? (editFormData.desiredIndustry || '').trim() : '',
+            businessRegistrationDoc: editUserType === '사업자' ? (editFormData.businessRegistrationDoc || '') : '',
+            businessRegistrationFileName: editUserType === '사업자' ? (editFormData.businessRegistrationFileName || '') : '',
+        };
+        await onUpdateProfile(updatedData);
+        setIsEditingProfile(false);
+        setProfileEditError('');
+    };
+
+    const handleBusinessDocChange = (e) => {
+        const file = e.target?.files?.[0];
+        if (!file) {
+            setEditFormData(f => ({ ...f, businessRegistrationDoc: '', businessRegistrationFileName: '' }));
+            return;
+        }
+        if (file.size > BUSINESS_DOC_MAX_SIZE) {
+            alert(`사업자등록증 파일 크기는 ${Math.round(BUSINESS_DOC_MAX_SIZE / 1024)}KB 이하여야 합니다.`);
+            e.target.value = '';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setEditFormData(f => ({ ...f, businessRegistrationDoc: reader.result || '', businessRegistrationFileName: file.name }));
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    };
 
     const handleFileChange = (e) => {
-        const file = e.target.files[0];
+        const file = e.target.files?.[0];
         if (!file) return;
         if (file.size > 1024 * 1024) {
             alert("이미지 크기는 1MB 이하로 제한됩니다.");
@@ -225,7 +387,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
         }
         const reader = new FileReader();
         reader.onloadend = () => {
-            setEditFormData({...editFormData, img: reader.result});
+            setEditFormData(prev => ({ ...prev, img: reader.result }));
         };
         reader.readAsDataURL(file);
     };
@@ -277,24 +439,128 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                         </div>
                         <div className="flex-1">
                             {isEditingProfile ? (
-                                <div className="space-y-4">
-                                    <input type="text" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} className="w-full px-4 py-3 border border-blue-200 focus:border-blue-400 focus:outline-none text-sm" placeholder="이름" />
-                                    <input type="text" value={editFormData.company} onChange={e => setEditFormData({...editFormData, company: e.target.value})} className="w-full px-4 py-3 border border-blue-200 focus:border-blue-400 focus:outline-none text-sm" placeholder="회사명" />
-                                    <input type="text" value={editFormData.role} onChange={e => setEditFormData({...editFormData, role: e.target.value})} className="w-full px-4 py-3 border border-blue-200 focus:border-blue-400 focus:outline-none text-sm" placeholder="직책" />
-                                    <input type="text" value={editFormData.industry} onChange={e => setEditFormData({...editFormData, industry: e.target.value})} className="w-full px-4 py-3 border border-blue-200 focus:border-blue-400 focus:outline-none text-sm" placeholder="업종" />
-                                    <input type="text" value={editFormData.address} onChange={e => setEditFormData({...editFormData, address: e.target.value})} className="w-full px-4 py-3 border border-blue-200 focus:border-blue-400 focus:outline-none text-sm" placeholder="주소" />
-                                    <input type="text" value={editFormData.phone} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} className="w-full px-4 py-3 border border-blue-200 focus:border-blue-400 focus:outline-none text-sm" placeholder="전화번호" />
-                                    <div className="flex gap-3 pt-2">
-                                        <button type="button" onClick={handleSaveProfile} className="px-6 py-3 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors">저장</button>
-                                        <button type="button" onClick={() => { setIsEditingProfile(false); setEditFormData({name: user.name || '', company: user.company || '', role: user.role || '', industry: user.industry || user.businessCategory || '', address: user.address || '', phone: user.phone || '', img: user.img || ''}); }} className="px-6 py-3 border border-blue-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">취소</button>
+                                <div className="w-full max-w-2xl">
+                                    <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                        <p className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                                            <Icons.AlertCircle className="w-5 h-5 shrink-0" />
+                                            표시(*)된 항목은 필수입니다. 회원가입 시와 동일한 항목을 수정할 수 있습니다.
+                                        </p>
+                                    </div>
+                                    <div className="space-y-5">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">회원 유형 <span className="text-red-500">*</span></label>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <button type="button" onClick={() => setEditUserType('사업자')} className={`p-4 rounded-xl border-2 text-left transition-all ${editUserType === '사업자' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'}`}>
+                                                    <span className="font-bold text-dark">사업자</span>
+                                                    <p className="text-xs text-gray-500 mt-1">현재 사업을 운영 중이신 분</p>
+                                                </button>
+                                                <button type="button" onClick={() => setEditUserType('예창')} className={`p-4 rounded-xl border-2 text-left transition-all ${editUserType === '예창' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'}`}>
+                                                    <span className="font-bold text-dark">예비창업자</span>
+                                                    <p className="text-xs text-gray-500 mt-1">창업을 준비 중이신 분</p>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {editUserType && (
+                                            <>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-gray-700 mb-2">이름 <span className="text-red-500">*</span></label>
+                                                        <input type="text" required placeholder="이름 입력" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.name} onChange={e => setEditFormData(f => ({ ...f, name: e.target.value }))} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-gray-700 mb-2">닉네임 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                                        <input type="text" placeholder="닉네임 입력" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.nickname} onChange={e => setEditFormData(f => ({ ...f, nickname: e.target.value }))} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-gray-700 mb-2">생년월일 <span className="text-red-500">*</span></label>
+                                                        <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD (예: 1990-01-15)" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.birthdate} onChange={e => { const v = e.target.value; const parsed = parseBirthdateInput(v); setEditFormData(f => ({ ...f, birthdate: parsed || v })); }} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-gray-700 mb-2">성별 <span className="text-red-500">*</span></label>
+                                                        <select required className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={editFormData.gender} onChange={e => setEditFormData(f => ({ ...f, gender: e.target.value }))}>
+                                                            <option value="">선택</option>
+                                                            <option value="남성">남성</option>
+                                                            <option value="여성">여성</option>
+                                                            <option value="기타">기타</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-gray-700 mb-2">연락처 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(숫자 11자리)</span></label>
+                                                        <input type="tel" inputMode="numeric" placeholder="01012345678" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.phone} onChange={e => { const raw = e.target.value.replace(/\D/g, ''); setEditFormData(f => ({ ...f, phone: raw.length > 11 ? raw.slice(0, 11) : raw })); }} maxLength={11} />
+                                                        {editFormData.phone && editFormData.phone.length === 11 && !validatePhone(editFormData.phone) && <p className="text-xs text-red-500 mt-1">010, 011 등으로 시작하는 11자리 번호를 입력해주세요.</p>}
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-gray-700 mb-2">이메일 <span className="text-red-500">*</span></label>
+                                                        <div className="flex flex-wrap gap-2 items-center">
+                                                            <input type="text" inputMode="email" placeholder="example" className="flex-1 min-w-[100px] p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.emailId} onChange={e => setEditFormData(f => ({ ...f, emailId: e.target.value, email: composeEmail(e.target.value, f.emailDomain, f.emailDomainCustom) }))} />
+                                                            <span className="text-slate-500">@</span>
+                                                            <select className="p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={editFormData.emailDomain} onChange={e => setEditFormData(f => ({ ...f, emailDomain: e.target.value, email: composeEmail(f.emailId, e.target.value, f.emailDomainCustom) }))}>
+                                                                {EMAIL_DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
+                                                            </select>
+                                                            {editFormData.emailDomain === '직접입력' && (
+                                                                <input type="text" placeholder="도메인 입력" className="flex-1 min-w-[120px] p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.emailDomainCustom} onChange={e => setEditFormData(f => ({ ...f, emailDomainCustom: e.target.value, email: composeEmail(f.emailId, f.emailDomain, e.target.value) }))} />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {editUserType === '사업자' && (
+                                                    <div className="space-y-5 pt-2">
+                                                        <div>
+                                                            <label className="block text-sm font-bold text-gray-700 mb-2">상호명 <span className="text-red-500">*</span></label>
+                                                            <input type="text" required placeholder="회사 또는 사업체 이름" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.company} onChange={e => setEditFormData(f => ({ ...f, company: e.target.value }))} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-sm font-bold text-gray-700 mb-2">사업자등록번호 <span className="text-red-500">*</span></label>
+                                                            <input type="text" inputMode="numeric" maxLength={10} placeholder="숫자 10자리 (예: 1234567890)" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.businessRegistrationNumber} onChange={e => setEditFormData(f => ({ ...f, businessRegistrationNumber: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
+                                                            {editFormData.businessRegistrationNumber && !isBusinessNumberValid && <p className="text-xs text-red-500 mt-1">숫자 10자리를 입력해주세요.</p>}
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-sm font-bold text-gray-700 mb-2">직책/직함 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                                            <input type="text" placeholder="예: 대표, 이사, 팀장" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.position} onChange={e => setEditFormData(f => ({ ...f, position: e.target.value }))} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-sm font-bold text-gray-700 mb-2">업종 / 업태 <span className="text-red-500">*</span></label>
+                                                            <select required className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={editFormData.businessCategory} onChange={e => setEditFormData(f => ({ ...f, businessCategory: e.target.value }))}>
+                                                                <option value="">선택</option>
+                                                                {BUSINESS_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-sm font-bold text-gray-700 mb-2">사업자등록증 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                                            <input type="file" accept="image/*,.pdf,application/pdf" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand file:text-white file:font-medium file:text-sm" onChange={handleBusinessDocChange} />
+                                                            {editFormData.businessRegistrationFileName && <p className="text-xs text-gray-500 mt-1">등록됨: {editFormData.businessRegistrationFileName}</p>}
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-sm font-bold text-gray-700 mb-2">협업 업종 <span className="text-red-500">*</span></label>
+                                                            <input type="text" required placeholder="협업 희망 업종" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.collaborationIndustry} onChange={e => setEditFormData(f => ({ ...f, collaborationIndustry: e.target.value }))} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-sm font-bold text-gray-700 mb-2">핵심고객 <span className="text-red-500">*</span></label>
+                                                            <input type="text" required placeholder="핵심 고객층" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.keyCustomers} onChange={e => setEditFormData(f => ({ ...f, keyCustomers: e.target.value }))} />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {editUserType === '예창' && (
+                                                    <div>
+                                                        <label className="block text-sm font-bold text-gray-700 mb-2">희망업종 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                                        <input type="text" placeholder="희망 업종 또는 분야" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.desiredIndustry} onChange={e => setEditFormData(f => ({ ...f, desiredIndustry: e.target.value }))} />
+                                                    </div>
+                                                )}
+                                                {profileEditError && <p className="text-sm text-red-600 font-medium">{profileEditError}</p>}
+                                                <div className="flex gap-3 pt-4">
+                                                    <button type="button" onClick={() => { setIsEditingProfile(false); setEditFormData(getInitialEditForm(user)); setEditUserType(user?.userType || ''); setProfileEditError(''); }} className="px-6 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300">취소</button>
+                                                    <button type="button" onClick={handleSaveProfile} className="flex-1 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">저장</button>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             ) : (
                                 <Fragment>
                                     <h3 className="text-3xl font-light text-gray-900 mb-2">{user.name}</h3>
-                                    <p className="text-sm text-gray-600 mb-3">{user.company} · {user.role}</p>
-                                    <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium mt-1">{user.industry}</span>
-                                    <button type="button" onClick={() => setIsEditingProfile(true)} className="mt-6 px-5 py-2 border border-blue-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                                    <p className="text-sm text-gray-600 mb-3">{user.company || ''} {user.company && (user.position || user.role) ? '·' : ''} {user.position || user.role || ''}</p>
+                                    <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium mt-1">{user.industry || user.businessCategory || ''}</span>
+                                    <button type="button" onClick={() => { setEditFormData(getInitialEditForm(user)); setEditUserType(user?.userType || (user?.company || user?.businessRegistrationNumber ? '사업자' : '예창')); setProfileEditError(''); setIsEditingProfile(true); }} className="mt-6 px-5 py-2 border border-blue-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
                                         개인정보 수정
                                     </button>
                                     {user.approvalStatus === 'pending' && (
