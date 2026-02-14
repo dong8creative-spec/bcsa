@@ -790,8 +790,11 @@ const App = () => {
                     ...s,
                     isDeadlineSoon: isDeadlineSoon(s)
                 }));
+                // 이미 신청한 프로그램은 팝업에서 제외 (신청한 사람은 해당 프로그램 팝업이 뜨지 않음)
+                const appliedIds = new Set((mySeminars || []).map(m => m.id).filter(Boolean));
+                const toShow = seminarsWithDeadline.filter(p => !appliedIds.has(p.id));
                 // 팝업 이미지 사전 로딩 (캐시 미적중 시 대비, 위 useEffect에서 이미 앞당겨 preload함)
-                seminarsWithDeadline.slice(0, 3).forEach((p) => {
+                toShow.slice(0, 3).forEach((p) => {
                     if (p.img && typeof p.img === 'string') {
                         const img = new Image();
                         img.src = p.img;
@@ -799,12 +802,12 @@ const App = () => {
                 });
                 // 팝업 설정 전에 ref를 true로 설정하여 중복 방지
                 popupShownRef.current = true;
-                setPopupPrograms(seminarsWithDeadline);
+                setPopupPrograms(toShow.length > 0 ? toShow : []);
             } else {
                 setPopupPrograms([]);
             }
         }
-    }, [currentView, seminarsData]);
+    }, [currentView, seminarsData, mySeminars]);
     
     // Load members from Firebase (우선 사용 - 애드민과 동기화)
     useEffect(() => {
@@ -3117,7 +3120,7 @@ END:VCALENDAR`;
                     활동중인 사업가, 진행된 세미나, 투자 성공 사례 등의 통계를 표시합니다.
                     순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
                     ============================================ */}
-                <section className="py-20 bg-soft/50">
+                <section className="pt-32 pb-20 md:py-20 bg-soft/50">
                     <div className="container mx-auto max-w-6xl px-6">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
                             <div><div className="text-3xl md:text-4xl font-bold text-brand mb-2">{content.stat_1_val}</div><div className="text-sm text-gray-500 font-medium break-keep">{content.stat_1_desc}</div></div>

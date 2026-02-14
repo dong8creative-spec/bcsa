@@ -6,10 +6,12 @@ const PAGE_SIZE = 10;
 
 const MEMBER_GRADE_OPTIONS = [
   { value: '', label: '등급 없음' },
-  { value: '파트너사', label: '파트너사' },
+  { value: '마스터', label: '마스터' },
   { value: '운영진', label: '운영진' },
+  { value: '파트너사', label: '파트너사' },
   { value: '사업자', label: '사업자' },
   { value: '예창', label: '예창' },
+  { value: '대기자', label: '대기자' },
 ];
 
 /**
@@ -74,11 +76,11 @@ export const UserManagement = () => {
     }
   };
 
-  /** 회원등급 지정 시 승인 처리 + 역할 지정(운영진=관리자, 그 외=일반 회원) */
+  /** 회원등급 지정 시 승인 처리 + 역할 지정(마스터/운영진=관리자, 그 외=일반 회원) */
   const handleGradeChange = async (userId, value) => {
     try {
       const grade = value || '';
-      const role = grade === '운영진' ? 'admin' : 'user';
+      const role = (grade === '마스터' || grade === '운영진') ? 'admin' : 'user';
       await firebaseService.updateUser(userId, {
         memberGrade: grade,
         approvalStatus: 'approved',
@@ -203,7 +205,7 @@ export const UserManagement = () => {
 
     try {
       const grade = bulkGradeValue || '';
-      const role = grade === '운영진' ? 'admin' : 'user';
+      const role = (grade === '마스터' || grade === '운영진') ? 'admin' : 'user';
       for (const id of selectedIds) {
         await firebaseService.updateUser(id, {
           memberGrade: grade,

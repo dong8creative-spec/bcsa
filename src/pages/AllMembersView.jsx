@@ -63,8 +63,10 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
 
     // 업종 목록 추출
     const industries = ['전체', ...new Set(members.map(m => m.industry || m.businessCategory || '기타').filter(Boolean))];
-    // 등급 목록 추출
-    const grades = ['전체', '파트너사', '운영진', '사업자', '예창'];
+    // 등급 목록 추출 (표시·필터 순서: 마스터 → 운영진 → 파트너사 → 사업자 → 예창 → 대기자)
+    const grades = ['전체', '마스터', '운영진', '파트너사', '사업자', '예창', '대기자'];
+    // 등급 정렬 시 사용할 우선순위 (작을수록 먼저)
+    const GRADE_PRIORITY = { '마스터': 0, '운영진': 1, '파트너사': 2, '사업자': 3, '예창': 4, '대기자': 5 };
 
     useEffect(() => {
         let filtered = members.filter(member => {
@@ -90,6 +92,13 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                 if (typeof c === 'string') return new Date(c).getTime();
                 return 0;
             }
+            if (k === 'industry') {
+                return (m.industry || m.businessCategory || '').toString().trim().toLowerCase();
+            }
+            if (k === 'memberGrade') {
+                const g = (m.memberGrade || '').toString().trim();
+                return GRADE_PRIORITY[g] ?? 99;
+            }
             return (m[k] || '').toString().trim().toLowerCase();
         };
         const list = [...filteredMembers];
@@ -98,6 +107,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
             const va = getVal(a, sortKey);
             const vb = getVal(b, sortKey);
             if (sortKey === 'createdAt') return order * (va - vb);
+            if (sortKey === 'memberGrade') return order * (va - vb);
             if (va < vb) return -1 * order;
             if (va > vb) return 1 * order;
             return 0;
@@ -243,6 +253,15 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                     </th>
                                     <th
                                         className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
+                                        onClick={() => handleSort('industry')}
+                                    >
+                                        <span className="flex items-center gap-1.5">
+                                            업종/업태
+                                            {sortKey === 'industry' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                                        </span>
+                                    </th>
+                                    <th
+                                        className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
                                         onClick={() => handleSort('createdAt')}
                                     >
                                         <span className="flex items-center gap-1.5">
@@ -255,7 +274,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                             <tbody>
                                 {paginatedMembers.length === 0 ? (
                                     <tr>
-                                        <td colSpan={4} className="px-4 py-12 text-center text-gray-500">
+                                        <td colSpan={5} className="px-4 py-12 text-center text-gray-500">
                                             조건에 맞는 회원이 없습니다.
                                         </td>
                                     </tr>
@@ -269,10 +288,12 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                             <td className="px-4 py-3 text-sm text-gray-700">
                                                 {member.memberGrade ? (
                                                     <span className={`inline-block px-2 py-0.5 text-xs font-bold rounded-full ${
-                                                        member.memberGrade === '파트너사' ? 'bg-gradient-to-r from-yellow-500 to-yellow-700 text-white' :
+                                                        member.memberGrade === '마스터' ? 'bg-gradient-to-r from-yellow-500 to-yellow-700 text-white' :
                                                         member.memberGrade === '운영진' ? 'bg-white text-red-600 border border-red-600' :
+                                                        member.memberGrade === '파트너사' ? 'bg-brand text-white' :
                                                         member.memberGrade === '사업자' ? 'bg-gray-200 text-blue-700' :
-                                                        'bg-gray-200 text-gray-700'
+                                                        member.memberGrade === '예창' ? 'bg-gray-200 text-gray-700' :
+                                                        'bg-gray-200 text-gray-600'
                                                     }`}>
                                                         {member.memberGrade}
                                                     </span>
@@ -280,6 +301,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                             </td>
                                             <td className="px-4 py-3 text-sm font-medium text-dark">{member.name || '-'}</td>
                                             <td className="px-4 py-3 text-sm text-gray-600">{member.company || '-'}</td>
+                                            <td className="px-4 py-3 text-sm text-gray-600">{member.industry || member.businessCategory || '-'}</td>
                                             <td className="px-4 py-3 text-sm text-gray-600">
                                                 {member.createdAt?.toDate?.().toLocaleDateString('ko-KR') ?? (typeof member.createdAt === 'string' ? new Date(member.createdAt).toLocaleDateString('ko-KR') : null) ?? '-'}
                                             </td>
@@ -357,11 +379,13 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                         <span className="inline-block px-3 py-1 bg-brand/10 text-brand text-sm font-bold rounded-full">{selectedMember.industry || selectedMember.businessCategory || '업종 미지정'}</span>
                                         {selectedMember.memberGrade && (
                                             <span className={`inline-block px-3 py-1 text-sm font-bold rounded-full ${
-                                                selectedMember.memberGrade === '파트너사' ? 'bg-gradient-to-r from-yellow-500 to-yellow-700 text-white shadow-lg' :
+                                                selectedMember.memberGrade === '마스터' ? 'bg-gradient-to-r from-yellow-500 to-yellow-700 text-white shadow-lg' :
                                                 selectedMember.memberGrade === '운영진' ? 'bg-white text-red-600 border-2 border-red-600' :
+                                                selectedMember.memberGrade === '파트너사' ? 'bg-brand text-white' :
                                                 selectedMember.memberGrade === '사업자' ? 'bg-gray-200 text-blue-700' :
-                                                'bg-gray-200 text-gray-900'
-                                            }`} style={selectedMember.memberGrade === '파트너사' ? { textShadow: '0 1px 2px rgba(0,0,0,0.3)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.2)' } : {}}>
+                                                selectedMember.memberGrade === '예창' ? 'bg-gray-200 text-gray-700' :
+                                                'bg-gray-200 text-gray-600'
+                                            }`} style={selectedMember.memberGrade === '마스터' ? { textShadow: '0 1px 2px rgba(0,0,0,0.3)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.2)' } : {}}>
                                                 {selectedMember.memberGrade}
                                             </span>
                                         )}

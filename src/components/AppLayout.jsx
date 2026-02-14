@@ -460,7 +460,7 @@ const AppLayout = (props) => {
                 </div>
             </header>
 
-            <main className="min-h-0 flex-1 overflow-y-auto">
+            <main className="min-h-0 flex-1 overflow-y-auto pr-20 md:pr-0">
             <div key={currentView} className="min-h-full animate-fade-in">
             {(() => {
                 try {
@@ -738,14 +738,14 @@ const AppLayout = (props) => {
             <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onNavigate={handleNavigation} menuEnabled={menuEnabled} menuNames={menuNames} menuOrder={menuOrder} />
 
             {/* 플로팅 소셜 아이콘 (푸터 전까지 따라다니다가 푸터에 닿으면 멈춤) */}
-            <div ref={fabRef} className="z-50 flex flex-col gap-3 transition-[top] duration-150" style={fabStyle}>
+            <div ref={fabRef} className="z-40 flex flex-col gap-2 md:gap-3 transition-[top] duration-150" style={fabStyle}>
                 <a
                     href="https://open.kakao.com/o/gMWryRA"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
+                    className="relative w-9 h-9 md:w-10 md:h-10 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
                 >
-                    <Icons.MessageSquare className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
+                    <Icons.MessageSquare className="w-3.5 h-3.5 md:w-4 md:h-4 text-white group-hover:scale-110 transition-transform" />
                     <span className="absolute right-full mr-3 px-3 py-1.5 bg-yellow-400 text-black text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
                         부청사 오픈채팅방
                         <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-yellow-400"></span>
@@ -755,9 +755,9 @@ const AppLayout = (props) => {
                     href="https://www.instagram.com/businessmen_in_busan"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
+                    className="relative w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
                 >
-                    <Icons.Instagram className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
+                    <Icons.Instagram className="w-3.5 h-3.5 md:w-4 md:h-4 text-white group-hover:scale-110 transition-transform" />
                     <span className="absolute right-full mr-3 px-3 py-1.5 bg-gradient-to-br from-purple-600 to-pink-500 text-white text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
                         부청사 인스타그램
                         <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-purple-600"></span>
@@ -767,9 +767,9 @@ const AppLayout = (props) => {
                     href="https://www.youtube.com/@businessmen_in_busan"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative w-10 h-10 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
+                    className="relative w-9 h-9 md:w-10 md:h-10 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
                 >
-                    <Icons.Youtube className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
+                    <Icons.Youtube className="w-3.5 h-3.5 md:w-4 md:h-4 text-white group-hover:scale-110 transition-transform" />
                     <span className="absolute right-full mr-3 px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
                         부청사 유튜브
                         <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-red-600"></span>
