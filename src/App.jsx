@@ -17,6 +17,8 @@ import {
   saveCurrentUserToStorage
 } from './utils/authUtils';
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from './constants';
+import { requestPayment as paymentServiceRequestPayment } from './services/paymentService';
+import { PaymentResultView } from './pages/PaymentResultView';
 import { defaultContent } from './constants/content';
 import PageTitle from './components/PageTitle';
 import NoticeView from './pages/NoticeView';
@@ -1975,19 +1977,9 @@ const App = () => {
          alert("회원 탈퇴가 완료되었습니다.\n세미나 후기와 사진은 유지됩니다.");
     };
 
-    /** PortOne 결제 요청. overrideCustomer 있으면 해당 값 사용(구글 로그인 등 연락처 없을 때 입력값 전달용) */
+    /** 결제 요청 (Payment Service: 모바일/CEP·UXP는 리다이렉트, PC는 표준 결제) */
     const requestPortOnePayment = (seminar, applicationData, onSuccess, onFail, overrideCustomer) => {
-        if (!PORTONE_IMP_CODE || PORTONE_IMP_CODE === 'imp00000000') {
-            alert('결제가 설정되지 않았습니다. 관리자에게 문의해주세요.');
-            if (onFail) onFail();
-            return;
-        }
-        if (!PORTONE_CHANNEL_KEY) {
-            alert('결제 채널이 설정되지 않았습니다. 관리자에게 문의해주세요.');
-            if (onFail) onFail();
-            return;
-        }
-        const amount = Number(seminar.applicationFee) || 0;
+        const amount = Number(seminar?.applicationFee) || 0;
         if (amount <= 0) {
             if (onFail) onFail();
             return;
@@ -2001,59 +1993,17 @@ const App = () => {
             setPaymentInfoModalOpen(true);
             return;
         }
-        const fullName = (overrideCustomer?.fullName || currentUser?.name || '').toString().trim() || '구매자';
-        const orderName = (seminar.title || '프로그램 신청').substring(0, 50);
-        const paymentId = `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`.slice(0, 40);
-
-        if (typeof window !== 'undefined' && window.PortOne) {
-            const paymentPromise = window.PortOne.requestPayment({
-                storeId: PORTONE_IMP_CODE,
-                channelKey: PORTONE_CHANNEL_KEY,
-                paymentId,
-                orderName,
-                totalAmount: amount,
-                currency: 'CURRENCY_KRW',
-                payMethod: 'CARD',
-                customer: { fullName, phoneNumber, email }
-            });
-            paymentPromise.then((response) => {
-                if (response?.code != null) {
-                    alert(response.message || '결제 실패');
-                    if (onFail) onFail();
-                    return;
-                }
-                if (onSuccess) onSuccess(response);
-            }).catch((e) => {
-                const msg = e?.message || e?.errorMessage || '결제 요청 중 오류가 발생했습니다.';
-                alert(msg);
-                if (onFail) onFail();
-            });
-            return;
-        }
-
-        const IMP = typeof window !== 'undefined' ? window.IMP : null;
-        if (!IMP) {
-            alert('결제를 불러올 수 없습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.');
-            if (onFail) onFail();
-            return;
-        }
-        IMP.init(PORTONE_IMP_CODE);
-        IMP.request_pay({
-            channelKey: PORTONE_CHANNEL_KEY,
-            pay_method: 'card',
-            merchant_uid: paymentId,
-            name: orderName,
-            amount,
-            buyer_email: email,
-            buyer_name: fullName,
-            buyer_tel: phoneNumber
-        }, (rsp) => {
-            if (rsp.success) {
-                if (onSuccess) onSuccess(rsp);
-            } else {
-                if (rsp.error_msg) alert(`결제 실패: ${rsp.error_msg}`);
-                if (onFail) onFail();
-            }
+        const customer = {
+            fullName: (overrideCustomer?.fullName || currentUser?.name || '').toString().trim() || '구매자',
+            phoneNumber,
+            email
+        };
+        paymentServiceRequestPayment({
+            seminar,
+            applicationData,
+            customer,
+            onSuccess,
+            onFail
         });
     };
 
@@ -2153,6 +2103,13 @@ const App = () => {
         
         alert("신청이 완료되었습니다.");
         return true;
+    };
+
+    /** 결제 완료 처리 공통 함수. 리다이렉트 복귀 시 또는 표준 결제 성공 시 사용 */
+    const completePaymentSuccess = async (seminar, applicationData, { afterSuccess } = {}) => {
+        const ok = await handleSeminarApply(seminar, applicationData);
+        if (ok && afterSuccess) afterSuccess();
+        return ok;
     };
 
     // 후기 작성 핸들러
@@ -2603,11 +2560,11 @@ END:VCALENDAR`;
         return (
             <ModalPortal>
             <div
-                className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center animate-fade-in opacity-100"
-                style={{ touchAction: 'none', overflow: 'hidden' }}
+                className="fixed inset-0 z-[9999] flex flex-col items-center justify-center animate-fade-in"
+                style={{ touchAction: 'none', overflow: 'hidden', backgroundColor: '#ffffff' }}
                 onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
             >
-                <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2.5 text-dark rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 touch-manipulation opacity-100"><Icons.X size={28}/></button>
+                <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2.5 text-dark rounded-full touch-manipulation z-10" style={{ backgroundColor: '#e5e7eb' }}><Icons.X size={28}/></button>
                 <nav className="flex flex-col gap-3 text-center w-full max-w-sm px-4" onClick={(e) => e.stopPropagation()}>
                     {menuOrder.filter(item => menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')).map((item, idx) => (
                         <button
@@ -2619,21 +2576,21 @@ END:VCALENDAR`;
                                 onClose();
                                 setTimeout(() => onNavigate(item), 220);
                             }}
-                            className="w-full py-4 px-6 text-lg font-bold text-dark bg-gray-100 border-2 border-gray-200 rounded-xl active:bg-gray-200 hover:bg-gray-200 hover:border-brand touch-manipulation opacity-100 animate-fade-in-down opacity-0"
-                            style={{ animationDelay: `${idx * 55}ms`, animationFillMode: 'forwards' }}
+                            className="w-full py-4 px-6 text-lg font-bold text-dark rounded-xl border-2 border-gray-300 touch-manipulation animate-fade-in-down hover:bg-gray-300 active:bg-gray-400"
+                            style={{ animationDelay: `${idx * 55}ms`, animationFillMode: 'forwards', backgroundColor: '#e5e7eb' }}
                         >
                             {menuNames[item] || item}
                         </button>
                     ))}
                     {!currentUser ? (
                         <div className="flex flex-col gap-3 mt-6 w-full">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-dark bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-100 active:bg-gray-100 touch-manipulation opacity-0 animate-fade-in-down" style={{ animationDelay: `${(menuOrder?.length || 5) * 55}ms`, animationFillMode: 'forwards' }}>로그인</button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate('/signup'); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-white bg-brand border-2 border-brand rounded-xl hover:bg-blue-700 active:bg-blue-800 touch-manipulation opacity-0 animate-fade-in-down" style={{ animationDelay: `${((menuOrder?.length || 5) + 1) * 55}ms`, animationFillMode: 'forwards' }}>가입하기</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-dark rounded-xl border-2 border-gray-300 hover:bg-gray-100 active:bg-gray-100 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${(menuOrder?.length || 5) * 55}ms`, animationFillMode: 'forwards', backgroundColor: '#ffffff' }}>로그인</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate('/signup'); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-white rounded-xl border-2 border-brand hover:bg-blue-700 active:bg-blue-800 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${((menuOrder?.length || 5) + 1) * 55}ms`, animationFillMode: 'forwards', backgroundColor: '#0046a5' }}>가입하기</button>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-3 mt-6 w-full">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); setTimeout(() => { setCurrentView('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }, 220); }} className="w-full py-4 px-6 text-base font-bold text-brand bg-white border-2 border-brand rounded-xl hover:bg-blue-50 active:bg-blue-50 touch-manipulation opacity-0 animate-fade-in-down" style={{ animationDelay: `${(menuOrder?.length || 5) * 55}ms`, animationFillMode: 'forwards' }}>마이페이지</button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-gray-700 bg-gray-200 border-2 border-gray-300 rounded-xl hover:bg-gray-300 active:bg-gray-400 touch-manipulation opacity-0 animate-fade-in-down" style={{ animationDelay: `${((menuOrder?.length || 5) + 1) * 55}ms`, animationFillMode: 'forwards' }}>로그아웃</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); setTimeout(() => { setCurrentView('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }, 220); }} className="w-full py-4 px-6 text-base font-bold text-brand rounded-xl border-2 border-brand hover:bg-blue-50 active:bg-blue-50 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${(menuOrder?.length || 5) * 55}ms`, animationFillMode: 'forwards', backgroundColor: '#ffffff' }}>마이페이지</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-gray-700 rounded-xl border-2 border-gray-300 hover:bg-gray-300 active:bg-gray-400 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${((menuOrder?.length || 5) + 1) * 55}ms`, animationFillMode: 'forwards', backgroundColor: '#d1d5db' }}>로그아웃</button>
                         </div>
                     )}
                 </nav>
@@ -2704,9 +2661,10 @@ END:VCALENDAR`;
     }
 
     const renderView = () => {
-        // 개발 모드 디버깅 로깅
         try {
-            // 회원가입 전용 페이지 (URL: /signup)
+            if (location.pathname === '/payment/result') {
+                return <PaymentResultView onComplete={completePaymentSuccess} />;
+            }
             if (location.pathname === '/signup') {
                 return (
                     <SignUpPage
@@ -3105,7 +3063,7 @@ END:VCALENDAR`;
                         </div>
                         <div className="relative w-full">
                             <div className="relative w-full rounded-4xl md:rounded-5xl overflow-hidden shadow-deep-blue group z-0" style={{ aspectRatio: '16/9' }}>
-                                {content.hero_image && <img src={content.hero_image} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Hero" loading="eager" fetchPriority="high" decoding="async" sizes="(max-width: 768px) 100vw, 1280px" />}
+                                {content.hero_image && <img src={content.hero_image} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Hero" loading="eager" fetchpriority="high" decoding="async" sizes="(max-width: 768px) 100vw, 1280px" />}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
                             </div>
                             

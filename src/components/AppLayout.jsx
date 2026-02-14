@@ -130,7 +130,7 @@ const AppLayout = (props) => {
                                                     alt={program.title} 
                                                     className="w-full h-full object-cover object-center"
                                                     loading="eager"
-                                                    fetchPriority="high"
+                                                    fetchpriority="high"
                                                     decoding="async"
                                                 />
                                             ) : (
@@ -203,7 +203,7 @@ const AppLayout = (props) => {
                                                     className="w-full h-full object-contain"
                                                     style={{ maxHeight: '90vh' }}
                                                     loading="eager"
-                                                    fetchPriority="high"
+                                                    fetchpriority="high"
                                                     decoding="async"
                                                 />
                                             ) : null}
