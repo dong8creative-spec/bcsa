@@ -482,7 +482,7 @@ export const ProgramManagement = () => {
               <div className="flex gap-2 w-full">
                 <button
                   onClick={() => handleEdit(program)}
-                  className="flex-[2] min-w-0 px-3 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                  className="flex-none whitespace-nowrap px-3 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
                 >
                   <Icons.Edit2 size={16} />
                   수정
@@ -492,7 +492,7 @@ export const ProgramManagement = () => {
                     setApplicantModalProgram(program);
                     setShowApplicantModal(true);
                   }}
-                  className="flex-[5] min-w-0 px-3 py-2 bg-green-50 text-green-700 rounded-xl font-bold hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
+                  className="flex-none whitespace-nowrap px-3 py-2 bg-green-50 text-green-700 rounded-xl font-bold hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
                 >
                   <Icons.Users size={16} />
                   신청자명단

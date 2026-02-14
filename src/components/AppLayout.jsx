@@ -6,6 +6,33 @@ import ModalPortal from './ModalPortal';
 
 const FAB_GAP_PX = 16;
 const FAB_ESTIMATE_HEIGHT_PX = 152;
+const PROFILE_INCOMPLETE_DISMISSED_KEY = 'profile_incomplete_alert_dismissed';
+
+/** 필수 회원정보 미기입 여부 (SignUpPage 필수 항목과 동일 기준) */
+function isProfileIncomplete(user) {
+    if (!user) return false;
+    const name = (user.name || '').toString().trim();
+    if (!name) return true;
+    const birthdate = (user.birthdate || '').toString().trim();
+    const birthdateDigits = birthdate.replace(/\D/g, '');
+    const birthdateValid = birthdate.length >= 8 && (birthdateDigits.length >= 8 || /^\d{4}-\d{2}-\d{2}$/.test(birthdate));
+    if (!birthdateValid) return true;
+    const gender = (user.gender || '').toString().trim();
+    if (!gender) return true;
+    const phone = (user.phone || user.phoneNumber || '').toString().replace(/\D/g, '');
+    if (phone.length !== 11 || !/^01[0-9]/.test(phone)) return true;
+    const userType = (user.userType || '').toString().trim();
+    if (!userType) return true;
+    if (userType === '사업자') {
+        if (!(user.company || '').toString().trim()) return true;
+        const bno = (user.businessRegistrationNumber || '').toString().replace(/\D/g, '');
+        if (bno.length !== 10) return true;
+        if (!(user.businessCategory || '').toString().trim()) return true;
+        if (!(user.collaborationIndustry || '').toString().trim()) return true;
+        if (!(user.keyCustomers || '').toString().trim()) return true;
+    }
+    return false;
+}
 
 const AppLayout = (props) => {
     const footerRef = useRef(null);
@@ -13,6 +40,7 @@ const AppLayout = (props) => {
     const prevViewRef = useRef(null);
     const [fabStyle, setFabStyle] = useState({ position: 'fixed', right: '1.5rem', bottom: '10rem' });
     const [showRefundPolicyModal, setShowRefundPolicyModal] = useState(false);
+    const [profileIncompleteDismissed, setProfileIncompleteDismissed] = useState(false);
     const {
         MobileMenu,
         renderView,
@@ -91,6 +119,30 @@ const AppLayout = (props) => {
         prevViewRef.current = currentView;
         console.info('[RenderView] currentView:', currentView);
     }, [currentView]);
+
+    // 필수정보 미기입 알람 "오늘 하루 안 보기" 세션 복원
+    useEffect(() => {
+        try {
+            const uid = currentUser?.id || currentUser?.uid;
+            setProfileIncompleteDismissed(
+                !!uid && typeof sessionStorage !== 'undefined' && sessionStorage.getItem(PROFILE_INCOMPLETE_DISMISSED_KEY) === String(uid)
+            );
+        } catch (_) {
+            setProfileIncompleteDismissed(false);
+        }
+    }, [currentUser?.id, currentUser?.uid]);
+
+    const showProfileIncompleteBanner = currentUser && isProfileIncomplete(currentUser) && !profileIncompleteDismissed;
+
+    const handleProfileIncompleteDismiss = () => {
+        try {
+            const uid = currentUser?.id || currentUser?.uid;
+            if (uid && typeof sessionStorage !== 'undefined') {
+                sessionStorage.setItem(PROFILE_INCOMPLETE_DISMISSED_KEY, String(uid));
+            }
+            setProfileIncompleteDismissed(true);
+        } catch (_) {}
+    };
 
     return (
         <div className="min-h-screen flex flex-col bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">

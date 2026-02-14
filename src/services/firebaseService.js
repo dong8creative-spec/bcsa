@@ -113,6 +113,58 @@ export const firebaseService = {
     });
   },
 
+  // ==========================================
+  // User Notifications (users/{userId}/notifications)
+  // ==========================================
+  async addUserNotification(userId, { type, message, correctedFields }) {
+    try {
+      const notificationsRef = collection(db, 'users', userId, 'notifications');
+      const docRef = await addDoc(notificationsRef, {
+        type: type || 'profile_corrected',
+        message: message || '회원정보가 정정되었습니다.',
+        correctedFields: correctedFields || [],
+        createdAt: serverTimestamp(),
+        read: false
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error adding user notification:', error);
+      throw error;
+    }
+  },
+
+  async getUserNotifications(userId) {
+    try {
+      const notificationsRef = collection(db, 'users', userId, 'notifications');
+      const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(50));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (error) {
+      console.error('Error getting user notifications:', error);
+      throw error;
+    }
+  },
+
+  subscribeUserNotifications(userId, callback) {
+    if (!userId) return () => {};
+    const notificationsRef = collection(db, 'users', userId, 'notifications');
+    const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(50));
+    return onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      callback(list);
+    });
+  },
+
+  async markNotificationRead(userId, notificationId) {
+    try {
+      const docRef = doc(db, 'users', userId, 'notifications', notificationId);
+      await updateDoc(docRef, { read: true });
+    } catch (error) {
+      console.error('Error marking notification read:', error);
+      throw error;
+    }
+  },
+
   // 햇반 계정 식별 함수
   isHaetbanAccount(user) {
     return user.name === '햇반' || 

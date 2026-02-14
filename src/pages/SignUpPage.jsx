@@ -42,6 +42,7 @@ const SignUpPage = ({ onSignUp }) => {
         name: '',
         nickname: '',
         birthdate: '',
+        gender: '',
         phone: '',
         email: '',
         emailId: '',
@@ -118,13 +119,14 @@ const SignUpPage = ({ onSignUp }) => {
 
     const isRequiredFilled = useMemo(() => {
         const validBirthdate = parseBirthdateInput(form.birthdate);
-        if (!userType || !form.name?.trim() || !validBirthdate || !form.phone?.trim() || !form.email?.trim()) return false;
+        if (!userType || !form.name?.trim() || !validBirthdate || !form.gender || !form.phone?.trim() || !form.email?.trim()) return false;
         if (!form.password || !form.passwordConfirm) return false;
         if (!validateEmail(form.email)) return false;
         if (!validatePassword(form.password).valid) return false;
         if (form.password !== form.passwordConfirm) return false;
         if (!validatePhone(form.phone)) return false;
         if (userType === '사업자' && (!form.businessCategory || !form.company?.trim() || !isBusinessNumberValid)) return false;
+        if (userType === '사업자' && (!form.collaborationIndustry?.trim() || !form.keyCustomers?.trim())) return false;
         if (!form.termsAgreed || !form.privacyAgreed) return false;
         return true;
     }, [userType, form, isBusinessNumberValid]);
@@ -176,6 +178,20 @@ const SignUpPage = ({ onSignUp }) => {
             setError('생년월일을 YYYY-MM-DD 형식으로 입력해주세요.');
             return;
         }
+        if (!form.gender) {
+            setError('성별을 선택해주세요.');
+            return;
+        }
+        if (userType === '사업자') {
+            if (!form.collaborationIndustry?.trim()) {
+                setError('협업 업종을 입력해주세요.');
+                return;
+            }
+            if (!form.keyCustomers?.trim()) {
+                setError('핵심고객을 입력해주세요.');
+                return;
+            }
+        }
         if (!form.termsAgreed) {
             setError('이용약관 동의에 체크해주세요.');
             return;
@@ -222,6 +238,7 @@ const SignUpPage = ({ onSignUp }) => {
                 name: form.name.trim(),
                 nickname: form.nickname?.trim() || '',
                 birthdate: normalizedBirthdate,
+                gender: form.gender || '',
                 phone: form.phone.trim(),
                 email: form.email.trim(),
                 userType,
@@ -265,14 +282,14 @@ const SignUpPage = ({ onSignUp }) => {
                         <Icons.ArrowLeft size={20} /> 이전
                     </button>
                     <h1 className="text-2xl md:text-3xl font-bold text-dark">회원가입</h1>
-                    <p className="text-sm text-gray-500 mt-1">표시(*)된 항목은 필수 입력입니다. 협업 업종·핵심고객은 선택입니다.</p>
+                    <p className="text-sm text-gray-500 mt-1">표시(*)된 항목은 필수 입력입니다.</p>
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-lg border border-blue-100 p-6 md:p-8">
                     <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                         <p className="text-sm font-bold text-amber-800 flex items-center gap-2">
                             <Icons.AlertCircle className="w-5 h-5 shrink-0" />
-                            이름, 생년월일, 연락처, 이메일, 비밀번호, {userType === '사업자' ? '상호명, 사업자등록번호, 업종/업태' : '희망업종(선택)'} 및 약관 동의 등 필수 항목을 입력해주세요.
+                            이름, 생년월일, 성별, 연락처, 이메일, 비밀번호, {userType === '사업자' ? '상호명, 사업자등록번호, 업종/업태, 협업 업종, 핵심고객' : '희망업종(선택)'} 및 약관 동의 등 필수 항목을 입력해주세요.
                         </p>
                     </div>
 
@@ -314,6 +331,15 @@ const SignUpPage = ({ onSignUp }) => {
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">생년월일 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(청년 확인용)</span></label>
                                         <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD (예: 1990-01-15)" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.birthdate} onChange={e => { const v = e.target.value; const parsed = parseBirthdateInput(v); setForm(f => ({ ...f, birthdate: parsed || v })); }} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">성별 <span className="text-red-500">*</span></label>
+                                        <select required className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
+                                            <option value="">선택</option>
+                                            <option value="남성">남성</option>
+                                            <option value="여성">여성</option>
+                                            <option value="기타">기타</option>
+                                        </select>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">연락처 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(숫자 11자리)</span></label>
@@ -390,12 +416,12 @@ const SignUpPage = ({ onSignUp }) => {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">협업 업종 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                            <input type="text" placeholder="협업 희망 업종" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.collaborationIndustry} onChange={e => setForm(f => ({ ...f, collaborationIndustry: e.target.value }))} />
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">협업 업종 <span className="text-red-500">*</span></label>
+                                            <input type="text" required placeholder="협업 희망 업종" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.collaborationIndustry} onChange={e => setForm(f => ({ ...f, collaborationIndustry: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">핵심고객 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                            <input type="text" placeholder="핵심 고객층" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.keyCustomers} onChange={e => setForm(f => ({ ...f, keyCustomers: e.target.value }))} />
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">핵심고객 <span className="text-red-500">*</span></label>
+                                            <input type="text" required placeholder="핵심 고객층" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.keyCustomers} onChange={e => setForm(f => ({ ...f, keyCustomers: e.target.value }))} />
                                         </div>
                                     </div>
                                 )}

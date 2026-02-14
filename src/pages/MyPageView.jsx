@@ -36,7 +36,10 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
     const [bookmarks, setBookmarks] = useState([]);
     const [bookmarksLoading, setBookmarksLoading] = useState(false);
     const [bookmarkDetails, setBookmarkDetails] = useState([]);
-    
+
+    // 알림 (관리자 정정 등)
+    const [notifications, setNotifications] = useState([]);
+
     // 즐겨찾기 로드 (userId: Firebase Auth uid로 통일 - 검색 화면 즐겨찾기와 동일 경로)
     const loadBookmarks = useCallback(async () => {
         const userId = user?.uid ?? user?.id;
@@ -103,6 +106,16 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
             setBookmarks([]);
         }
     }, [user, activeTab, loadBookmarks]);
+
+    // 알림 구독 (관리자 정정 알림 등)
+    useEffect(() => {
+        const userId = user?.id ?? user?.uid;
+        if (!user || !userId || !firebaseService.subscribeUserNotifications) return;
+        const unsubscribe = firebaseService.subscribeUserNotifications(userId, (list) => {
+            setNotifications(list || []);
+        });
+        return () => unsubscribe();
+    }, [user?.id, user?.uid]);
 
     useEffect(() => {
         if (user) {
@@ -178,7 +191,18 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
         if(confirm("정말로 탈퇴하시겠습니까? 모든 정보가 삭제됩니다.")) {
             onWithdraw();
         }
-    }
+    };
+
+    const handleNotificationConfirm = async (notificationId) => {
+        const userId = user?.id ?? user?.uid;
+        if (!userId) return;
+        try {
+            await firebaseService.markNotificationRead(userId, notificationId);
+            setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, read: true } : n));
+        } catch (err) {
+            console.error('알림 확인 처리 오류:', err);
+        }
+    };
 
     const handleSaveProfile = async () => {
         if (!editFormData.name) {
@@ -219,6 +243,23 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                         <Icons.ArrowLeft size={18} /> 메인으로
                     </button>
                 </div>
+
+                {/* 알림 (관리자 정정 등) */}
+                {notifications.filter(n => !n.read).length > 0 && (
+                    <div className="mb-6 space-y-3">
+                        <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                            <Icons.AlertCircle size={18} /> 알림
+                        </h3>
+                        {notifications.filter(n => !n.read).map((n) => (
+                            <div key={n.id} className="flex items-start justify-between gap-4 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                                <p className="text-sm text-gray-800 flex-1">{n.message || '회원정보가 정정되었습니다.'}</p>
+                                <button type="button" onClick={() => handleNotificationConfirm(n.id)} className="shrink-0 px-3 py-1.5 text-sm font-bold text-brand border border-brand rounded-lg hover:bg-brand/5">
+                                    확인
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
                 
                 {/* 프로필 섹션 */}
                 <div className="bg-gray-50 border border-blue-100 p-10 mb-20">
