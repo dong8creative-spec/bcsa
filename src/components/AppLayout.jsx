@@ -10,6 +10,7 @@ const FAB_ESTIMATE_HEIGHT_PX = 152;
 const AppLayout = (props) => {
     const footerRef = useRef(null);
     const fabRef = useRef(null);
+    const prevViewRef = useRef(null);
     const [fabStyle, setFabStyle] = useState({ position: 'fixed', right: '1.5rem', bottom: '10rem' });
     const [showRefundPolicyModal, setShowRefundPolicyModal] = useState(false);
     const {
@@ -82,6 +83,14 @@ const AppLayout = (props) => {
             window.removeEventListener('resize', updateFabPosition);
         };
     }, []);
+
+    // 개발 모드에서 currentView 변경 시에만 로그 (매 렌더마다 찍히지 않도록)
+    useEffect(() => {
+        if (import.meta.env.MODE !== 'development') return;
+        if (prevViewRef.current === currentView) return;
+        prevViewRef.current = currentView;
+        console.info('[RenderView] currentView:', currentView);
+    }, [currentView]);
 
     return (
         <div className="min-h-screen flex flex-col bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">

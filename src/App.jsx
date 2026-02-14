@@ -498,6 +498,7 @@ const App = () => {
     const programScrollOffsetRef = useRef(0);
     const [programScrollOffset, setProgramScrollOffset] = useState(0);
     const programDragRef = useRef({ active: false, startX: 0, startOffset: 0, hasMoved: false });
+    const lastUnknownViewLoggedRef = useRef(null);
 
     // 프로그램 자동 흐름 애니메이션 (250초 주기) + 드래그 시 일시 정지
     useEffect(() => {
@@ -3002,12 +3003,16 @@ END:VCALENDAR`;
         // 예상치 못한 currentView 값에 대한 fallback (항상 유효한 React 요소 반환 보장)
         // currentView가 'home'이 아니고 위의 모든 조건에 맞지 않으면 홈으로 리다이렉트
         if (currentView && currentView !== 'home') {
-            console.error(`[RenderView] 알 수 없는 뷰: "${currentView}"`);
-            console.warn('[RenderView] 사용 가능한 뷰:', [
-                'home', 'myPage', 'allMembers', 'allSeminars', 
-                'community', 'notice', 'donation', 'restaurants',
-                'restaurantDetail', 'restaurantForm', 'about', 'tenderTest'
-            ]);
+            // 개발 모드에서 currentView 변경 시에만 로그 (매 렌더마다 찍히지 않도록)
+            if (import.meta.env.MODE === 'development' && lastUnknownViewLoggedRef.current !== currentView) {
+                lastUnknownViewLoggedRef.current = currentView;
+                console.error(`[RenderView] 알 수 없는 뷰: "${currentView}"`);
+                console.warn('[RenderView] 사용 가능한 뷰:', [
+                    'home', 'myPage', 'allMembers', 'allSeminars', 
+                    'community', 'notice', 'donation', 'restaurants',
+                    'restaurantDetail', 'restaurantForm', 'about', 'tenderTest'
+                ]);
+            }
             
             // 사용자에게 명확한 피드백 제공
             return (

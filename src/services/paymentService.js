@@ -99,20 +99,38 @@ export function requestPayment({ seminar, applicationData, customer, onSuccess, 
             if (onFail) onFail();
             return;
         }
-        IMP.init(PORTONE_IMP_CODE);
-        IMP.request_pay({
-            channelKey: PORTONE_CHANNEL_KEY,
-            pay_method: 'card',
-            merchant_uid: merchantUid,
-            name: orderName,
-            amount,
-            buyer_email: email,
-            buyer_name: fullName,
-            buyer_tel: phoneNumber,
-            m_redirect_url: getPaymentResultRedirectUrl()
-        }, () => {
-            // 리다이렉트 방식에서는 콜백이 실행되지 않음. 결과는 /payment/result에서만 처리
-        });
+        let redirectFailHandled = false;
+        const handleRedirectFail = () => {
+            if (redirectFailHandled) return;
+            redirectFailHandled = true;
+            alert('결제창이 열리지 않았습니다. PG 설정을 확인하거나 잠시 후 다시 시도해 주세요.');
+            if (onFail) onFail();
+        };
+        try {
+            IMP.init(PORTONE_IMP_CODE);
+            IMP.request_pay({
+                channelKey: PORTONE_CHANNEL_KEY,
+                pay_method: 'card',
+                merchant_uid: merchantUid,
+                name: orderName,
+                amount,
+                buyer_email: email,
+                buyer_name: fullName,
+                buyer_tel: phoneNumber,
+                m_redirect_url: getPaymentResultRedirectUrl()
+            }, () => {
+                // 리다이렉트 방식에서는 콜백이 실행되지 않음. 결과는 /payment/result에서만 처리
+            });
+            setTimeout(() => {
+                if (typeof window === 'undefined') return;
+                if (window.location.pathname === '/payment/result') return;
+                handleRedirectFail();
+            }, 8000);
+        } catch (e) {
+            redirectFailHandled = true;
+            alert(e?.message || '결제 요청 중 오류가 발생했습니다.');
+            if (onFail) onFail();
+        }
         return;
     }
 
