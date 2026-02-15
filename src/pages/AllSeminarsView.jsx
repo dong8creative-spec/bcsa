@@ -243,7 +243,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
             };
         }
         return { 
-            text: getFeeLabel(seminar), 
+            text: '참여신청', 
             disabled: false, 
             onClick: () => onNavigateToApply ? onNavigateToApply(seminar) : (() => {}),
             className: 'bg-brand text-white hover:bg-blue-700 shadow-md ring-2 ring-brand/30'
@@ -657,7 +657,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                                 );
                                             })() : (
                                                 <div className="flex items-center justify-center py-4 px-3 min-h-[76px]">
-                                                    <span className="text-sm font-semibold text-white">{getFeeLabel(selectedSeminar)}</span>
+                                                    <span className="text-sm font-semibold text-white">참여신청</span>
                                                 </div>
                                             )}
                                             <button

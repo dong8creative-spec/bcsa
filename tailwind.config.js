@@ -7,6 +7,9 @@ export default {
   ],
   theme: {
     extend: {
+      screens: {
+        md: '1280px',
+      },
       fontFamily: {
         sans: ['PyeojinGothic', 'sans-serif'],
         pop: ['PyeojinGothic', 'sans-serif'],

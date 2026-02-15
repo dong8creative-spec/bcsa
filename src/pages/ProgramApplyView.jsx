@@ -305,7 +305,7 @@ const ProgramApplyView = ({
                 <div className="bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden">
                     <div className="p-6 md:p-8 border-b border-blue-100">
                         <h2 className="text-xl font-bold text-dark">결제 및 신청</h2>
-                        <p className="text-sm text-gray-500 mt-1">아래 항목을 입력한 뒤 {isPaid ? '결제하기' : '신청하기'} 버튼을 눌러주세요.</p>
+                        <p className="text-sm text-gray-500 mt-1">아래 항목을 입력한 뒤 참여신청 버튼을 눌러주세요.</p>
                     </div>
                     <div className="p-6 md:p-8 space-y-4">
                         <div>
@@ -347,7 +347,7 @@ const ProgramApplyView = ({
                                 ? '종료된 프로그램입니다'
                                 : submitting
                                     ? (isPaid ? '결제 진행 중...' : '신청 처리 중...')
-                                    : (isPaid ? '결제하기' : '신청하기')
+                                    : '참여신청'
                             }
                         </button>
                     </div>

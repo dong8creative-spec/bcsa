@@ -262,6 +262,7 @@ const App = () => {
 
     // 모바일 메뉴 열림 시 배경 스크롤 완전 잠금 (iOS 포함)
     const menuScrollYRef = useRef(0);
+    const closingByNavigateRef = useRef(false);
     useEffect(() => {
         if (!isMenuOpen) return;
         menuScrollYRef.current = window.scrollY ?? window.pageYOffset ?? 0;
@@ -285,7 +286,12 @@ const App = () => {
             style.left = prevLeft;
             style.right = prevRight;
             style.width = prevWidth;
-            window.scrollTo(0, menuScrollYRef.current);
+            if (closingByNavigateRef.current) {
+                window.scrollTo(0, 0);
+                closingByNavigateRef.current = false;
+            } else {
+                window.scrollTo(0, menuScrollYRef.current);
+            }
         };
     }, [isMenuOpen]);
 
@@ -2607,8 +2613,8 @@ END:VCALENDAR`;
         if (!isOpen) return null;
         const visibleItems = menuOrder.filter(item => MOBILE_MENU_ITEMS.includes(item) && (menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')));
         const handleMenuClick = (item) => {
+            onNavigate(item);
             onClose();
-            setTimeout(() => onNavigate(item), 100);
         };
         return (
             <ModalPortal>
@@ -2617,10 +2623,10 @@ END:VCALENDAR`;
                 aria-modal="true"
                 aria-label="메뉴"
                 className="fixed inset-0 flex flex-col items-center justify-center"
-                style={{ zIndex: 99999, touchAction: 'none', overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.55)', opacity: 1 }}
+                style={{ zIndex: 99999, overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.55)', opacity: 1 }}
                 onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
             >
-                <div className="w-full max-w-[280px] px-4 rounded-2xl overflow-hidden shadow-xl relative" style={{ backgroundColor: '#ffffff', opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                <div className="w-full max-w-[280px] px-4 rounded-2xl overflow-hidden shadow-xl relative" style={{ backgroundColor: '#ffffff', opacity: 1, touchAction: 'manipulation' }} onClick={(e) => e.stopPropagation()}>
                     <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-4 right-4 p-2 text-gray-600 bg-white rounded-full touch-manipulation z-[100] hover:bg-gray-100 hover:text-gray-800 shadow-md transition-colors" style={{ opacity: 1 }}><Icons.X size={22} className="text-current"/></button>
                     <nav className="flex flex-col pt-12 pb-2">
                         {visibleItems.map((item, idx) => (
@@ -2628,6 +2634,11 @@ END:VCALENDAR`;
                                 key={idx}
                                 type="button"
                                 onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleMenuClick(item);
+                                }}
+                                onPointerDown={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
                                     handleMenuClick(item);
@@ -3372,7 +3383,10 @@ END:VCALENDAR`;
             <MobileMenu
                 isOpen={isMenuOpen}
                 onClose={closeMobileMenu}
-                onNavigate={handleNavigation}
+                onNavigate={(item) => {
+                    closingByNavigateRef.current = true;
+                    handleNavigation(item);
+                }}
                 menuEnabled={menuEnabled}
                 menuNames={menuNames}
                 menuOrder={menuOrder}

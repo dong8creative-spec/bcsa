@@ -400,7 +400,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                             return { text: '참여자만', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
                                                         }
                                                         return { 
-                                                            text: getFeeLabel(ev), 
+                                                            text: '참여신청', 
                                                             disabled: false, 
                                                             onClick: () => { onSelectSeminar(ev); setSelectedDate(null); },
                                                             className: 'bg-brand text-white hover:bg-blue-700 border border-blue-700 shadow-md ring-2 ring-brand/30'
