@@ -75,7 +75,7 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                 <div className="container mx-auto max-w-4xl">
                     <div className="flex flex-col md:flex-row gap-10 items-center">
                         <div className="flex-1">
-                            <h2 className="text-3xl font-bold text-dark mb-6">
+                            <h2 className="text-2xl md:text-3xl font-bold text-dark mb-5 md:mb-6 leading-tight">
                                 {content.about_mission_title ? (
                                     <Fragment>
                                         {content.about_mission_title.split(' ').map((word, idx) => (
@@ -90,14 +90,16 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                                     <Fragment>Platform for <br/><span className="text-brand">Businessmen</span></Fragment>
                                 )}
                             </h2>
-                            <div className="space-y-4 text-gray-600 leading-relaxed text-justify break-keep text-sm md:text-base">
-                                <p>
+                            <div className="text-gray-600 break-keep text-justify md:text-base
+                                max-md:space-y-5 max-md:leading-[1.75] max-md:text-[15px] max-md:tracking-[0.02em]
+                                md:space-y-4 md:leading-relaxed">
+                                <p className="max-md:mb-0">
                                     {content.about_mission_desc_1 || "부산청년사업가들은 정기적인 네트워킹과 실무 중심의 세미나를 통해 실질적인 도움을 제공합니다."}
                                 </p>
-                                <p>
+                                <p className="max-md:mb-0">
                                     {content.about_mission_desc_2 || "업종을 넘어선 협업과 정보 공유를 지원하며, 온·오프라인을 연계해 지속적인 비즈니스 확장을 돕습니다."}
                                 </p>
-                                <p>
+                                <p className="max-md:mb-0">
                                     {content.about_mission_desc_3 || "부청사는 단순한 모임을 넘어, 함께 성장하는 플랫폼입니다."}
                                 </p>
                             </div>

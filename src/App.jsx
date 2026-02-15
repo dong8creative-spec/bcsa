@@ -2621,7 +2621,11 @@ END:VCALENDAR`;
     const MEMBERS_ONLY_MENUS = ['부청사 회원', '커뮤니티', '입찰공고'];
     const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames, menuOrder, currentUser }) => {
         if (!isOpen) return null;
-        const visibleItems = menuOrder.filter(item => MOBILE_MENU_ITEMS.includes(item) && (menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')) && (!MEMBERS_ONLY_MENUS.includes(item) || currentUser));
+        // 모바일 메뉴는 항상 MOBILE_MENU_ITEMS 순서로 5개 판단(menuOrder와 무관). 로그인 시 부청사 회원·커뮤니티 포함
+        const visibleItems = MOBILE_MENU_ITEMS.filter(item =>
+            (menuEnabled[item] || (MEMBERS_ONLY_MENUS.includes(item) && currentUser) || (import.meta.env.MODE === 'development' && item === '입찰공고')) &&
+            (!MEMBERS_ONLY_MENUS.includes(item) || currentUser)
+        );
         const handleMenuClick = (item) => {
             onNavigate(item);
             onClose();
@@ -2636,9 +2640,9 @@ END:VCALENDAR`;
                 style={{ zIndex: 99999, overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.55)', opacity: 1 }}
                 onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
             >
-                <div className="w-full max-w-[280px] px-4 rounded-2xl overflow-hidden shadow-xl relative" style={{ backgroundColor: '#ffffff', opacity: 1, touchAction: 'manipulation' }} onClick={(e) => e.stopPropagation()}>
+                <div className="w-full max-w-[280px] rounded-2xl overflow-hidden shadow-xl relative flex flex-col items-center justify-center py-10 px-4" style={{ backgroundColor: '#ffffff', opacity: 1, touchAction: 'manipulation' }} onClick={(e) => e.stopPropagation()}>
                     <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-4 right-4 p-2 text-gray-600 bg-white rounded-full touch-manipulation z-[100] hover:bg-gray-100 hover:text-gray-800 shadow-md transition-colors" style={{ opacity: 1 }}><Icons.X size={22} className="text-current"/></button>
-                    <nav className="flex flex-col pt-12 pb-2">
+                    <nav className="flex flex-col w-full items-center pt-2 pb-4">
                         {visibleItems.map((item, idx) => (
                             <button
                                 key={idx}
@@ -2653,13 +2657,13 @@ END:VCALENDAR`;
                                     e.stopPropagation();
                                     handleMenuClick(item);
                                 }}
-                                className="w-full py-4 px-6 text-base font-bold text-gray-800 text-center touch-manipulation hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                                className="w-full max-w-[240px] py-4 px-6 text-base font-bold text-gray-800 text-center touch-manipulation hover:bg-gray-50 active:bg-gray-100 transition-colors"
                             >
                                 {menuNames[item] || item}
                             </button>
                         ))}
                     </nav>
-                    <div className="flex items-center justify-center gap-3 p-4 bg-gray-50">
+                    <div className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-gray-50 rounded-b-2xl">
                         <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} aria-label="부청사 오픈채팅방">
                             <Icons.MessageSquare className="w-5 h-5" />
                         </a>
@@ -3462,9 +3466,10 @@ END:VCALENDAR`;
                     closingByNavigateRef.current = true;
                     handleNavigation(item);
                 }}
-                menuEnabled={menuEnabled}
+                menuEnabled={effectiveMenuEnabled}
                 menuNames={menuNames}
                 menuOrder={menuOrder}
+                currentUser={currentUser}
             />
         )}
         <AppLayout
