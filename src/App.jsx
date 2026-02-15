@@ -2621,10 +2621,9 @@ END:VCALENDAR`;
     const MEMBERS_ONLY_MENUS = ['부청사 회원', '커뮤니티', '입찰공고'];
     const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames, menuOrder, currentUser }) => {
         if (!isOpen) return null;
-        // 모바일 메뉴는 항상 MOBILE_MENU_ITEMS 순서로 5개 판단(menuOrder와 무관). 로그인 시 부청사 회원·커뮤니티 포함
+        // 모바일 메뉴: 5개 모두 표시. 비회원이면 부청사 회원·커뮤니티는 회색 비활성화
         const visibleItems = MOBILE_MENU_ITEMS.filter(item =>
-            (menuEnabled[item] || (MEMBERS_ONLY_MENUS.includes(item) && currentUser) || (import.meta.env.MODE === 'development' && item === '입찰공고')) &&
-            (!MEMBERS_ONLY_MENUS.includes(item) || currentUser)
+            menuEnabled[item] || MEMBERS_ONLY_MENUS.includes(item) || (import.meta.env.MODE === 'development' && item === '입찰공고')
         );
         const handleMenuClick = (item) => {
             onNavigate(item);
@@ -2643,7 +2642,9 @@ END:VCALENDAR`;
                 <div className="w-full max-w-[280px] rounded-2xl overflow-hidden shadow-xl relative flex flex-col items-center justify-center py-10 px-4" style={{ backgroundColor: '#ffffff', opacity: 1, touchAction: 'manipulation' }} onClick={(e) => e.stopPropagation()}>
                     <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-4 right-4 p-2 text-gray-600 bg-white rounded-full touch-manipulation z-[100] hover:bg-gray-100 hover:text-gray-800 shadow-md transition-colors" style={{ opacity: 1 }}><Icons.X size={22} className="text-current"/></button>
                     <nav className="flex flex-col w-full items-center pt-2 pb-4">
-                        {visibleItems.map((item, idx) => (
+                        {visibleItems.map((item, idx) => {
+                            const isMemberOnlyDisabled = MEMBERS_ONLY_MENUS.includes(item) && !currentUser;
+                            return (
                             <button
                                 key={idx}
                                 type="button"
@@ -2657,16 +2658,22 @@ END:VCALENDAR`;
                                     e.stopPropagation();
                                     handleMenuClick(item);
                                 }}
-                                className="w-full max-w-[240px] py-4 px-6 text-base font-bold text-gray-800 text-center touch-manipulation hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                                className={`w-full max-w-[240px] py-4 px-6 text-base font-bold text-center touch-manipulation transition-colors ${isMemberOnlyDisabled ? 'mobile-menu-item-disabled text-gray-400 cursor-not-allowed hover:bg-transparent active:bg-transparent' : 'text-gray-800 hover:bg-gray-50 active:bg-gray-100'}`}
                             >
                                 {menuNames[item] || item}
                             </button>
-                        ))}
+                            );
+                        })}
                     </nav>
                     <div className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-gray-50 rounded-b-2xl">
-                        <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} aria-label="부청사 오픈채팅방">
-                            <Icons.MessageSquare className="w-5 h-5" />
-                        </a>
+                        <div className="relative flex items-center justify-center">
+                            <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="mobile-menu-kakao-glow w-11 h-11 rounded-full flex items-center justify-center text-gray-900" aria-label="부청사 오픈채팅방">
+                                <Icons.MessageSquare className="w-5 h-5" />
+                            </a>
+                            <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="mobile-menu-speech-bubble" aria-label="부청사 단톡방으로 이동">
+                                부청사 단톡방으로 이동
+                            </a>
+                        </div>
                         <a href="https://www.instagram.com/businessmen_in_busan" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} aria-label="부청사 인스타그램">
                             <Icons.Instagram className="w-5 h-5" />
                         </a>

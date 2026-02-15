@@ -106,6 +106,66 @@
     opacity: 1;
   }
   
+  /* 비회원 시 회원 전용 메뉴 비활성화(회색) */
+  .nav-item.nav-item-disabled,
+  .nav-item.nav-item-disabled:hover {
+    color: #9ca3af !important;
+    opacity: 0.85;
+  }
+  .nav-item.nav-item-disabled:hover::before {
+    opacity: 0;
+  }
+  
+  .mobile-menu-item-disabled {
+    color: #9ca3af !important;
+    opacity: 0.9;
+  }
+  
+  /* 모바일 메뉴: 카카오 CTA 말풍선 (버튼 아래, 꼬리는 위로) */
+  .mobile-menu-speech-bubble {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translate(-50%, 0.75rem);
+    background: #facc15;
+    color: #171717;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.5rem 0.75rem;
+    border-radius: 1rem;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+    text-decoration: none;
+    z-index: 10;
+    animation: mobile-menu-bubble-float 2.5s ease-in-out infinite;
+    pointer-events: auto;
+  }
+  .mobile-menu-speech-bubble::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid #facc15;
+  }
+  @keyframes mobile-menu-bubble-float {
+    0%, 100% { transform: translate(-50%, 0.75rem); }
+    50% { transform: translate(-50%, 1rem); }
+  }
+  
+  /* 모바일 메뉴: 단톡방 버튼 노란색 ↔ 흰색 1.3초 간격 디졸브 점등 */
+  .mobile-menu-kakao-glow {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    animation: mobile-menu-kakao-glow 2.6s ease-in-out infinite;
+  }
+  @keyframes mobile-menu-kakao-glow {
+    0%, 45% { background-color: #facc15; }
+    55%, 95% { background-color: #ffffff; }
+    100% { background-color: #facc15; }
+  }
+  
   /* 모바일: 스크롤 가능·전체 내용 보기 (flex 자식이 줄어들어 스크롤 영역 생성) */
   .modal-scroll {
     min-height: 0;

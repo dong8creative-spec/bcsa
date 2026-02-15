@@ -37,19 +37,26 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                         </div>
                     </div>
                     <h1 className="text-4xl md:text-5xl font-black text-dark mb-6 leading-tight break-keep animate-fade-in-up" style={{animationDelay: '0.1s'}}>
-                        {content.about_hero_title ? (
-                            <Fragment>
-                                {content.about_hero_title.split(' ').map((word, idx, arr) => (
-                                    <span key={idx}>
-                                        {word.includes('사업가') || word.includes('네트워크') ? <span className="text-brand">{word}</span> : word}
-                                        {idx < arr.length - 1 && ' '}
-                                        {word === '함께' && <br className="md:hidden"/>}
-                                    </span>
-                                ))}
-                            </Fragment>
-                        ) : (
-                            <Fragment>함께 성장하는 <br className="md:hidden"/> <span className="text-brand">사업가 네트워크</span></Fragment>
-                        )}
+                        {(() => {
+                            const t = (content.about_hero_title || '').trim();
+                            if (t.startsWith('함께 성장하는')) {
+                                const rest = t.slice('함께 성장하는'.length).trim() || '사업가 네트워크';
+                                return <Fragment>함께 성장하는<br/><span className="text-brand">{rest}</span></Fragment>;
+                            }
+                            if (t) {
+                                return (
+                                    <Fragment>
+                                        {t.split(' ').map((word, idx, arr) => (
+                                            <span key={idx}>
+                                                {word.includes('사업가') || word.includes('네트워크') ? <span className="text-brand">{word}</span> : word}
+                                                {idx < arr.length - 1 && ' '}
+                                            </span>
+                                        ))}
+                                    </Fragment>
+                                );
+                            }
+                            return <Fragment>함께 성장하는<br/><span className="text-brand">사업가 네트워크</span></Fragment>;
+                        })()}
                     </h1>
                     <p className="text-lg text-gray-600 max-w-xl mx-auto break-keep mb-10 animate-fade-in-up" style={{animationDelay: '0.2s'}}>
                         {content.about_hero_desc || "부산 지역 청년 사업가들의 성장과 연결을 돕는 비즈니스 커뮤니티, 부청사입니다."}

@@ -435,16 +435,18 @@ const AppLayout = (props) => {
                                 {menuOrder.filter(item => {
                                         const enabled = menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고');
                                         if (!enabled) return false;
-                                        const membersOnly = ['부청사 회원', '커뮤니티', '입찰공고'];
-                                        if (membersOnly.includes(item) && !currentUser) return false;
                                         return true;
-                                    }).map((item, idx) => (
+                                    }).map((item, idx) => {
+                                        const membersOnly = ['부청사 회원', '커뮤니티', '입찰공고'];
+                                        const isDisabled = membersOnly.includes(item) && !currentUser;
+                                        return (
                                     <div key={idx} className="flex flex-col items-center gap-1 relative flex-shrink-0 min-w-fit">
-                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} relative`}>
+                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} relative ${isDisabled ? '!text-gray-400 !font-medium cursor-not-allowed opacity-80 hover:!text-gray-400 hover:opacity-80 nav-item-disabled' : ''}`}>
                                             {menuNames[item] || item}
                                         </button>
                                     </div>
-                                ))}
+                                        );
+                                    })}
                             </nav>
                         )}
                     </div>
