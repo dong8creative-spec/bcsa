@@ -44,6 +44,9 @@ import { KakaoMapModal } from './pages/Admin/components/KakaoMapModal';
 
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
 
+/** 후원 기능 비노출: true면 메뉴·홈 섹션·뷰 접근 모두 없음. 다시 켜려면 false로 변경 */
+const DONATION_FEATURE_DISABLED = true;
+
 // 이미지 메타데이터
 const imageMetadata = [
     { year: 2017, filename: '2017.png', alt: '부산지역자활센터협회 2017년 활동 사진' },
@@ -1347,6 +1350,12 @@ const App = () => {
         };
     }, [menuOrder]);
 
+    /** 후원 비노출 시 메뉴에서도 제거되도록 */
+    const effectiveMenuEnabled = useMemo(() => ({
+        ...menuEnabled,
+        ...(DONATION_FEATURE_DISABLED ? { '후원': false } : {}),
+    }), [menuEnabled]);
+
     useEffect(() => {
         const handleScroll = () => {
             // #region agent log
@@ -2609,9 +2618,10 @@ END:VCALENDAR`;
     
     // 모바일 메뉴: 모달 형태로 최상단 노출, 클릭 시 모달 닫힌 뒤 해당 페이지로 이동
     const MOBILE_MENU_ITEMS = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티'];
-    const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames, menuOrder }) => {
+    const MEMBERS_ONLY_MENUS = ['부청사 회원', '커뮤니티', '입찰공고'];
+    const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames, menuOrder, currentUser }) => {
         if (!isOpen) return null;
-        const visibleItems = menuOrder.filter(item => MOBILE_MENU_ITEMS.includes(item) && (menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')));
+        const visibleItems = menuOrder.filter(item => MOBILE_MENU_ITEMS.includes(item) && (menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')) && (!MEMBERS_ONLY_MENUS.includes(item) || currentUser));
         const handleMenuClick = (item) => {
             onNavigate(item);
             onClose();
@@ -2667,6 +2677,10 @@ END:VCALENDAR`;
     };
 
     const handleNavigation = (item) => {
+        if (item === '후원' && DONATION_FEATURE_DISABLED) {
+            alert('준비중인 서비스입니다.');
+            return;
+        }
         // 비활성화된 메뉴 클릭 시 준비중 알림 (개발 모드에서는 입찰공고 테스트 필드 허용)
         const testFieldOpen = import.meta.env.MODE === 'development' && item === '입찰공고';
         if (!testFieldOpen && !menuEnabled[item]) {
@@ -2684,6 +2698,12 @@ END:VCALENDAR`;
             setCurrentView('allSeminars'); 
             setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
         } else if (item === '부청사 회원') { 
+            if (!currentUser) {
+                alert('로그인이 필요한 서비스입니다.');
+                setPendingView('allMembers');
+                setShowLoginModal(true);
+                return;
+            }
             setCurrentView('allMembers'); 
             setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
         } else if (item === '커뮤니티') { 
@@ -2702,6 +2722,12 @@ END:VCALENDAR`;
             setCurrentView('restaurants'); 
             setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
         } else if (item === '입찰공고') { 
+            if (!currentUser) {
+                alert('로그인이 필요한 서비스입니다.');
+                setPendingView('tenderTest');
+                setShowLoginModal(true);
+                return;
+            }
             setCurrentView('tenderTest'); 
             setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
         } else {
@@ -2837,6 +2863,23 @@ END:VCALENDAR`;
                 }
                 return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} />;
             }
+        if (currentView === 'allMembers' && !currentUser) {
+            return (
+                <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+                    <div className="container mx-auto max-w-2xl">
+                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 text-center">
+                            <Icons.AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+                            <h2 className="text-xl font-bold text-dark mb-2">로그인이 필요합니다</h2>
+                            <p className="text-gray-600 mb-6">회원명단은 로그인한 회원만 볼 수 있습니다.</p>
+                            <div className="flex flex-wrap justify-center gap-3">
+                                <button type="button" onClick={() => { setPendingView('allMembers'); setShowLoginModal(true); }} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">로그인</button>
+                                <button type="button" onClick={() => setCurrentView('home')} className="px-6 py-3 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5">홈으로</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
         if (currentView === 'allMembers' && !menuEnabled['부청사 회원']) {
             alert('준비중인 서비스입니다.');
             setCurrentView('home');
@@ -2929,11 +2972,21 @@ END:VCALENDAR`;
             return null;
         }
         if (currentView === 'community' && !currentUser) {
-            alert('로그인이 필요한 서비스입니다.');
-            setPendingView('community'); // 로그인 후 커뮤니티로 이동할 의도 저장
-            setShowLoginModal(true);
-            setCurrentView('home');
-            return null;
+            return (
+                <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+                    <div className="container mx-auto max-w-2xl">
+                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 text-center">
+                            <Icons.AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+                            <h2 className="text-xl font-bold text-dark mb-2">로그인이 필요합니다</h2>
+                            <p className="text-gray-600 mb-6">커뮤니티는 로그인한 회원만 이용할 수 있습니다.</p>
+                            <div className="flex flex-wrap justify-center gap-3">
+                                <button type="button" onClick={() => { setPendingView('community'); setShowLoginModal(true); }} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">로그인</button>
+                                <button type="button" onClick={() => setCurrentView('home')} className="px-6 py-3 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5">홈으로</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
         }
         if (currentView === 'community') {
             const isCurrentUserAdmin = typeof localStorage !== 'undefined' && localStorage.getItem('adminAuthenticated') === 'true';
@@ -2957,6 +3010,11 @@ END:VCALENDAR`;
             />;
         }
         if (currentView === 'notice') return <NoticeView onBack={() => setCurrentView('home')} posts={communityPosts} menuNames={menuNames} pageTitles={pageTitles} />;
+        if (currentView === 'donation' && DONATION_FEATURE_DISABLED) {
+            alert('준비중인 서비스입니다.');
+            setCurrentView('home');
+            return null;
+        }
         if (currentView === 'donation' && !menuEnabled['후원']) {
             alert('준비중인 서비스입니다.');
             setCurrentView('home');
@@ -3062,6 +3120,23 @@ END:VCALENDAR`;
             return null;
         }
         if (currentView === 'about') return <AboutView onBack={() => setCurrentView('home')} content={content} pageTitles={pageTitles} />;
+        if (currentView === 'tenderTest' && !currentUser) {
+            return (
+                <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
+                    <div className="container mx-auto max-w-2xl">
+                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 text-center">
+                            <Icons.AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+                            <h2 className="text-xl font-bold text-dark mb-2">로그인이 필요합니다</h2>
+                            <p className="text-gray-600 mb-6">입찰공고는 로그인한 회원만 볼 수 있습니다.</p>
+                            <div className="flex flex-wrap justify-center gap-3">
+                                <button type="button" onClick={() => { setPendingView('tenderTest'); setShowLoginModal(true); }} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">로그인</button>
+                                <button type="button" onClick={() => setCurrentView('home')} className="px-6 py-3 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5">홈으로</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
         if (currentView === 'tenderTest' && !menuEnabled['입찰공고'] && import.meta.env.MODE !== 'development') {
             alert('준비중인 서비스입니다.');
             setCurrentView('home');
@@ -3298,7 +3373,7 @@ END:VCALENDAR`;
                     후원하기 전용 섹션입니다.
                     순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
                     ============================================ */}
-                {menuEnabled['후원'] ? (
+                {!DONATION_FEATURE_DISABLED && menuEnabled['후원'] ? (
                 <section className="py-12 md:py-24 px-6 bg-gradient-to-br from-green-50 to-emerald-50">
                     <div className="container mx-auto max-w-6xl">
                         <div className="relative rounded-4xl overflow-hidden bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center text-center px-6 shadow-2xl shadow-green-500/40" style={{ aspectRatio: '16/9' }}>
@@ -3410,7 +3485,7 @@ END:VCALENDAR`;
             getCategoryColor={getCategoryColor}
             scrolled={scrolled}
             menuOrder={menuOrder}
-            menuEnabled={menuEnabled}
+            menuEnabled={effectiveMenuEnabled}
             menuNames={menuNames}
             handleNavigation={handleNavigation}
             getNavClass={getNavClass}

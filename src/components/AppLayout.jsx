@@ -432,7 +432,13 @@ const AppLayout = (props) => {
                     <div className={`flex items-center min-w-0 relative z-20 ${isMobile ? 'justify-center w-full' : 'flex-1 justify-center'}`}>
                         {!isMobile && (
                             <nav className={`flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-3 relative whitespace-nowrap ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md shadow-glass'}`}>
-                                {menuOrder.filter(item => menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')).map((item, idx) => (
+                                {menuOrder.filter(item => {
+                                        const enabled = menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고');
+                                        if (!enabled) return false;
+                                        const membersOnly = ['부청사 회원', '커뮤니티', '입찰공고'];
+                                        if (membersOnly.includes(item) && !currentUser) return false;
+                                        return true;
+                                    }).map((item, idx) => (
                                     <div key={idx} className="flex flex-col items-center gap-1 relative flex-shrink-0 min-w-fit">
                                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} relative`}>
                                             {menuNames[item] || item}
@@ -479,6 +485,7 @@ const AppLayout = (props) => {
                     menuEnabled={menuEnabled}
                     menuNames={menuNames}
                     menuOrder={menuOrder}
+                    currentUser={currentUser}
                 />
             )}
 
