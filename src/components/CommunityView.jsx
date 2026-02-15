@@ -327,14 +327,16 @@ const CommunityView = ({
         <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in overflow-y-auto min-h-0">
                 <div className="container mx-auto max-w-7xl">
                     <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-                        <div>
+                        <div className="w-full text-center md:text-left">
                             <h2 className="text-3xl font-bold text-dark mb-2">커뮤니티</h2>
                             <p className="text-gray-500 text-sm">정보 공유 및 소통 공간</p>
-                                    </div>
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
-                            <Icons.ArrowLeft size={20} /> 메인으로
-                                </button>
-                            </div>
+                        </div>
+                        <div className="w-full flex justify-end">
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
+                                <Icons.ArrowLeft size={20} /> 메인으로
+                            </button>
+                        </div>
+                    </div>
                     <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-12 text-center">
                         <div className="w-20 h-20 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-6">
                             <Icons.Lock size={40} className="text-brand" />
@@ -359,21 +361,21 @@ const CommunityView = ({
         <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in overflow-y-auto min-h-0">
             <div className="container mx-auto max-w-7xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-                                        <div>
+                    <div className="w-full text-center md:text-left">
                         <h2 className="text-3xl font-bold text-dark mb-2">커뮤니티</h2>
                         <p className="text-gray-500 text-sm">정보 공유 및 소통 공간</p>
-                                        </div>
-                    <div className="flex gap-3">
+                    </div>
+                    <div className="w-full flex justify-end md:justify-start items-center gap-3">
                         {currentUser ? (
                             <button type="button" onClick={() => setIsCreateModalOpen(true)} className="px-6 py-2.5 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2">
                                 <Icons.Plus size={18} /> 글쓰기
-                                                        </button>
+                            </button>
                         ) : null}
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
                             <Icons.ArrowLeft size={20} /> 메인으로
-                                                    </button>
-                                    </div>
-                                </div>
+                        </button>
+                    </div>
+                </div>
                                 
                                         {/* 카테고리 필터 */}
                 <div className="flex gap-2 mb-6 flex-wrap">

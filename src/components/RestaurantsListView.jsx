@@ -23,11 +23,11 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
         <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in overflow-y-auto min-h-0">
             <div className="container mx-auto max-w-7xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-                    <div>
+                    <div className="w-full text-center md:text-left">
                         <PageTitle pageKey="restaurants" pageTitles={pageTitles} defaultText={menuNames?.['부산맛집'] || '부산맛집'} />
                         <p className="text-gray-500 text-sm">부산 지역 맛집 정보</p>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="w-full flex justify-end md:justify-start items-center gap-4">
                         {isFoodBusinessOwner(currentUser) ? (
                             <button 
                                 type="button" 

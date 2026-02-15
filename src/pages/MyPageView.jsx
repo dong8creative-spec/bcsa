@@ -397,13 +397,15 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
             <div className="container mx-auto max-w-5xl">
                 {/* 헤더 */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-6">
-                    <div>
+                    <div className="w-full text-center md:text-left">
                         <PageTitle pageKey="myPage" pageTitles={pageTitles} defaultText="마이페이지" />
                         <p className="text-sm text-gray-500 mt-2">회원 정보와 활동 내역을 확인하세요</p>
                     </div>
-                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-gray-600 text-sm border border-blue-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                        <Icons.ArrowLeft size={18} /> 메인으로
-                    </button>
+                    <div className="w-full flex justify-end md:justify-start">
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-gray-600 text-sm border border-blue-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                            <Icons.ArrowLeft size={18} /> 메인으로
+                        </button>
+                    </div>
                 </div>
 
                 {/* 알림 (관리자 정정 등) */}

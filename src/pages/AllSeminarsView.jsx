@@ -267,11 +267,11 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
         <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in overflow-y-auto min-h-0">
             <div className="container mx-auto max-w-7xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-                    <div>
+                    <div className="w-full text-center md:text-left">
                         <PageTitle pageKey="programs" pageTitles={pageTitles} defaultText={menuNames?.['프로그램'] || '프로그램'} />
                         <p className="text-gray-500 text-sm">비즈니스 세미나 및 네트워킹</p>
-                                </div>
-                    <div className="flex items-center gap-3">
+                    </div>
+                    <div className="w-full flex justify-end md:justify-start items-center gap-3">
                         {canManagePrograms && (
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowProgramAddModal(true); }} className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold bg-brand text-white hover:bg-blue-700 transition-colors">
                                 <Icons.Plus size={20} /> 프로그램 등록
@@ -281,7 +281,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                             <Icons.ArrowLeft size={20} /> 메인으로
                         </button>
                     </div>
-                    </div>
+                </div>
 
                 {/* 검색 및 필터 */}
                 <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-6 mb-8">

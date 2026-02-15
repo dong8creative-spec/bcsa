@@ -116,7 +116,7 @@ const openDaumPostcode = (onComplete) => {
 };
 
 // LoginModal Component
-const LoginModal = ({ onClose, onLogin, onGoogleLogin }) => {
+const LoginModal = ({ onClose, onLogin, onGoogleLogin, onSignUpClick }) => {
     const [id, setId] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -175,6 +175,15 @@ const LoginModal = ({ onClose, onLogin, onGoogleLogin }) => {
                                 로그인
                             </button>
                         </form>
+                        {onSignUpClick ? (
+                            <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSignUpClick(); }}
+                                className="w-full mt-2 py-2.5 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5 transition-colors text-sm"
+                            >
+                                회원가입
+                            </button>
+                        ) : null}
                         <button 
                             type="button" 
                             onClick={(e) => { 
@@ -2611,9 +2620,9 @@ END:VCALENDAR`;
                 style={{ zIndex: 99999, touchAction: 'none', overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.55)', opacity: 1 }}
                 onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
             >
-                <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2.5 text-gray-800 bg-white rounded-full touch-manipulation z-10 hover:bg-gray-100 shadow-lg" style={{ opacity: 1 }}><Icons.X size={24} className="text-gray-800"/></button>
-                <div className="w-full max-w-sm px-4 rounded-2xl overflow-hidden shadow-xl" style={{ backgroundColor: '#ffffff', opacity: 1 }} onClick={(e) => e.stopPropagation()}>
-                    <nav className="flex flex-col">
+                <div className="w-full max-w-[280px] px-4 rounded-2xl overflow-hidden shadow-xl relative" style={{ backgroundColor: '#ffffff', opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                    <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-4 right-4 p-2 text-gray-600 bg-white rounded-full touch-manipulation z-[100] hover:bg-gray-100 hover:text-gray-800 shadow-md transition-colors" style={{ opacity: 1 }}><Icons.X size={22} className="text-current"/></button>
+                    <nav className="flex flex-col pt-12 pb-2">
                         {visibleItems.map((item, idx) => (
                             <button
                                 key={idx}
@@ -2623,20 +2632,20 @@ END:VCALENDAR`;
                                     e.stopPropagation();
                                     handleMenuClick(item);
                                 }}
-                                className={`w-full py-4 px-6 text-base font-bold text-gray-800 text-center touch-manipulation hover:bg-gray-50 active:bg-gray-100 transition-colors ${idx < visibleItems.length - 1 ? 'border-b border-gray-200' : ''}`}
+                                className="w-full py-4 px-6 text-base font-bold text-gray-800 text-center touch-manipulation hover:bg-gray-50 active:bg-gray-100 transition-colors"
                             >
                                 {menuNames[item] || item}
                             </button>
                         ))}
                     </nav>
-                    <div className="flex items-center justify-center gap-3 p-4 border-t border-gray-200 bg-gray-50">
-                        <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 shadow-sm hover:bg-gray-50 active:bg-gray-100 transition-colors" aria-label="부청사 오픈채팅방">
+                    <div className="flex items-center justify-center gap-3 p-4 bg-gray-50">
+                        <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} aria-label="부청사 오픈채팅방">
                             <Icons.MessageSquare className="w-5 h-5" />
                         </a>
-                        <a href="https://www.instagram.com/businessmen_in_busan" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 shadow-sm hover:bg-gray-50 active:bg-gray-100 transition-colors" aria-label="부청사 인스타그램">
+                        <a href="https://www.instagram.com/businessmen_in_busan" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} aria-label="부청사 인스타그램">
                             <Icons.Instagram className="w-5 h-5" />
                         </a>
-                        <a href="https://www.youtube.com/@businessmen_in_busan" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 shadow-sm hover:bg-gray-50 active:bg-gray-100 transition-colors" aria-label="부청사 유튜브">
+                        <a href="https://www.youtube.com/@businessmen_in_busan" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} aria-label="부청사 유튜브">
                             <Icons.Youtube className="w-5 h-5" />
                         </a>
                     </div>

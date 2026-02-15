@@ -410,11 +410,11 @@ const AppLayout = (props) => {
             
             <header className={`fixed top-0 w-full z-50 transition-all duration-300 ease-in-out px-4 md:px-6 py-3 md:py-5 ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : 'bg-white/70 backdrop-blur-sm md:bg-transparent'}`}>
                 <div className="container mx-auto grid grid-cols-[auto_1fr_auto] md:flex md:justify-between items-center gap-2 md:gap-0 relative w-full">
-                    {/* 모바일: 로고만 화면 정중앙에 absolute 배치. pointer-events-none 전체 적용해 햄버거/우측 버튼 클릭이 반드시 전달되도록 함 (홈 이동은 메뉴에서 '홈' 선택) */}
+                    {/* 모바일: 로고 = 홈 버튼 (클릭 시 홈으로 이동). wrapper는 pointer-events-none, 로고만 클릭 가능 */}
                     <div className="md:hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none w-full max-w-[60%] z-0">
-                        <div className="h-[60px] flex items-center overflow-hidden pointer-events-none">
-                            <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain opacity-90" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-lg font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
-                        </div>
+                        <button type="button" aria-label="홈으로 이동" className="pointer-events-auto h-[60px] flex items-center overflow-hidden cursor-pointer group p-0 border-0 bg-transparent" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
+                            <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain opacity-90 group-hover:opacity-100 transition-opacity" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-lg font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
+                        </button>
                     </div>
                     {/* 왼쪽: 모바일 햄버거, 데스크 로고 (z-20으로 로고 오버레이보다 위에 두어 클릭 확실히 전달) */}
                     <div className="flex items-center min-w-0 relative z-20">
@@ -446,16 +446,17 @@ const AppLayout = (props) => {
                             </div>
                         ) : (
                             <div className="flex items-center gap-3">
-                                <button type="button" onClick={(e) => { 
-                                    e.preventDefault(); 
-                                    e.stopPropagation(); 
-                                    setShowLoginModal(true); 
-                                }} className="text-xs font-semibold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">로그인</button>
+                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="md:hidden px-3 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 whitespace-nowrap flex-shrink-0">
+                                    로그인
+                                </button>
+                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="hidden md:block text-xs font-semibold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">
+                                    로그인
+                                </button>
                                 <button type="button" onClick={(e) => { 
                                     e.preventDefault(); 
                                     e.stopPropagation(); 
                                     if (onSignUpClick) onSignUpClick(); else setShowSignUpChoiceModal(true); 
-                                }} className="px-3 md:px-4 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover whitespace-nowrap flex-shrink-0">가입하기</button>
+                                }} className="hidden md:inline-flex px-3 md:px-4 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover whitespace-nowrap flex-shrink-0">가입하기</button>
                             </div>
                         )}
                     </div>
@@ -548,12 +549,13 @@ const AppLayout = (props) => {
             ) : null}
             {showLoginModal === true ? (
                 <LoginModal 
-                    onClose={() => {
-                        
-                        setShowLoginModal(false);
-                    }} 
+                    onClose={() => setShowLoginModal(false)} 
                     onLogin={handleLogin}
                     onGoogleLogin={handleGoogleLogin}
+                    onSignUpClick={() => {
+                        setShowLoginModal(false);
+                        setShowSignUpChoiceModal?.(true);
+                    }}
                 />
             ) : null}
 
