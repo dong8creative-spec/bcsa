@@ -2667,12 +2667,14 @@ END:VCALENDAR`;
                     </nav>
                     <div className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-gray-50 rounded-b-2xl">
                         <div className="relative flex items-center justify-center">
-                            <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="mobile-menu-kakao-glow w-11 h-11 rounded-full flex items-center justify-center text-gray-900" aria-label="부청사 오픈채팅방">
+                            <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className={currentUser ? 'w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors' : 'mobile-menu-kakao-glow w-11 h-11 rounded-full flex items-center justify-center text-gray-900'} style={currentUser ? { boxShadow: '0 2px 8px rgba(0,0,0,0.1)' } : undefined} aria-label="부청사 오픈채팅방">
                                 <Icons.MessageSquare className="w-5 h-5" />
                             </a>
-                            <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="mobile-menu-speech-bubble" aria-label="부청사 단톡방으로 이동">
-                                부청사 단톡방으로 이동
-                            </a>
+                            {!currentUser && (
+                                <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="mobile-menu-speech-bubble" aria-label="부청사 단톡방으로 이동">
+                                    부청사 단톡방으로 이동
+                                </a>
+                            )}
                         </div>
                         <a href="https://www.instagram.com/businessmen_in_busan" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} aria-label="부청사 인스타그램">
                             <Icons.Instagram className="w-5 h-5" />
