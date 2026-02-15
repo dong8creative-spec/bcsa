@@ -2616,13 +2616,12 @@ END:VCALENDAR`;
 
 
     
-    // 모바일 메뉴: 모달 형태로 최상단 노출, 클릭 시 모달 닫힌 뒤 해당 페이지로 이동
-    const MOBILE_MENU_ITEMS = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티'];
+    // 모바일 메뉴: 모달 형태로 최상단 노출, PC와 동일하게 menuOrder·menuEnabled 기준으로 표시
     const MEMBERS_ONLY_MENUS = ['부청사 회원', '커뮤니티', '입찰공고'];
     const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames, menuOrder, currentUser }) => {
         if (!isOpen) return null;
-        // 모바일 메뉴: 5개 모두 표시. 비회원이면 부청사 회원·커뮤니티는 회색 비활성화
-        const visibleItems = MOBILE_MENU_ITEMS.filter(item =>
+        const isLoggedIn = Boolean(currentUser && (currentUser.id || currentUser.uid));
+        const visibleItems = (menuOrder || []).filter(item =>
             menuEnabled[item] || MEMBERS_ONLY_MENUS.includes(item) || (import.meta.env.MODE === 'development' && item === '입찰공고')
         );
         const handleMenuClick = (item) => {
@@ -2636,12 +2635,20 @@ END:VCALENDAR`;
                 aria-modal="true"
                 aria-label="메뉴"
                 className="fixed inset-0 flex flex-col items-center justify-center"
-                style={{ zIndex: 99999, overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.55)', opacity: 1 }}
+                style={{
+                    zIndex: 2147483647,
+                    isolation: 'isolate',
+                    overflow: 'hidden',
+                    backgroundColor: 'rgba(0,0,0,0.55)',
+                    opacity: 1,
+                    pointerEvents: 'auto',
+                    touchAction: 'none',
+                }}
                 onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
             >
                 <div className="w-full max-w-[280px] rounded-2xl overflow-hidden shadow-xl relative flex flex-col items-center justify-center py-10 px-4" style={{ backgroundColor: '#ffffff', opacity: 1, touchAction: 'manipulation' }} onClick={(e) => e.stopPropagation()}>
-                    <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-4 right-4 p-2 text-gray-600 bg-white rounded-full touch-manipulation z-[100] hover:bg-gray-100 hover:text-gray-800 shadow-md transition-colors" style={{ opacity: 1 }}><Icons.X size={22} className="text-current"/></button>
-                    <nav className="flex flex-col w-full items-center pt-2 pb-4">
+                    <button type="button" aria-label="메뉴 닫기" className="absolute top-4 right-4 min-w-[44px] min-h-[44px] flex items-center justify-center p-2 text-gray-600 bg-white rounded-full touch-manipulation z-[110] hover:bg-gray-100 hover:text-gray-800 shadow-md transition-colors" style={{ opacity: 1 }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}><Icons.X size={22} className="text-current"/></button>
+                    <nav className="flex flex-col w-full items-center pt-2 pb-4 relative z-0">
                         {visibleItems.map((item, idx) => {
                             const isMemberOnlyDisabled = MEMBERS_ONLY_MENUS.includes(item) && !currentUser;
                             return (
@@ -2665,12 +2672,12 @@ END:VCALENDAR`;
                             );
                         })}
                     </nav>
-                    <div className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-gray-50 rounded-b-2xl">
+                    <div className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-gray-50 rounded-b-2xl relative z-0">
                         <div className="relative flex items-center justify-center">
-                            <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className={currentUser ? 'w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors' : 'mobile-menu-kakao-glow w-11 h-11 rounded-full flex items-center justify-center text-gray-900'} style={currentUser ? { boxShadow: '0 2px 8px rgba(0,0,0,0.1)' } : undefined} aria-label="부청사 오픈채팅방">
+                            <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className={isLoggedIn ? 'w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors' : 'mobile-menu-kakao-glow w-11 h-11 rounded-full flex items-center justify-center text-gray-900'} style={isLoggedIn ? { boxShadow: '0 2px 8px rgba(0,0,0,0.1)' } : undefined} aria-label="부청사 오픈채팅방">
                                 <Icons.MessageSquare className="w-5 h-5" />
                             </a>
-                            {!currentUser && (
+                            {!isLoggedIn && (
                                 <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="mobile-menu-speech-bubble" aria-label="부청사 단톡방으로 이동">
                                     부청사 단톡방으로 이동
                                 </a>
@@ -3559,7 +3566,7 @@ END:VCALENDAR`;
                                 type="button"
                                 onClick={() => {
                                     setShowSignUpChoiceModal(false);
-                                    setShowSignUpModal(true);
+                                    navigate('/signup');
                                 }}
                                 className="w-full py-3 px-4 bg-blue-50 text-blue-700 border-2 border-blue-200 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 text-sm"
                             >

@@ -48,6 +48,56 @@ export const firebaseService = {
     }
   },
 
+  /** 이메일로 기존 회원 1명 조회 (중복 검사용, 회원 수와 무관하게 1건만 읽음) */
+  async getUserByEmail(email) {
+    if (!email || typeof email !== 'string' || !email.trim()) return null;
+    try {
+      const q = query(
+        collection(db, 'users'),
+        where('email', '==', email.trim()),
+        limit(1)
+      );
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) return null;
+      const d = snapshot.docs[0];
+      return { id: d.id, ...d.data() };
+    } catch (error) {
+      console.error('Error getting user by email:', error);
+      throw error;
+    }
+  },
+
+  /** 연락처(정규화된 숫자 문자열)로 기존 회원 1명 조회 (중복 검사용) */
+  async getUserByPhone(normalizedPhone) {
+    if (!normalizedPhone || typeof normalizedPhone !== 'string') return null;
+    const digits = normalizedPhone.replace(/\D/g, '');
+    if (!digits.length) return null;
+    try {
+      const q = query(
+        collection(db, 'users'),
+        where('phone', '==', digits),
+        limit(1)
+      );
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) {
+        const q2 = query(
+          collection(db, 'users'),
+          where('phoneNumber', '==', digits),
+          limit(1)
+        );
+        const snap2 = await getDocs(q2);
+        if (snap2.empty) return null;
+        const d = snap2.docs[0];
+        return { id: d.id, ...d.data() };
+      }
+      const d = snapshot.docs[0];
+      return { id: d.id, ...d.data() };
+    } catch (error) {
+      console.error('Error getting user by phone:', error);
+      throw error;
+    }
+  },
+
   async createUser(userData) {
     try {
       const data = {

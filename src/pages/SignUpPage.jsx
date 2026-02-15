@@ -118,16 +118,21 @@ const SignUpPage = ({ onSignUp }) => {
     const isBusinessNumberValid = businessNumberDigits.length === 10;
 
     const isRequiredFilled = useMemo(() => {
+        if (!userType) return false;
+        if (!(form.name || '').trim()) return false;
         const validBirthdate = parseBirthdateInput(form.birthdate);
-        if (!userType || !form.name?.trim() || !validBirthdate || !form.gender || !form.phone?.trim() || !form.email?.trim()) return false;
-        if (!form.password || !form.passwordConfirm) return false;
-        if (!validateEmail(form.email)) return false;
+        if (!validBirthdate || !(form.birthdate || '').trim()) return false;
+        if (!form.gender) return false;
+        if (!(form.phone || '').trim() || !validatePhone(form.phone)) return false;
+        if (!(form.email || '').trim() || !validateEmail(form.email)) return false;
+        if (!(form.password || '').trim() || !(form.passwordConfirm || '').trim()) return false;
         if (!validatePassword(form.password).valid) return false;
         if (form.password !== form.passwordConfirm) return false;
-        if (!validatePhone(form.phone)) return false;
-        if (userType === '사업자' && (!form.businessCategory || !form.company?.trim() || !isBusinessNumberValid)) return false;
-        if (userType === '사업자' && (!form.collaborationIndustry?.trim() || !form.keyCustomers?.trim())) return false;
         if (!form.termsAgreed || !form.privacyAgreed) return false;
+        if (userType === '사업자') {
+            if (!(form.company || '').trim() || !isBusinessNumberValid || !form.businessCategory) return false;
+            if (!(form.collaborationIndustry || '').trim() || !(form.keyCustomers || '').trim()) return false;
+        }
         return true;
     }, [userType, form, isBusinessNumberValid]);
 
@@ -153,8 +158,45 @@ const SignUpPage = ({ onSignUp }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        if (!isRequiredFilled) {
-            setError('필수 항목(*)을 모두 올바르게 입력해주세요.');
+
+        if (!userType) {
+            setError('회원 유형(사업자/예비창업자)을 선택해주세요.');
+            return;
+        }
+        if (!(form.name || '').trim()) {
+            setError('이름을 입력해주세요.');
+            return;
+        }
+        if (!(form.birthdate || '').trim()) {
+            setError('생년월일을 입력해주세요.');
+            return;
+        }
+        if (!parseBirthdateInput(form.birthdate)) {
+            setError('생년월일을 YYYY-MM-DD 형식(8자리 이상)으로 입력해주세요.');
+            return;
+        }
+        if (!form.gender) {
+            setError('성별을 선택해주세요.');
+            return;
+        }
+        if (!(form.phone || '').trim()) {
+            setError('연락처를 입력해주세요.');
+            return;
+        }
+        if (!validatePhone(form.phone)) {
+            setError('연락처는 010, 011 등으로 시작하는 숫자 11자리로 입력해주세요.');
+            return;
+        }
+        if (!(form.email || '').trim()) {
+            setError('이메일을 입력해주세요.');
+            return;
+        }
+        if (!validateEmail(form.email)) {
+            setError('올바른 이메일 형식을 입력해주세요.');
+            return;
+        }
+        if (!(form.password || '').trim()) {
+            setError('비밀번호를 입력해주세요.');
             return;
         }
         const pv = validatePassword(form.password);
@@ -162,35 +204,13 @@ const SignUpPage = ({ onSignUp }) => {
             setError(pv.message);
             return;
         }
+        if (!(form.passwordConfirm || '').trim()) {
+            setError('비밀번호 확인을 입력해주세요.');
+            return;
+        }
         if (form.password !== form.passwordConfirm) {
             setError('비밀번호가 일치하지 않습니다.');
             return;
-        }
-        if (!validateEmail(form.email)) {
-            setError('올바른 이메일 형식을 입력해주세요.');
-            return;
-        }
-        if (!validatePhone(form.phone)) {
-            setError('연락처는 숫자 11자리만 입력 가능합니다. (예: 01012345678)');
-            return;
-        }
-        if (!parseBirthdateInput(form.birthdate)) {
-            setError('생년월일을 YYYY-MM-DD 형식으로 입력해주세요.');
-            return;
-        }
-        if (!form.gender) {
-            setError('성별을 선택해주세요.');
-            return;
-        }
-        if (userType === '사업자') {
-            if (!form.collaborationIndustry?.trim()) {
-                setError('협업 업종을 입력해주세요.');
-                return;
-            }
-            if (!form.keyCustomers?.trim()) {
-                setError('핵심고객을 입력해주세요.');
-                return;
-            }
         }
         if (!form.termsAgreed) {
             setError('이용약관 동의에 체크해주세요.');
@@ -201,7 +221,7 @@ const SignUpPage = ({ onSignUp }) => {
             return;
         }
         if (userType === '사업자') {
-            if (!form.company?.trim()) {
+            if (!(form.company || '').trim()) {
                 setError('상호명을 입력해주세요.');
                 return;
             }
@@ -213,15 +233,39 @@ const SignUpPage = ({ onSignUp }) => {
                 setError('업종/업태를 선택해주세요.');
                 return;
             }
+            if (!(form.collaborationIndustry || '').trim()) {
+                setError('협업 업종을 입력해주세요.');
+                return;
+            }
+            if (!(form.keyCustomers || '').trim()) {
+                setError('핵심고객을 입력해주세요.');
+                return;
+            }
+        }
+
+        if (!isRequiredFilled) {
+            setError('필수 항목(*)을 모두 올바르게 입력해주세요.');
+            return;
         }
 
         setSubmitting(true);
         try {
-            const allUsers = firebaseService?.getUsers ? await firebaseService.getUsers() : await loadUsersFromStorage();
-            const users = Array.isArray(allUsers) ? allUsers : [];
-            const existsEmail = users.some(u => (u.email || '').toLowerCase() === form.email.trim().toLowerCase());
-            const phoneNorm = normalizePhone(form.phone);
-            const existsPhone = phoneNorm ? users.some(u => normalizePhone(u.phone || u.phoneNumber) === phoneNorm) : false;
+            let existsEmail = false;
+            let existsPhone = false;
+            if (firebaseService?.getUserByEmail && firebaseService?.getUserByPhone) {
+                const [emailUser, phoneUser] = await Promise.all([
+                    firebaseService.getUserByEmail(form.email || ''),
+                    firebaseService.getUserByPhone(normalizePhone(form.phone))
+                ]);
+                existsEmail = !!emailUser;
+                existsPhone = !!phoneUser;
+            } else {
+                const allUsers = firebaseService?.getUsers ? await firebaseService.getUsers() : await loadUsersFromStorage();
+                const users = Array.isArray(allUsers) ? allUsers : [];
+                existsEmail = users.some(u => (u.email || '').toLowerCase() === form.email.trim().toLowerCase());
+                const phoneNorm = normalizePhone(form.phone);
+                existsPhone = phoneNorm ? users.some(u => normalizePhone(u.phone || u.phoneNumber) === phoneNorm) : false;
+            }
             if (existsEmail) {
                 setError('이미 사용 중인 이메일입니다.');
                 setSubmitting(false);
@@ -263,8 +307,10 @@ const SignUpPage = ({ onSignUp }) => {
             alert('회원가입이 완료되었습니다.\n관리자 승인 후 서비스를 이용하실 수 있습니다.');
             navigate('/', { replace: true });
         } catch (err) {
+            const code = err?.code ?? '없음';
+            console.error('SignUp failed', { code, message: err?.message, error: err });
             const msg = err.code === 'auth/email-already-in-use' ? '이미 사용 중인 이메일입니다.' : (err.message || '회원가입에 실패했습니다.');
-            setError(msg);
+            setError(`(코드: ${code}) ${msg}`);
         } finally {
             setSubmitting(false);
         }
@@ -293,7 +339,7 @@ const SignUpPage = ({ onSignUp }) => {
                         </p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                         {/* 회원 유형 */}
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">회원 유형 <span className="text-red-500">*</span></label>

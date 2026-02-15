@@ -2,8 +2,22 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { firebaseService } from '../services/firebaseService';
 import { authService } from '../services/authService';
 import { hashPassword, loadUsersFromStorage } from '../utils/authUtils';
+import { uploadImageToImgBB, resizeImage } from '../utils/imageUtils';
 import { Icons } from './Icons';
 import ModalPortal from './ModalPortal';
+
+/** 프로필 이미지 data URL을 ImgBB에 업로드 후 URL 반환. 실패 시 null 또는 throw */
+async function uploadProfileImageToUrl(dataUrl, defaultAvatarUrl) {
+    if (!dataUrl || !dataUrl.startsWith('data:')) return defaultAvatarUrl;
+    try {
+        const resized = await resizeImage(dataUrl, 600, 600, 0.8, { outputMimeType: 'image/webp' });
+        const result = await uploadImageToImgBB(resized, 'profile.webp');
+        const url = result?.url ?? (typeof result === 'string' ? result : null);
+        return url || defaultAvatarUrl;
+    } catch (err) {
+        throw err;
+    }
+}
 
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 
@@ -251,13 +265,22 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
             
             setIsCreatingAccount(true);
             try {
-                const raw = firebaseService?.getUsers
-                    ? await firebaseService.getUsers()
-                    : await loadUsersFromStorage();
-                const allUsers = Array.isArray(raw) ? raw : [];
-                const existingByEmail = allUsers.find(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase());
-                const phoneNorm = normalizePhone(formData.phone);
-                const existingByPhone = phoneNorm ? allUsers.find(u => normalizePhone(u.phone || u.phoneNumber) === phoneNorm) : null;
+                let existingByEmail = null;
+                let existingByPhone = null;
+                if (firebaseService?.getUserByEmail && firebaseService?.getUserByPhone) {
+                    const [emailUser, phoneUser] = await Promise.all([
+                        firebaseService.getUserByEmail(formData.email || ''),
+                        firebaseService.getUserByPhone(normalizePhone(formData.phone))
+                    ]);
+                    existingByEmail = emailUser;
+                    existingByPhone = phoneUser;
+                } else {
+                    const raw = await loadUsersFromStorage();
+                    const allUsers = Array.isArray(raw) ? raw : [];
+                    existingByEmail = allUsers.find(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase()) || null;
+                    const phoneNorm = normalizePhone(formData.phone);
+                    existingByPhone = phoneNorm ? (allUsers.find(u => normalizePhone(u.phone || u.phoneNumber) === phoneNorm) || null) : null;
+                }
                 if (existingByEmail && existingByPhone) {
                     setIsCreatingAccount(false);
                     return alert("이미 사용 중인 이메일(아이디)과 연락처입니다. 로그인을 시도해주세요.");
@@ -270,12 +293,23 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                     setIsCreatingAccount(false);
                     return alert("이미 사용 중인 연락처입니다. 다른 번호를 입력해주세요.");
                 }
+                const defaultAvatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=random`;
+                let imgUrl = formData.img && !formData.img.startsWith('data:') ? formData.img : defaultAvatarUrl;
+                if (formData.img && formData.img.startsWith('data:')) {
+                    try {
+                        imgUrl = await uploadProfileImageToUrl(formData.img, defaultAvatarUrl);
+                    } catch (err) {
+                        setIsCreatingAccount(false);
+                        alert('프로필 사진 업로드에 실패했습니다. 사진 없이 진행하거나 다시 시도해 주세요.');
+                        return;
+                    }
+                }
                 if (authService && authService.signUp) {
                     const user = await authService.signUp(formData.email, formData.password, {
                         name: formData.name,
                         phone: formData.phone,
                         userType: formData.userType,
-                        img: formData.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=random`,
+                        img: imgUrl,
                         approvalStatus: 'pending'
                     });
                     setFirebaseUser(user);
@@ -284,14 +318,19 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                     throw new Error('Firebase Auth가 초기화되지 않았습니다.');
                 }
             } catch (error) {
+                const msg = error?.message || '알 수 없는 오류';
+                const code = error?.code ?? '없음';
+                console.error('SignUp failed (Step 1)', { code, message: msg, error });
                 if (error.code === 'auth/email-already-in-use') {
                     alert("이미 사용 중인 이메일입니다.");
                 } else if (error.code === 'auth/weak-password') {
                     alert("비밀번호가 너무 약합니다. 더 강한 비밀번호를 사용해주세요.");
                 } else if (error.code === 'auth/network-request-failed') {
                     alert("네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.");
+                } else if (msg.includes('payload') || msg.includes('size') || error?.code === 'invalid-argument') {
+                    alert("회원가입에 실패했습니다.\n\n프로필 사진 크기가 너무 클 수 있습니다. 더 작은 사진을 선택하거나, 사진 없이 가입한 뒤 마이페이지에서 등록해 주세요.");
                 } else {
-                    alert(`회원가입에 실패했습니다: ${error.message || '알 수 없는 오류'}`);
+                    alert(`회원가입에 실패했습니다. (코드: ${code})\n\n${msg}`);
                 }
             } finally {
                 setIsCreatingAccount(false);
@@ -383,6 +422,16 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         }
         
         try {
+            const defaultAvatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=random`;
+            let imgUrl = formData.img || defaultAvatarUrl;
+            if (formData.img && formData.img.startsWith('data:')) {
+                try {
+                    imgUrl = await uploadProfileImageToUrl(formData.img, defaultAvatarUrl);
+                } catch (err) {
+                    if (!confirm('프로필 사진 업로드에 실패했습니다. 사진 없이 진행할까요?')) return;
+                    imgUrl = defaultAvatarUrl;
+                }
+            }
             const userData = {
                 uid: firebaseUser.uid,
                 email: formData.email,
@@ -392,7 +441,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                 roadAddress: formData.roadAddress,
                 detailAddress: formData.detailAddress,
                 zipCode: formData.zipCode,
-                img: formData.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=random`,
+                img: imgUrl,
                 approvalStatus: 'pending',
                 createdAt: new Date().toISOString()
             };
@@ -407,8 +456,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
             }
             
             if (firebaseService && firebaseService.updateUser) {
-                const users = await firebaseService.getUsers();
-                const userDoc = users.find(u => u.uid === firebaseUser.uid);
+                const userDoc = firebaseService.getUser ? await firebaseService.getUser(firebaseUser.uid) : null;
                 if (userDoc) {
                     await firebaseService.updateUser(userDoc.id, userData);
                 } else {
@@ -423,7 +471,14 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
             alert("회원가입이 완료되었습니다.\n관리자 승인 후 서비스를 이용하실 수 있습니다.\n승인 상태는 마이페이지에서 확인하실 수 있습니다.");
             onClose(); 
         } catch (error) {
-            alert(`회원가입 처리 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`);
+            const msg = error?.message || '알 수 없는 오류';
+            const code = error?.code ?? '없음';
+            console.error('SignUp failed (Step 2)', { code, message: msg, error });
+            if (msg.includes('payload') || msg.includes('size') || error?.code === 'invalid-argument') {
+                alert(`회원가입 처리 중 오류가 발생했습니다.\n\n프로필 사진 크기가 너무 클 수 있습니다. 더 작은 사진을 선택하거나, 사진 없이 가입한 뒤 마이페이지에서 등록해 주세요.\n\n${msg}`);
+            } else {
+                alert(`회원가입 처리 중 오류가 발생했습니다. (코드: ${code})\n\n${msg}`);
+            }
         }
     };
     

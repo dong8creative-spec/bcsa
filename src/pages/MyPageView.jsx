@@ -93,6 +93,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
         companyImages: Array.isArray(user.companyImages) ? user.companyImages : (user.companyImages ? [user.companyImages] : [])
     });
     const [companyImageUploading, setCompanyImageUploading] = useState(false);
+    const [profileImageUploading, setProfileImageUploading] = useState(false);
     const companyMainImageInputRef = useRef(null);
     const companyImagesInputRef = useRef(null);
     const [editFormData, setEditFormData] = useState(() => getInitialEditForm(user));
@@ -378,18 +379,24 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
         e.target.value = '';
     };
 
-    const handleFileChange = (e) => {
+    const handleFileChange = async (e) => {
         const file = e.target.files?.[0];
-        if (!file) return;
+        e.target.value = '';
+        if (!file || !file.type?.startsWith('image/')) return;
         if (file.size > 1024 * 1024) {
             alert("이미지 크기는 1MB 이하로 제한됩니다.");
             return;
         }
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setEditFormData(prev => ({ ...prev, img: reader.result }));
-        };
-        reader.readAsDataURL(file);
+        setProfileImageUploading(true);
+        try {
+            const url = await uploadImage(file, 'company');
+            setEditFormData(prev => ({ ...prev, img: url }));
+        } catch (err) {
+            console.error(err);
+            alert(err?.message || '프로필 사진 업로드에 실패했습니다.');
+        } finally {
+            setProfileImageUploading(false);
+        }
     };
 
     return (
@@ -430,9 +437,15 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                     <div className="flex flex-col md:flex-row items-start gap-8">
                         <div className="relative">
                             <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-5xl overflow-hidden border border-blue-300">
-                                {editFormData.img ? <img src={editFormData.img} className="w-full h-full object-cover" loading="lazy" decoding="async" /> : "👤"}
+                                {profileImageUploading ? (
+                                    <span className="text-xs text-gray-500 px-2 text-center">업로드 중...</span>
+                                ) : editFormData.img ? (
+                                    <img src={editFormData.img} className="w-full h-full object-cover" loading="lazy" decoding="async" alt="프로필" />
+                                ) : (
+                                    "👤"
+                                )}
                             </div>
-                            {isEditingProfile && (
+                            {isEditingProfile && !profileImageUploading && (
                                 <label className="absolute bottom-0 right-0 w-10 h-10 bg-gray-800 text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-700 transition-colors border-2 border-white">
                                     <Icons.Camera size={18} />
                                     <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />

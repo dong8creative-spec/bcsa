@@ -571,7 +571,7 @@ const AppLayout = (props) => {
                     onGoogleLogin={handleGoogleLogin}
                     onSignUpClick={() => {
                         setShowLoginModal(false);
-                        setShowSignUpChoiceModal?.(true);
+                        onSignUpClick?.();
                     }}
                 />
             ) : null}
