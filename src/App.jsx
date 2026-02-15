@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, Fragment } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { firebaseService } from './services/firebaseService';
 import { authService } from './services/authService';
@@ -205,6 +205,8 @@ const LoginModal = ({ onClose, onLogin, onGoogleLogin }) => {
 
 const App = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const openMobileMenu = useCallback(() => { setIsMenuOpen(true); }, []);
+    const closeMobileMenu = useCallback(() => { setIsMenuOpen(false); }, []);
     const [scrolled, setScrolled] = useState(false);
     const [content, setContent] = useState(() => {
         try {
@@ -240,6 +242,13 @@ const App = () => {
         if (testView === 'tender' && import.meta.env.MODE === 'development') {
             setCurrentView('tenderTest');
         }
+    }, []);
+
+    // 햄버거 클릭을 전역 이벤트로도 수신 (클릭이 콜백보다 확실히 전달되도록)
+    useEffect(() => {
+        const handler = () => setIsMenuOpen(true);
+        window.addEventListener('openMobileMenu', handler);
+        return () => window.removeEventListener('openMobileMenu', handler);
     }, []);
 
     // 모바일 메뉴 열림 시 배경 스크롤 완전 잠금 (iOS 포함)
@@ -2598,12 +2607,12 @@ END:VCALENDAR`;
                 role="dialog"
                 aria-modal="true"
                 aria-label="메뉴"
-                className="fixed inset-0 flex flex-col items-center justify-center animate-fade-in bg-black/50"
-                style={{ zIndex: 99999, touchAction: 'none', overflow: 'hidden' }}
+                className="fixed inset-0 flex flex-col items-center justify-center"
+                style={{ zIndex: 99999, touchAction: 'none', overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.55)', opacity: 1 }}
                 onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
             >
-                <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2.5 text-gray-800 bg-white/90 rounded-full touch-manipulation z-10 hover:bg-white shadow-lg"><Icons.X size={24} className="text-gray-800"/></button>
-                <div className="w-full max-w-sm px-4 rounded-2xl overflow-hidden bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+                <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2.5 text-gray-800 bg-white rounded-full touch-manipulation z-10 hover:bg-gray-100 shadow-lg" style={{ opacity: 1 }}><Icons.X size={24} className="text-gray-800"/></button>
+                <div className="w-full max-w-sm px-4 rounded-2xl overflow-hidden shadow-xl" style={{ backgroundColor: '#ffffff', opacity: 1 }} onClick={(e) => e.stopPropagation()}>
                     <nav className="flex flex-col">
                         {visibleItems.map((item, idx) => (
                             <button
@@ -3353,7 +3362,7 @@ END:VCALENDAR`;
         {MobileMenu && (
             <MobileMenu
                 isOpen={isMenuOpen}
-                onClose={() => setIsMenuOpen(false)}
+                onClose={closeMobileMenu}
                 onNavigate={handleNavigation}
                 menuEnabled={menuEnabled}
                 menuNames={menuNames}
@@ -3401,6 +3410,7 @@ END:VCALENDAR`;
             users={users}
             LoginModal={LoginModal}
             setIsMenuOpen={setIsMenuOpen}
+            onOpenMobileMenu={openMobileMenu}
             content={content}
             isMenuOpen={isMenuOpen}
         />

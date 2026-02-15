@@ -84,6 +84,7 @@ const AppLayout = (props) => {
         MobileMenu,
         isMenuOpen,
         setIsMenuOpen,
+        onOpenMobileMenu,
     } = props;
 
     useEffect(() => {
@@ -417,7 +418,7 @@ const AppLayout = (props) => {
                     </div>
                     {/* 왼쪽: 모바일 햄버거, 데스크 로고 (z-20으로 로고 오버레이보다 위에 두어 클릭 확실히 전달) */}
                     <div className="flex items-center min-w-0 relative z-20">
-                        <button type="button" aria-label="메뉴 열기" className="md:hidden p-2 -ml-2 rounded-lg bg-white/90 text-gray-800 hover:bg-white active:bg-white/95 shadow-sm transition-colors touch-manipulation" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen?.(true); }} onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen?.(true); }}>
+                        <button type="button" aria-label="메뉴 열기" className="md:hidden min-w-[44px] min-h-[44px] p-2 -ml-2 rounded-lg bg-white/90 text-gray-800 hover:bg-white active:bg-white/95 shadow-sm transition-colors touch-manipulation flex items-center justify-center" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new CustomEvent('openMobileMenu')); onOpenMobileMenu?.(); setIsMenuOpen?.(true); }} onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new CustomEvent('openMobileMenu')); onOpenMobileMenu?.(); setIsMenuOpen?.(true); }}>
                             <Icons.Menu size={24} />
                         </button>
                         <div className="hidden md:flex items-center cursor-pointer group h-[50px] md:h-[75px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
