@@ -5,7 +5,7 @@ import CalendarSection from '../components/CalendarSection';
 import ModalPortal from '../components/ModalPortal';
 import { ProgramAddModal } from '../components/ProgramAddModal';
 
-const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [], communityPosts = [], onProgramAdded }) => {
+const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [], communityPosts = [], onProgramAdded, currentPage: currentPageProp, onPageChange }) => {
     /** 운영진 또는 관리자 권한: 프로그램 등록 가능 (admin 채널 없이 바로 등록) */
     const canManagePrograms = currentUser && (currentUser.memberGrade === '운영진' || currentUser.role === 'admin' || currentUser.role === 'master');
     const [showProgramAddModal, setShowProgramAddModal] = useState(false);
@@ -22,7 +22,10 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [imageAspectRatios, setImageAspectRatios] = useState({}); // 이미지 인덱스별 비율 → 슬라이드마다 컨테이너 맞춰 상하좌우 여백 제거
     const [leftColumnHeightPx, setLeftColumnHeightPx] = useState(null);
-    const [currentPage, setCurrentPage] = useState(1);
+    const [internalPage, setInternalPage] = useState(1);
+    const isPageControlled = currentPageProp != null && typeof onPageChange === 'function';
+    const currentPage = isPageControlled ? currentPageProp : internalPage;
+    const setCurrentPage = isPageControlled ? (v) => { const next = typeof v === 'function' ? v(currentPage) : v; onPageChange(next); } : setInternalPage;
     
     const ITEMS_PER_PAGE = 3;
     const SLIDE_DURATION_MS = 7000;
@@ -30,7 +33,17 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
 
     const currentImageIndexRef = useRef(0);
     const leftColRef = useRef(null);
+    const listContainerRef = useRef(null);
+    const prevFilterRef = useRef({ searchKeyword: '', selectedCategory: '전체', selectedStatus: '전체', sortBy: 'latest' });
     currentImageIndexRef.current = currentImageIndex;
+
+    // #region agent log
+    const mountIdRef = useRef(Math.random().toString(36).slice(2, 10));
+    useEffect(() => {
+        fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AllSeminarsView.jsx:mount',message:'AllSeminarsView mounted',data:{mountId:mountIdRef.current},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+        return () => { fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AllSeminarsView.jsx:unmount',message:'AllSeminarsView unmounted',data:{mountId:mountIdRef.current},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{}); };
+    }, []);
+    // #endregion
 
     useEffect(() => {
         setCurrentImageIndex(0);
@@ -136,16 +149,41 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
         }
     }, [filteredSeminars, sortBy]);
 
-    // 페이지네이션 계산
-    const totalPages = Math.ceil(sortedSeminars.length / ITEMS_PER_PAGE);
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    // 페이지네이션 계산 (totalPages 0 방지, effectivePage로 빈 목록 방지)
+    const totalPages = Math.max(1, Math.ceil(sortedSeminars.length / ITEMS_PER_PAGE));
+    const effectivePage = Math.min(currentPage, totalPages);
+    const startIndex = (effectivePage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
     const currentPageSeminars = sortedSeminars.slice(startIndex, endIndex);
 
-    // 검색/필터 변경 시 첫 페이지로 리셋
+    // 검색/필터가 실제로 변경된 경우에만 1페이지로 리셋 (스크롤 등으로 인한 재렌더 시 오동작 방지)
     useEffect(() => {
-        setCurrentPage(1);
+        const prev = prevFilterRef.current;
+        const changed = prev.searchKeyword !== searchKeyword || prev.selectedCategory !== selectedCategory || prev.selectedStatus !== selectedStatus || prev.sortBy !== sortBy;
+        const didSetPage = changed;
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AllSeminarsView.jsx:resetEffect',message:'reset effect ran',data:{prev:prev,searchKeyword,selectedCategory,selectedStatus,sortBy,changed,didSetPage},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+        // #endregion
+        if (changed) {
+            prevFilterRef.current = { searchKeyword, selectedCategory, selectedStatus, sortBy };
+            setCurrentPage(1);
+        }
     }, [searchKeyword, selectedCategory, selectedStatus, sortBy]);
+
+    // totalPages가 줄어들었을 때 currentPage가 totalPages를 넘으면 마지막 페이지로 동기화
+    useEffect(() => {
+        const didSync = currentPage > totalPages;
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AllSeminarsView.jsx:syncEffect',message:'sync effect ran',data:{currentPage,totalPages,didSync},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+        // #endregion
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [totalPages, currentPage]);
+
+    const scrollListIntoView = () => {
+        listContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
     const getStatusColor = (status) => {
         switch(status) {
@@ -306,7 +344,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
 
                 {/* 세미나 리스트 */}
                 {sortedSeminars.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div ref={listContainerRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {currentPageSeminars.map((seminar) => {
                             // images/imageUrls 배열 또는 imageUrl/img 단일 필드 호환
                             const displayImage = (seminar.images && seminar.images.length > 0)
@@ -390,7 +428,10 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                 {sortedSeminars.length > 0 && totalPages > 1 && (
                     <div className="flex items-center justify-center gap-2 my-8">
                         <button
-                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            onClick={() => {
+                                setCurrentPage(prev => Math.max(1, prev - 1));
+                                scrollListIntoView();
+                            }}
                             disabled={currentPage === 1}
                             className="px-4 py-2 rounded-xl border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
                         >
@@ -399,7 +440,10 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                             <button
                                 key={page}
-                                onClick={() => setCurrentPage(page)}
+                                onClick={() => {
+                                    setCurrentPage(page);
+                                    scrollListIntoView();
+                                }}
                                 className={`px-4 py-2 rounded-xl font-bold transition-colors ${
                                     currentPage === page
                                         ? 'bg-brand text-white'
@@ -410,7 +454,10 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                             </button>
                         ))}
                         <button
-                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            onClick={() => {
+                                setCurrentPage(prev => Math.min(totalPages, prev + 1));
+                                scrollListIntoView();
+                            }}
                             disabled={currentPage === totalPages}
                             className="px-4 py-2 rounded-xl border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
                         >

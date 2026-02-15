@@ -7,7 +7,7 @@ import ModalPortal from '../components/ModalPortal';
 
 const PAGE_SIZE = 10;
 
-const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
+const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage: currentPageProp, onPageChange }) => {
     const [searchName, setSearchName] = useState('');
     const [searchIndustry, setSearchIndustry] = useState('');
     const [searchRegion, setSearchRegion] = useState('');
@@ -17,8 +17,12 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
     const [filteredMembers, setFilteredMembers] = useState(members);
     const [sortKey, setSortKey] = useState('memberGrade');
     const [sortOrder, setSortOrder] = useState('asc');
-    const [currentPage, setCurrentPage] = useState(1);
-    
+    const [internalPage, setInternalPage] = useState(1);
+    const isPageControlled = currentPageProp != null && typeof onPageChange === 'function';
+    const currentPage = isPageControlled ? currentPageProp : internalPage;
+    const setCurrentPage = isPageControlled ? (v) => { const next = typeof v === 'function' ? v(currentPage) : v; onPageChange(next); } : setInternalPage;
+    const prevFilterRef = React.useRef({ searchName: '', searchIndustry: '', searchRegion: '', selectedIndustryFilter: '전체', selectedGradeFilter: '전체' });
+
     // ESC 키로 모달 닫기
     useEffect(() => {
         const handleEscKey = (e) => {
@@ -63,9 +67,8 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
 
     // 업종 목록 추출
     const industries = ['전체', ...new Set(members.map(m => m.industry || m.businessCategory || '기타').filter(Boolean))];
-    // 등급 목록 추출 (표시·필터 순서: 마스터 → 운영진 → 파트너사 → 사업자 → 예창 → 대기자)
+    // 등급 목록·정렬 순서: 마스터 → 운영진(운영자) → 파트너사 → 사업자 → 예창(예비창업자) → 대기자(대기)
     const grades = ['전체', '마스터', '운영진', '파트너사', '사업자', '예창', '대기자'];
-    // 등급 정렬 시 사용할 우선순위 (작을수록 먼저)
     const GRADE_PRIORITY = { '마스터': 0, '운영진': 1, '파트너사': 2, '사업자': 3, '예창': 4, '대기자': 5 };
 
     useEffect(() => {
@@ -78,7 +81,12 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
             return matchName && matchIndustry && matchRegion && matchIndustryFilter && matchGradeFilter;
         });
         setFilteredMembers(filtered);
-        setCurrentPage(1);
+        const prev = prevFilterRef.current;
+        const filterChanged = prev.searchName !== searchName || prev.searchIndustry !== searchIndustry || prev.searchRegion !== searchRegion || prev.selectedIndustryFilter !== selectedIndustryFilter || prev.selectedGradeFilter !== selectedGradeFilter;
+        if (filterChanged) {
+            prevFilterRef.current = { searchName, searchIndustry, searchRegion, selectedIndustryFilter, selectedGradeFilter };
+            setCurrentPage(1);
+        }
     }, [searchName, searchIndustry, searchRegion, selectedIndustryFilter, selectedGradeFilter, members]);
 
     const hasActiveFilter = Boolean(searchName || searchIndustry || searchRegion || selectedIndustryFilter !== '전체' || selectedGradeFilter !== '전체');
@@ -209,7 +217,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                             </select>
                         </div>
                     </div>
-                    <div className="text-xs text-gray-500 mt-4 px-4">
+                    <div className="text-xs text-gray-500 mt-4 px-4 text-center">
                         {hasActiveFilter ? (
                             <>검색 결과: <span className="font-bold text-brand">{filteredMembers.length}</span>명</>
                         ) : (
@@ -218,76 +226,74 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                     </div>
                 </div>
 
-                {/* 회원명단 테이블: 회원등급 | 회원명 | 회사명 | 가입일자 (정렬 가능, 10명 단위 페이지네이션) */}
+                {/* 회원명단: CSS Grid (모바일 3열, PC 5열), 중앙정렬 + 오른쪽 정렬 버튼 */}
                 <div className="bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden mb-6">
                     <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-blue-200 bg-blue-50/50">
-                                    <th
-                                        className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
-                                        onClick={() => handleSort('memberGrade')}
-                                    >
-                                        <span className="flex items-center gap-1.5">
-                                            회원등급
-                                            {sortKey === 'memberGrade' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                        <div role="grid" aria-label="회원명단" className="min-w-0">
+                            {/* 헤더 행 */}
+                            <div role="row" className="grid grid-cols-3 md:grid-cols-5 border-b border-blue-200 bg-blue-50/50 h-14 min-h-[3.5rem]">
+                                <div role="columnheader" aria-sort={sortKey === 'memberGrade' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="relative flex items-center justify-center px-2 md:px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('memberGrade')}>
+                                    <span className="text-center">회원등급</span>
+                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
+                                            {sortKey === 'memberGrade' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} className="text-brand" /> : <Icons.ChevronDown size={14} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-50" />}
                                         </span>
-                                    </th>
-                                    <th
-                                        className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
-                                        onClick={() => handleSort('name')}
-                                    >
-                                        <span className="flex items-center gap-1.5">
-                                            회원명
-                                            {sortKey === 'name' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                                    </div>
+                                    <div role="columnheader" aria-sort={sortKey === 'name' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="relative flex items-center justify-center px-2 md:px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('name')}>
+                                        <span className="text-center">회원명</span>
+                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
+                                            {sortKey === 'name' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} className="text-brand" /> : <Icons.ChevronDown size={14} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-50" />}
                                         </span>
-                                    </th>
-                                    <th
-                                        className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
-                                        onClick={() => handleSort('company')}
-                                    >
-                                        <span className="flex items-center gap-1.5">
-                                            회사명
-                                            {sortKey === 'company' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                                    </div>
+                                    <div role="columnheader" aria-sort={sortKey === 'company' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="relative flex items-center justify-center px-2 md:px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('company')}>
+                                        <span className="text-center">회사명</span>
+                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
+                                            {sortKey === 'company' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} className="text-brand" /> : <Icons.ChevronDown size={14} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-50" />}
                                         </span>
-                                    </th>
-                                    <th
-                                        className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
-                                        onClick={() => handleSort('industry')}
-                                    >
-                                        <span className="flex items-center gap-1.5">
-                                            업종/업태
-                                            {sortKey === 'industry' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                                    </div>
+                                    <div role="columnheader" aria-sort={sortKey === 'industry' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="hidden md:flex relative items-center justify-center px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('industry')}>
+                                        <span className="text-center">업종/업태</span>
+                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
+                                            {sortKey === 'industry' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} className="text-brand" /> : <Icons.ChevronDown size={14} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-50" />}
                                         </span>
-                                    </th>
-                                    <th
-                                        className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
-                                        onClick={() => handleSort('createdAt')}
-                                    >
-                                        <span className="flex items-center gap-1.5">
-                                            가입일자
-                                            {sortKey === 'createdAt' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                                    </div>
+                                    <div role="columnheader" aria-sort={sortKey === 'createdAt' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="hidden md:flex relative items-center justify-center px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('createdAt')}>
+                                        <span className="text-center">가입일자</span>
+                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
+                                            {sortKey === 'createdAt' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} className="text-brand" /> : <Icons.ChevronDown size={14} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-50" />}
                                         </span>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {paginatedMembers.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="px-4 py-12 text-center text-gray-500">
-                                            조건에 맞는 회원이 없습니다.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    paginatedMembers.map((member, idx) => (
-                                        <tr
-                                            key={member.id || member.uid || idx}
-                                            className="border-b border-blue-100 hover:bg-brand/5 cursor-pointer transition-colors"
-                                            onClick={() => setSelectedMember(member)}
-                                        >
-                                            <td className="px-4 py-3 text-sm text-gray-700">
-                                                {member.memberGrade ? (
-                                                    <span className={`inline-block px-2 py-0.5 text-xs font-bold rounded-full ${
+                                </div>
+                            </div>
+                            {/* 데이터 행 */}
+                            {paginatedMembers.length === 0 ? (
+                                <div role="row" className="grid grid-cols-3 md:grid-cols-5 h-14 min-h-[3.5rem] border-b border-blue-100">
+                                    <div role="gridcell" className="col-span-3 md:col-span-5 flex items-center justify-center px-4 py-3 text-gray-500 text-sm">
+                                        조건에 맞는 회원이 없습니다.
+                                    </div>
+                                </div>
+                            ) : (
+                                paginatedMembers.map((member, idx) => (
+                                    <div
+                                        key={member.id || member.uid || idx}
+                                        role="row"
+                                        className="grid grid-cols-3 md:grid-cols-5 border-b border-blue-100 hover:bg-brand/5 cursor-pointer transition-colors h-14 min-h-[3.5rem]"
+                                        onClick={() => setSelectedMember(member)}
+                                    >
+                                        <div role="gridcell" className="flex items-center justify-center px-2 md:px-4 py-3 text-sm text-gray-700">
+                                            {member.memberGrade ? (
+                                                <>
+                                                    <span
+                                                        className={`md:hidden inline-block w-4 h-4 rounded-full flex-shrink-0 ${
+                                                            member.memberGrade === '마스터' ? 'bg-gradient-to-r from-yellow-500 to-yellow-700' :
+                                                            member.memberGrade === '운영진' ? 'bg-red-600 border border-red-700' :
+                                                            member.memberGrade === '파트너사' ? 'bg-brand' :
+                                                            member.memberGrade === '사업자' ? 'bg-blue-600' :
+                                                            member.memberGrade === '예창' ? 'bg-gray-500' :
+                                                            'bg-gray-400'
+                                                        }`}
+                                                        title={member.memberGrade}
+                                                        aria-label={member.memberGrade}
+                                                    />
+                                                    <span className={`hidden md:inline-block px-2 py-0.5 text-xs font-bold rounded-full ${
                                                         member.memberGrade === '마스터' ? 'bg-gradient-to-r from-yellow-500 to-yellow-700 text-white' :
                                                         member.memberGrade === '운영진' ? 'bg-white text-red-600 border border-red-600' :
                                                         member.memberGrade === '파트너사' ? 'bg-brand text-white' :
@@ -297,31 +303,33 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                                     }`}>
                                                         {member.memberGrade}
                                                     </span>
-                                                ) : '-'}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm font-medium text-dark">{member.name || '-'}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">{member.company || '-'}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">{member.industry || member.businessCategory || '-'}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">
-                                                {member.createdAt?.toDate?.().toLocaleDateString('ko-KR') ?? (typeof member.createdAt === 'string' ? new Date(member.createdAt).toLocaleDateString('ko-KR') : null) ?? '-'}
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                                </>
+                                            ) : (
+                                                <span>-</span>
+                                            )}
+                                        </div>
+                                        <div role="gridcell" className="flex items-center justify-center px-2 md:px-4 py-3 text-sm font-medium text-dark">{member.name || '-'}</div>
+                                        <div role="gridcell" className="flex items-center justify-center px-2 md:px-4 py-3 text-sm text-gray-600">{member.company || '-'}</div>
+                                        <div role="gridcell" className="hidden md:flex items-center justify-center px-4 py-3 text-sm text-gray-600">{member.industry || member.businessCategory || '-'}</div>
+                                        <div role="gridcell" className="hidden md:flex items-center justify-center px-4 py-3 text-sm text-gray-600">
+                                            {member.createdAt?.toDate?.().toLocaleDateString('ko-KR') ?? (typeof member.createdAt === 'string' ? new Date(member.createdAt).toLocaleDateString('ko-KR') : null) ?? '-'}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
 
                     {/* 페이지네이션: 10명 초과 시 표시 */}
                     {totalPages > 1 && (
-                        <div className="flex items-center justify-between px-4 py-3 border-t border-blue-100 bg-gray-50/50">
-                            <p className="text-sm text-gray-600">
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 px-4 py-3 border-t border-blue-100 bg-gray-50/50 text-center">
+                            <p className="text-sm text-gray-600 text-center order-2 sm:order-1">
                                 전체 <span className="font-bold text-brand">{sortedMembers.length}</span>명
                                 {sortedMembers.length > PAGE_SIZE && (
                                     <> · {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, sortedMembers.length)}번 표시</>
                                 )}
                             </p>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center justify-center gap-2 order-1 sm:order-2">
                                 <button
                                     type="button"
                                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
@@ -330,7 +338,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles }) => {
                                 >
                                     이전
                                 </button>
-                                <span className="text-sm text-gray-600">
+                                <span className="text-sm text-gray-600 text-center">
                                     {currentPage} / {totalPages}
                                 </span>
                                 <button

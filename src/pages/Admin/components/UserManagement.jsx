@@ -4,6 +4,7 @@ import { Icons } from '../../../components/Icons';
 
 const PAGE_SIZE = 10;
 
+// 회원등급 표시·정렬 순서: 마스터 → 운영진(운영자) → 파트너사 → 사업자 → 예창(예비창업자) → 대기자(대기)
 const MEMBER_GRADE_OPTIONS = [
   { value: '', label: '등급 없음' },
   { value: '마스터', label: '마스터' },
@@ -13,6 +14,7 @@ const MEMBER_GRADE_OPTIONS = [
   { value: '예창', label: '예창' },
   { value: '대기자', label: '대기자' },
 ];
+const GRADE_PRIORITY = { 마스터: 0, 운영진: 1, 파트너사: 2, 사업자: 3, 예창: 4, 대기자: 5 };
 
 /**
  * 회원 관리 컴포넌트
@@ -266,6 +268,10 @@ export const UserManagement = () => {
         if (typeof c === 'string') return new Date(c).getTime();
         return 0;
       }
+      if (k === 'memberGrade') {
+        const g = (u.memberGrade || '').toString().trim();
+        return GRADE_PRIORITY[g] ?? 99;
+      }
       return (u[k] || '').toString().trim().toLowerCase();
     };
     const list = [...filteredUsers];
@@ -274,6 +280,7 @@ export const UserManagement = () => {
       const va = getVal(a, sortKey);
       const vb = getVal(b, sortKey);
       if (sortKey === 'createdAt') return order * (va - vb);
+      if (sortKey === 'memberGrade') return order * (va - vb);
       if (va < vb) return -1 * order;
       if (va > vb) return 1 * order;
       return 0;
@@ -412,10 +419,10 @@ export const UserManagement = () => {
 
       {/* 회원 목록: 회원등급 | 회원명 | 가입일자 | 탈퇴 (항목별 오름/내림차순 정렬) */}
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-blue-200 bg-blue-50/50">
-              <th className="px-4 py-3 text-left w-12">
+              <th className="px-4 py-3 text-center w-12 align-middle">
                 <input
                   type="checkbox"
                   checked={paginatedUsers.length > 0 && paginatedUsers.every(u => selectedIds.has(u.id))}
@@ -424,42 +431,42 @@ export const UserManagement = () => {
                 />
               </th>
               <th
-                className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
+                className="relative px-4 py-3 pr-12 text-center text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none align-middle"
                 onClick={() => handleSort('memberGrade')}
               >
-                <span className="flex items-center gap-1.5">
-                  회원등급
-                  {sortKey === 'memberGrade' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                <span className="block text-center">회원등급</span>
+                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg border border-blue-200 bg-white/90 text-gray-500 shadow-sm" aria-hidden="true">
+                  {sortKey === 'memberGrade' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={18} className="text-brand" /> : <Icons.ChevronDown size={18} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-40" />}
                 </span>
               </th>
               <th
-                className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
+                className="relative px-4 py-3 pr-12 text-center text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none align-middle"
                 onClick={() => handleSort('name')}
               >
-                <span className="flex items-center gap-1.5">
-                  회원명
-                  {sortKey === 'name' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                <span className="block text-center">회원명</span>
+                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg border border-blue-200 bg-white/90 text-gray-500 shadow-sm" aria-hidden="true">
+                  {sortKey === 'name' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={18} className="text-brand" /> : <Icons.ChevronDown size={18} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-40" />}
                 </span>
               </th>
               <th
-                className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
+                className="relative px-4 py-3 pr-12 text-center text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none align-middle"
                 onClick={() => handleSort('company')}
               >
-                <span className="flex items-center gap-1.5">
-                  회사명
-                  {sortKey === 'company' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                <span className="block text-center">회사명</span>
+                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg border border-blue-200 bg-white/90 text-gray-500 shadow-sm" aria-hidden="true">
+                  {sortKey === 'company' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={18} className="text-brand" /> : <Icons.ChevronDown size={18} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-40" />}
                 </span>
               </th>
               <th
-                className="px-4 py-3 text-left text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none"
+                className="relative px-4 py-3 pr-12 text-center text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none align-middle"
                 onClick={() => handleSort('createdAt')}
               >
-                <span className="flex items-center gap-1.5">
-                  가입일자
-                  {sortKey === 'createdAt' && (sortOrder === 'asc' ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />)}
+                <span className="block text-center">가입일자</span>
+                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg border border-blue-200 bg-white/90 text-gray-500 shadow-sm" aria-hidden="true">
+                  {sortKey === 'createdAt' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={18} className="text-brand" /> : <Icons.ChevronDown size={18} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-40" />}
                 </span>
               </th>
-              <th className="px-4 py-3 text-center text-sm font-bold text-gray-700">탈퇴</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-gray-700 align-middle">탈퇴</th>
             </tr>
           </thead>
           <tbody>
@@ -472,7 +479,7 @@ export const UserManagement = () => {
             ) : (
               paginatedUsers.map((user) => (
                 <tr key={user.id} className="border-b border-blue-100 hover:bg-gray-50">
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center align-middle">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(user.id)}
@@ -480,31 +487,31 @@ export const UserManagement = () => {
                       className="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand"
                     />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center align-middle">
                     <select
                       value={user.memberGrade || ''}
                       onChange={(e) => handleGradeChange(user.id, e.target.value)}
-                      className="w-full max-w-[140px] px-2 py-1.5 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none bg-white"
+                      className="mx-auto block max-w-[140px] px-2 py-1.5 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none bg-white"
                     >
                       {MEMBER_GRADE_OPTIONS.map((opt) => (
                         <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center align-middle">
                     <button
                       type="button"
                       onClick={() => setMemberModalUser(user)}
-                      className="text-sm font-bold text-brand hover:underline text-left"
+                      className="text-sm font-bold text-brand hover:underline"
                     >
                       {user.name || '-'}
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{user.company || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-4 py-3 text-sm text-gray-600 text-center align-middle">{user.company || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600 text-center align-middle">
                     {user.createdAt?.toDate?.().toLocaleDateString('ko-KR') ?? (typeof user.createdAt === 'string' ? new Date(user.createdAt).toLocaleDateString('ko-KR') : user.createdAt) ?? '-'}
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-4 py-3 text-center align-middle">
                     <button
                       type="button"
                       onClick={() => handleDeleteUser(user)}

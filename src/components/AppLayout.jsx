@@ -41,7 +41,6 @@ const AppLayout = (props) => {
     const [showRefundPolicyModal, setShowRefundPolicyModal] = useState(false);
     const [profileIncompleteModalClosed, setProfileIncompleteModalClosed] = useState(false);
     const {
-        MobileMenu,
         renderView,
         currentView,
         setCurrentView,
@@ -82,6 +81,7 @@ const AppLayout = (props) => {
         users,
         LoginModal,
         content,
+        MobileMenu,
         isMenuOpen,
         setIsMenuOpen,
     } = props;
@@ -123,14 +123,15 @@ const AppLayout = (props) => {
 
     return (
         <div className="min-h-screen flex flex-col bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">
-            {/* 프로그램 팝업 (최대 3개 동시 표시, 1회만 표시) */}
-            {popupPrograms && popupPrograms.length > 0 ? (
+            {/* 프로그램 팝업: 필수정보 팝업이 떠 있으면 표시하지 않음(순차). 모바일 1개, PC 최대 3개 */}
+            {popupPrograms && popupPrograms.length > 0 && !showProfileIncompleteBanner ? (
                 <ModalPortal>
                 <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) closePopupAndMarkAsShown(); }}>
                     <div className="flex flex-col md:flex-row gap-4 max-w-6xl w-full overflow-x-auto py-4" onClick={(e) => e.stopPropagation()}>
-                        {popupPrograms.map((program, idx) => {
-                            const isMobile = window.innerWidth < 768;
-                            
+                        {(() => {
+                            const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+                            const programsToShow = isMobile ? popupPrograms.slice(0, 1) : popupPrograms;
+                            return programsToShow.map((program, idx) => {
                             if (isMobile) {
                                 // 모바일: 간단한 팝업 (이미지 + 더 자세히 알아보기 버튼만)
                                 return (
@@ -323,10 +324,15 @@ const AppLayout = (props) => {
                                     </div>
                                 );
                             }
-                        })}
+                            });
+                        })()}
                     </div>
                     {/* 전체 닫기 버튼 */}
-                    {popupPrograms.length > 1 ? (
+                    {(() => {
+                        const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+                        const programsToShow = isMobile ? popupPrograms.slice(0, 1) : popupPrograms;
+                        return programsToShow.length > 1;
+                    })() ? (
                         <button 
                             type="button" 
                             onClick={() => closePopupAndMarkAsShown()} 
@@ -401,46 +407,41 @@ const AppLayout = (props) => {
                 </ModalPortal>
             ) : null}
             
-            <header className={`fixed top-0 w-full z-50 transition-all duration-300 ease-in-out px-4 md:px-6 py-5 ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : 'bg-transparent'}`}>
-                <div className="container mx-auto flex justify-between items-center relative">
-                    <div className="flex items-center cursor-pointer group h-[75px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
-                        {/* 🌟 Logo Image: 부산청년사업가들 로고 */}
-                        <img 
-                            src="/assets/images/logo.png" 
-                            alt="부산청년사업가들" 
-                            className="h-full w-auto object-contain hover:opacity-90 transition-opacity"
-                            loading="eager"
-                            decoding="async" 
-                            onError={(e) => {
-                                e.target.onerror = null;
-                                // 절대 경로 사용 (Vite가 public을 루트로 복사)
-                                if (e.target.src.includes('/assets/')) {
-                                    e.target.src = '/assets/images/logo.png';
-                                } else {
-                                e.target.style.display = 'none';
-                                const fallback = document.createElement('div');
-                                fallback.className = 'text-xl md:text-2xl font-black text-brand';
-                                fallback.textContent = '부청사';
-                                e.target.parentNode.appendChild(fallback);
-                                }
-                            }}
-                        />
+            <header className={`fixed top-0 w-full z-50 transition-all duration-300 ease-in-out px-4 md:px-6 py-3 md:py-5 ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : 'bg-white/70 backdrop-blur-sm md:bg-transparent'}`}>
+                <div className="container mx-auto grid grid-cols-[auto_1fr_auto] md:flex md:justify-between items-center gap-2 md:gap-0 relative w-full">
+                    {/* 모바일: 로고만 화면 정중앙에 absolute 배치. pointer-events-none 전체 적용해 햄버거/우측 버튼 클릭이 반드시 전달되도록 함 (홈 이동은 메뉴에서 '홈' 선택) */}
+                    <div className="md:hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none w-full max-w-[60%] z-0">
+                        <div className="h-[60px] flex items-center overflow-hidden pointer-events-none">
+                            <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain opacity-90" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-lg font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
+                        </div>
                     </div>
-                    <nav className={`hidden md:flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-3 relative whitespace-nowrap ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md shadow-glass'}`}>
-                        {menuOrder.filter(item => menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')).map((item, idx) => (
-                            <div key={idx} className="flex flex-col items-center gap-1 relative flex-shrink-0 min-w-fit">
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} relative`}>
-                                    {menuNames[item] || item}
-                                </button>
-                            </div>
-                        ))}
-                    </nav>
-                    <div className="flex items-center gap-3 whitespace-nowrap">
+                    {/* 왼쪽: 모바일 햄버거, 데스크 로고 (z-20으로 로고 오버레이보다 위에 두어 클릭 확실히 전달) */}
+                    <div className="flex items-center min-w-0 relative z-20">
+                        <button type="button" aria-label="메뉴 열기" className="md:hidden p-2 -ml-2 rounded-lg bg-white/90 text-gray-800 hover:bg-white active:bg-white/95 shadow-sm transition-colors touch-manipulation" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen?.(true); }} onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen?.(true); }}>
+                            <Icons.Menu size={24} />
+                        </button>
+                        <div className="hidden md:flex items-center cursor-pointer group h-[50px] md:h-[75px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
+                            <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain hover:opacity-90 transition-opacity" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-xl md:text-2xl font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
+                        </div>
+                    </div>
+                    {/* 가운데: 데스크 nav만 (모바일은 absolute 로고로 대체) */}
+                    <div className="flex items-center justify-center w-full min-w-0 md:flex-1">
+                        <nav className={`hidden md:flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-3 relative whitespace-nowrap ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md shadow-glass'}`}>
+                            {menuOrder.filter(item => menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')).map((item, idx) => (
+                                <div key={idx} className="flex flex-col items-center gap-1 relative flex-shrink-0 min-w-fit">
+                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} relative`}>
+                                        {menuNames[item] || item}
+                                    </button>
+                                </div>
+                            ))}
+                        </nav>
+                    </div>
+                    {/* 오른쪽: 로그인/가입 또는 마이페이지/로그아웃 (z-20으로 로고 오버레이보다 위) */}
+                    <div className="flex items-center justify-end gap-3 whitespace-nowrap min-w-0 relative z-20">
                         {currentUser ? (
                             <div className="flex items-center gap-2">
                                 <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hidden md:block text-xs font-bold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">마이페이지</button>
                                 <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); }} className="px-3 md:px-4 py-2 bg-gray-200 text-gray-600 rounded-full text-xs font-medium hover:bg-gray-300 transition-colors whitespace-nowrap flex-shrink-0">로그아웃</button>
-                                <button type="button" aria-label="메뉴 열기" className="md:hidden p-2.5 text-dark flex-shrink-0 rounded-xl bg-transparent hover:bg-gray-100 active:bg-gray-200 touch-manipulation opacity-100 min-w-[44px] min-h-[44px] flex items-center justify-center" style={{ WebkitTapHighlightColor: 'transparent' }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(true); }}><Icons.Menu size={24} className="opacity-100" /></button>
                             </div>
                         ) : (
                             <div className="flex items-center gap-3">
@@ -459,6 +460,17 @@ const AppLayout = (props) => {
                     </div>
                 </div>
             </header>
+
+            {MobileMenu && (
+                <MobileMenu
+                    isOpen={isMenuOpen}
+                    onClose={() => setIsMenuOpen?.(false)}
+                    onNavigate={handleNavigation}
+                    menuEnabled={menuEnabled}
+                    menuNames={menuNames}
+                    menuOrder={menuOrder}
+                />
+            )}
 
             <main className="min-h-0 flex-1 overflow-y-auto">
             <div key={currentView} className="min-h-full animate-fade-in">
@@ -733,9 +745,6 @@ const AppLayout = (props) => {
                 </div>
                 </ModalPortal>
             ) : null}
-
-            {/* 모바일 메뉴 (로그인 시에만 햄버거로 열림) */}
-            <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onNavigate={handleNavigation} menuEnabled={menuEnabled} menuNames={menuNames} menuOrder={menuOrder} />
 
             {/* 플로팅 소셜 아이콘 (데스크톱만 표시, 모바일에서는 숨김) */}
             <div ref={fabRef} className="hidden md:flex z-40 flex-col gap-2 md:gap-3 transition-[top] duration-150" style={fabStyle}>

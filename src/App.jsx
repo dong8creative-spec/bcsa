@@ -228,6 +228,8 @@ const App = () => {
     const [restaurantsData, setRestaurantsData] = useState([]);
     const [selectedRestaurant, setSelectedRestaurant] = useState(null);
     const [currentView, setCurrentView] = useState('home');
+    const [programListPage, setProgramListPage] = useState(1);
+    const [membersListPage, setMembersListPage] = useState(1);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -366,12 +368,13 @@ const App = () => {
             const unsubscribe = firebaseService.subscribeContent((contentData) => {
                 if (contentData && Object.keys(contentData).length > 0) {
                     // 기본값과 Firebase Content 병합 (기본값을 기준으로 Firebase 설정으로 덮어쓰기)
-                    setContent(prevContent => {
-                        // prevContent가 이미 defaultContent를 포함하고 있을 수 있으므로,
-                        // 기본값부터 시작하여 Firebase 설정으로 덮어쓰기
-                        return { ...defaultContent, ...contentData };
-                    });
-                    
+                    const merged = { ...defaultContent, ...contentData };
+                    setContent(() => merged);
+                    try {
+                        if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                            localStorage.setItem('busan_ycc_content', JSON.stringify(merged));
+                        }
+                    } catch (_) {}
                     // menuNames도 Firebase에서 가져오기 (우선 사용)
                     if (contentData.menuNames) {
                         setMenuNames(prev => ({ ...defaultMenuNames, ...contentData.menuNames }));
@@ -397,8 +400,13 @@ const App = () => {
                                 const contentData = await firebaseService.getContent();
                         if (contentData && Object.keys(contentData).length > 0) {
                             // 기본값과 Firebase Content 병합 (기본값을 기준으로 Firebase 설정으로 덮어쓰기)
-                            setContent(prevContent => ({ ...defaultContent, ...contentData }));
-                            
+                            const merged = { ...defaultContent, ...contentData };
+                            setContent(() => merged);
+                            try {
+                                if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                                    localStorage.setItem('busan_ycc_content', JSON.stringify(merged));
+                                }
+                            } catch (_) {}
                             // menuNames도 Firebase에서 가져오기
                             if (contentData.menuNames) {
                                 setMenuNames(prev => ({ ...defaultMenuNames, ...contentData.menuNames }));
@@ -1316,7 +1324,12 @@ const App = () => {
     }, [menuOrder]);
 
     useEffect(() => {
-        const handleScroll = () => setScrolled(window.scrollY > 20);
+        const handleScroll = () => {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleScroll',message:'window scroll',data:{scrollY:window.scrollY},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+            // #endregion
+            setScrolled(window.scrollY > 20);
+        };
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
@@ -2570,46 +2583,55 @@ END:VCALENDAR`;
 
 
     
-    // 🌟 모바일 메뉴 열기/닫기 컴포넌트 (최상단, 배경 스크롤 잠금, 100% 불투명 버튼)
+    // 모바일 메뉴: 모달 형태로 최상단 노출, 클릭 시 모달 닫힌 뒤 해당 페이지로 이동
+    const MOBILE_MENU_ITEMS = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티'];
     const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames, menuOrder }) => {
         if (!isOpen) return null;
+        const visibleItems = menuOrder.filter(item => MOBILE_MENU_ITEMS.includes(item) && (menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')));
+        const handleMenuClick = (item) => {
+            onClose();
+            setTimeout(() => onNavigate(item), 100);
+        };
         return (
             <ModalPortal>
             <div
-                className="fixed inset-0 z-[9999] flex flex-col items-center justify-center animate-fade-in bg-black"
-                style={{ touchAction: 'none', overflow: 'hidden' }}
+                role="dialog"
+                aria-modal="true"
+                aria-label="메뉴"
+                className="fixed inset-0 flex flex-col items-center justify-center animate-fade-in bg-black/50"
+                style={{ zIndex: 99999, touchAction: 'none', overflow: 'hidden' }}
                 onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
             >
-                <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2.5 text-white rounded-full touch-manipulation z-10 hover:bg-white/10 active:bg-white/20"><Icons.X size={28} className="text-white"/></button>
-                <nav className="flex flex-col gap-3 text-center w-full max-w-sm px-4" onClick={(e) => e.stopPropagation()}>
-                    {menuOrder.filter(item => menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')).map((item, idx) => (
-                        <button
-                            key={idx}
-                            type="button"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onClose();
-                                setTimeout(() => onNavigate(item), 220);
-                            }}
-                            className="w-full py-4 px-6 text-lg font-bold text-white rounded-xl border border-white/30 touch-manipulation animate-fade-in-down hover:bg-white/10 active:bg-white/20"
-                            style={{ animationDelay: `${idx * 55}ms`, animationFillMode: 'forwards' }}
-                        >
-                            {menuNames[item] || item}
-                        </button>
-                    ))}
-                    {!currentUser ? (
-                        <div className="flex flex-col gap-3 mt-6 w-full">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-white rounded-xl border border-white/30 hover:bg-white/10 active:bg-white/20 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${(menuOrder?.length || 5) * 55}ms`, animationFillMode: 'forwards' }}>로그인</button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate('/signup'); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-black rounded-xl border-2 border-white bg-white hover:bg-gray-100 active:bg-gray-200 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${((menuOrder?.length || 5) + 1) * 55}ms`, animationFillMode: 'forwards' }}>가입하기</button>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-3 mt-6 w-full">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); setTimeout(() => { setCurrentView('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }, 220); }} className="w-full py-4 px-6 text-base font-bold text-white rounded-xl border border-white/30 hover:bg-white/10 active:bg-white/20 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${(menuOrder?.length || 5) * 55}ms`, animationFillMode: 'forwards' }}>마이페이지</button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); onClose(); }} className="w-full py-4 px-6 text-base font-bold text-white rounded-xl border border-white/30 hover:bg-white/10 active:bg-white/20 touch-manipulation animate-fade-in-down" style={{ animationDelay: `${((menuOrder?.length || 5) + 1) * 55}ms`, animationFillMode: 'forwards' }}>로그아웃</button>
-                        </div>
-                    )}
-                </nav>
+                <button type="button" aria-label="메뉴 닫기" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} className="absolute top-6 right-6 p-2.5 text-gray-800 bg-white/90 rounded-full touch-manipulation z-10 hover:bg-white shadow-lg"><Icons.X size={24} className="text-gray-800"/></button>
+                <div className="w-full max-w-sm px-4 rounded-2xl overflow-hidden bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+                    <nav className="flex flex-col">
+                        {visibleItems.map((item, idx) => (
+                            <button
+                                key={idx}
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleMenuClick(item);
+                                }}
+                                className={`w-full py-4 px-6 text-base font-bold text-gray-800 text-center touch-manipulation hover:bg-gray-50 active:bg-gray-100 transition-colors ${idx < visibleItems.length - 1 ? 'border-b border-gray-200' : ''}`}
+                            >
+                                {menuNames[item] || item}
+                            </button>
+                        ))}
+                    </nav>
+                    <div className="flex items-center justify-center gap-3 p-4 border-t border-gray-200 bg-gray-50">
+                        <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 shadow-sm hover:bg-gray-50 active:bg-gray-100 transition-colors" aria-label="부청사 오픈채팅방">
+                            <Icons.MessageSquare className="w-5 h-5" />
+                        </a>
+                        <a href="https://www.instagram.com/businessmen_in_busan" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 shadow-sm hover:bg-gray-50 active:bg-gray-100 transition-colors" aria-label="부청사 인스타그램">
+                            <Icons.Instagram className="w-5 h-5" />
+                        </a>
+                        <a href="https://www.youtube.com/@businessmen_in_busan" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-900 shadow-sm hover:bg-gray-50 active:bg-gray-100 transition-colors" aria-label="부청사 유튜브">
+                            <Icons.Youtube className="w-5 h-5" />
+                        </a>
+                    </div>
+                </div>
             </div>
             </ModalPortal>
         );
@@ -2797,7 +2819,7 @@ END:VCALENDAR`;
                 const isApproved = !m.approvalStatus || m.approvalStatus === 'approved';
                 return isApproved;
             });
-            return <AllMembersView onBack={() => setCurrentView('home')} members={displayMembers} currentUser={currentUser} pageTitles={pageTitles} />;
+            return <AllMembersView currentPage={membersListPage} onPageChange={setMembersListPage} onBack={() => setCurrentView('home')} members={displayMembers} currentUser={currentUser} pageTitles={pageTitles} />;
         }
         if (currentView === 'allSeminars' && !menuEnabled['프로그램']) {
             alert('준비중인 서비스입니다.');
@@ -2810,6 +2832,9 @@ END:VCALENDAR`;
                 const safeSeminarsData = Array.isArray(seminarsData) ? seminarsData : [];
                 
                 return <AllSeminarsView 
+                    key="programList"
+                    currentPage={programListPage}
+                    onPageChange={setProgramListPage}
                     onBack={() => setCurrentView('home')} 
                     seminars={safeSeminarsData} 
                     menuNames={menuNames} 
@@ -3324,8 +3349,18 @@ END:VCALENDAR`;
     };
     return (
     <div className="app-main">
+        {/* 모바일 메뉴: 상태가 있는 App에서 직접 렌더해 클릭 미반응 방지 */}
+        {MobileMenu && (
+            <MobileMenu
+                isOpen={isMenuOpen}
+                onClose={() => setIsMenuOpen(false)}
+                onNavigate={handleNavigation}
+                menuEnabled={menuEnabled}
+                menuNames={menuNames}
+                menuOrder={menuOrder}
+            />
+        )}
         <AppLayout
-            MobileMenu={MobileMenu}
             renderView={renderView}
             currentView={currentView}
             setCurrentView={setCurrentView}
