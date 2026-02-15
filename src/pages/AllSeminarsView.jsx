@@ -4,6 +4,7 @@ import { Icons } from '../components/Icons';
 import CalendarSection from '../components/CalendarSection';
 import ModalPortal from '../components/ModalPortal';
 import { ProgramAddModal } from '../components/ProgramAddModal';
+import { useMediaQuery, MOBILE_QUERY } from '../hooks/useMediaQuery';
 
 const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [], communityPosts = [], onProgramAdded, currentPage: currentPageProp, onPageChange }) => {
     /** 운영진 또는 관리자 권한: 프로그램 등록 가능 (admin 채널 없이 바로 등록) */
@@ -26,6 +27,8 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
     const isPageControlled = currentPageProp != null && typeof onPageChange === 'function';
     const currentPage = isPageControlled ? currentPageProp : internalPage;
     const setCurrentPage = isPageControlled ? (v) => { const next = typeof v === 'function' ? v(currentPage) : v; onPageChange(next); } : setInternalPage;
+
+    const isMobile = useMediaQuery(MOBILE_QUERY);
     
     const ITEMS_PER_PAGE = 3;
     const SLIDE_DURATION_MS = 7000;
@@ -354,7 +357,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                     : seminar.imageUrl || seminar.img;
                             
                             return (
-                            <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-blue-200 hover:border-brand/20 cursor-pointer overflow-hidden flex flex-col" onClick={() => setSelectedSeminar(seminar)}>
+                            <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-blue-200 hover:border-brand/20 cursor-pointer overflow-hidden flex flex-col" onClick={() => { if (isMobile && onNavigateToApply) { onNavigateToApply(seminar); } else { setSelectedSeminar(seminar); } }}>
                                 <div className="w-full flex-shrink-0 overflow-hidden relative bg-gray-100" style={{ aspectRatio: '3/4' }}>
                                     {displayImage ? (
                                         <>
@@ -469,7 +472,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                 {/* 프로그램 일정표 */}
                 <CalendarSection 
                     seminars={safeSeminars} 
-                    onSelectSeminar={(seminar) => setSelectedSeminar(seminar)}
+                    onSelectSeminar={isMobile ? (seminar) => onNavigateToApply && onNavigateToApply(seminar) : (seminar) => setSelectedSeminar(seminar)}
                     currentUser={currentUser}
                     onWriteReview={onWriteReview}
                     applications={safeApplications}

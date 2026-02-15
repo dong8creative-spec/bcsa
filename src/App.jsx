@@ -3406,6 +3406,7 @@ END:VCALENDAR`;
             setPopupApplicationData={setPopupApplicationData}
             handlePopupApplySubmit={handlePopupApplySubmit}
             handlePopupApply={handlePopupApply}
+            onNavigateToProgramApply={(program) => { closePopupAndMarkAsShown(); navigate(`/program/apply/${program.id}`); }}
             getCategoryColor={getCategoryColor}
             scrolled={scrolled}
             menuOrder={menuOrder}

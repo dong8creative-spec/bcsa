@@ -3,6 +3,7 @@ import { Icons } from './Icons';
 import SignUpModal from './SignUpModal';
 import InquiryModal from './InquiryModal';
 import ModalPortal from './ModalPortal';
+import { useMediaQuery, MOBILE_QUERY } from '../hooks/useMediaQuery';
 
 const FAB_GAP_PX = 16;
 const FAB_ESTIMATE_HEIGHT_PX = 152;
@@ -54,6 +55,7 @@ const AppLayout = (props) => {
         setPopupApplicationData,
         handlePopupApplySubmit,
         handlePopupApply,
+        onNavigateToProgramApply,
         getCategoryColor,
         scrolled,
         menuOrder,
@@ -86,6 +88,8 @@ const AppLayout = (props) => {
         setIsMenuOpen,
         onOpenMobileMenu,
     } = props;
+
+    const isMobile = useMediaQuery(MOBILE_QUERY);
 
     useEffect(() => {
         const updateFabPosition = () => {
@@ -297,7 +301,7 @@ const AppLayout = (props) => {
                                             {currentUser ? (
                                                 <button 
                                                     type="button"
-                                                    onClick={() => handlePopupApply(program)}
+                                                    onClick={() => { if (isMobile && onNavigateToProgramApply) { onNavigateToProgramApply(program); } else { handlePopupApply(program); } }}
                                                     className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
                                                 >
                                                     참여신청
@@ -402,55 +406,65 @@ const AppLayout = (props) => {
                 </ModalPortal>
             ) : null}
             
-            <header className={`fixed top-0 w-full z-50 transition-all duration-300 ease-in-out px-4 md:px-6 py-3 md:py-5 ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : 'bg-white/70 backdrop-blur-sm md:bg-transparent'}`}>
-                <div className="container mx-auto grid grid-cols-[auto_1fr_auto] md:flex md:justify-between items-center gap-2 md:gap-0 relative w-full">
-                    {/* 모바일: 로고 = 홈 버튼 (클릭 시 홈으로 이동). wrapper는 pointer-events-none, 로고만 클릭 가능 */}
-                    <div className="md:hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none w-full max-w-[60%] z-0">
-                        <button type="button" aria-label="홈으로 이동" className="pointer-events-auto h-[60px] flex items-center overflow-hidden cursor-pointer group p-0 border-0 bg-transparent" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
-                            <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain opacity-90 group-hover:opacity-100 transition-opacity" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-lg font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
-                        </button>
-                    </div>
-                    {/* 왼쪽: 모바일 햄버거, 데스크 로고 (z-20으로 로고 오버레이보다 위에 두어 클릭 확실히 전달) */}
-                    <div className="flex items-center min-w-0 relative z-20">
-                        <button type="button" aria-label="메뉴 열기" className="md:hidden min-w-[44px] min-h-[44px] p-2 -ml-2 rounded-lg bg-white/90 text-gray-800 hover:bg-white active:bg-white/95 shadow-sm transition-colors touch-manipulation flex items-center justify-center" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new CustomEvent('openMobileMenu')); onOpenMobileMenu?.(); setIsMenuOpen?.(true); }} onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new CustomEvent('openMobileMenu')); onOpenMobileMenu?.(); setIsMenuOpen?.(true); }}>
-                            <Icons.Menu size={24} />
-                        </button>
-                        <div className="hidden md:flex items-center cursor-pointer group h-[50px] md:h-[75px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
-                            <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain hover:opacity-90 transition-opacity" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-xl md:text-2xl font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
+            <header className={`fixed top-0 w-full z-50 transition-all duration-300 ease-in-out ${isMobile ? 'px-4 py-3' : 'px-6 py-5'} ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : isMobile ? 'bg-white/70 backdrop-blur-sm' : 'bg-transparent'}`}>
+                <div className={`container mx-auto flex items-center relative w-full ${isMobile ? 'grid grid-cols-[auto_1fr_auto] gap-2' : 'flex justify-between gap-0'}`}>
+                    {/* 모바일 전용: 가운데 로고(홈 버튼) */}
+                    {isMobile && (
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none w-full max-w-[60%] z-0">
+                            <button type="button" aria-label="홈으로 이동" className="pointer-events-auto h-[60px] flex items-center overflow-hidden cursor-pointer group p-0 border-0 bg-transparent" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
+                                <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain opacity-90 group-hover:opacity-100 transition-opacity" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-lg font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
+                            </button>
                         </div>
+                    )}
+                    {/* 왼쪽: 모바일 햄버거 / PC 로고 */}
+                    <div className="flex items-center min-w-0 relative z-20">
+                        {isMobile ? (
+                            <button type="button" aria-label="메뉴 열기" className="min-w-[44px] min-h-[44px] p-2 -ml-2 rounded-lg bg-white/90 text-gray-800 hover:bg-white active:bg-white/95 shadow-sm transition-colors touch-manipulation flex items-center justify-center" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new CustomEvent('openMobileMenu')); onOpenMobileMenu?.(); setIsMenuOpen?.(true); }} onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new CustomEvent('openMobileMenu')); onOpenMobileMenu?.(); setIsMenuOpen?.(true); }}>
+                                <Icons.Menu size={24} />
+                            </button>
+                        ) : (
+                            <div className="flex items-center cursor-pointer group h-[75px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
+                                <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain hover:opacity-90 transition-opacity" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-2xl font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
+                            </div>
+                        )}
                     </div>
-                    {/* 가운데: 데스크 nav만 (모바일은 absolute 로고로 대체) */}
-                    <div className="flex items-center justify-center w-full min-w-0 md:flex-1">
-                        <nav className={`hidden md:flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-3 relative whitespace-nowrap ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md shadow-glass'}`}>
-                            {menuOrder.filter(item => menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')).map((item, idx) => (
-                                <div key={idx} className="flex flex-col items-center gap-1 relative flex-shrink-0 min-w-fit">
-                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} relative`}>
-                                        {menuNames[item] || item}
-                                    </button>
-                                </div>
-                            ))}
-                        </nav>
+                    {/* 가운데: PC nav만 */}
+                    <div className={`flex items-center min-w-0 relative z-20 ${isMobile ? 'justify-center w-full' : 'flex-1 justify-center'}`}>
+                        {!isMobile && (
+                            <nav className={`flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-3 relative whitespace-nowrap ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md shadow-glass'}`}>
+                                {menuOrder.filter(item => menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고')).map((item, idx) => (
+                                    <div key={idx} className="flex flex-col items-center gap-1 relative flex-shrink-0 min-w-fit">
+                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} relative`}>
+                                            {menuNames[item] || item}
+                                        </button>
+                                    </div>
+                                ))}
+                            </nav>
+                        )}
                     </div>
-                    {/* 오른쪽: 로그인/가입 또는 마이페이지/로그아웃 (z-20으로 로고 오버레이보다 위) */}
+                    {/* 오른쪽: 로그인/가입 또는 마이페이지/로그아웃 */}
                     <div className="flex items-center justify-end gap-3 whitespace-nowrap min-w-0 relative z-20">
                         {currentUser ? (
                             <div className="flex items-center gap-2">
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hidden md:block text-xs font-bold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">마이페이지</button>
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); }} className="px-3 md:px-4 py-2 bg-gray-200 text-gray-600 rounded-full text-xs font-medium hover:bg-gray-300 transition-colors whitespace-nowrap flex-shrink-0">로그아웃</button>
+                                {!isMobile && (
+                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="text-xs font-bold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">마이페이지</button>
+                                )}
+                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); }} className={`py-2 bg-gray-200 text-gray-600 rounded-full text-xs font-medium hover:bg-gray-300 transition-colors whitespace-nowrap flex-shrink-0 ${isMobile ? 'px-3' : 'px-4'}`}>로그아웃</button>
                             </div>
                         ) : (
                             <div className="flex items-center gap-3">
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="md:hidden px-3 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 whitespace-nowrap flex-shrink-0">
-                                    로그인
-                                </button>
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="hidden md:block text-xs font-semibold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">
-                                    로그인
-                                </button>
-                                <button type="button" onClick={(e) => { 
-                                    e.preventDefault(); 
-                                    e.stopPropagation(); 
-                                    if (onSignUpClick) onSignUpClick(); else setShowSignUpChoiceModal(true); 
-                                }} className="hidden md:inline-flex px-3 md:px-4 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover whitespace-nowrap flex-shrink-0">가입하기</button>
+                                {isMobile ? (
+                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="px-3 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 whitespace-nowrap flex-shrink-0">
+                                        로그인
+                                    </button>
+                                ) : (
+                                    <>
+                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="text-xs font-semibold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">
+                                            로그인
+                                        </button>
+                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onSignUpClick) onSignUpClick(); else setShowSignUpChoiceModal(true); }} className="inline-flex px-4 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover whitespace-nowrap flex-shrink-0">가입하기</button>
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>
@@ -743,15 +757,16 @@ const AppLayout = (props) => {
                 </ModalPortal>
             ) : null}
 
-            {/* 플로팅 소셜 아이콘 (데스크톱만 표시, 모바일에서는 숨김) */}
-            <div ref={fabRef} className="hidden md:flex z-40 flex-col gap-2 md:gap-3 transition-[top] duration-150" style={fabStyle}>
+            {/* 플로팅 소셜 아이콘 (PC만 표시: 1400px 초과 시) */}
+            {!isMobile && (
+            <div ref={fabRef} className="flex z-40 flex-col gap-3 transition-[top] duration-150" style={fabStyle}>
                 <a
                     href="https://open.kakao.com/o/gMWryRA"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative w-9 h-9 md:w-10 md:h-10 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
+                    className="relative w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
                 >
-                    <Icons.MessageSquare className="w-3.5 h-3.5 md:w-4 md:h-4 text-white group-hover:scale-110 transition-transform" />
+                    <Icons.MessageSquare className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
                     <span className="absolute right-full mr-3 px-3 py-1.5 bg-yellow-400 text-black text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
                         부청사 오픈채팅방
                         <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-yellow-400"></span>
@@ -761,9 +776,9 @@ const AppLayout = (props) => {
                     href="https://www.instagram.com/businessmen_in_busan"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
+                    className="relative w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
                 >
-                    <Icons.Instagram className="w-3.5 h-3.5 md:w-4 md:h-4 text-white group-hover:scale-110 transition-transform" />
+                    <Icons.Instagram className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
                     <span className="absolute right-full mr-3 px-3 py-1.5 bg-gradient-to-br from-purple-600 to-pink-500 text-white text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
                         부청사 인스타그램
                         <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-purple-600"></span>
@@ -773,15 +788,16 @@ const AppLayout = (props) => {
                     href="https://www.youtube.com/@businessmen_in_busan"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative w-9 h-9 md:w-10 md:h-10 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
+                    className="relative w-10 h-10 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
                 >
-                    <Icons.Youtube className="w-3.5 h-3.5 md:w-4 md:h-4 text-white group-hover:scale-110 transition-transform" />
+                    <Icons.Youtube className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
                     <span className="absolute right-full mr-3 px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
                         부청사 유튜브
                         <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-red-600"></span>
                     </span>
                 </a>
             </div>
+            )}
         </div>
     );
 };

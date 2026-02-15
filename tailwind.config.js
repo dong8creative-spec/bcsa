@@ -8,7 +8,7 @@ export default {
   theme: {
     extend: {
       screens: {
-        md: '1280px',
+        desktop: '1400px',
       },
       fontFamily: {
         sans: ['PyeojinGothic', 'sans-serif'],
