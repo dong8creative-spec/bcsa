@@ -45,6 +45,7 @@ const AppLayout = (props) => {
         renderView,
         currentView,
         setCurrentView,
+        onGoHome,
         popupPrograms,
         setPopupPrograms,
         closePopupAndMarkAsShown,
@@ -411,7 +412,7 @@ const AppLayout = (props) => {
                     {/* 모바일 전용: 가운데 로고(홈 버튼) */}
                     {isMobile && (
                         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none w-full max-w-[60%] z-0">
-                            <button type="button" aria-label="홈으로 이동" className="pointer-events-auto h-[60px] flex items-center overflow-hidden cursor-pointer group p-0 border-0 bg-transparent" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
+                            <button type="button" aria-label="홈으로 이동" className="pointer-events-auto h-[60px] flex items-center overflow-hidden cursor-pointer group p-0 border-0 bg-transparent" onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onGoHome || (() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'instant' }); }))(); }}>
                                 <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain opacity-90 group-hover:opacity-100 transition-opacity" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-lg font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
                             </button>
                         </div>
@@ -423,7 +424,7 @@ const AppLayout = (props) => {
                                 <Icons.Menu size={24} />
                             </button>
                         ) : (
-                            <div className="flex items-center cursor-pointer group h-[75px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('home'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
+                            <div className="flex items-center cursor-pointer group h-[75px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onGoHome || (() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'instant' }); }))(); }}>
                                 <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain hover:opacity-90 transition-opacity" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-2xl font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
                             </div>
                         )}

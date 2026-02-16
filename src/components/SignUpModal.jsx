@@ -21,6 +21,13 @@ async function uploadProfileImageToUrl(dataUrl, defaultAvatarUrl) {
 
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 
+/** 필수 항목 번호 뱃지: 미입력 파란색, 입력완료 초록색 */
+const RequiredFieldBadge = ({ number, isFilled }) => (
+    <span className={`inline-flex w-6 h-6 rounded-full items-center justify-center text-xs font-bold text-white shrink-0 ${isFilled ? 'bg-green-500' : 'bg-blue-500'}`}>
+        {number}
+    </span>
+);
+
 /** 이메일 도메인 선택 (드롭다운 + 직접입력) */
 const EMAIL_DOMAINS = ['naver.com', 'daum.net', 'gmail.com', 'kakao.com', 'nate.com', 'hanmail.net', 'yahoo.co.kr', '직접입력'];
 
@@ -225,7 +232,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         }
     };
 
-    // 1단계 필수 항목 모두 충족 여부 (다음 버튼 활성화용)
+    // 1단계 필수 항목 모두 충족 여부
     const isStep1RequiredFilled = useMemo(() => {
         if (!formData.userType || !formData.email?.trim() || !formData.name?.trim() || !formData.phone?.trim()) return false;
         if (!formData.password || !formData.passwordConfirm) return false;
@@ -238,29 +245,45 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         return true;
     }, [formData.userType, formData.email, formData.name, formData.phone, formData.password, formData.passwordConfirm, formData.privacyAgreed]);
 
+    /** 1단계 누락 항목 수집 → "1. 회원 유형을 입력해주십시오.\n2. ..." */
+    const getStep1MissingMessages = () => {
+        const missing = [];
+        if (!formData.userType) missing.push('회원 유형');
+        if (!formData.email?.trim()) missing.push('이메일');
+        else if (!validateEmail(formData.email)) missing.push('올바른 이메일 형식');
+        const pv = formData.password ? validatePassword(formData.password) : { valid: false };
+        if (!formData.password) missing.push('비밀번호');
+        else if (!pv.valid) missing.push('비밀번호(요건 충족)');
+        if (!formData.passwordConfirm) missing.push('비밀번호 확인');
+        else if (formData.password !== formData.passwordConfirm) missing.push('비밀번호 일치');
+        if (!formData.name?.trim()) missing.push('이름');
+        if (!formData.phone?.trim()) missing.push('연락처');
+        else if (!validatePhone(formData.phone)) missing.push('연락처(숫자 11자리)');
+        if (!formData.privacyAgreed) missing.push('개인정보 수집 및 이용 동의');
+        return missing.map((label, i) => `${i + 1}. ${label}을(를) 입력해주십시오.`).join('\n');
+    };
+
+    /** 2단계 누락 항목 수집 */
+    const getStep2MissingMessages = () => {
+        const missing = [];
+        if (!formData.isIdentityVerified) missing.push('본인인증');
+        if (!formData.roadAddress?.trim()) missing.push('주소');
+        if (formData.userType === '사업자') {
+            if (!formData.businessType) missing.push('사업자 유형');
+            if (!formData.businessCategory) missing.push('사업형태');
+            if (!formData.company?.trim()) missing.push('업체명');
+            if (!formData.businessRegistrationNumber?.trim()) missing.push('사업자등록번호');
+            else if (formData.businessRegistrationNumber.replace(/[^0-9]/g, '').length !== 10) missing.push('사업자등록번호(10자리)');
+            if (formData.businessVerificationStatus !== 'api_verified') missing.push('사업자등록번호 검증');
+        }
+        return missing.map((label, i) => `${i + 1}. ${label}을(를) 입력해주십시오.`).join('\n');
+    };
+
     const handleNextStep = async () => {
         if (currentStep === 1) {
-            if (!formData.userType) {
-                return alert("회원 유형을 선택해주세요.");
-            }
-            if (!formData.email || !formData.password || !formData.passwordConfirm || !formData.name || !formData.phone) {
-                return alert("모든 필수 정보를 입력해주세요.");
-            }
-            if (!validateEmail(formData.email)) {
-                return alert("올바른 이메일 형식을 입력해주세요.");
-            }
-            const passwordValidation = validatePassword(formData.password);
-            if (!passwordValidation.valid) {
-                return alert(passwordValidation.message);
-            }
-            if (formData.password !== formData.passwordConfirm) {
-                return alert("비밀번호가 일치하지 않습니다.");
-            }
-            if (!validatePhone(formData.phone)) {
-                return alert("연락처는 숫자 11자리만 입력 가능합니다. (예: 01012345678)");
-            }
-            if (!formData.privacyAgreed) {
-                return alert("개인정보 수집 및 이용에 동의해주세요.");
+            const msg = getStep1MissingMessages();
+            if (msg) {
+                return alert(msg);
             }
             
             setIsCreatingAccount(true);
@@ -397,28 +420,9 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
             return alert("회원가입 오류가 발생했습니다. 처음부터 다시 시도해주세요.");
         }
         
-        if (!formData.isIdentityVerified) {
-            return alert("개인정보 확인을 위해 본인인증을 완료해주세요.\n본인인증 버튼을 눌러 휴대폰 본인확인을 진행해주세요.");
-        }
-        
-        if (!formData.roadAddress) {
-            return alert("주소를 입력해주세요. 주소 검색 버튼을 클릭하여 주소를 선택해주세요.");
-        }
-        
-        if (formData.userType === '사업자') {
-            if (!formData.businessType || !formData.businessCategory || !formData.company) {
-                return alert("사업자 정보를 모두 입력해주세요.");
-            }
-            if (!formData.businessRegistrationNumber) {
-                return alert("사업자등록번호를 입력해주세요.");
-            }
-            const cleanedBN = formData.businessRegistrationNumber.replace(/[^0-9]/g, '');
-            if (cleanedBN.length !== 10) {
-                return alert("사업자등록번호는 10자리 숫자여야 합니다.");
-            }
-            if (formData.businessVerificationStatus !== 'api_verified') {
-                return alert("사업자등록번호 검증을 완료해주세요. 검증하기 버튼을 클릭하여 검증을 진행해주세요.");
-            }
+        const msg = getStep2MissingMessages();
+        if (msg) {
+            return alert(msg);
         }
         
         try {
@@ -521,7 +525,10 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                         </p>
                                     </div>
                                     <div className="mb-6 text-center">
-                                        <h4 className="text-2xl font-bold text-dark mb-2">회원 유형 선택 <span className="text-red-500">*</span></h4>
+                                        <h4 className="text-2xl font-bold text-dark mb-2 flex items-center justify-center gap-2">
+                                            <RequiredFieldBadge number={1} isFilled={!!formData.userType} />
+                                            회원 유형 선택 <span className="text-red-500">*</span>
+                                        </h4>
                                         <p className="text-sm text-gray-500">본인의 분류를 선택해주세요</p>
                                     </div>
 
@@ -583,7 +590,10 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">이메일(아이디) <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(로그인에 사용)</span></label>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                        <RequiredFieldBadge number={2} isFilled={!!formData.email?.trim() && validateEmail(formData.email)} />
+                                                        이메일(아이디) <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(로그인에 사용)</span>
+                                                    </label>
                                                     <div className="flex flex-wrap gap-2 items-center">
                                                         <input type="text" inputMode="email" placeholder="example" className="flex-1 min-w-[100px] p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.emailId} onChange={e => { setFormData(f => ({ ...f, emailId: e.target.value, email: (() => { const i = e.target.value.trim(); const d = f.emailDomain === '직접입력' ? (f.emailDomainCustom || '').trim() : (f.emailDomain || ''); return (i && d) ? `${i}@${d}` : ''; })() })); setEmailCheckResult(null); }} />
                                                         <span className="text-slate-500">@</span>
@@ -599,11 +609,17 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     {emailCheckResult === 'duplicate' && <p className="mt-1.5 text-xs text-red-600 font-medium">이미 사용 중인 이메일입니다.</p>}
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">이름 <span className="text-red-500">*</span></label>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                        <RequiredFieldBadge number={5} isFilled={!!formData.name?.trim()} />
+                                                        이름 <span className="text-red-500">*</span>
+                                                    </label>
                                                     <input type="text" placeholder="이름을 입력하세요" className="w-full p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors text-sm" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">비밀번호 <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(최소 8자, 영문+숫자+특수문자)</span></label>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                        <RequiredFieldBadge number={3} isFilled={!!formData.password && validatePassword(formData.password).valid} />
+                                                        비밀번호 <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(최소 8자, 영문+숫자+특수문자)</span>
+                                                    </label>
                                                     <div className="relative">
                                                         <input type={showPassword ? "text" : "password"} placeholder="비밀번호를 입력하세요" className="w-full p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors pr-12 text-sm" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
                                                         <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
@@ -620,7 +636,10 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     })()}
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">비밀번호 확인 <span className="text-red-500">*</span></label>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                        <RequiredFieldBadge number={4} isFilled={!!formData.passwordConfirm && formData.password === formData.passwordConfirm} />
+                                                        비밀번호 확인 <span className="text-red-500">*</span>
+                                                    </label>
                                                     <div className="relative">
                                                         <input type={showPasswordConfirm ? "text" : "password"} placeholder="비밀번호를 다시 입력하세요" className="w-full p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors pr-12 text-sm" value={formData.passwordConfirm} onChange={e => setFormData({...formData, passwordConfirm: e.target.value})} />
                                                         <button type="button" onClick={() => setShowPasswordConfirm(!showPasswordConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
@@ -635,7 +654,10 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     ) : null}
                                                 </div>
                                                 <div className="md:col-span-2">
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">연락처(전화번호) <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(숫자 11자리)</span></label>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                        <RequiredFieldBadge number={6} isFilled={!!formData.phone?.trim() && validatePhone(formData.phone)} />
+                                                        연락처(전화번호) <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(숫자 11자리)</span>
+                                                    </label>
                                                     <div className="flex gap-2">
                                                         <input type="tel" inputMode="numeric" placeholder="01012345678" maxLength={11} className="flex-1 p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors text-sm" value={formData.phone} onChange={e => {
                                                             const raw = e.target.value.replace(/\D/g, '');
@@ -663,20 +685,23 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                         onChange={e => setFormData({...formData, privacyAgreed: e.target.checked})}
                                                         className="mt-1 w-5 h-5 text-brand border-blue-300 rounded focus:ring-brand"
                                                     />
-                                                    <div className="flex-1">
-                                                        <span className="text-sm font-bold text-gray-700">
-                                                            개인정보 수집 및 이용에 동의합니다 <span className="text-red-500">*</span>
-                                                        </span>
-                                                        <p className="text-xs text-gray-600 mt-1">
-                                                            부청사는 회원가입을 위해 최소한의 개인정보를 수집합니다. 
-                                                            <a href="#" className="text-brand hover:underline ml-1" onClick={(e) => { e.preventDefault(); alert('개인정보처리방침 페이지로 이동합니다.'); }}>
-                                                                자세한 내용 보기
-                                                            </a>
-                                                        </p>
-                                                        <div className="text-xs text-gray-500 mt-2 space-y-1">
-                                                            <p>• 수집 항목: 이메일(로그인용), 비밀번호(해시), 이름, 전화번호, 주소, 사업자정보(사업자만)</p>
-                                                            <p>• 수집 목적: 회원 관리, 서비스 제공, 본인 확인</p>
-                                                            <p>• 보관 기간: 회원 탈퇴 시까지 (법정 보관 기간이 있는 경우 해당 기간)</p>
+                                                    <div className="flex-1 flex items-start gap-2">
+                                                        <RequiredFieldBadge number={7} isFilled={formData.privacyAgreed} />
+                                                        <div>
+                                                            <span className="text-sm font-bold text-gray-700">
+                                                                개인정보 수집 및 이용에 동의합니다 <span className="text-red-500">*</span>
+                                                            </span>
+                                                            <p className="text-xs text-gray-600 mt-1">
+                                                                부청사는 회원가입을 위해 최소한의 개인정보를 수집합니다. 
+                                                                <a href="#" className="text-brand hover:underline ml-1" onClick={(e) => { e.preventDefault(); alert('개인정보처리방침 페이지로 이동합니다.'); }}>
+                                                                    자세한 내용 보기
+                                                                </a>
+                                                            </p>
+                                                            <div className="text-xs text-gray-500 mt-2 space-y-1">
+                                                                <p>• 수집 항목: 이메일(로그인용), 비밀번호(해시), 이름, 전화번호, 주소, 사업자정보(사업자만)</p>
+                                                                <p>• 수집 목적: 회원 관리, 서비스 제공, 본인 확인</p>
+                                                                <p>• 보관 기간: 회원 탈퇴 시까지 (법정 보관 기간이 있는 경우 해당 기간)</p>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </label>
@@ -689,8 +714,9 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                             {currentStep === 2 ? (
                                 <div className="space-y-5 animate-fade-in">
                                     <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                                        <p className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                                        <p className="text-sm font-bold text-amber-800 flex items-center gap-2 flex-wrap">
                                             <Icons.AlertCircle className="w-5 h-5 shrink-0" />
+                                            <RequiredFieldBadge number={1} isFilled={formData.isIdentityVerified} />
                                             본인인증, 주소{formData.userType === '사업자' ? ', 사업자 정보' : ''} 등 표시(*)된 항목을 모두 완료한 후 가입하기를 눌러주세요.
                                         </p>
                                     </div>
@@ -705,14 +731,20 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                         {formData.userType === '사업자' ? (
                                             <>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">사업자 유형 <span className="text-red-500">*</span></label>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                        <RequiredFieldBadge number={3} isFilled={!!formData.businessType} />
+                                                        사업자 유형 <span className="text-red-500">*</span>
+                                                    </label>
                                                     <select className="w-full p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors bg-white text-sm" value={formData.businessType} onChange={e => setFormData({...formData, businessType: e.target.value})}>
                                                         <option value="개인사업자">개인사업자</option>
                                                         <option value="법인사업자">법인사업자</option>
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">사업형태 <span className="text-red-500">*</span></label>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                        <RequiredFieldBadge number={4} isFilled={!!formData.businessCategory} />
+                                                        사업형태 <span className="text-red-500">*</span>
+                                                    </label>
                                                     <select className="w-full p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors bg-white text-sm" value={formData.businessCategory} onChange={e => setFormData({...formData, businessCategory: e.target.value})}>
                                                         <optgroup label="제조업">
                                                             <option>식품제조업</option>
@@ -764,7 +796,10 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">업체명 <span className="text-red-500">*</span></label>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                        <RequiredFieldBadge number={5} isFilled={!!formData.company?.trim()} />
+                                                        업체명 <span className="text-red-500">*</span>
+                                                    </label>
                                                     <input type="text" placeholder="회사/사업체 이름" className="w-full p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors text-sm" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
                                                 </div>
                                                 <div>
@@ -772,7 +807,10 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     <input type="text" placeholder="대표, 이사, 팀장 등" className="w-full p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors text-sm" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} />
                                                 </div>
                                                 <div className="md:col-span-2">
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">업체주소 <span className="text-red-500">*</span></label>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                        <RequiredFieldBadge number={2} isFilled={!!formData.roadAddress?.trim()} />
+                                                        업체주소 <span className="text-red-500">*</span>
+                                                    </label>
                                                     <div className="space-y-2">
                                                         <div className="flex gap-2">
                                                             <input 
@@ -828,7 +866,10 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                         ) : null}
                                         {formData.userType === '예비창업자' ? (
                                             <div className="md:col-span-2">
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">집주소 <span className="text-red-500">*</span></label>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <RequiredFieldBadge number={2} isFilled={!!formData.roadAddress?.trim()} />
+                                                    집주소 <span className="text-red-500">*</span>
+                                                </label>
                                                 <div className="space-y-2">
                                                     <div className="flex gap-2">
                                                         <input 
@@ -910,7 +951,10 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                {formData.userType === '사업자' && (
+                                                    <RequiredFieldBadge number={6} isFilled={formData.businessVerificationStatus === 'api_verified'} />
+                                                )}
                                                 사업자등록번호 
                                                 {formData.userType === '사업자' ? (
                                                     <span className="text-red-500"> *</span>
@@ -1067,9 +1111,9 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                 <button 
                                     type="button" 
                                     onClick={handleNextStep} 
-                                    disabled={isCreatingAccount || !isStep1RequiredFilled}
+                                    disabled={isCreatingAccount}
                                     className={`py-3 px-8 bg-gradient-to-r from-brand to-blue-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-brand/30 transition-all ${
-                                        isCreatingAccount || !isStep1RequiredFilled ? 'opacity-50 cursor-not-allowed' : ''
+                                        isCreatingAccount ? 'opacity-50 cursor-not-allowed' : ''
                                     }`}
                                 >
                                     {isCreatingAccount ? '계정 생성 중...' : '다음 단계'}

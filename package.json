@@ -22,7 +22,8 @@
     "verify:bid-search": "node scripts/verify-bid-search.mjs",
     "verify:busan": "node scripts/verify-bid-search.mjs --keyword 부산",
     "compare:bid-search": "node scripts/verify-bid-search.mjs --keyword 부산 --strict",
-    "test:bid-search-keywords": "node scripts/verify-bid-search-keywords.mjs"
+    "test:bid-search-keywords": "node scripts/verify-bid-search-keywords.mjs",
+    "telemetry": "node scripts/telemetry-server.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

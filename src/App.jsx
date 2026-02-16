@@ -1870,6 +1870,18 @@ const App = () => {
             alert('Logout failed');
         }
     };
+
+    /** 로고 클릭 시 홈으로 강제 이동 (모달·메뉴 닫기, URL 리셋) */
+    const onGoHome = useCallback(() => {
+        navigate('/', { replace: true });
+        setCurrentView('home');
+        setShowLoginModal(false);
+        setShowSignUpModal(false);
+        setShowSignUpChoiceModal(false);
+        setIsMenuOpen(false);
+        setIsPopupApplyModalOpen(false);
+        window.scrollTo({ top: 0, behavior: 'instant' });
+    }, [navigate]);
     
     // 음식관련사업자 권한 체크 함수
     const isFoodBusinessOwner = (user) => {
@@ -3492,6 +3504,7 @@ END:VCALENDAR`;
             renderView={renderView}
             currentView={currentView}
             setCurrentView={setCurrentView}
+            onGoHome={onGoHome}
             popupPrograms={popupPrograms}
             setPopupPrograms={setPopupPrograms}
             closePopupAndMarkAsShown={closePopupAndMarkAsShown}

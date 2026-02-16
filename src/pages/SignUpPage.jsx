@@ -7,6 +7,13 @@ import { loadUsersFromStorage } from '../utils/authUtils';
 
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 
+/** 필수 항목 번호 뱃지: 미입력 파란색, 입력완료 초록색 */
+const RequiredFieldBadge = ({ number, isFilled }) => (
+    <span className={`inline-flex w-6 h-6 rounded-full items-center justify-center text-xs font-bold text-white shrink-0 ${isFilled ? 'bg-green-500' : 'bg-blue-500'}`}>
+        {number}
+    </span>
+);
+
 /** 이메일 도메인 선택 (드롭다운 + 직접입력) */
 const EMAIL_DOMAINS = ['naver.com', 'daum.net', 'gmail.com', 'kakao.com', 'nate.com', 'hanmail.net', 'yahoo.co.kr', '직접입력'];
 
@@ -136,6 +143,34 @@ const SignUpPage = ({ onSignUp }) => {
         return true;
     }, [userType, form, isBusinessNumberValid]);
 
+    /** 누락 필수 항목 수집 → "1. 회원 유형을 입력해주십시오.\n2. ..." */
+    const getMissingMessages = () => {
+        const missing = [];
+        if (!userType) missing.push('회원 유형');
+        if (!(form.name || '').trim()) missing.push('이름');
+        if (!(form.birthdate || '').trim()) missing.push('생년월일');
+        else if (!parseBirthdateInput(form.birthdate)) missing.push('생년월일(YYYY-MM-DD 형식)');
+        if (!form.gender) missing.push('성별');
+        if (!(form.phone || '').trim()) missing.push('연락처');
+        else if (!validatePhone(form.phone)) missing.push('연락처(숫자 11자리)');
+        if (!(form.email || '').trim()) missing.push('이메일');
+        else if (!validateEmail(form.email)) missing.push('이메일(올바른 형식)');
+        if (!(form.password || '').trim()) missing.push('비밀번호');
+        else if (!validatePassword(form.password).valid) missing.push('비밀번호(요건 충족)');
+        if (!(form.passwordConfirm || '').trim()) missing.push('비밀번호 확인');
+        else if (form.password !== form.passwordConfirm) missing.push('비밀번호 일치');
+        if (!form.termsAgreed) missing.push('이용약관 동의');
+        if (!form.privacyAgreed) missing.push('개인정보 수집 및 이용 동의');
+        if (userType === '사업자') {
+            if (!(form.company || '').trim()) missing.push('상호명');
+            if (!isBusinessNumberValid) missing.push('사업자등록번호');
+            if (!form.businessCategory) missing.push('업종/업태');
+            if (!(form.collaborationIndustry || '').trim()) missing.push('협업 업종');
+            if (!(form.keyCustomers || '').trim()) missing.push('핵심고객');
+        }
+        return missing.map((label, i) => `${i + 1}. ${label}을(를) 입력해주십시오.`).join('\n');
+    };
+
     const handleBusinessDocChange = (e) => {
         const file = e.target?.files?.[0];
         if (!file) {
@@ -159,92 +194,9 @@ const SignUpPage = ({ onSignUp }) => {
         e.preventDefault();
         setError('');
 
-        if (!userType) {
-            setError('회원 유형(사업자/예비창업자)을 선택해주세요.');
-            return;
-        }
-        if (!(form.name || '').trim()) {
-            setError('이름을 입력해주세요.');
-            return;
-        }
-        if (!(form.birthdate || '').trim()) {
-            setError('생년월일을 입력해주세요.');
-            return;
-        }
-        if (!parseBirthdateInput(form.birthdate)) {
-            setError('생년월일을 YYYY-MM-DD 형식(8자리 이상)으로 입력해주세요.');
-            return;
-        }
-        if (!form.gender) {
-            setError('성별을 선택해주세요.');
-            return;
-        }
-        if (!(form.phone || '').trim()) {
-            setError('연락처를 입력해주세요.');
-            return;
-        }
-        if (!validatePhone(form.phone)) {
-            setError('연락처는 010, 011 등으로 시작하는 숫자 11자리로 입력해주세요.');
-            return;
-        }
-        if (!(form.email || '').trim()) {
-            setError('이메일을 입력해주세요.');
-            return;
-        }
-        if (!validateEmail(form.email)) {
-            setError('올바른 이메일 형식을 입력해주세요.');
-            return;
-        }
-        if (!(form.password || '').trim()) {
-            setError('비밀번호를 입력해주세요.');
-            return;
-        }
-        const pv = validatePassword(form.password);
-        if (!pv.valid) {
-            setError(pv.message);
-            return;
-        }
-        if (!(form.passwordConfirm || '').trim()) {
-            setError('비밀번호 확인을 입력해주세요.');
-            return;
-        }
-        if (form.password !== form.passwordConfirm) {
-            setError('비밀번호가 일치하지 않습니다.');
-            return;
-        }
-        if (!form.termsAgreed) {
-            setError('이용약관 동의에 체크해주세요.');
-            return;
-        }
-        if (!form.privacyAgreed) {
-            setError('개인정보 수집 및 이용 동의에 체크해주세요.');
-            return;
-        }
-        if (userType === '사업자') {
-            if (!(form.company || '').trim()) {
-                setError('상호명을 입력해주세요.');
-                return;
-            }
-            if (!isBusinessNumberValid) {
-                setError('사업자등록번호 10자리 숫자를 입력해주세요.');
-                return;
-            }
-            if (!form.businessCategory) {
-                setError('업종/업태를 선택해주세요.');
-                return;
-            }
-            if (!(form.collaborationIndustry || '').trim()) {
-                setError('협업 업종을 입력해주세요.');
-                return;
-            }
-            if (!(form.keyCustomers || '').trim()) {
-                setError('핵심고객을 입력해주세요.');
-                return;
-            }
-        }
-
-        if (!isRequiredFilled) {
-            setError('필수 항목(*)을 모두 올바르게 입력해주세요.');
+        const msg = getMissingMessages();
+        if (msg) {
+            setError(msg);
             return;
         }
 
@@ -342,7 +294,10 @@ const SignUpPage = ({ onSignUp }) => {
                     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                         {/* 회원 유형 */}
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">회원 유형 <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                <RequiredFieldBadge number={1} isFilled={!!userType} />
+                                회원 유형 <span className="text-red-500">*</span>
+                            </label>
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     type="button"
@@ -367,7 +322,10 @@ const SignUpPage = ({ onSignUp }) => {
                             <>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">이름 <span className="text-red-500">*</span></label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <RequiredFieldBadge number={2} isFilled={!!(form.name || '').trim()} />
+                                            이름 <span className="text-red-500">*</span>
+                                        </label>
                                         <input type="text" required placeholder="이름 입력" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                                     </div>
                                     <div>
@@ -375,11 +333,17 @@ const SignUpPage = ({ onSignUp }) => {
                                         <input type="text" placeholder="닉네임 입력" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.nickname} onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">생년월일 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(청년 확인용)</span></label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <RequiredFieldBadge number={3} isFilled={!!(form.birthdate || '').trim() && !!parseBirthdateInput(form.birthdate)} />
+                                            생년월일 <span className="text-red-500">*</span>
+                                        </label>
                                         <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD (예: 1990-01-15)" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.birthdate} onChange={e => { const v = e.target.value; const parsed = parseBirthdateInput(v); setForm(f => ({ ...f, birthdate: parsed || v })); }} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">성별 <span className="text-red-500">*</span></label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <RequiredFieldBadge number={4} isFilled={!!form.gender} />
+                                            성별 <span className="text-red-500">*</span>
+                                        </label>
                                         <select required className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
                                             <option value="">선택</option>
                                             <option value="남성">남성</option>
@@ -388,7 +352,10 @@ const SignUpPage = ({ onSignUp }) => {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">연락처 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(숫자 11자리)</span></label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <RequiredFieldBadge number={5} isFilled={!!(form.phone || '').trim() && validatePhone(form.phone)} />
+                                            연락처 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(숫자 11자리)</span>
+                                        </label>
                                         <input type="tel" inputMode="numeric" required placeholder="01012345678" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.phone} onChange={e => {
                                             const raw = e.target.value.replace(/\D/g, '');
                                             if (raw.length > 11) {
@@ -402,7 +369,10 @@ const SignUpPage = ({ onSignUp }) => {
                                         {form.phone && form.phone.length === 11 && !validatePhone(form.phone) && <p className="text-xs text-red-500 mt-1">010, 011 등으로 시작하는 11자리 번호를 입력해주세요.</p>}
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">이메일 <span className="text-red-500">*</span></label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <RequiredFieldBadge number={6} isFilled={!!(form.email || '').trim() && validateEmail(form.email)} />
+                                            이메일 <span className="text-red-500">*</span>
+                                        </label>
                                         <div className="flex flex-wrap gap-2 items-center">
                                             <input type="text" inputMode="email" required placeholder="example" className="flex-1 min-w-[100px] p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.emailId} onChange={e => setForm(f => ({ ...f, emailId: e.target.value, email: composeEmail(e.target.value, f.emailDomain, f.emailDomainCustom) }))} />
                                             <span className="text-slate-500">@</span>
@@ -415,7 +385,10 @@ const SignUpPage = ({ onSignUp }) => {
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">비밀번호 <span className="text-red-500">*</span></label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <RequiredFieldBadge number={7} isFilled={!!(form.password || '').trim() && validatePassword(form.password).valid} />
+                                            비밀번호 <span className="text-red-500">*</span>
+                                        </label>
                                         <div className="relative">
                                             <input type={showPassword ? 'text' : 'password'} required placeholder="8자 이상, 영문+숫자+특수문자" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none pr-10" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
                                             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showPassword ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}</button>
@@ -423,7 +396,10 @@ const SignUpPage = ({ onSignUp }) => {
                                         {form.password && !validatePassword(form.password).valid && <p className="text-xs text-red-500 mt-1">{validatePassword(form.password).message}</p>}
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">비밀번호 확인 <span className="text-red-500">*</span></label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <RequiredFieldBadge number={8} isFilled={!!(form.passwordConfirm || '').trim() && form.password === form.passwordConfirm} />
+                                            비밀번호 확인 <span className="text-red-500">*</span>
+                                        </label>
                                         <div className="relative">
                                             <input type={showPasswordConfirm ? 'text' : 'password'} required className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none pr-10" value={form.passwordConfirm} onChange={e => setForm(f => ({ ...f, passwordConfirm: e.target.value }))} />
                                             <button type="button" onClick={() => setShowPasswordConfirm(!showPasswordConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showPasswordConfirm ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}</button>
@@ -435,11 +411,17 @@ const SignUpPage = ({ onSignUp }) => {
                                 {userType === '사업자' && (
                                     <div className="space-y-5 pt-2">
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">상호명 <span className="text-red-500">*</span></label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <RequiredFieldBadge number={11} isFilled={!!(form.company || '').trim()} />
+                                                상호명 <span className="text-red-500">*</span>
+                                            </label>
                                             <input type="text" required placeholder="회사 또는 사업체 이름" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">사업자등록번호 <span className="text-red-500">*</span></label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <RequiredFieldBadge number={12} isFilled={isBusinessNumberValid} />
+                                                사업자등록번호 <span className="text-red-500">*</span>
+                                            </label>
                                             <input type="text" inputMode="numeric" maxLength={10} placeholder="숫자 10자리 (예: 1234567890)" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.businessRegistrationNumber} onChange={e => setForm(f => ({ ...f, businessRegistrationNumber: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
                                             {form.businessRegistrationNumber && !isBusinessNumberValid && <p className="text-xs text-red-500 mt-1">숫자 10자리를 입력해주세요.</p>}
                                         </div>
@@ -448,7 +430,10 @@ const SignUpPage = ({ onSignUp }) => {
                                             <input type="text" placeholder="예: 대표, 이사, 팀장" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">업종 / 업태 <span className="text-red-500">*</span></label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <RequiredFieldBadge number={13} isFilled={!!form.businessCategory} />
+                                                업종 / 업태 <span className="text-red-500">*</span>
+                                            </label>
                                             <select required className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={form.businessCategory} onChange={e => setForm(f => ({ ...f, businessCategory: e.target.value }))}>
                                                 <option value="">선택</option>
                                                 {BUSINESS_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -462,11 +447,17 @@ const SignUpPage = ({ onSignUp }) => {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">협업 업종 <span className="text-red-500">*</span></label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <RequiredFieldBadge number={14} isFilled={!!(form.collaborationIndustry || '').trim()} />
+                                                협업 업종 <span className="text-red-500">*</span>
+                                            </label>
                                             <input type="text" required placeholder="협업 희망 업종" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.collaborationIndustry} onChange={e => setForm(f => ({ ...f, collaborationIndustry: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">핵심고객 <span className="text-red-500">*</span></label>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <RequiredFieldBadge number={15} isFilled={!!(form.keyCustomers || '').trim()} />
+                                                핵심고객 <span className="text-red-500">*</span>
+                                            </label>
                                             <input type="text" required placeholder="핵심 고객층" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.keyCustomers} onChange={e => setForm(f => ({ ...f, keyCustomers: e.target.value }))} />
                                         </div>
                                     </div>
@@ -484,7 +475,8 @@ const SignUpPage = ({ onSignUp }) => {
                                     <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
                                         <div className="flex items-start gap-3">
                                             <input type="checkbox" id="termsAgreed" checked={form.termsAgreed} onChange={e => setForm(f => ({ ...f, termsAgreed: e.target.checked }))} className="mt-1 w-5 h-5 text-brand rounded" />
-                                            <div className="flex-1">
+                                            <div className="flex-1 flex items-start gap-2">
+                                                <RequiredFieldBadge number={9} isFilled={form.termsAgreed} />
                                                 <label htmlFor="termsAgreed" className="text-sm font-bold text-gray-700 cursor-pointer">(필수) 이용약관 동의 <span className="text-red-500">*</span></label>
                                                 <button type="button" onClick={() => setTermsModal({ open: true, type: 'service' })} className="ml-2 text-xs text-brand font-medium hover:underline">내용보기</button>
                                             </div>
@@ -493,7 +485,8 @@ const SignUpPage = ({ onSignUp }) => {
                                     <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
                                         <div className="flex items-start gap-3">
                                             <input type="checkbox" id="privacyAgreed" checked={form.privacyAgreed} onChange={e => setForm(f => ({ ...f, privacyAgreed: e.target.checked }))} className="mt-1 w-5 h-5 text-brand rounded" />
-                                            <div className="flex-1">
+                                            <div className="flex-1 flex items-start gap-2">
+                                                <RequiredFieldBadge number={10} isFilled={form.privacyAgreed} />
                                                 <label htmlFor="privacyAgreed" className="text-sm font-bold text-gray-700 cursor-pointer">(필수) 개인정보 수집 및 이용 동의 <span className="text-red-500">*</span></label>
                                                 <button type="button" onClick={() => setTermsModal({ open: true, type: 'privacy' })} className="ml-2 text-xs text-brand font-medium hover:underline">내용보기</button>
                                             </div>
@@ -510,11 +503,11 @@ const SignUpPage = ({ onSignUp }) => {
                                     </div>
                                 </div>
 
-                                {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
+                                {error && <p className="text-sm text-red-600 font-medium whitespace-pre-line">{error}</p>}
 
                                 <div className="flex gap-3 pt-4">
                                     <button type="button" onClick={() => navigate(-1)} className="px-6 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300">취소</button>
-                                    <button type="submit" disabled={!isRequiredFilled || submitting} className="flex-1 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <button type="submit" disabled={submitting} className="flex-1 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
                                         {submitting ? '가입 처리 중...' : '가입하기'}
                                     </button>
                                 </div>
