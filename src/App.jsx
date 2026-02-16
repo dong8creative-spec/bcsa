@@ -1358,9 +1358,9 @@ const App = () => {
 
     useEffect(() => {
         const handleScroll = () => {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleScroll',message:'window scroll',data:{scrollY:window.scrollY},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-            // #endregion
+            if (import.meta.env.DEV) {
+                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleScroll',message:'window scroll',data:{scrollY:window.scrollY},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+            }
             setScrolled(window.scrollY > 20);
         };
         window.addEventListener('scroll', handleScroll);

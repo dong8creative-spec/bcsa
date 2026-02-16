@@ -40,13 +40,13 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
     const prevFilterRef = useRef({ searchKeyword: '', selectedCategory: '전체', selectedStatus: '전체', sortBy: 'latest' });
     currentImageIndexRef.current = currentImageIndex;
 
-    // #region agent log
     const mountIdRef = useRef(Math.random().toString(36).slice(2, 10));
     useEffect(() => {
-        fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AllSeminarsView.jsx:mount',message:'AllSeminarsView mounted',data:{mountId:mountIdRef.current},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-        return () => { fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AllSeminarsView.jsx:unmount',message:'AllSeminarsView unmounted',data:{mountId:mountIdRef.current},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{}); };
+        if (import.meta.env.DEV) {
+            fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AllSeminarsView.jsx:mount',message:'AllSeminarsView mounted',data:{mountId:mountIdRef.current},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+            return () => { fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AllSeminarsView.jsx:unmount',message:'AllSeminarsView unmounted',data:{mountId:mountIdRef.current},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{}); };
+        }
     }, []);
-    // #endregion
 
     useEffect(() => {
         setCurrentImageIndex(0);
@@ -164,9 +164,9 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
         const prev = prevFilterRef.current;
         const changed = prev.searchKeyword !== searchKeyword || prev.selectedCategory !== selectedCategory || prev.selectedStatus !== selectedStatus || prev.sortBy !== sortBy;
         const didSetPage = changed;
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AllSeminarsView.jsx:resetEffect',message:'reset effect ran',data:{prev:prev,searchKeyword,selectedCategory,selectedStatus,sortBy,changed,didSetPage},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
-        // #endregion
+        if (import.meta.env.DEV) {
+            fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AllSeminarsView.jsx:resetEffect',message:'reset effect ran',data:{prev:prev,searchKeyword,selectedCategory,selectedStatus,sortBy,changed,didSetPage},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+        }
         if (changed) {
             prevFilterRef.current = { searchKeyword, selectedCategory, selectedStatus, sortBy };
             setCurrentPage(1);
@@ -176,9 +176,9 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
     // totalPages가 줄어들었을 때 currentPage가 totalPages를 넘으면 마지막 페이지로 동기화
     useEffect(() => {
         const didSync = currentPage > totalPages;
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AllSeminarsView.jsx:syncEffect',message:'sync effect ran',data:{currentPage,totalPages,didSync},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-        // #endregion
+        if (import.meta.env.DEV) {
+            fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AllSeminarsView.jsx:syncEffect',message:'sync effect ran',data:{currentPage,totalPages,didSync},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+        }
         if (currentPage > totalPages) {
             setCurrentPage(totalPages);
         }
