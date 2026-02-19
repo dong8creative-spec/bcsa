@@ -19,8 +19,10 @@ const GRADE_PRIORITY = { 마스터: 0, 운영진: 1, 파트너사: 2, 사업자:
 
 /**
  * 회원 관리 컴포넌트
+ * @param {Object} props
+ * @param {Function} [props.onNavigateToMemberDetail] - 회원정보 상세 탭으로 이동 콜백
  */
-export const UserManagement = () => {
+export const UserManagement = ({ onNavigateToMemberDetail }) => {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -320,13 +322,25 @@ export const UserManagement = () => {
           <Icons.Users size={28} />
           회원 관리
         </h2>
-        <button
-          onClick={loadUsers}
-          className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
-        >
-          <Icons.RefreshCw size={18} />
-          새로고침
-        </button>
+        <div className="flex items-center gap-2">
+          {typeof onNavigateToMemberDetail === 'function' && (
+            <button
+              type="button"
+              onClick={onNavigateToMemberDetail}
+              className="px-4 py-2 bg-white border-2 border-brand text-brand rounded-xl font-bold hover:bg-brand/5 transition-colors flex items-center gap-2"
+            >
+              <Icons.FileSearch size={18} />
+              회원정보 상세
+            </button>
+          )}
+          <button
+            onClick={loadUsers}
+            className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            <Icons.RefreshCw size={18} />
+            새로고침
+          </button>
+        </div>
       </div>
 
       {/* 필터 */}
