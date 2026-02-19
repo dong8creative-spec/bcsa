@@ -7,6 +7,13 @@ import ModalPortal from '../components/ModalPortal';
 
 const PAGE_SIZE = 10;
 
+/** 주소 문자열에서 지역구(○○구) 추출 — 회원가입 시 입력된 도로명/주소 기준 */
+const getDistrictFromAddress = (addressStr) => {
+    if (!addressStr || typeof addressStr !== 'string') return '';
+    const match = addressStr.match(/([가-힣]+구)/);
+    return match ? match[1] : '';
+};
+
 /** 연락처 비공개 시 표시용 포맷 (실제 번호는 블러 처리로만 가림) */
 const formatPhoneDisplay = (phone) => {
     if (!phone) return '010-0000-0000';
@@ -19,6 +26,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
     const [searchName, setSearchName] = useState('');
     const [searchIndustry, setSearchIndustry] = useState('');
     const [searchRegion, setSearchRegion] = useState('');
+    const [selectedDistrictFilter, setSelectedDistrictFilter] = useState('전체');
     const [selectedIndustryFilter, setSelectedIndustryFilter] = useState('전체');
     const [selectedGradeFilter, setSelectedGradeFilter] = useState('전체');
     const [selectedMember, setSelectedMember] = useState(null);
@@ -29,7 +37,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
     const isPageControlled = currentPageProp != null && typeof onPageChange === 'function';
     const currentPage = isPageControlled ? currentPageProp : internalPage;
     const setCurrentPage = isPageControlled ? (v) => { const next = typeof v === 'function' ? v(currentPage) : v; onPageChange(next); } : setInternalPage;
-    const prevFilterRef = React.useRef({ searchName: '', searchIndustry: '', searchRegion: '', selectedIndustryFilter: '전체', selectedGradeFilter: '전체' });
+    const prevFilterRef = React.useRef({ searchName: '', searchIndustry: '', searchRegion: '', selectedDistrictFilter: '전체', selectedIndustryFilter: '전체', selectedGradeFilter: '전체' });
     const isOwnProfile = currentUser && selectedMember && (currentUser.uid === selectedMember.uid || currentUser.id === selectedMember.id);
     const hasSite = !!selectedMember?.companyWebsite;
 
@@ -81,25 +89,34 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
     const grades = ['전체', '마스터', '운영진', '파트너사', '사업자', '예창', '대기자'];
     const GRADE_PRIORITY = { '마스터': 0, '운영진': 1, '파트너사': 2, '사업자': 3, '예창': 4, '대기자': 5 };
 
+    // 회원가입 시 입력된 주소(도로명/주소)에서 지역구 추출하여 목록 생성
+    const districts = React.useMemo(() => {
+        const addrToDistrict = (m) => getDistrictFromAddress(m.roadAddress || m.address || '');
+        const set = new Set(members.map(addrToDistrict).filter(Boolean));
+        return ['전체', ...[...set].sort((a, b) => a.localeCompare(b, 'ko'))];
+    }, [members]);
+
     useEffect(() => {
         let filtered = members.filter(member => {
+            const fullAddress = member.roadAddress || member.address || '';
             const matchName = !searchName || member.name.toLowerCase().includes(searchName.toLowerCase());
             const matchIndustry = !searchIndustry || (member.industry || member.businessCategory || '').toLowerCase().includes(searchIndustry.toLowerCase());
-            const matchRegion = !searchRegion || (member.address || '').includes(searchRegion);
+            const matchRegion = !searchRegion || fullAddress.includes(searchRegion);
+            const matchDistrict = selectedDistrictFilter === '전체' || getDistrictFromAddress(fullAddress) === selectedDistrictFilter;
             const matchIndustryFilter = selectedIndustryFilter === '전체' || (member.industry || member.businessCategory || '기타') === selectedIndustryFilter;
             const matchGradeFilter = selectedGradeFilter === '전체' || (member.memberGrade || '') === selectedGradeFilter;
-            return matchName && matchIndustry && matchRegion && matchIndustryFilter && matchGradeFilter;
+            return matchName && matchIndustry && matchRegion && matchDistrict && matchIndustryFilter && matchGradeFilter;
         });
         setFilteredMembers(filtered);
         const prev = prevFilterRef.current;
-        const filterChanged = prev.searchName !== searchName || prev.searchIndustry !== searchIndustry || prev.searchRegion !== searchRegion || prev.selectedIndustryFilter !== selectedIndustryFilter || prev.selectedGradeFilter !== selectedGradeFilter;
+        const filterChanged = prev.searchName !== searchName || prev.searchIndustry !== searchIndustry || prev.searchRegion !== searchRegion || prev.selectedDistrictFilter !== selectedDistrictFilter || prev.selectedIndustryFilter !== selectedIndustryFilter || prev.selectedGradeFilter !== selectedGradeFilter;
         if (filterChanged) {
-            prevFilterRef.current = { searchName, searchIndustry, searchRegion, selectedIndustryFilter, selectedGradeFilter };
+            prevFilterRef.current = { searchName, searchIndustry, searchRegion, selectedDistrictFilter, selectedIndustryFilter, selectedGradeFilter };
             setCurrentPage(1);
         }
-    }, [searchName, searchIndustry, searchRegion, selectedIndustryFilter, selectedGradeFilter, members]);
+    }, [searchName, searchIndustry, searchRegion, selectedDistrictFilter, selectedIndustryFilter, selectedGradeFilter, members]);
 
-    const hasActiveFilter = Boolean(searchName || searchIndustry || searchRegion || selectedIndustryFilter !== '전체' || selectedGradeFilter !== '전체');
+    const hasActiveFilter = Boolean(searchName || searchIndustry || searchRegion || selectedDistrictFilter !== '전체' || selectedIndustryFilter !== '전체' || selectedGradeFilter !== '전체');
 
     const sortedMembers = React.useMemo(() => {
         const getVal = (m, k) => {
@@ -203,6 +220,20 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                 value={searchRegion} 
                                 onChange={e => setSearchRegion(e.target.value)}
                             />
+                        </div>
+                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
+                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                                <Icons.MapPin size={14} className="text-gray-400" /> 지역구
+                            </div>
+                            <select 
+                                className="w-full font-medium text-gray-900 bg-transparent outline-none cursor-pointer text-sm" 
+                                value={selectedDistrictFilter} 
+                                onChange={e => setSelectedDistrictFilter(e.target.value)}
+                            >
+                                {districts.map(district => (
+                                    <option key={district} value={district}>{district}</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
