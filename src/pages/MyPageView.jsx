@@ -5,6 +5,7 @@ import { uploadImage } from '../utils/imageUtils';
 import { firebaseService } from '../services/firebaseService';
 import { apiGet } from '../utils/api';
 import ModalPortal from '../components/ModalPortal';
+import { openDaumPostcode } from '../utils/daumPostcode';
 
 // 회원가입 페이지와 동일한 상수·헬퍼 (회원정보 수정 폼 일치용)
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
@@ -78,6 +79,9 @@ function getInitialEditForm(user) {
         desiredIndustry: u.desiredIndustry || '',
         businessRegistrationDoc: u.businessRegistrationDoc || '',
         businessRegistrationFileName: u.businessRegistrationFileName || '',
+        roadAddress: u.roadAddress || '',
+        detailAddress: u.detailAddress || '',
+        zipCode: u.zipCode || '',
         img: u.img || '',
     };
 }
@@ -245,6 +249,10 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
             setProfileEditError('올바른 이메일 형식을 입력해주세요.');
             return;
         }
+        if (!(editFormData.roadAddress || '').trim()) {
+            setProfileEditError('주소를 입력해주세요. 주소 검색 버튼으로 도로명 주소를 선택해주세요.');
+            return;
+        }
         if (editUserType === '사업자') {
             if (!editFormData.company?.trim()) {
                 setProfileEditError('상호명을 입력해주세요.');
@@ -295,6 +303,9 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
             desiredIndustry: editUserType === '예창' ? (editFormData.desiredIndustry || '').trim() : '',
             businessRegistrationDoc: editUserType === '사업자' ? (editFormData.businessRegistrationDoc || '') : '',
             businessRegistrationFileName: editUserType === '사업자' ? (editFormData.businessRegistrationFileName || '') : '',
+            roadAddress: (editFormData.roadAddress || '').trim(),
+            detailAddress: (editFormData.detailAddress || '').trim(),
+            zipCode: (editFormData.zipCode || '').trim(),
         };
         await onUpdateProfile(updatedData);
         setIsEditingProfile(false);
@@ -460,6 +471,19 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                             {editFormData.emailDomain === '직접입력' && (
                                                                 <input type="text" placeholder="도메인 입력" className="flex-1 min-w-[120px] p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.emailDomainCustom} onChange={e => setEditFormData(f => ({ ...f, emailDomainCustom: e.target.value, email: composeEmail(f.emailId, f.emailDomain, e.target.value) }))} />
                                                             )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="md:col-span-2">
+                                                        <label className="block text-sm font-bold text-gray-700 mb-2">주소 <span className="text-red-500">*</span></label>
+                                                        <div className="space-y-2">
+                                                            <div className="flex gap-2">
+                                                                <input type="text" readOnly placeholder="도로명 주소 검색" className="flex-1 p-3 border border-blue-200 rounded-xl bg-gray-50 text-sm cursor-pointer" value={editFormData.roadAddress} onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setEditFormData(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} />
+                                                                <button type="button" onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setEditFormData(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} className="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-sm whitespace-nowrap flex items-center gap-1">
+                                                                    <Icons.MapPin size={16} /> 주소 검색
+                                                                </button>
+                                                            </div>
+                                                            {editFormData.zipCode ? <p className="text-xs text-gray-500">우편번호: {editFormData.zipCode}</p> : null}
+                                                            <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none text-sm" value={editFormData.detailAddress} onChange={e => setEditFormData(f => ({ ...f, detailAddress: e.target.value }))} />
                                                         </div>
                                                     </div>
                                                 </div>

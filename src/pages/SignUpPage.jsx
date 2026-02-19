@@ -4,6 +4,7 @@ import { Icons } from '../components/Icons';
 import { authService } from '../services/authService';
 import { firebaseService } from '../services/firebaseService';
 import { loadUsersFromStorage } from '../utils/authUtils';
+import { openDaumPostcode } from '../utils/daumPostcode';
 
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 
@@ -68,6 +69,9 @@ const SignUpPage = ({ onSignUp }) => {
         desiredIndustry: '',
         businessRegistrationDoc: '',
         businessRegistrationFileName: '',
+        roadAddress: '',
+        detailAddress: '',
+        zipCode: '',
         termsAgreed: false,
         privacyAgreed: false,
         marketingAgreed: false,
@@ -139,6 +143,7 @@ const SignUpPage = ({ onSignUp }) => {
         if (!validatePassword(form.password).valid) return false;
         if (form.password !== form.passwordConfirm) return false;
         if (!form.termsAgreed || !form.privacyAgreed) return false;
+        if (!(form.roadAddress || '').trim()) return false;
         if (userType === '사업자') {
             if (!(form.company || '').trim() || !isBusinessNumberValid || !form.businessCategory) return false;
             if (!(form.collaborationIndustry || '').trim() || !(form.keyCustomers || '').trim()) return false;
@@ -164,6 +169,7 @@ const SignUpPage = ({ onSignUp }) => {
         else if (form.password !== form.passwordConfirm) missing.push('비밀번호 일치');
         if (!form.termsAgreed) missing.push('이용약관 동의');
         if (!form.privacyAgreed) missing.push('개인정보 수집 및 이용 동의');
+        if (!(form.roadAddress || '').trim()) missing.push('주소');
         if (userType === '사업자') {
             if (!(form.company || '').trim()) missing.push('상호명');
             if (!isBusinessNumberValid) missing.push('사업자등록번호');
@@ -252,6 +258,9 @@ const SignUpPage = ({ onSignUp }) => {
                 position: userType === '사업자' ? (form.position?.trim() || '') : '',
                 companyPhone: userType === '사업자' ? (form.companyPhone?.trim() || '') : '',
                 companyWebsite: userType === '사업자' ? (form.companyWebsite?.trim() || '') : '',
+                roadAddress: (form.roadAddress || '').trim(),
+                detailAddress: (form.detailAddress || '').trim(),
+                zipCode: (form.zipCode || '').trim(),
                 businessRegistrationDoc: (userType === '사업자' && form.businessRegistrationDoc) || '',
                 businessRegistrationFileName: (userType === '사업자' && form.businessRegistrationFileName) || '',
                 termsAgreed: form.termsAgreed,
@@ -293,7 +302,7 @@ const SignUpPage = ({ onSignUp }) => {
                     <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                         <p className="text-sm font-bold text-amber-800 flex items-center gap-2">
                             <Icons.AlertCircle className="w-5 h-5 shrink-0" />
-                            이름, 생년월일, 성별, 연락처, 이메일, 비밀번호, {userType === '사업자' ? '상호명, 사업자등록번호, 업종/업태, 협업 업종, 핵심고객' : '희망업종(선택)'} 및 약관 동의 등 필수 항목을 입력해주세요.
+                            이름, 생년월일, 성별, 연락처, 이메일, 비밀번호, 주소, {userType === '사업자' ? '상호명, 사업자등록번호, 업종/업태, 협업 업종, 핵심고객' : '희망업종(선택)'} 및 약관 동의 등 필수 항목을 입력해주세요.
                         </p>
                     </div>
 
@@ -415,6 +424,23 @@ const SignUpPage = ({ onSignUp }) => {
                                             <button type="button" onClick={() => setShowPasswordConfirm(!showPasswordConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showPasswordConfirm ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}</button>
                                         </div>
                                         {form.passwordConfirm && form.password !== form.passwordConfirm && <p className="text-xs text-red-500 mt-1">비밀번호가 일치하지 않습니다.</p>}
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <RequiredFieldBadge number={9} isFilled={!!(form.roadAddress || '').trim()} />
+                                        주소 <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="space-y-2">
+                                        <div className="flex gap-2">
+                                            <input type="text" readOnly placeholder="도로명 주소 검색" className="flex-1 p-3 border border-blue-200 rounded-xl bg-gray-50 text-sm cursor-pointer" value={form.roadAddress} onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setForm(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} />
+                                            <button type="button" onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setForm(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} className="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-sm whitespace-nowrap flex items-center gap-1">
+                                                <Icons.MapPin size={16} /> 주소 검색
+                                            </button>
+                                        </div>
+                                        {form.zipCode ? <p className="text-xs text-gray-500">우편번호: {form.zipCode}</p> : null}
+                                        <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3 border border-blue-200 rounded-xl focus:border-blue-400 focus:outline-none text-sm" value={form.detailAddress} onChange={e => setForm(f => ({ ...f, detailAddress: e.target.value }))} />
                                     </div>
                                 </div>
 

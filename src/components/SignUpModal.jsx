@@ -3,6 +3,7 @@ import { firebaseService } from '../services/firebaseService';
 import { authService } from '../services/authService';
 import { hashPassword, loadUsersFromStorage } from '../utils/authUtils';
 import { uploadImageToImgBB, resizeImage } from '../utils/imageUtils';
+import { openDaumPostcode } from '../utils/daumPostcode';
 import { Icons } from './Icons';
 import ModalPortal from './ModalPortal';
 

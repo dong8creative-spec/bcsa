@@ -7,11 +7,68 @@ import ModalPortal from '../components/ModalPortal';
 
 const PAGE_SIZE = 10;
 
-/** 주소 문자열에서 지역구(○○구) 추출 — 회원가입 시 입력된 도로명/주소 기준 */
+/** 회원 문서에서 주소 문자열 수집 — 예전 가입자 포함, 모든 가능한 필드와 값 기준 수집 */
+const getMemberAddressString = (member) => {
+    if (!member) return '';
+    const toStr = (v) => (v != null && typeof v === 'string' ? v.trim() : '');
+    const parts = [];
+    const seen = new Set();
+
+    // 1) 알려진 주소 필드명 (다양한 표기)
+    const knownKeys = [
+        'roadAddress', 'road_address', 'RoadAddress', 'address', 'Address', 'region', 'Region',
+        'detailAddress', 'detail_address', 'DetailAddress', 'locationAddress', 'location_address',
+        'addr', 'location', '주소', 'addressDetail', 'fullAddress', 'jibunAddress', 'autoJibunAddress'
+    ];
+    for (const k of knownKeys) {
+        const s = toStr(member[k]);
+        if (s && s.length > 0 && s.length < 600 && !seen.has(s)) {
+            seen.add(s);
+            parts.push(s);
+        }
+    }
+
+    // 2) 주소가 객체로 저장된 경우
+    if (member.address && typeof member.address === 'object') {
+        const o = member.address;
+        for (const k of ['roadAddress', 'address', 'region', 'detailAddress', 'road_address', 'address_name']) {
+            const s = toStr(o[k]);
+            if (s && !seen.has(s)) { seen.add(s); parts.push(s); }
+        }
+    }
+
+    // 3) 문서 전체에서 문자열 값 중 "○○구" 패턴이 들어있는 것만 수집 (예전 가입자용)
+    const nonAddressKeys = new Set([
+        'uid', 'id', 'email', 'name', 'phone', 'password', 'img', 'createdAt', 'updatedAt',
+        'approvalStatus', 'memberGrade', 'role', 'company', 'industry', 'businessCategory',
+        'position', 'keyCustomers', 'collaborationIndustry', 'companyPhone', 'companyWebsite',
+        'phonePublic', 'userType', 'businessRegistrationNumber', 'businessVerified', 'businessType',
+        'verifiedName', 'verifiedPhone', 'verifiedBirthday', 'verifiedGender', 'impUid', 'isIdentityVerified',
+        'title', 'desc', 'description', 'category'
+    ]);
+    for (const key of Object.keys(member)) {
+        if (nonAddressKeys.has(key)) continue;
+        const v = member[key];
+        if (v == null || typeof v !== 'string') continue;
+        const s = v.trim();
+        if (s.length < 10 || s.length > 600) continue;
+        if (!/[가-힣]+구/.test(s)) continue; // 지역구 패턴이 있을 때만
+        if (/^https?:\/\//i.test(s) || s.includes('@') || /^\d+[-.]?\d+[-.]?\d+$/.test(s.replace(/\s/g, ''))) continue; // URL, 이메일, 전화만 있는 값 제외
+        if (!seen.has(s)) { seen.add(s); parts.push(s); }
+    }
+
+    return parts.join(' ').trim() || '';
+};
+
+/** 주소 문자열에서 "○○구"만 추출 — 구로 끝나는 항목(해운대구, 부산진구 등) */
 const getDistrictFromAddress = (addressStr) => {
     if (!addressStr || typeof addressStr !== 'string') return '';
-    const match = addressStr.match(/([가-힣]+구)/);
-    return match ? match[1] : '';
+    // "해운대구", "부산진구" 형태: 한글+구 (공백 허용: "해운대 구" → 해운대구)
+    const tight = addressStr.match(/([가-힣]+구)/);
+    if (tight) return tight[1];
+    const withSpace = addressStr.match(/([가-힣]+)\s*구\b/);
+    if (withSpace) return withSpace[1].trim() + '구';
+    return '';
 };
 
 /** 연락처 비공개 시 표시용 포맷 (실제 번호는 블러 처리로만 가림) */
@@ -89,16 +146,16 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
     const grades = ['전체', '마스터', '운영진', '파트너사', '사업자', '예창', '대기자'];
     const GRADE_PRIORITY = { '마스터': 0, '운영진': 1, '파트너사': 2, '사업자': 3, '예창': 4, '대기자': 5 };
 
-    // 회원가입 시 입력된 주소(도로명/주소)에서 지역구 추출하여 목록 생성
+    // 회원가입 시 입력된 주소에서 지역구(○○구) 추출하여 목록 생성
     const districts = React.useMemo(() => {
-        const addrToDistrict = (m) => getDistrictFromAddress(m.roadAddress || m.address || '');
+        const addrToDistrict = (m) => getDistrictFromAddress(getMemberAddressString(m));
         const set = new Set(members.map(addrToDistrict).filter(Boolean));
         return ['전체', ...[...set].sort((a, b) => a.localeCompare(b, 'ko'))];
     }, [members]);
 
     useEffect(() => {
         let filtered = members.filter(member => {
-            const fullAddress = member.roadAddress || member.address || '';
+            const fullAddress = getMemberAddressString(member);
             const matchName = !searchName || member.name.toLowerCase().includes(searchName.toLowerCase());
             const matchIndustry = !searchIndustry || (member.industry || member.businessCategory || '').toLowerCase().includes(searchIndustry.toLowerCase());
             const matchRegion = !searchRegion || fullAddress.includes(searchRegion);
@@ -133,6 +190,9 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
             if (k === 'memberGrade') {
                 const g = (m.memberGrade || '').toString().trim();
                 return GRADE_PRIORITY[g] ?? 99;
+            }
+            if (k === 'district') {
+                return (getDistrictFromAddress(getMemberAddressString(m)) || '').toString().trim().toLowerCase();
             }
             return (m[k] || '').toString().trim().toLowerCase();
         };
@@ -273,12 +333,12 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                     </div>
                 </div>
 
-                {/* 회원명단: CSS Grid (모바일 3열, PC 5열), 중앙정렬 + 오른쪽 정렬 버튼 */}
+                {/* 회원명단: 회원등급 | 회원명 | 지역구 | 회사명 | 업종/업태 | 가입일자 */}
                 <div className="bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden mb-6">
                     <div className="overflow-x-auto">
                         <div role="grid" aria-label="회원명단" className="min-w-0">
-                            {/* 헤더 행 */}
-                            <div role="row" className="grid grid-cols-3 md:grid-cols-5 border-b border-blue-200 bg-blue-50/50 h-14 min-h-[3.5rem]">
+                            {/* 헤더 행 — 회원등급·지역구·가입일자 축소, 회사명 확대 */}
+                            <div role="row" className="grid border-b border-blue-200 bg-blue-50/50 h-14 min-h-[3.5rem] grid-cols-[0.5fr_1fr_0.6fr_1.7fr] md:grid-cols-[0.5fr_1fr_0.6fr_1.9fr_1fr_0.75fr]">
                                 <div role="columnheader" aria-sort={sortKey === 'memberGrade' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="relative flex items-center justify-center px-2 md:px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('memberGrade')}>
                                     <span className="text-center">회원등급</span>
                                         <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
@@ -289,6 +349,12 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                         <span className="text-center">회원명</span>
                                         <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
                                             {sortKey === 'name' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} className="text-brand" /> : <Icons.ChevronDown size={14} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-50" />}
+                                        </span>
+                                    </div>
+                                    <div role="columnheader" aria-sort={sortKey === 'district' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="relative flex items-center justify-center px-2 md:px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('district')}>
+                                        <span className="text-center">지역구</span>
+                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
+                                            {sortKey === 'district' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} className="text-brand" /> : <Icons.ChevronDown size={14} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-50" />}
                                         </span>
                                     </div>
                                     <div role="columnheader" aria-sort={sortKey === 'company' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="relative flex items-center justify-center px-2 md:px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('company')}>
@@ -312,8 +378,8 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                             </div>
                             {/* 데이터 행 */}
                             {paginatedMembers.length === 0 ? (
-                                <div role="row" className="grid grid-cols-3 md:grid-cols-5 h-14 min-h-[3.5rem] border-b border-blue-100">
-                                    <div role="gridcell" className="col-span-3 md:col-span-5 flex items-center justify-center px-4 py-3 text-gray-500 text-sm">
+                                <div role="row" className="grid h-14 min-h-[3.5rem] border-b border-blue-100 grid-cols-[0.5fr_1fr_0.6fr_1.7fr] md:grid-cols-[0.5fr_1fr_0.6fr_1.9fr_1fr_0.75fr]">
+                                    <div role="gridcell" className="col-span-4 md:col-span-6 flex items-center justify-center px-4 py-3 text-gray-500 text-sm">
                                         조건에 맞는 회원이 없습니다.
                                     </div>
                                 </div>
@@ -322,7 +388,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                     <div
                                         key={member.id || member.uid || idx}
                                         role="row"
-                                        className="grid grid-cols-3 md:grid-cols-5 border-b border-blue-100 hover:bg-brand/5 cursor-pointer transition-colors h-14 min-h-[3.5rem]"
+                                        className="grid border-b border-blue-100 hover:bg-brand/5 cursor-pointer transition-colors h-14 min-h-[3.5rem] grid-cols-[0.5fr_1fr_0.6fr_1.7fr] md:grid-cols-[0.5fr_1fr_0.6fr_1.9fr_1fr_0.75fr]"
                                         onClick={() => setSelectedMember(member)}
                                     >
                                         <div role="gridcell" className="flex items-center justify-center px-2 md:px-4 py-3 text-sm text-gray-700">
@@ -356,6 +422,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                             )}
                                         </div>
                                         <div role="gridcell" className="flex items-center justify-center px-2 md:px-4 py-3 text-sm font-medium text-dark">{member.name || '-'}</div>
+                                        <div role="gridcell" className="flex items-center justify-center px-2 md:px-4 py-3 text-sm text-gray-600">{getDistrictFromAddress(getMemberAddressString(member)) || '-'}</div>
                                         <div role="gridcell" className="flex items-center justify-center px-2 md:px-4 py-3 text-sm text-gray-600">{member.company || '-'}</div>
                                         <div role="gridcell" className="hidden md:flex items-center justify-center px-4 py-3 text-sm text-gray-600">{member.industry || member.businessCategory || '-'}</div>
                                         <div role="gridcell" className="hidden md:flex items-center justify-center px-4 py-3 text-sm text-gray-600">
