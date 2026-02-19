@@ -58,6 +58,7 @@ const SignUpPage = ({ onSignUp }) => {
         password: '',
         passwordConfirm: '',
         company: '',
+        companyPhone: '',
         businessRegistrationNumber: '',
         position: '',
         businessCategory: '',
@@ -69,6 +70,7 @@ const SignUpPage = ({ onSignUp }) => {
         termsAgreed: false,
         privacyAgreed: false,
         marketingAgreed: false,
+        phonePublic: false,
     });
     const [termsModal, setTermsModal] = useState({ open: false, type: '' }); // 'service' | 'privacy' | 'marketing'
     const BUSINESS_DOC_MAX_SIZE = 600 * 1024; // 600KB (base64 시 문서 크기 제한 고려)
@@ -236,6 +238,7 @@ const SignUpPage = ({ onSignUp }) => {
                 birthdate: normalizedBirthdate,
                 gender: form.gender || '',
                 phone: form.phone.trim(),
+                phonePublic: !!form.phonePublic,
                 email: form.email.trim(),
                 userType,
                 businessCategory: userType === '사업자' ? form.businessCategory : '',
@@ -246,6 +249,7 @@ const SignUpPage = ({ onSignUp }) => {
                 company: userType === '사업자' ? (form.company?.trim() || '') : '',
                 businessRegistrationNumber: userType === '사업자' ? businessNumberDigits : '',
                 position: userType === '사업자' ? (form.position?.trim() || '') : '',
+                companyPhone: userType === '사업자' ? (form.companyPhone?.trim() || '') : '',
                 businessRegistrationDoc: (userType === '사업자' && form.businessRegistrationDoc) || '',
                 businessRegistrationFileName: (userType === '사업자' && form.businessRegistrationFileName) || '',
                 termsAgreed: form.termsAgreed,
@@ -367,6 +371,10 @@ const SignUpPage = ({ onSignUp }) => {
                                             }
                                         }} maxLength={11} />
                                         {form.phone && form.phone.length === 11 && !validatePhone(form.phone) && <p className="text-xs text-red-500 mt-1">010, 011 등으로 시작하는 11자리 번호를 입력해주세요.</p>}
+                                        <div className="mt-3 flex items-center gap-2">
+                                            <input type="checkbox" id="signup-page-phonePublic" checked={form.phonePublic} onChange={e => setForm(f => ({ ...f, phonePublic: e.target.checked }))} className="w-5 h-5 text-brand rounded focus:ring-brand" />
+                                            <label htmlFor="signup-page-phonePublic" className="text-sm text-gray-700 cursor-pointer">회원명단에서 연락처 공개 (선택)</label>
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
@@ -428,6 +436,10 @@ const SignUpPage = ({ onSignUp }) => {
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-2">직책/직함 <span className="text-gray-400 text-xs">(선택)</span></label>
                                             <input type="text" placeholder="예: 대표, 이사, 팀장" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">회사 전화번호 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에 노출)</span></label>
+                                            <input type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.companyPhone} onChange={e => setForm(f => ({ ...f, companyPhone: e.target.value }))} />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">

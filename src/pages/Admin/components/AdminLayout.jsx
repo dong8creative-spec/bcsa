@@ -13,6 +13,7 @@ import { Icons } from '../../../components/Icons';
 export const AdminLayout = ({ children, activeTab, onTabChange, onLogout, currentUser }) => {
   const tabs = [
     { id: 'users', label: '회원 관리', icon: Icons.Users },
+    { id: 'memberDetail', label: '회원정보 상세', icon: Icons.FileSearch },
     { id: 'programs', label: '프로그램 관리', icon: Icons.Calendar },
     { id: 'posts', label: '게시물 관리', icon: Icons.MessageSquare },
     { id: 'content', label: '페이지 관리', icon: Icons.FileText },

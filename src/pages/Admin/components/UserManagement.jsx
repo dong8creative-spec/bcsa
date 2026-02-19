@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { Icons } from '../../../components/Icons';
+import { getInitialMemberEditForm, EDITABLE_FIELD_LABELS, BUSINESS_CATEGORIES } from '../constants/memberFields';
 
 const PAGE_SIZE = 10;
 
@@ -30,7 +31,7 @@ export const UserManagement = () => {
   const [sortKey, setSortKey] = useState('memberGrade');
   const [sortOrder, setSortOrder] = useState('asc');
   const [memberModalEditing, setMemberModalEditing] = useState(false);
-  const [memberEditForm, setMemberEditForm] = useState({ name: '', company: '', phone: '', address: '' });
+  const [memberEditForm, setMemberEditForm] = useState(() => getInitialMemberEditForm(null));
   const [savingMember, setSavingMember] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -109,13 +110,7 @@ export const UserManagement = () => {
   };
 
   const openMemberEdit = () => {
-    const u = memberModalUser;
-    setMemberEditForm({
-      name: u?.name ?? '',
-      company: u?.company ?? '',
-      phone: u?.phone ?? u?.phoneNumber ?? '',
-      address: u?.address ?? u?.roadAddress ?? u?.region ?? ''
-    });
+    setMemberEditForm(getInitialMemberEditForm(memberModalUser));
     setMemberModalEditing(true);
   };
 
@@ -125,24 +120,27 @@ export const UserManagement = () => {
     const u = memberModalUser;
     const payload = {};
     const correctedFields = [];
-    if (String(memberEditForm.name).trim() !== String(u?.name ?? '').trim()) {
-      payload.name = memberEditForm.name.trim();
-      correctedFields.push('name');
-    }
-    if (String(memberEditForm.company).trim() !== String(u?.company ?? '').trim()) {
-      payload.company = memberEditForm.company.trim();
-      correctedFields.push('company');
-    }
-    const currentPhone = u?.phone ?? u?.phoneNumber ?? '';
-    if (String(memberEditForm.phone).trim() !== String(currentPhone).trim()) {
-      payload.phone = memberEditForm.phone.trim();
-      correctedFields.push('phone');
-    }
-    const currentAddress = u?.address ?? u?.roadAddress ?? u?.region ?? '';
-    if (String(memberEditForm.address).trim() !== String(currentAddress).trim()) {
-      payload.address = memberEditForm.address.trim();
-      correctedFields.push('address');
-    }
+    const str = (v) => String(v ?? '').trim();
+    const arr = (v) => (Array.isArray(v) ? v : (v ? [v] : []));
+
+    if (str(memberEditForm.memberGrade) !== str(u.memberGrade)) { payload.memberGrade = memberEditForm.memberGrade || ''; correctedFields.push('memberGrade'); }
+    if (str(memberEditForm.approvalStatus) !== str(u.approvalStatus)) { payload.approvalStatus = memberEditForm.approvalStatus || 'pending'; correctedFields.push('approvalStatus'); }
+    if (str(memberEditForm.role) !== str(u.role)) { payload.role = memberEditForm.role || 'user'; correctedFields.push('role'); }
+    if (str(memberEditForm.company) !== str(u.company)) { payload.company = memberEditForm.company; correctedFields.push('company'); }
+    if (str(memberEditForm.companyPhone) !== str(u.companyPhone)) { payload.companyPhone = memberEditForm.companyPhone; correctedFields.push('companyPhone'); }
+    if (str(memberEditForm.companyWebsite) !== str(u.companyWebsite)) { payload.companyWebsite = memberEditForm.companyWebsite; correctedFields.push('companyWebsite'); }
+    const nextCategory = str(memberEditForm.businessCategory) || str(memberEditForm.industry);
+    const currCategory = str(u.businessCategory) || str(u.industry);
+    if (nextCategory !== currCategory) { payload.businessCategory = nextCategory; payload.industry = nextCategory; correctedFields.push('businessCategory'); }
+    if (str(memberEditForm.position) !== str(u.position)) { payload.position = memberEditForm.position; correctedFields.push('position'); }
+    if (str(memberEditForm.collaborationIndustry) !== str(u.collaborationIndustry)) { payload.collaborationIndustry = memberEditForm.collaborationIndustry; correctedFields.push('collaborationIndustry'); }
+    if (str(memberEditForm.keyCustomers) !== str(u.keyCustomers)) { payload.keyCustomers = memberEditForm.keyCustomers; correctedFields.push('keyCustomers'); }
+    if (str(memberEditForm.companyMainImage) !== str(u.companyMainImage)) { payload.companyMainImage = memberEditForm.companyMainImage; correctedFields.push('companyMainImage'); }
+    if (str(memberEditForm.companyDescription) !== str(u.companyDescription)) { payload.companyDescription = memberEditForm.companyDescription; correctedFields.push('companyDescription'); }
+    const nextImages = arr(memberEditForm.companyImages);
+    const currImages = arr(u.companyImages);
+    if (JSON.stringify(nextImages) !== JSON.stringify(currImages)) { payload.companyImages = nextImages; correctedFields.push('companyImages'); }
+
     if (Object.keys(payload).length === 0) {
       setMemberModalEditing(false);
       return;
@@ -150,15 +148,12 @@ export const UserManagement = () => {
     setSavingMember(true);
     try {
       await firebaseService.updateUser(userId, payload);
-      const fieldLabels = { name: '회원명', company: '회사명', phone: '연락처', address: '지역/주소' };
       const message = correctedFields.length > 0
-        ? `${correctedFields.map(f => fieldLabels[f] || f).join(', ')}가 정정되었습니다.`
+        ? `${correctedFields.map(f => EDITABLE_FIELD_LABELS[f] || f).join(', ')}가 정정되었습니다.`
         : '회원정보가 정정되었습니다.';
-      await firebaseService.addUserNotification(userId, {
-        type: 'profile_corrected',
-        message,
-        correctedFields
-      });
+      if (firebaseService.addUserNotification) {
+        await firebaseService.addUserNotification(userId, { type: 'profile_corrected', message, correctedFields });
+      }
       alert('저장되었습니다. 해당 회원에게 정정 알림이 전달됩니다.');
       setMemberModalEditing(false);
       setMemberModalUser(prev => prev ? { ...prev, ...payload } : null);
@@ -551,47 +546,129 @@ export const UserManagement = () => {
         </div>
       )}
 
-      {/* 회원 정보 모달 */}
+      {/* 회원 정보 모달: 열람(전체) + 수정(수정 가능 필드만) */}
       {memberModalUser && (
         <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => { setMemberModalEditing(false); setMemberModalUser(null); }}>
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-blue-100 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-dark">{memberModalEditing ? '회원 정보 수정' : '회원 정보'}</h3>
+              <h3 className="text-xl font-bold text-dark">{memberModalEditing ? '회원 정보 수정 (민감정보 제외)' : '회원 정보'}</h3>
               <button type="button" onClick={() => { setMemberModalEditing(false); setMemberModalUser(null); }} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg">×</button>
             </div>
-            <div className="p-5 overflow-y-auto space-y-3 text-sm">
+            <div className="p-5 overflow-y-auto space-y-4 text-sm">
+              {/* 열람 전용: 개인정보·본인인증·주소·사업자등록번호 */}
+              <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
+                <h4 className="font-bold text-gray-700 mb-3">개인정보 (열람 전용)</h4>
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회원명</span><span className="text-dark">{memberModalUser.name || '-'}</span></div>
+                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">이메일</span><span className="text-dark">{memberModalUser.email || '-'}</span></div>
+                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">연락처</span><span className="text-dark">{memberModalUser.phone || memberModalUser.phoneNumber || '-'}</span></div>
+                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">연락처 공개</span><span className="text-dark">{memberModalUser.phonePublic ? '공개' : '비공개'}</span></div>
+                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">생년월일</span><span className="text-dark">{memberModalUser.birthdate || '-'}</span></div>
+                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">성별</span><span className="text-dark">{memberModalUser.gender === 'M' ? '남성' : memberModalUser.gender === 'F' ? '여성' : (memberModalUser.gender || '-')}</span></div>
+                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">주소</span><span className="text-dark">{[memberModalUser.roadAddress, memberModalUser.detailAddress].filter(Boolean).join(' ') || memberModalUser.address || memberModalUser.region || '-'}</span></div>
+                  {memberModalUser.zipCode && <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">우편번호</span><span className="text-dark">{memberModalUser.zipCode}</span></div>}
+                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">가입일자</span><span className="text-dark">{memberModalUser.createdAt?.toDate?.().toLocaleString('ko-KR') ?? (typeof memberModalUser.createdAt === 'string' ? new Date(memberModalUser.createdAt).toLocaleString('ko-KR') : memberModalUser.createdAt) ?? '-'}</span></div>
+                  {memberModalUser.isIdentityVerified && (
+                    <>
+                      <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">본인인증 이름</span><span className="text-dark">{memberModalUser.verifiedName || '-'}</span></div>
+                      <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">본인인증 전화</span><span className="text-dark">{memberModalUser.verifiedPhone || '-'}</span></div>
+                    </>
+                  )}
+                  {(memberModalUser.businessRegistrationNumber || memberModalUser.company) && (
+                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">사업자등록번호</span><span className="text-dark">{memberModalUser.businessRegistrationNumber || '-'}</span></div>
+                  )}
+                </div>
+              </div>
+
               {memberModalEditing ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span className="w-28 font-bold text-gray-600 shrink-0">회원명</span>
-                    <input type="text" value={memberEditForm.name} onChange={e => setMemberEditForm(f => ({ ...f, name: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="회원명" />
+                <div className="rounded-xl bg-blue-50/50 border border-blue-200 p-4">
+                  <h4 className="font-bold text-gray-700 mb-3">수정 가능 항목</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-32 font-bold text-gray-600 shrink-0">회원등급</span>
+                      <select value={memberEditForm.memberGrade ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, memberGrade: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none bg-white">
+                        {MEMBER_GRADE_OPTIONS.map(opt => <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-32 font-bold text-gray-600 shrink-0">승인 여부</span>
+                      <select value={memberEditForm.approvalStatus ?? 'pending'} onChange={e => setMemberEditForm(f => ({ ...f, approvalStatus: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none bg-white">
+                        <option value="pending">대기</option>
+                        <option value="approved">승인</option>
+                        <option value="rejected">거절</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-32 font-bold text-gray-600 shrink-0">권한</span>
+                      <select value={memberEditForm.role ?? 'user'} onChange={e => setMemberEditForm(f => ({ ...f, role: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none bg-white">
+                        <option value="user">일반 회원</option>
+                        <option value="admin">관리자</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-32 font-bold text-gray-600 shrink-0">회사명</span>
+                      <input type="text" value={memberEditForm.company ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, company: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="회사명" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-32 font-bold text-gray-600 shrink-0">회사 전화</span>
+                      <input type="text" value={memberEditForm.companyPhone ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, companyPhone: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="회사 전화번호" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-32 font-bold text-gray-600 shrink-0">회사 사이트</span>
+                      <input type="url" value={memberEditForm.companyWebsite ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, companyWebsite: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="https://..." />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-32 font-bold text-gray-600 shrink-0">업종/업태</span>
+                      <select value={memberEditForm.businessCategory ?? memberEditForm.industry ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, businessCategory: e.target.value, industry: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none bg-white">
+                        <option value="">선택</option>
+                        {BUSINESS_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-32 font-bold text-gray-600 shrink-0">직책</span>
+                      <input type="text" value={memberEditForm.position ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, position: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="직책" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-32 font-bold text-gray-600 shrink-0">협업 업종</span>
+                      <input type="text" value={memberEditForm.collaborationIndustry ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, collaborationIndustry: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="협업 업종" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-32 font-bold text-gray-600 shrink-0">핵심고객</span>
+                      <input type="text" value={memberEditForm.keyCustomers ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, keyCustomers: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="핵심고객" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-32 font-bold text-gray-600 shrink-0">대표 이미지 URL</span>
+                      <input type="text" value={memberEditForm.companyMainImage ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, companyMainImage: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="URL" />
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-32 font-bold text-gray-600 shrink-0 pt-2">회사 소개</span>
+                      <textarea value={memberEditForm.companyDescription ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, companyDescription: e.target.value }))} rows={3} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none resize-none" placeholder="회사 소개" />
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-32 font-bold text-gray-600 shrink-0 pt-2">추가 이미지 URL</span>
+                      <textarea value={(Array.isArray(memberEditForm.companyImages) ? memberEditForm.companyImages : (memberEditForm.companyImages ? [memberEditForm.companyImages] : [])).join('\n')} onChange={e => setMemberEditForm(f => ({ ...f, companyImages: e.target.value.trim() ? e.target.value.trim().split(/\n/).map(s => s.trim()).filter(Boolean) : [] }))} rows={2} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none resize-none" placeholder="한 줄에 URL 하나" />
+                    </div>
                   </div>
-                  <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">이메일</span><span className="text-dark">{memberModalUser.email || '-'}</span></div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-28 font-bold text-gray-600 shrink-0">회사명</span>
-                    <input type="text" value={memberEditForm.company} onChange={e => setMemberEditForm(f => ({ ...f, company: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="회사명" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-28 font-bold text-gray-600 shrink-0">연락처</span>
-                    <input type="text" value={memberEditForm.phone} onChange={e => setMemberEditForm(f => ({ ...f, phone: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="연락처" />
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-28 font-bold text-gray-600 shrink-0 pt-2">지역/주소</span>
-                    <textarea value={memberEditForm.address} onChange={e => setMemberEditForm(f => ({ ...f, address: e.target.value }))} rows={2} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none resize-none" placeholder="지역/주소" />
-                  </div>
-                </>
+                </div>
               ) : (
-                <>
-                  <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">회원명</span><span className="text-dark">{memberModalUser.name || '-'}</span></div>
-                  <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">이메일</span><span className="text-dark">{memberModalUser.email || '-'}</span></div>
-                  <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">회사명</span><span className="text-dark">{memberModalUser.company || '-'}</span></div>
-                  <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">연락처</span><span className="text-dark">{memberModalUser.phone || memberModalUser.phoneNumber || '-'}</span></div>
-                  <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">지역/주소</span><span className="text-dark">{memberModalUser.address || memberModalUser.roadAddress || memberModalUser.region || '-'}</span></div>
-                  <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">가입일자</span><span className="text-dark">{memberModalUser.createdAt?.toDate?.().toLocaleString('ko-KR') ?? (typeof memberModalUser.createdAt === 'string' ? new Date(memberModalUser.createdAt).toLocaleString('ko-KR') : memberModalUser.createdAt) ?? '-'}</span></div>
-                  <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">회원등급</span><span className="text-dark">{memberModalUser.memberGrade || '-'}</span></div>
-                  <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">승인 여부</span><span className="text-dark">{!memberModalUser.approvalStatus || memberModalUser.approvalStatus === 'approved' ? '승인' : '대기'}</span></div>
-                  <div className="flex"><span className="w-28 font-bold text-gray-600 shrink-0">권한</span><span className="text-dark">{memberModalUser.role === 'admin' ? '관리자' : '일반 회원'}</span></div>
-                </>
+                <div className="rounded-xl bg-blue-50/50 border border-blue-200 p-4">
+                  <h4 className="font-bold text-gray-700 mb-3">수정 가능 항목 (현재 값)</h4>
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회원등급</span><span className="text-dark">{memberModalUser.memberGrade || '-'}</span></div>
+                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">승인 여부</span><span className="text-dark">{memberModalUser.approvalStatus === 'approved' ? '승인' : memberModalUser.approvalStatus === 'rejected' ? '거절' : '대기'}</span></div>
+                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">권한</span><span className="text-dark">{memberModalUser.role === 'admin' ? '관리자' : '일반 회원'}</span></div>
+                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사명</span><span className="text-dark">{memberModalUser.company || '-'}</span></div>
+                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사 전화</span><span className="text-dark">{memberModalUser.companyPhone || '-'}</span></div>
+                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사 사이트</span><span className="text-dark">{memberModalUser.companyWebsite ? <a href={memberModalUser.companyWebsite.startsWith('http') ? memberModalUser.companyWebsite : `https://${memberModalUser.companyWebsite}`} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">{memberModalUser.companyWebsite}</a> : '-'}</span></div>
+                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">업종/업태</span><span className="text-dark">{memberModalUser.businessCategory || memberModalUser.industry || '-'}</span></div>
+                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">직책</span><span className="text-dark">{memberModalUser.position || '-'}</span></div>
+                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">협업 업종</span><span className="text-dark">{memberModalUser.collaborationIndustry || '-'}</span></div>
+                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">핵심고객</span><span className="text-dark">{memberModalUser.keyCustomers || '-'}</span></div>
+                    {memberModalUser.companyMainImage && <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">대표 이미지</span><a href={memberModalUser.companyMainImage} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline truncate">보기</a></div>}
+                    {memberModalUser.companyDescription && <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사 소개</span><span className="text-dark whitespace-pre-line">{memberModalUser.companyDescription}</span></div>}
+                    {memberModalUser.companyImages && memberModalUser.companyImages.length > 0 && <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">추가 이미지</span><span className="text-dark">{memberModalUser.companyImages.length}장</span></div>}
+                  </div>
+                </div>
               )}
             </div>
             <div className="p-5 border-t border-blue-100 flex gap-2 justify-end">

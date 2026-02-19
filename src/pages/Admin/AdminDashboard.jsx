@@ -7,8 +7,9 @@ import { ProgramManagement } from './components/ProgramManagement';
 import { PostManagement } from './components/PostManagement';
 import { ContentManagement } from './components/ContentManagement';
 import { MenuManagement } from './components/MenuManagement';
+import { MemberDetailView } from './components/MemberDetailView';
 
-const VALID_TABS = ['users', 'programs', 'posts', 'content', 'menu'];
+const VALID_TABS = ['users', 'memberDetail', 'programs', 'posts', 'content', 'menu'];
 
 /**
  * 관리자 대시보드 메인 컴포넌트
@@ -55,6 +56,8 @@ export const AdminDashboard = () => {
     switch (activeTab) {
       case 'users':
         return <UserManagement />;
+      case 'memberDetail':
+        return <MemberDetailView />;
       case 'programs':
         return <ProgramManagement />;
       case 'posts':

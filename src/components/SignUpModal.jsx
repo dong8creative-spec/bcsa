@@ -42,6 +42,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         passwordConfirm: '',
         name: '', 
         phone: '',
+        phonePublic: false,
         img: '',
         privacyAgreed: false,
         roadAddress: '',
@@ -53,8 +54,9 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         isIdentityVerified: false,
         businessType: '',
         businessCategory: '',
-        company: '', 
-        role: '', 
+        company: '',
+        companyPhone: '',
+        role: '',
         approvalStatus: 'pending'
     });
     const [showPassword, setShowPassword] = useState(false);
@@ -441,6 +443,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                 email: formData.email,
                 name: formData.name,
                 phone: formData.phone,
+                phonePublic: !!formData.phonePublic,
                 userType: formData.userType,
                 roadAddress: formData.roadAddress,
                 detailAddress: formData.detailAddress,
@@ -456,6 +459,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                 userData.businessType = formData.businessType;
                 userData.businessCategory = formData.businessCategory;
                 userData.company = formData.company;
+                userData.companyPhone = (formData.companyPhone || '').trim();
                 userData.role = formData.role;
             }
             
@@ -674,6 +678,10 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     </div>
                                                     {phoneCheckResult === 'available' && <p className="mt-1.5 text-xs text-green-600 font-medium">사용 가능한 연락처입니다.</p>}
                                                     {phoneCheckResult === 'duplicate' && <p className="mt-1.5 text-xs text-red-600 font-medium">이미 사용 중인 연락처입니다.</p>}
+                                                    <div className="mt-3 flex items-center gap-2">
+                                                        <input type="checkbox" id="signup-phonePublic" checked={formData.phonePublic} onChange={e => setFormData({ ...formData, phonePublic: e.target.checked })} className="w-5 h-5 text-brand border-blue-300 rounded focus:ring-brand" />
+                                                        <label htmlFor="signup-phonePublic" className="text-sm text-gray-700 cursor-pointer">회원명단에서 연락처 공개 (선택)</label>
+                                                    </div>
                                                 </div>
                                             </div>
                                             
@@ -805,6 +813,10 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">직책</label>
                                                     <input type="text" placeholder="대표, 이사, 팀장 등" className="w-full p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors text-sm" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2">회사 전화번호 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에 노출)</span></label>
+                                                    <input type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className="w-full p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors text-sm" value={formData.companyPhone || ''} onChange={e => setFormData({...formData, companyPhone: e.target.value})} />
                                                 </div>
                                                 <div className="md:col-span-2">
                                                     <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">

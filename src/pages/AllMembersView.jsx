@@ -7,6 +7,14 @@ import ModalPortal from '../components/ModalPortal';
 
 const PAGE_SIZE = 10;
 
+/** 연락처 비공개 시 표시용 포맷 (실제 번호는 블러 처리로만 가림) */
+const formatPhoneDisplay = (phone) => {
+    if (!phone) return '010-0000-0000';
+    const digits = String(phone).replace(/\D/g, '');
+    if (digits.length < 8) return '010-0000-0000';
+    return digits.slice(0, 3) + '-' + digits.slice(3, 7) + '-' + digits.slice(-4);
+};
+
 const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage: currentPageProp, onPageChange }) => {
     const [searchName, setSearchName] = useState('');
     const [searchIndustry, setSearchIndustry] = useState('');
@@ -115,7 +123,11 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
             const va = getVal(a, sortKey);
             const vb = getVal(b, sortKey);
             if (sortKey === 'createdAt') return order * (va - vb);
-            if (sortKey === 'memberGrade') return order * (va - vb);
+            if (sortKey === 'memberGrade') {
+                const gradeCompare = order * (va - vb);
+                if (gradeCompare !== 0) return gradeCompare;
+                return getVal(a, 'createdAt') - getVal(b, 'createdAt');
+            }
             if (va < vb) return -1 * order;
             if (va > vb) return 1 * order;
             return 0;
@@ -402,14 +414,27 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                     </div>
                                         <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                                             <div className="flex items-center gap-1">
-                                                <Icons.Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                                                <span className="font-bold">4.5</span>
-                                                <span className="text-gray-400">(12개 후기)</span>
-                                            </div>
-                                            <div className="flex items-center gap-1">
                                                 <Icons.Phone className="w-4 h-4" />
-                                                <span>{selectedMember.phone || '연락처 미공개'}</span>
+                                                <span>
+                                                    {selectedMember.phonePublic
+                                                        ? (selectedMember.phone || '010-****-****')
+                                                        : (
+                                                            <span
+                                                                className="inline-block select-none"
+                                                                style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }}
+                                                                aria-label="연락처 비공개"
+                                                            >
+                                                                {formatPhoneDisplay(selectedMember.phone || selectedMember.verifiedPhone)}
+                                                            </span>
+                                                        )}
+                                                </span>
                                             </div>
+                                            {selectedMember.companyPhone && (
+                                                <div className="flex items-center gap-1">
+                                                    <Icons.Phone className="w-4 h-4 text-gray-500" />
+                                                    <span className="text-gray-600">회사 {selectedMember.companyPhone}</span>
+                                                </div>
+                                            )}
                                         </div>
                                         {/* PortOne 본인인증 상태 표시 */}
                                         {selectedMember.isIdentityVerified ? (
@@ -445,7 +470,19 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                             </div>
                                             <div className="bg-white/80 rounded-xl p-4 border border-green-100">
                                                 <div className="text-xs text-gray-500 mb-2">인증된 전화번호</div>
-                                                <div className="font-bold text-lg text-green-600">{selectedMember.verifiedPhone || selectedMember.phone || '-'}</div>
+                                                <div className="font-bold text-lg text-green-600">
+                                                {selectedMember.phonePublic
+                                                    ? (selectedMember.verifiedPhone || selectedMember.phone || '-')
+                                                    : (
+                                                        <span
+                                                            className="inline-block select-none"
+                                                            style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }}
+                                                            aria-label="연락처 비공개"
+                                                        >
+                                                            {formatPhoneDisplay(selectedMember.verifiedPhone || selectedMember.phone)}
+                                                        </span>
+                                                    )}
+                                            </div>
                                             </div>
                                             {selectedMember.verifiedBirthday && (
                                                 <div className="bg-white/80 rounded-xl p-4 border border-green-100">
@@ -475,20 +512,19 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                     </div>
                                 )}
                                 
-                                {/* 후원 회원의 회사 소개 섹션 */}
-                                {selectedMember.hasDonated && (
+                                {/* 회사 소개 / 회사 사이트 (기입한 경우에만 노출) */}
+                                {(selectedMember.companyMainImage || selectedMember.companyDescription || (selectedMember.companyImages && selectedMember.companyImages.length > 0) || selectedMember.companyWebsite) && (
                                     <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-6 mb-6">
                                         <div className="flex items-center gap-3 mb-4">
                                             <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center">
-                                                <Icons.Star className="w-6 h-6 text-white" />
+                                                <Icons.Info className="w-6 h-6 text-white" />
                                             </div>
                                             <div>
                                                 <h4 className="font-bold text-yellow-700 text-lg">회사 소개</h4>
-                                                <p className="text-xs text-yellow-600">후원 회원 전용 소개 공간</p>
+                                                <p className="text-xs text-yellow-600">회원이 등록한 소개 정보</p>
                                             </div>
                                         </div>
                                         
-                                        {/* 대표 이미지 */}
                                         {selectedMember.companyMainImage && (
                                             <div className="mb-4">
                                                 <label className="block text-xs font-bold text-gray-700 mb-2">대표 이미지</label>
@@ -498,7 +534,6 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                             </div>
                                         )}
                                         
-                                        {/* 회사 소개 텍스트 */}
                                         {selectedMember.companyDescription && (
                                             <div className="mb-4">
                                                 <label className="block text-xs font-bold text-gray-700 mb-2">회사 소개</label>
@@ -508,7 +543,15 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                             </div>
                                         )}
                                         
-                                        {/* 추가 사진 3장 */}
+                                        {selectedMember.companyWebsite && (
+                                            <div className="mb-4">
+                                                <label className="block text-xs font-bold text-gray-700 mb-2">회사 사이트</label>
+                                                <a href={selectedMember.companyWebsite.startsWith('http') ? selectedMember.companyWebsite : `https://${selectedMember.companyWebsite}`} target="_blank" rel="noopener noreferrer" className="text-sm text-brand font-medium hover:underline break-all">
+                                                    {selectedMember.companyWebsite}
+                                                </a>
+                                            </div>
+                                        )}
+                                        
                                         {selectedMember.companyImages && selectedMember.companyImages.length > 0 && (
                                             <div>
                                                 <label className="block text-xs font-bold text-gray-700 mb-2">추가 사진</label>
@@ -523,30 +566,6 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                         )}
                                     </div>
                                 )}
-                                
-                                <div className="border-t border-blue-200 pt-6">
-                                    <h4 className="text-lg font-bold text-dark mb-4">평가 요약</h4>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                                            <span className="text-sm text-gray-600">전문성</span>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-yellow-400" style={{ width: '90%' }}></div>
-                                                </div>
-                                                <span className="text-sm font-bold text-gray-700">4.5</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                                            <span className="text-sm text-gray-600">신뢰도</span>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-yellow-400" style={{ width: '85%' }}></div>
-                                                </div>
-                                                <span className="text-sm font-bold text-gray-700">4.3</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
 
                             </div>
                             </div>

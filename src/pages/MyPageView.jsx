@@ -64,11 +64,13 @@ function getInitialEditForm(user) {
         birthdate: u.birthdate || '',
         gender: u.gender || '',
         phone: (u.phone || u.phoneNumber || '').replace(/\D/g, '').slice(0, 11),
+        phonePublic: u.phonePublic ?? false,
         email: email,
         emailId,
         emailDomain,
         emailDomainCustom,
         company: u.company || '',
+        companyPhone: u.companyPhone || '',
         businessRegistrationNumber: (u.businessRegistrationNumber || '').replace(/\D/g, '').slice(0, 10),
         position: u.position || u.role || '',
         businessCategory: u.businessCategory || u.industry || '',
@@ -90,7 +92,8 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
     const [companyIntro, setCompanyIntro] = useState({
         companyMainImage: user.companyMainImage || '',
         companyDescription: user.companyDescription || '',
-        companyImages: Array.isArray(user.companyImages) ? user.companyImages : (user.companyImages ? [user.companyImages] : [])
+        companyImages: Array.isArray(user.companyImages) ? user.companyImages : (user.companyImages ? [user.companyImages] : []),
+        companyWebsite: user.companyWebsite || ''
     });
     const [companyImageUploading, setCompanyImageUploading] = useState(false);
     const [profileImageUploading, setProfileImageUploading] = useState(false);
@@ -190,10 +193,11 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
             setCompanyIntro({
                 companyMainImage: user.companyMainImage || '',
                 companyDescription: user.companyDescription || '',
-                companyImages: Array.isArray(user.companyImages) ? user.companyImages : (user.companyImages ? [user.companyImages] : [])
+                companyImages: Array.isArray(user.companyImages) ? user.companyImages : (user.companyImages ? [user.companyImages] : []),
+                companyWebsite: user.companyWebsite || ''
             });
         }
-    }, [user?.companyMainImage, user?.companyDescription, user?.companyImages]);
+    }, [user?.companyMainImage, user?.companyDescription, user?.companyImages, user?.companyWebsite]);
 
     useEffect(() => {
         if (user && !isEditingProfile) {
@@ -340,10 +344,12 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
             birthdate: normalizedBirthdate,
             gender: editFormData.gender || '',
             phone: editFormData.phone.trim(),
+            phonePublic: !!editFormData.phonePublic,
             email: email.trim(),
             userType: editUserType,
             img: editFormData.img || user?.img || '',
             company: editUserType === '사업자' ? (editFormData.company || '').trim() : '',
+            companyPhone: editUserType === '사업자' ? (editFormData.companyPhone || '').trim() : '',
             businessRegistrationNumber: editUserType === '사업자' ? businessNumberDigits : '',
             position: editUserType === '사업자' ? (editFormData.position || '').trim() : '',
             role: editUserType === '사업자' ? (editFormData.position || '').trim() : '',
@@ -503,6 +509,10 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                         <label className="block text-sm font-bold text-gray-700 mb-2">연락처 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(숫자 11자리)</span></label>
                                                         <input type="tel" inputMode="numeric" placeholder="01012345678" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.phone} onChange={e => { const raw = e.target.value.replace(/\D/g, ''); setEditFormData(f => ({ ...f, phone: raw.length > 11 ? raw.slice(0, 11) : raw })); }} maxLength={11} />
                                                         {editFormData.phone && editFormData.phone.length === 11 && !validatePhone(editFormData.phone) && <p className="text-xs text-red-500 mt-1">010, 011 등으로 시작하는 11자리 번호를 입력해주세요.</p>}
+                                                        <div className="mt-3 flex items-center gap-2">
+                                                            <input type="checkbox" id="mypage-phonePublic" checked={editFormData.phonePublic} onChange={e => setEditFormData(f => ({ ...f, phonePublic: e.target.checked }))} className="w-5 h-5 text-brand rounded focus:ring-brand" />
+                                                            <label htmlFor="mypage-phonePublic" className="text-sm text-gray-700 cursor-pointer">회원명단에서 연락처 공개</label>
+                                                        </div>
                                                     </div>
                                                     <div>
                                                         <label className="block text-sm font-bold text-gray-700 mb-2">이메일 <span className="text-red-500">*</span></label>
@@ -532,6 +542,10 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                         <div>
                                                             <label className="block text-sm font-bold text-gray-700 mb-2">직책/직함 <span className="text-gray-400 text-xs">(선택)</span></label>
                                                             <input type="text" placeholder="예: 대표, 이사, 팀장" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.position} onChange={e => setEditFormData(f => ({ ...f, position: e.target.value }))} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-sm font-bold text-gray-700 mb-2">회사 전화번호 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에 노출)</span></label>
+                                                            <input type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.companyPhone} onChange={e => setEditFormData(f => ({ ...f, companyPhone: e.target.value }))} />
                                                         </div>
                                                         <div>
                                                             <label className="block text-sm font-bold text-gray-700 mb-2">업종 / 업태 <span className="text-red-500">*</span></label>
@@ -660,9 +674,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                         <button onClick={() => setActiveTab('posts')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'posts' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>내 게시글</button>
                         <button onClick={() => setActiveTab('bookmarks')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'bookmarks' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>즐겨찾기</button>
                         <button onClick={() => setActiveTab('verification')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'verification' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>본인인증 정보</button>
-                        {user.hasDonated && (
-                            <button onClick={() => setActiveTab('company')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'company' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>회사 소개</button>
-                        )}
+                        <button onClick={() => setActiveTab('company')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'company' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>회사 소개</button>
                     </div>
                 </div>
 
@@ -811,13 +823,13 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                             )}
                         </div>
                     )}
-                    {activeTab === 'company' && user.hasDonated && (
+                    {activeTab === 'company' && (
                         <div className="space-y-6">
                             <div className="bg-yellow-50 border border-yellow-200 p-8">
                                 <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center gap-2">
-                                    <Icons.Star className="w-5 h-5 text-yellow-600" /> 회사 소개 작성
+                                    <Icons.Info className="w-5 h-5 text-yellow-600" /> 회사 소개 / 회사 사이트
                                 </h3>
-                                <p className="text-sm text-gray-600 mb-8">후원 회원 전용 기능입니다. 회사를 소개해주세요.</p>
+                                <p className="text-sm text-gray-600 mb-8">회사 소개 이미지 또는 회사 사이트를 등록하면 회원명단에서 노출됩니다.</p>
                                 
                                 {/* 대표 이미지 */}
                                 <div className="mb-6">
@@ -873,6 +885,18 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     />
                                 </div>
                                 
+                                {/* 회사 사이트 */}
+                                <div className="mb-6">
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">회사 사이트 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                    <input
+                                        type="url"
+                                        placeholder="https://www.example.com"
+                                        className="w-full px-4 py-3 border border-blue-300 focus:border-blue-400 focus:outline-none text-sm"
+                                        value={companyIntro.companyWebsite || ''}
+                                        onChange={(e) => setCompanyIntro({...companyIntro, companyWebsite: e.target.value.trim()})}
+                                    />
+                                </div>
+                                
                                 {/* 추가 사진 (최대 10장) */}
                                 <div className="mb-8">
                                     <label className="block text-sm font-medium text-gray-700 mb-3">추가 사진 (최대 {COMPANY_IMAGES_MAX}장)</label>
@@ -917,7 +941,8 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                             ...user,
                                             companyMainImage: companyIntro.companyMainImage,
                                             companyDescription: companyIntro.companyDescription,
-                                            companyImages: companyIntro.companyImages.filter(img => img)
+                                            companyImages: companyIntro.companyImages.filter(img => img),
+                                            companyWebsite: (companyIntro.companyWebsite || '').trim()
                                         };
                                         await onUpdateProfile(updatedUser);
                                         alert('회사 소개가 저장되었습니다.');
