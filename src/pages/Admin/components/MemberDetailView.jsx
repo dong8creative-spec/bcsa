@@ -82,11 +82,6 @@ export const MemberDetailView = () => {
     if (str(editForm.position) !== str(u.position)) { payload.position = editForm.position; correctedFields.push('position'); }
     if (str(editForm.collaborationIndustry) !== str(u.collaborationIndustry)) { payload.collaborationIndustry = editForm.collaborationIndustry; correctedFields.push('collaborationIndustry'); }
     if (str(editForm.keyCustomers) !== str(u.keyCustomers)) { payload.keyCustomers = editForm.keyCustomers; correctedFields.push('keyCustomers'); }
-    if (str(editForm.companyMainImage) !== str(u.companyMainImage)) { payload.companyMainImage = editForm.companyMainImage; correctedFields.push('companyMainImage'); }
-    if (str(editForm.companyDescription) !== str(u.companyDescription)) { payload.companyDescription = editForm.companyDescription; correctedFields.push('companyDescription'); }
-    const nextImages = arr(editForm.companyImages);
-    const currImages = arr(u.companyImages);
-    if (JSON.stringify(nextImages) !== JSON.stringify(currImages)) { payload.companyImages = nextImages; correctedFields.push('companyImages'); }
 
     if (Object.keys(payload).length === 0) {
       alert('변경된 항목이 없습니다.');
@@ -250,18 +245,6 @@ export const MemberDetailView = () => {
               <div className="flex items-center gap-2">
                 <span className="w-36 font-bold text-gray-600 shrink-0">핵심고객</span>
                 <input type="text" value={editForm.keyCustomers ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, keyCustomers: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="핵심고객" />
-              </div>
-              <div className="flex items-center gap-2 md:col-span-2">
-                <span className="w-36 font-bold text-gray-600 shrink-0">대표 이미지 URL</span>
-                <input type="text" value={editForm.companyMainImage ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, companyMainImage: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="URL" />
-              </div>
-              <div className="md:col-span-2 flex items-start gap-2">
-                <span className="w-36 font-bold text-gray-600 shrink-0 pt-2">회사 소개</span>
-                <textarea value={editForm.companyDescription ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, companyDescription: e.target.value }))} rows={3} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none resize-none" placeholder="회사 소개" />
-              </div>
-              <div className="md:col-span-2 flex items-start gap-2">
-                <span className="w-36 font-bold text-gray-600 shrink-0 pt-2">추가 이미지 URL</span>
-                <textarea value={(Array.isArray(editForm.companyImages) ? editForm.companyImages : (editForm.companyImages ? [editForm.companyImages] : [])).join('\n')} onChange={(e) => setEditForm((f) => ({ ...f, companyImages: e.target.value.trim() ? e.target.value.trim().split(/\n/).map((s) => s.trim()).filter(Boolean) : [] }))} rows={2} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none resize-none" placeholder="한 줄에 URL 하나" />
               </div>
             </div>
             <div className="mt-6 flex justify-end">

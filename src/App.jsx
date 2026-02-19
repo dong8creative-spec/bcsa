@@ -3367,8 +3367,10 @@ END:VCALENDAR`;
                                                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${seminar.status === '모집중' ? 'bg-blue-100 text-blue-700' : seminar.status === '마감임박' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>{seminar.status || '모집중'}</span>
                                                     <span className="text-xs font-bold px-2 py-0.5 bg-brand/10 text-brand rounded-full">{isPaid ? `${amount.toLocaleString()}원` : '무료'}</span>
                                                 </div>
-                                                <h3 className="font-bold text-base text-dark mb-1 line-clamp-2 group-hover:text-brand transition-colors leading-snug">{seminar.title}</h3>
-                                                <p className="text-sm text-gray-600 flex items-center gap-1 mt-auto pt-2"><Icons.Calendar size={14} /> {seminar.date}</p>
+                                                <div className="flex items-center gap-2 flex-wrap mt-auto pt-1">
+                                                    <h3 className="font-bold text-base text-dark line-clamp-2 group-hover:text-brand transition-colors leading-snug flex-1 min-w-0">{seminar.title}</h3>
+                                                    <p className="text-sm text-gray-600 flex items-center gap-1 shrink-0"><Icons.Calendar size={14} /> {seminar.date}</p>
+                                                </div>
                                             </div>
                                         </button>
                                     );

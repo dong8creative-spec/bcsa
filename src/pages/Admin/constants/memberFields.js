@@ -1,7 +1,7 @@
 /**
  * 관리자 회원정보: 민감 정보(열람 전용) vs 수정 가능 필드
  * - 열람만: name, email, phone, birthdate, gender, address 계열, 본인인증 정보, 사업자등록번호, phonePublic
- * - 수정 가능: memberGrade, approvalStatus, role, company, companyPhone, companyWebsite, industry, businessCategory, position, collaborationIndustry, keyCustomers, companyMainImage, companyDescription, companyImages
+ * - 수정 가능: memberGrade, approvalStatus, role, company, companyPhone, companyWebsite, industry, businessCategory, position, collaborationIndustry, keyCustomers
  */
 
 /** 관리자가 수정할 수 있는 필드 키 목록 (민감 개인정보 제외) */
@@ -17,9 +17,6 @@ export const EDITABLE_MEMBER_FIELDS = [
   'position',
   'collaborationIndustry',
   'keyCustomers',
-  'companyMainImage',
-  'companyDescription',
-  'companyImages',
 ];
 
 /** 수정 가능 필드 한글 라벨 (알림/UI용) */
@@ -35,9 +32,6 @@ export const EDITABLE_FIELD_LABELS = {
   position: '직책',
   collaborationIndustry: '협업 업종',
   keyCustomers: '핵심고객',
-  companyMainImage: '회사 대표 이미지',
-  companyDescription: '회사 소개',
-  companyImages: '회사 추가 이미지',
 };
 
 /** 관리자 회원 수정 폼 초기값 (수정 가능 필드만) */
@@ -54,9 +48,6 @@ export const getInitialMemberEditForm = (user) => {
     position: '',
     collaborationIndustry: '',
     keyCustomers: '',
-    companyMainImage: '',
-    companyDescription: '',
-    companyImages: [],
   };
   if (!user) return empty;
   return {
@@ -71,9 +62,6 @@ export const getInitialMemberEditForm = (user) => {
     position: user.position ?? '',
     collaborationIndustry: user.collaborationIndustry ?? '',
     keyCustomers: user.keyCustomers ?? '',
-    companyMainImage: user.companyMainImage ?? '',
-    companyDescription: user.companyDescription ?? '',
-    companyImages: Array.isArray(user.companyImages) ? user.companyImages : (user.companyImages ? [user.companyImages] : []),
   };
 };
 

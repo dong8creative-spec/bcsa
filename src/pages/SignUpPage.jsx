@@ -59,6 +59,7 @@ const SignUpPage = ({ onSignUp }) => {
         passwordConfirm: '',
         company: '',
         companyPhone: '',
+        companyWebsite: '',
         businessRegistrationNumber: '',
         position: '',
         businessCategory: '',
@@ -250,6 +251,7 @@ const SignUpPage = ({ onSignUp }) => {
                 businessRegistrationNumber: userType === '사업자' ? businessNumberDigits : '',
                 position: userType === '사업자' ? (form.position?.trim() || '') : '',
                 companyPhone: userType === '사업자' ? (form.companyPhone?.trim() || '') : '',
+                companyWebsite: userType === '사업자' ? (form.companyWebsite?.trim() || '') : '',
                 businessRegistrationDoc: (userType === '사업자' && form.businessRegistrationDoc) || '',
                 businessRegistrationFileName: (userType === '사업자' && form.businessRegistrationFileName) || '',
                 termsAgreed: form.termsAgreed,
@@ -440,6 +442,10 @@ const SignUpPage = ({ onSignUp }) => {
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-2">회사 전화번호 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에 노출)</span></label>
                                             <input type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.companyPhone} onChange={e => setForm(f => ({ ...f, companyPhone: e.target.value }))} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-2">회사 홈페이지 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에서 미리보기)</span></label>
+                                            <input type="url" placeholder="https://www.example.com" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.companyWebsite} onChange={e => setForm(f => ({ ...f, companyWebsite: e.target.value }))} />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">

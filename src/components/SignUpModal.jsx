@@ -56,6 +56,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         businessCategory: '',
         company: '',
         companyPhone: '',
+        companyWebsite: '',
         role: '',
         approvalStatus: 'pending'
     });
@@ -460,6 +461,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                 userData.businessCategory = formData.businessCategory;
                 userData.company = formData.company;
                 userData.companyPhone = (formData.companyPhone || '').trim();
+                userData.companyWebsite = (formData.companyWebsite || '').trim();
                 userData.role = formData.role;
             }
             
@@ -817,6 +819,10 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                 <div>
                                                     <label className="block text-sm font-bold text-gray-700 mb-2">회사 전화번호 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에 노출)</span></label>
                                                     <input type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className="w-full p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors text-sm" value={formData.companyPhone || ''} onChange={e => setFormData({...formData, companyPhone: e.target.value})} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2">회사 홈페이지 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에서 미리보기)</span></label>
+                                                    <input type="url" placeholder="https://www.example.com" className="w-full p-3.5 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none transition-colors text-sm" value={formData.companyWebsite || ''} onChange={e => setFormData({...formData, companyWebsite: e.target.value})} />
                                                 </div>
                                                 <div className="md:col-span-2">
                                                     <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">

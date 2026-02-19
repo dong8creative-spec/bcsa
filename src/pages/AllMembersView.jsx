@@ -30,6 +30,8 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
     const currentPage = isPageControlled ? currentPageProp : internalPage;
     const setCurrentPage = isPageControlled ? (v) => { const next = typeof v === 'function' ? v(currentPage) : v; onPageChange(next); } : setInternalPage;
     const prevFilterRef = React.useRef({ searchName: '', searchIndustry: '', searchRegion: '', selectedIndustryFilter: '전체', selectedGradeFilter: '전체' });
+    const isOwnProfile = currentUser && selectedMember && (currentUser.uid === selectedMember.uid || currentUser.id === selectedMember.id);
+    const hasSite = !!selectedMember?.companyWebsite;
 
     // ESC 키로 모달 닫기
     useEffect(() => {
@@ -373,7 +375,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                     <ModalPortal>
                     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedMember(null); }}>
                         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 w-full max-w-6xl z-10 flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                        <div className={`bg-white rounded-2xl shadow-sm border border-blue-200 w-full z-10 flex flex-col max-md:scale-[0.8] origin-center ${hasSite ? 'max-w-7xl max-h-[92vh]' : 'max-w-6xl max-h-[calc(90vh-100px)]'}`} style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
                             <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
                             {/* 선택된 회원 상세 정보 */}
                             <div className="border-t border-blue-200 pt-6">
@@ -512,58 +514,36 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                     </div>
                                 )}
                                 
-                                {/* 회사 소개 / 회사 사이트 (기입한 경우에만 노출) */}
-                                {(selectedMember.companyMainImage || selectedMember.companyDescription || (selectedMember.companyImages && selectedMember.companyImages.length > 0) || selectedMember.companyWebsite) && (
+                                {/* 사이트 (기입한 경우에만 노출) */}
+                                {selectedMember.companyWebsite && (
                                     <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-6 mb-6">
                                         <div className="flex items-center gap-3 mb-4">
                                             <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center">
                                                 <Icons.Info className="w-6 h-6 text-white" />
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-yellow-700 text-lg">회사 소개</h4>
-                                                <p className="text-xs text-yellow-600">회원이 등록한 소개 정보</p>
+                                                <h4 className="font-bold text-yellow-700 text-lg">사이트</h4>
+                                                <p className="text-xs text-yellow-600">회원이 등록한 사이트</p>
                                             </div>
                                         </div>
-                                        
-                                        {selectedMember.companyMainImage && (
-                                            <div className="mb-4">
-                                                <label className="block text-xs font-bold text-gray-700 mb-2">대표 이미지</label>
-                                                <div className="relative w-full h-64 rounded-xl overflow-hidden">
-                                                    <img src={selectedMember.companyMainImage} alt="회사 대표 이미지" className="w-full h-full object-cover" loading="lazy" decoding="async" />
-                                                </div>
+                                        <div className="mb-2">
+                                            <a href={selectedMember.companyWebsite.startsWith('http') ? selectedMember.companyWebsite : `https://${selectedMember.companyWebsite}`} target="_blank" rel="noopener noreferrer" className="text-sm text-brand font-medium hover:underline break-all">
+                                                {selectedMember.companyWebsite}
+                                            </a>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mb-2">아래에서 미리보기 (일부 사이트는 보안 설정으로 표시되지 않을 수 있습니다)</p>
+                                        <div className={`rounded-xl overflow-hidden border border-yellow-200 bg-white w-full ${isOwnProfile ? 'aspect-video' : ''}`} style={isOwnProfile ? undefined : { height: '320px' }}>
+                                            <div style={{ width: '125%', height: '125%', transform: 'scale(0.8)', transformOrigin: '0 0' }}>
+                                                <iframe
+                                                    title="회사 홈페이지 미리보기"
+                                                    src={selectedMember.companyWebsite.startsWith('http') ? selectedMember.companyWebsite : `https://${selectedMember.companyWebsite}`}
+                                                    className="w-full h-full"
+                                                    style={{ width: '100%', height: '100%' }}
+                                                    sandbox="allow-scripts allow-same-origin allow-forms"
+                                                    referrerPolicy="no-referrer"
+                                                />
                                             </div>
-                                        )}
-                                        
-                                        {selectedMember.companyDescription && (
-                                            <div className="mb-4">
-                                                <label className="block text-xs font-bold text-gray-700 mb-2">회사 소개</label>
-                                                <p className="text-sm text-gray-700 bg-white/80 rounded-xl p-4 border border-yellow-100 whitespace-pre-line">
-                                                    {selectedMember.companyDescription}
-                                                </p>
-                                            </div>
-                                        )}
-                                        
-                                        {selectedMember.companyWebsite && (
-                                            <div className="mb-4">
-                                                <label className="block text-xs font-bold text-gray-700 mb-2">회사 사이트</label>
-                                                <a href={selectedMember.companyWebsite.startsWith('http') ? selectedMember.companyWebsite : `https://${selectedMember.companyWebsite}`} target="_blank" rel="noopener noreferrer" className="text-sm text-brand font-medium hover:underline break-all">
-                                                    {selectedMember.companyWebsite}
-                                                </a>
-                                            </div>
-                                        )}
-                                        
-                                        {selectedMember.companyImages && selectedMember.companyImages.length > 0 && (
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-700 mb-2">추가 사진</label>
-                                                <div className="grid grid-cols-3 gap-3">
-                                                    {selectedMember.companyImages.slice(0, 3).map((img, idx) => (
-                                                        <div key={idx} className="relative aspect-square rounded-xl overflow-hidden">
-                                                            <img src={img} alt={`회사 사진 ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
+                                        </div>
                                     </div>
                                 )}
 

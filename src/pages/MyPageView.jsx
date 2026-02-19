@@ -6,8 +6,6 @@ import { firebaseService } from '../services/firebaseService';
 import { apiGet } from '../utils/api';
 import ModalPortal from '../components/ModalPortal';
 
-const COMPANY_IMAGES_MAX = 10;
-
 // 회원가입 페이지와 동일한 상수·헬퍼 (회원정보 수정 폼 일치용)
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 const EMAIL_DOMAINS = ['naver.com', 'daum.net', 'gmail.com', 'kakao.com', 'nate.com', 'hanmail.net', 'yahoo.co.kr', '직접입력'];
@@ -71,6 +69,7 @@ function getInitialEditForm(user) {
         emailDomainCustom,
         company: u.company || '',
         companyPhone: u.companyPhone || '',
+        companyWebsite: u.companyWebsite || '',
         businessRegistrationNumber: (u.businessRegistrationNumber || '').replace(/\D/g, '').slice(0, 10),
         position: u.position || u.role || '',
         businessCategory: u.businessCategory || u.industry || '',
@@ -89,16 +88,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingPost, setEditingPost] = useState(null);
     const [uploadingImages, setUploadingImages] = useState(false);
-    const [companyIntro, setCompanyIntro] = useState({
-        companyMainImage: user.companyMainImage || '',
-        companyDescription: user.companyDescription || '',
-        companyImages: Array.isArray(user.companyImages) ? user.companyImages : (user.companyImages ? [user.companyImages] : []),
-        companyWebsite: user.companyWebsite || ''
-    });
-    const [companyImageUploading, setCompanyImageUploading] = useState(false);
     const [profileImageUploading, setProfileImageUploading] = useState(false);
-    const companyMainImageInputRef = useRef(null);
-    const companyImagesInputRef = useRef(null);
     const [editFormData, setEditFormData] = useState(() => getInitialEditForm(user));
     const [profileEditError, setProfileEditError] = useState('');
     const [editUserType, setEditUserType] = useState(user?.userType || '');
@@ -189,68 +179,12 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
     }, [user?.id, user?.uid]);
 
     useEffect(() => {
-        if (user) {
-            setCompanyIntro({
-                companyMainImage: user.companyMainImage || '',
-                companyDescription: user.companyDescription || '',
-                companyImages: Array.isArray(user.companyImages) ? user.companyImages : (user.companyImages ? [user.companyImages] : []),
-                companyWebsite: user.companyWebsite || ''
-            });
-        }
-    }, [user?.companyMainImage, user?.companyDescription, user?.companyImages, user?.companyWebsite]);
-
-    useEffect(() => {
         if (user && !isEditingProfile) {
             setEditFormData(getInitialEditForm(user));
             setEditUserType(user.userType || '');
         }
     }, [user?.id, user?.uid, isEditingProfile]);
 
-    const handleCompanyMainImageChange = async (e) => {
-        const file = e.target.files?.[0];
-        e.target.value = '';
-        if (!file || !file.type.startsWith('image/')) return;
-        setCompanyImageUploading(true);
-        try {
-            const url = await uploadImage(file, 'company');
-            setCompanyIntro(prev => ({ ...prev, companyMainImage: url }));
-        } catch (err) {
-            console.error(err);
-            alert('대표 이미지 업로드에 실패했습니다.');
-        } finally {
-            setCompanyImageUploading(false);
-        }
-    };
-
-    const handleCompanyImagesChange = async (e) => {
-        const files = e.target.files ? Array.from(e.target.files) : [];
-        e.target.value = '';
-        const current = companyIntro.companyImages || [];
-        if (current.length + files.length > COMPANY_IMAGES_MAX) {
-            alert(`추가 사진은 최대 ${COMPANY_IMAGES_MAX}장까지 등록할 수 있습니다.`);
-            return;
-        }
-        setCompanyImageUploading(true);
-        try {
-            const toUpload = files.filter((f) => f.type?.startsWith('image/'));
-            const uploadPromises = toUpload.map((file) => uploadImage(file, 'company'));
-            const uploaded = (await Promise.all(uploadPromises)).filter(Boolean);
-            setCompanyIntro(prev => ({ ...prev, companyImages: [...prev.companyImages, ...uploaded] }));
-        } catch (err) {
-            console.error(err);
-            alert(err?.message || '이미지 업로드에 실패했습니다.');
-        } finally {
-            setCompanyImageUploading(false);
-        }
-    };
-
-    const removeCompanyImage = (index) => {
-        setCompanyIntro(prev => ({
-            ...prev,
-            companyImages: prev.companyImages.filter((_, i) => i !== index)
-        }));
-    };
-    
     const handleRemoveBookmark = async (bidNtceNo) => {
         if (!confirm('즐겨찾기에서 삭제하시겠습니까?')) return;
         const userId = user?.uid ?? user?.id;
@@ -350,6 +284,7 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
             img: editFormData.img || user?.img || '',
             company: editUserType === '사업자' ? (editFormData.company || '').trim() : '',
             companyPhone: editUserType === '사업자' ? (editFormData.companyPhone || '').trim() : '',
+            companyWebsite: editUserType === '사업자' ? (editFormData.companyWebsite || '').trim() : '',
             businessRegistrationNumber: editUserType === '사업자' ? businessNumberDigits : '',
             position: editUserType === '사업자' ? (editFormData.position || '').trim() : '',
             role: editUserType === '사업자' ? (editFormData.position || '').trim() : '',
@@ -548,6 +483,10 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                                             <input type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.companyPhone} onChange={e => setEditFormData(f => ({ ...f, companyPhone: e.target.value }))} />
                                                         </div>
                                                         <div>
+                                                            <label className="block text-sm font-bold text-gray-700 mb-2">사이트 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에서 노출)</span></label>
+                                                            <input type="url" placeholder="https://www.example.com" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.companyWebsite || ''} onChange={e => setEditFormData(f => ({ ...f, companyWebsite: e.target.value }))} />
+                                                        </div>
+                                                        <div>
                                                             <label className="block text-sm font-bold text-gray-700 mb-2">업종 / 업태 <span className="text-red-500">*</span></label>
                                                             <select required className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={editFormData.businessCategory} onChange={e => setEditFormData(f => ({ ...f, businessCategory: e.target.value }))}>
                                                                 <option value="">선택</option>
@@ -674,7 +613,6 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                         <button onClick={() => setActiveTab('posts')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'posts' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>내 게시글</button>
                         <button onClick={() => setActiveTab('bookmarks')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'bookmarks' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>즐겨찾기</button>
                         <button onClick={() => setActiveTab('verification')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'verification' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>본인인증 정보</button>
-                        <button onClick={() => setActiveTab('company')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'company' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>회사 소개</button>
                     </div>
                 </div>
 
@@ -821,137 +759,6 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                                     즐겨찾기한 공고가 없습니다.
                                 </div>
                             )}
-                        </div>
-                    )}
-                    {activeTab === 'company' && (
-                        <div className="space-y-6">
-                            <div className="bg-yellow-50 border border-yellow-200 p-8">
-                                <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center gap-2">
-                                    <Icons.Info className="w-5 h-5 text-yellow-600" /> 회사 소개 / 회사 사이트
-                                </h3>
-                                <p className="text-sm text-gray-600 mb-8">회사 소개 이미지 또는 회사 사이트를 등록하면 회원명단에서 노출됩니다.</p>
-                                
-                                {/* 대표 이미지 */}
-                                <div className="mb-6">
-                                    <label className="block text-sm font-medium text-gray-700 mb-3">대표 이미지 (1장)</label>
-                                    <input
-                                        ref={companyMainImageInputRef}
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={handleCompanyMainImageChange}
-                                    />
-                                    {companyIntro.companyMainImage ? (
-                                        <div className="relative inline-block">
-                                            <img src={companyIntro.companyMainImage} alt="대표 이미지" className="w-full max-w-md h-64 object-cover border border-blue-200 rounded-lg" loading="lazy" decoding="async" />
-                                            <button
-                                                type="button"
-                                                onClick={() => setCompanyIntro(prev => ({ ...prev, companyMainImage: '' }))}
-                                                className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
-                                                aria-label="삭제"
-                                            >
-                                                <Icons.X size={18} />
-                                            </button>
-                                        </div>
-                                    ) : null}
-                                    <button
-                                        type="button"
-                                        disabled={companyImageUploading}
-                                        onClick={() => companyMainImageInputRef.current?.click()}
-                                        className="mt-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 disabled:opacity-50 flex items-center gap-2"
-                                    >
-                                        {companyImageUploading ? (
-                                            <>
-                                                <span className="inline-block w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                                                업로드 중...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Icons.Plus size={18} />
-                                                대표 이미지 선택
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                                
-                                {/* 회사 소개 텍스트 */}
-                                <div className="mb-6">
-                                    <label className="block text-sm font-medium text-gray-700 mb-3">회사 소개</label>
-                                    <textarea
-                                        placeholder="회사에 대한 소개를 작성해주세요"
-                                        className="w-full px-4 py-3 border border-blue-300 focus:border-blue-400 focus:outline-none h-32 resize-none text-sm"
-                                        value={companyIntro.companyDescription}
-                                        onChange={(e) => setCompanyIntro({...companyIntro, companyDescription: e.target.value})}
-                                    />
-                                </div>
-                                
-                                {/* 회사 사이트 */}
-                                <div className="mb-6">
-                                    <label className="block text-sm font-medium text-gray-700 mb-3">회사 사이트 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                    <input
-                                        type="url"
-                                        placeholder="https://www.example.com"
-                                        className="w-full px-4 py-3 border border-blue-300 focus:border-blue-400 focus:outline-none text-sm"
-                                        value={companyIntro.companyWebsite || ''}
-                                        onChange={(e) => setCompanyIntro({...companyIntro, companyWebsite: e.target.value.trim()})}
-                                    />
-                                </div>
-                                
-                                {/* 추가 사진 (최대 10장) */}
-                                <div className="mb-8">
-                                    <label className="block text-sm font-medium text-gray-700 mb-3">추가 사진 (최대 {COMPANY_IMAGES_MAX}장)</label>
-                                    <input
-                                        ref={companyImagesInputRef}
-                                        type="file"
-                                        accept="image/*"
-                                        multiple
-                                        className="hidden"
-                                        onChange={handleCompanyImagesChange}
-                                    />
-                                    <div className="flex flex-wrap gap-3 mb-3">
-                                        {(companyIntro.companyImages || []).map((url, idx) => (
-                                            <div key={idx} className="relative group">
-                                                <img src={url} alt={`추가 사진 ${idx + 1}`} className="w-24 h-24 object-cover rounded-lg border border-blue-200" loading="lazy" decoding="async" />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeCompanyImage(idx)}
-                                                    className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
-                                                    aria-label="삭제"
-                                                >
-                                                    <Icons.X size={14} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        disabled={(companyIntro.companyImages?.length || 0) >= COMPANY_IMAGES_MAX || companyImageUploading}
-                                        onClick={() => companyImagesInputRef.current?.click()}
-                                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 disabled:opacity-50 flex items-center gap-2"
-                                    >
-                                        <Icons.Plus size={18} />
-                                        추가 사진
-                                    </button>
-                                </div>
-                                
-                                <button
-                                    type="button"
-                                    onClick={async () => {
-                                        const updatedUser = {
-                                            ...user,
-                                            companyMainImage: companyIntro.companyMainImage,
-                                            companyDescription: companyIntro.companyDescription,
-                                            companyImages: companyIntro.companyImages.filter(img => img),
-                                            companyWebsite: (companyIntro.companyWebsite || '').trim()
-                                        };
-                                        await onUpdateProfile(updatedUser);
-                                        alert('회사 소개가 저장되었습니다.');
-                                    }}
-                                    className="w-full py-3 bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
-                                >
-                                    저장하기
-                                </button>
-                            </div>
                         </div>
                     )}
                     {activeTab === 'verification' && (

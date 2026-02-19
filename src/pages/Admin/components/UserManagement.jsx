@@ -137,11 +137,6 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
     if (str(memberEditForm.position) !== str(u.position)) { payload.position = memberEditForm.position; correctedFields.push('position'); }
     if (str(memberEditForm.collaborationIndustry) !== str(u.collaborationIndustry)) { payload.collaborationIndustry = memberEditForm.collaborationIndustry; correctedFields.push('collaborationIndustry'); }
     if (str(memberEditForm.keyCustomers) !== str(u.keyCustomers)) { payload.keyCustomers = memberEditForm.keyCustomers; correctedFields.push('keyCustomers'); }
-    if (str(memberEditForm.companyMainImage) !== str(u.companyMainImage)) { payload.companyMainImage = memberEditForm.companyMainImage; correctedFields.push('companyMainImage'); }
-    if (str(memberEditForm.companyDescription) !== str(u.companyDescription)) { payload.companyDescription = memberEditForm.companyDescription; correctedFields.push('companyDescription'); }
-    const nextImages = arr(memberEditForm.companyImages);
-    const currImages = arr(u.companyImages);
-    if (JSON.stringify(nextImages) !== JSON.stringify(currImages)) { payload.companyImages = nextImages; correctedFields.push('companyImages'); }
 
     if (Object.keys(payload).length === 0) {
       setMemberModalEditing(false);
@@ -650,18 +645,6 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
                       <span className="w-32 font-bold text-gray-600 shrink-0">핵심고객</span>
                       <input type="text" value={memberEditForm.keyCustomers ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, keyCustomers: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="핵심고객" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-32 font-bold text-gray-600 shrink-0">대표 이미지 URL</span>
-                      <input type="text" value={memberEditForm.companyMainImage ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, companyMainImage: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="URL" />
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="w-32 font-bold text-gray-600 shrink-0 pt-2">회사 소개</span>
-                      <textarea value={memberEditForm.companyDescription ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, companyDescription: e.target.value }))} rows={3} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none resize-none" placeholder="회사 소개" />
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="w-32 font-bold text-gray-600 shrink-0 pt-2">추가 이미지 URL</span>
-                      <textarea value={(Array.isArray(memberEditForm.companyImages) ? memberEditForm.companyImages : (memberEditForm.companyImages ? [memberEditForm.companyImages] : [])).join('\n')} onChange={e => setMemberEditForm(f => ({ ...f, companyImages: e.target.value.trim() ? e.target.value.trim().split(/\n/).map(s => s.trim()).filter(Boolean) : [] }))} rows={2} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none resize-none" placeholder="한 줄에 URL 하나" />
-                    </div>
                   </div>
                 </div>
               ) : (
@@ -678,9 +661,6 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">직책</span><span className="text-dark">{memberModalUser.position || '-'}</span></div>
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">협업 업종</span><span className="text-dark">{memberModalUser.collaborationIndustry || '-'}</span></div>
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">핵심고객</span><span className="text-dark">{memberModalUser.keyCustomers || '-'}</span></div>
-                    {memberModalUser.companyMainImage && <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">대표 이미지</span><a href={memberModalUser.companyMainImage} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline truncate">보기</a></div>}
-                    {memberModalUser.companyDescription && <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사 소개</span><span className="text-dark whitespace-pre-line">{memberModalUser.companyDescription}</span></div>}
-                    {memberModalUser.companyImages && memberModalUser.companyImages.length > 0 && <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">추가 이미지</span><span className="text-dark">{memberModalUser.companyImages.length}장</span></div>}
                   </div>
                 </div>
               )}
