@@ -47,6 +47,9 @@ const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d
 /** 후원 기능 비노출: true면 메뉴·홈 섹션·뷰 접근 모두 없음. 다시 켜려면 false로 변경 */
 const DONATION_FEATURE_DISABLED = true;
 
+/** 메인 검색용 부산 지역구 목록 (구·군) */
+const BUSAN_DISTRICTS = ['전체', '해운대구', '부산진구', '동래구', '남구', '북구', '중구', '영도구', '동구', '서구', '사하구', '금정구', '연제구', '수영구', '사상구', '기장군'];
+
 // 이미지 메타데이터
 const imageMetadata = [
     { year: 2017, filename: '2017.png', alt: '부산지역자활센터협회 2017년 활동 사진' },
@@ -505,6 +508,7 @@ const App = () => {
     const [searchKeyword, setSearchKeyword] = useState('');
     const [searchCategory, setSearchCategory] = useState('');
     const [searchStatus, setSearchStatus] = useState('');
+    const [searchDistrict, setSearchDistrict] = useState('전체');
     const [searchResults, setSearchResults] = useState([]);
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const [popupPrograms, setPopupPrograms] = useState([]); // 최대 3개 프로그램 팝업
@@ -2498,17 +2502,19 @@ END:VCALENDAR`;
     };
 
     const handleSearch = () => {
-        if (!searchKeyword && !searchStatus && !searchCategory) {
+        if (!searchKeyword && !searchStatus && !searchCategory && (!searchDistrict || searchDistrict === '전체')) {
             setSearchResults(seminarsData);
             setIsSearchExpanded(true);
-            return; 
+            return;
         }
         const results = seminarsData.filter(seminar => {
             const text = (seminar.title + seminar.desc).toLowerCase();
             const matchKeyword = !searchKeyword || text.includes(searchKeyword.toLowerCase());
             const matchStatus = !searchStatus || seminar.status === searchStatus;
             const matchCategory = !searchCategory || seminar.category === searchCategory;
-            return matchKeyword && matchStatus && matchCategory;
+            const loc = (seminar.location || seminar.locationAddress || '').toString();
+            const matchDistrict = !searchDistrict || searchDistrict === '전체' || loc.includes(searchDistrict);
+            return matchKeyword && matchStatus && matchCategory && matchDistrict;
         });
         setSearchResults(results);
         setIsSearchExpanded(true);
@@ -3261,9 +3267,17 @@ END:VCALENDAR`;
                                         <div className="flex items-center gap-2 mb-0.5 md:mb-1 text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.Tag size={12} className="text-accent md:w-3.5 md:h-3.5" /> 카테고리</div>
                                         <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-xs md:text-sm py-0.5" value={searchCategory} onChange={(e) => setSearchCategory(e.target.value)}><option value="">전체 카테고리</option><option value="교육/세미나">📚 교육 · 세미나</option><option value="네트워킹/모임">🤝 네트워킹 · 모임</option><option value="투자/IR">💰 투자 · IR</option><option value="멘토링/상담">💡 멘토링 · 상담</option><option value="기타">🎸 기타</option></select>
                                     </div>
-                                    <div className="w-full md:w-40 px-3 md:px-4 py-1.5 md:py-0">
+                                    <div className="w-full md:w-40 px-3 md:px-4 border-b md:border-b-0 md:border-r border-brand/10 py-1.5 md:py-0">
                                         <div className="flex items-center gap-2 mb-0.5 md:mb-1 text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.CheckCircle size={12} className="text-accent md:w-3.5 md:h-3.5" /> 모집 상태</div>
                                         <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-xs md:text-sm py-0.5" value={searchStatus} onChange={(e) => setSearchStatus(e.target.value)}><option value="">전체 상태</option><option value="모집중">모집중</option><option value="마감임박">마감임박</option><option value="종료">종료</option></select>
+                                    </div>
+                                    <div className="w-full md:w-40 px-3 md:px-4 py-1.5 md:py-0">
+                                        <div className="flex items-center gap-2 mb-0.5 md:mb-1 text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.MapPin size={12} className="text-accent md:w-3.5 md:h-3.5" /> 지역구</div>
+                                        <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-xs md:text-sm py-0.5" value={searchDistrict} onChange={(e) => setSearchDistrict(e.target.value)}>
+                                            {BUSAN_DISTRICTS.map((d) => (
+                                                <option key={d} value={d}>{d}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSearch(); }} className="w-full md:w-16 h-10 md:h-14 bg-brand rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-brand/30 hover:bg-blue-800 transition-colors shrink-0"><Icons.Search className="w-5 h-5 md:w-6 md:h-6" /></button>
                                 </div>

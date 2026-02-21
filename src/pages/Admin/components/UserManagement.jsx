@@ -17,6 +17,17 @@ const MEMBER_GRADE_OPTIONS = [
 ];
 const GRADE_PRIORITY = { 마스터: 0, 운영진: 1, 파트너사: 2, 사업자: 3, 예창: 4, 대기자: 5 };
 
+/** 등급별 통계 카드 배경/텍스트 색상 (한눈에 구분) */
+const GRADE_STYLES = {
+  '': 'bg-gray-100 text-gray-700 border-gray-200',
+  '마스터': 'bg-amber-100 text-amber-800 border-amber-200',
+  '운영진': 'bg-red-100 text-red-800 border-red-200',
+  '파트너사': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  '사업자': 'bg-blue-100 text-blue-800 border-blue-200',
+  '예창': 'bg-slate-100 text-slate-700 border-slate-200',
+  '대기자': 'bg-gray-100 text-gray-600 border-gray-200',
+};
+
 /**
  * 회원 관리 컴포넌트
  * @param {Object} props
@@ -286,6 +297,22 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
     return sortedUsers.slice(start, start + PAGE_SIZE);
   }, [sortedUsers, currentPage]);
 
+  /** 등급별 인원 수 (memberGrade 기준, role 사용 안 함) */
+  const gradeCounts = React.useMemo(() => {
+    const counts = { 마스터: 0, 운영진: 0, 파트너사: 0, 사업자: 0, 예창: 0, 대기자: 0, '등급 없음': 0 };
+    users.forEach((u) => {
+      const g = String(u.memberGrade ?? '').trim();
+      if (g === '') {
+        counts['등급 없음'] += 1;
+      } else if (counts[g] !== undefined) {
+        counts[g] += 1;
+      } else {
+        counts['등급 없음'] += 1;
+      }
+    });
+    return counts;
+  }, [users]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filterRole, sortKey, sortOrder]);
@@ -364,20 +391,21 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
         </div>
       </div>
 
-      {/* 통계 */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-blue-50 rounded-xl p-4">
-          <p className="text-sm text-blue-600 font-bold mb-1">전체 회원</p>
-          <p className="text-2xl font-bold text-dark">{users.length}</p>
-        </div>
-        <div className="bg-green-50 rounded-xl p-4">
-          <p className="text-sm text-green-600 font-bold mb-1">일반 회원</p>
-          <p className="text-2xl font-bold text-dark">{users.filter(u => u.role === 'user').length}</p>
-        </div>
-        <div className="bg-purple-50 rounded-xl p-4">
-          <p className="text-sm text-purple-600 font-bold mb-1">관리자</p>
-          <p className="text-2xl font-bold text-dark">{users.filter(u => u.role === 'admin').length}</p>
-        </div>
+      {/* 등급별 인원 수 (memberGrade 기준) — 한 줄, 컬러별 구분, 컴팩트 */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <span className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 bg-blue-50 border-blue-200">
+          <span className="text-xs font-bold text-blue-700">전체</span>
+          <span className="text-sm font-bold text-dark">{users.length}</span>
+        </span>
+        {MEMBER_GRADE_OPTIONS.filter((o) => o.value).map((opt) => (
+          <span
+            key={opt.value}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 ${GRADE_STYLES[opt.value] ?? GRADE_STYLES['']}`}
+          >
+            <span className="text-xs font-bold">{opt.label}</span>
+            <span className="text-sm font-bold text-dark">{gradeCounts[opt.value] ?? 0}</span>
+          </span>
+        ))}
       </div>
 
       {/* 일괄 작업 버튼 */}

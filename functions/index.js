@@ -21,9 +21,22 @@ axios.defaults.httpsAgent = new https.Agent({ keepAlive: true });
 const app = express();
 const db = admin.firestore();
 
-// CORS 설정 - 모든 오리진 허용
+// CORS 허용 오리진 (bcsa.co.kr 프로덕션 + 로컬 개발)
+const ALLOWED_ORIGINS = [
+  'https://bcsa.co.kr',
+  'https://www.bcsa.co.kr',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
+// CORS 설정 - 명시된 오리진만 허용 (Cloud Run에서 안정적 동작)
 app.use(cors({
-  origin: true,
+  origin: (origin, cb) => {
+    const allow = !origin || ALLOWED_ORIGINS.includes(origin) ? (origin || ALLOWED_ORIGINS[0]) : ALLOWED_ORIGINS[0];
+    cb(null, allow);
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -1406,8 +1419,12 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// 전역 에러 응답 미들웨어
+// 전역 에러 응답 미들웨어 (5xx에도 CORS 헤더 보장)
 app.use((err, req, res, next) => {
+  const origin = req.get('Origin');
+  const allowOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  res.setHeader('Access-Control-Allow-Origin', allowOrigin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.status(500).json({
     error: err.message || 'Internal Server Error',
     details: process.env.NODE_ENV === 'development' ? err.stack : undefined
