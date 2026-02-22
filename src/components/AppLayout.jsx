@@ -530,15 +530,32 @@ const AppLayout = (props) => {
             </main>
 
             <footer ref={footerRef} className="py-12 px-6 text-white bg-[#0046a5]">
-                <div className="container mx-auto max-w-6xl text-left">
-                    <h3 className="text-lg font-bold text-white mb-4">{content?.footer_title || '부산청년사업가 포럼'}</h3>
-                    <p className="text-[10px] md:text-sm text-white/90 mb-2">{content?.footer_line2 || '부산광역시 연제구 법원남로9번길 17(거제동) | 대표 정은지 | 사업자등록번호 792-72-00616'}</p>
-                    <p className="text-[10px] md:text-sm text-white/90 mb-2">
-                        대표번호 <a href={`tel:${content?.footer_phone || '070-8064-7238'}`} className="hover:text-white transition-colors">{content?.footer_phone || '070-8064-7238'}</a>
-                        {content?.footer_hours ? ` (${content.footer_hours})` : ' (평일 09:00–18:00 / 주말·공휴일 휴무)'} | 대표 메일 <a href={`mailto:${content?.footer_email || 'pujar@naver.com'}`} className="hover:text-white transition-colors">{content?.footer_email || 'pujar@naver.com'}</a>
+                <div className="container mx-auto max-w-6xl text-center">
+                    <h3 className="text-lg font-bold text-white mb-4 text-center">{content?.footer_title || '부산청년사업가 포럼'}</h3>
+                    <div className="text-center mb-2">
+                        <p className="text-[26px] md:text-[28px] text-white font-bold mb-0">
+                            <span className="mr-2" aria-hidden="true">☎</span><a href={`tel:${(content?.footer_phone || '070-8064-7238').replace(/\s/g, '')}`} className="hover:text-white/90 transition-colors">{content?.footer_phone || '070-8064-7238'}</a>
+                        </p>
+                        <p className="text-[13px] md:text-sm font-normal text-white/90 mt-1 mb-0">{content?.footer_hours ? `(${content.footer_hours})` : '(평일 09:00–18:00 / 주말·공휴일 휴무)'}</p>
+                    </div>
+                    <p className="text-[26px] md:text-[28px] text-white font-bold mb-8 text-center">
+                        <span className="mr-2" aria-hidden="true">✉</span><a href={`mailto:${content?.footer_email || 'pujar@naver.com'}`} className="hover:text-white/90 transition-colors">{content?.footer_email || 'pujar@naver.com'}</a>
                     </p>
+                    {(() => {
+                        const line2Raw = content?.footer_line2 || '부산광역시 연제구 법원남로9번길 17(거제동) | 대표 정은지 | 사업자등록번호 792-72-00616';
+                        const parts = line2Raw.split(/\s*\|\s*/);
+                        const address = parts[0]?.trim() || '';
+                        const businessStart = line2Raw.indexOf('사업자등록번호');
+                        const businessLine = businessStart >= 0 ? line2Raw.slice(businessStart).trim() : '';
+                        return (
+                            <>
+                                {address && <p className="text-[10px] md:text-sm text-white/90 mb-2">{address}</p>}
+                                {businessLine && <p className="text-[10px] md:text-sm text-white/90 mb-2">{businessLine}</p>}
+                            </>
+                        );
+                    })()}
                     <p className="text-[8px] md:text-xs text-white/70 mb-4">{content?.footer_copyright || '© 2025 부산청년사업가 포럼 (BCSA). All rights reserved.'}</p>
-                    <p className="text-[8px] md:text-xs text-white/70 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <p className="text-[8px] md:text-xs text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
                         <span className="text-white/50">|</span>
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>

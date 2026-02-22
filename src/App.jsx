@@ -50,6 +50,17 @@ const DONATION_FEATURE_DISABLED = true;
 /** 메인 검색용 부산 지역구 목록 (구·군) */
 const BUSAN_DISTRICTS = ['전체', '해운대구', '부산진구', '동래구', '남구', '북구', '중구', '영도구', '동구', '서구', '사하구', '금정구', '연제구', '수영구', '사상구', '기장군'];
 
+/** 협력기관 로고 경로 (메인 페이지 협력기관 섹션, partner1~6 순) */
+const PARTNER_LOGOS = [
+    '/assets/images/partners/partner1.png',
+    '/assets/images/partners/partner2.png',
+    '/assets/images/partners/partner3.png',
+    '/assets/images/partners/partner4.png',
+    '/assets/images/partners/partner5.png',
+    '/assets/images/partners/partner6.png',
+];
+const PARTNER_NAMES = ['중소벤처기업부', '15분도시', '나라장터', 'KOTRA', '부산경제진흥원', '부산광역시'];
+
 // 이미지 메타데이터
 const imageMetadata = [
     { year: 2017, filename: '2017.png', alt: '부산지역자활센터협회 2017년 활동 사진' },
@@ -3325,6 +3336,20 @@ END:VCALENDAR`;
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-50 rounded-full -z-10 blur-3xl"></div>
                             </div>
                             <div><h2 className="text-2xl md:text-5xl font-bold text-dark mb-6 leading-tight break-keep">{content.features_title || '함께할 때 더 멀리 갈 수 있습니다'}</h2><div className="space-y-4 md:space-y-8 mt-6 md:mt-10"><div className="flex gap-4"><div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-brand shrink-0"><Icons.Users /></div><div><h3 className="text-lg md:text-xl font-bold text-dark mb-1">{content.features_network_title || '다양한 네트워크'}</h3><p className="text-gray-500 text-sm leading-relaxed break-keep">{content.features_network_desc || 'IT, 제조, 유통 등 다양한 산업군의 대표님들과 연결되어 새로운 비즈니스 기회를 창출합니다.'}</p></div></div><div className="flex gap-4"><div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-500 shrink-0"><Icons.CheckCircle /></div><div><h3 className="text-lg md:text-xl font-bold text-dark mb-1">{content.features_expert_title || '검증된 전문가'}</h3><p className="text-gray-500 text-sm leading-relaxed break-keep">{content.features_expert_desc || '세무, 노무, 마케팅 등 각 분야 전문가 멘토링을 통해 사업 운영의 어려움을 해결해드립니다.'}</p></div></div><div className="flex gap-4"><div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-500 shrink-0"><Icons.Star /></div><div><h3 className="text-lg md:text-xl font-bold text-dark mb-1">{content.features_success_title || '성공 사례 공유'}</h3><p className="text-gray-500 text-sm leading-relaxed break-keep">{content.features_success_desc || '선배 창업가들의 생생한 성공 및 실패 사례를 통해 시행착오를 줄이고 빠르게 성장하세요.'}</p></div></div></div></div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* 협력기관 (Features 다음, 프로그램 앞) */}
+                <section className="py-12 md:py-20 px-6 bg-soft">
+                    <div className="container mx-auto max-w-6xl">
+                        <h2 className="text-2xl md:text-3xl font-bold text-dark mb-[4.5rem] text-center">협력기관</h2>
+                        <div className="grid grid-cols-2 gap-y-12 gap-x-1 sm:grid-cols-3 sm:gap-12 md:gap-16">
+                            {PARTNER_LOGOS.map((src, i) => (
+                                <div key={i} className={`w-full flex items-center justify-center ${i === 0 ? 'overflow-visible' : ''}`}>
+                                    <img src={src} alt={PARTNER_NAMES[i] || `협력기관 ${i + 1}`} className={`max-h-16 w-full object-contain scale-[0.8] ${i === 0 ? 'md:scale-[1.6]' : 'md:scale-100'}`} />
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </section>
