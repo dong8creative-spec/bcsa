@@ -3268,7 +3268,7 @@ END:VCALENDAR`;
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
                             </div>
                             
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-[95%] md:w-auto md:min-w-[800px] bg-white rounded-2xl md:rounded-3xl shadow-float flex flex-col transition-all duration-300 ease-in-out z-20 overflow-hidden mt-4 md:-mt-12">
+                            <div className="w-[95%] md:min-w-[800px] mx-auto bg-white rounded-2xl md:rounded-3xl shadow-float flex flex-col transition-all duration-300 ease-in-out z-20 overflow-hidden mt-4 md:-mt-12">
                                 <div className="flex flex-col md:flex-row gap-1 md:gap-0 items-center p-2 md:p-3 relative bg-white z-30">
                                     <div className="flex-1 w-full px-3 md:px-4 border-b md:border-b-0 md:border-r border-brand/10 py-1.5 md:py-0">
                                         <div className="flex items-center gap-2 mb-0.5 md:mb-1 text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.Search size={12} className="text-accent md:w-3.5 md:h-3.5" /> 키워드 검색</div>
@@ -3309,7 +3309,7 @@ END:VCALENDAR`;
                     활동중인 사업가, 진행된 세미나, 투자 성공 사례 등의 통계를 표시합니다.
                     순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
                     ============================================ */}
-                <section className="pt-52 pb-10 md:py-20 bg-soft/50">
+                <section className="pt-10 pb-10 md:py-20 bg-soft/50">
                     <div className="container mx-auto max-w-6xl px-6">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 text-center">
                             <div><div className="text-3xl md:text-4xl font-bold text-brand mb-2">{content.stat_1_val}</div><div className="text-sm text-gray-500 font-medium break-keep">{content.stat_1_desc}</div></div>
@@ -3344,12 +3344,14 @@ END:VCALENDAR`;
                 <section className="py-12 md:py-20 px-6 bg-soft">
                     <div className="container mx-auto max-w-6xl">
                         <h2 className="text-2xl md:text-3xl font-bold text-dark mb-[4.5rem] text-center">협력기관</h2>
-                        <div className="grid grid-cols-2 gap-y-12 gap-x-1 sm:grid-cols-3 sm:gap-12 md:gap-16">
+                        <div className="md:scale-[0.9] md:origin-center">
+                            <div className="grid grid-cols-2 gap-y-12 gap-x-1 sm:grid-cols-3 sm:gap-12 md:gap-16">
                             {PARTNER_LOGOS.map((src, i) => (
                                 <div key={i} className={`w-full flex items-center justify-center ${i === 0 ? 'overflow-visible' : ''}`}>
-                                    <img src={src} alt={PARTNER_NAMES[i] || `협력기관 ${i + 1}`} className={`max-h-16 w-full object-contain scale-[0.8] ${i === 0 ? 'md:scale-[1.6]' : 'md:scale-100'}`} />
+                                    <img src={src} alt={PARTNER_NAMES[i] || `협력기관 ${i + 1}`} className={`max-h-16 w-full object-contain ${i === 4 ? 'scale-[0.9]' : `scale-[0.8] ${i === 0 ? 'md:scale-[1.6]' : 'md:scale-100'}`}`} />
                                 </div>
                             ))}
+                            </div>
                         </div>
                     </div>
                 </section>
