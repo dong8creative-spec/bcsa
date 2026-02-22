@@ -289,7 +289,7 @@ app.get('/api/bid-search', async (req, res) => {
     }
   }
   
-  // 날짜 범위 설정 (사용자가 선택한 날짜가 있으면 사용, 없으면 최근 30일 - 나라장터와 일치율 확보)
+  // 날짜 범위 설정 (사용자가 선택한 날짜가 있으면 사용, 없으면 최근 60일)
   const today = new Date();
   let inqryBgnDt, inqryEndDt;
 
@@ -317,22 +317,22 @@ app.get('/api/bid-search', async (req, res) => {
       inqryEndDt = toStr + '2359';
       console.log('✅ [Date] 8자리 날짜에 시간 추가:', { inqryBgnDt, inqryEndDt });
     } else {
-      // 형식이 맞지 않으면 기본값 사용 (최근 30일)
+      // 형식이 맞지 않으면 기본값 사용 (최근 60일)
       console.warn('⚠️ [Date] 잘못된 날짜 형식, 기본값 사용:', { fromStr, toStr });
       const startDate = new Date(today);
-      startDate.setDate(today.getDate() - 30);
+      startDate.setDate(today.getDate() - 60);
       inqryBgnDt = formatDate(startDate) + '0000';
       inqryEndDt = formatDate(today) + '2359';
     }
   } else {
-    // 기본값: 최근 30일 (나라장터 웹과 비교 시 일치율 확보용)
+    // 기본값: 최근 60일
     const startDate = new Date(today);
-    startDate.setDate(today.getDate() - 30);
+    startDate.setDate(today.getDate() - 60);
     const endDate = new Date(today);
     endDate.setHours(23, 59, 59, 999);
     inqryBgnDt = formatDate(startDate) + '0000';
     inqryEndDt = formatDate(endDate) + '2359';
-    console.log('✅ [Date] 기본값 (최근 30일) 사용:', { inqryBgnDt, inqryEndDt });
+    console.log('✅ [Date] 기본값 (최근 60일) 사용:', { inqryBgnDt, inqryEndDt });
   }
   
   console.log('📥 최종 inqryBgnDt/inqryEndDt:', { inqryBgnDt, inqryEndDt });
@@ -1249,7 +1249,7 @@ app.get('/api/bid-detail', async (req, res, next) => {
 });
 
 // 검색 캐시 신선도: 이 시간보다 오래된 캐시는 무시하고 조달청에서 새로 가져옴 (ms)
-const SEARCH_CACHE_MAX_AGE_MS = 3 * 60 * 1000; // 3분 (결과 정확도·갱신 확보)
+const SEARCH_CACHE_MAX_AGE_MS = 5 * 60 * 1000; // 5분 (결과 정확도·갱신 확보)
 
 // 캐시 키 생성 함수 (검색어 + 날짜 범위 포함 → 데이터 겹침 방지)
 function generateCacheKey(bidNtceNo, keyword = '', type = 'bid-search', inqryBgnDt = '', inqryEndDt = '') {
