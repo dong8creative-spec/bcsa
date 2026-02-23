@@ -252,10 +252,27 @@ npx vite --port 8080
 
 ### 빌드 오류
 ```bash
-# 노드 모듈 재설치
-rm -rf node_modules package-lock.json
+# 노드 모듈 재설치 (lock 파일은 유지하고 재설치만)
+rm -rf node_modules
 npm install
 ```
+
+---
+
+## 📦 의존성 및 CI
+
+`package-lock.json`(루트·`functions/`)은 버전 관리됩니다. **의존성을 바꾼 뒤에는 반드시 lock을 갱신해 커밋**해야 CI에서 `npm ci`가 안정적으로 동작합니다.
+
+### 워크플로
+
+1. **`package.json` 수정** (의존성 추가/변경)
+2. **lock 갱신**
+   ```bash
+   npm install
+   cd functions && npm install && cd ..
+   ```
+3. **커밋·푸시**  
+   `package.json`, `package-lock.json`, `functions/package-lock.json` 변경분을 함께 커밋 후 푸시하면 CI에서 `npm ci`가 동기화된 상태로 실행됩니다.
 
 ### API 호출 오류
 1. `.env.development` 파일 확인
