@@ -42,6 +42,13 @@ const parseDateForSort = (dateStr) => {
   return 0;
 };
 
+/** 오늘 0시 0분 0초 타임스탬프 (지난 프로그램 판별용) */
+const getTodayStart = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+};
+
 /**
  * 프로그램 관리 컴포넌트
  */
@@ -64,6 +71,7 @@ export const ProgramManagement = () => {
     capacity: '',
     category: '',
     applicationFee: '', // 신청 비용 (원, 비어 있으면 무료)
+    overflowParticipants: '', // 초과 인원 (정모 등, 선택)
     imageEntries: [] // Array<{ firebase: string | null, imgbb: string | null }>
   });
   const [imageUploading, setImageUploading] = useState(false);
@@ -72,6 +80,7 @@ export const ProgramManagement = () => {
   const [showApplicantModal, setShowApplicantModal] = useState(false);
   const [applicantModalProgram, setApplicantModalProgram] = useState(null);
   const [applicantModalUsers, setApplicantModalUsers] = useState([]);
+  const [isClosingPast, setIsClosingPast] = useState(false);
 
   useEffect(() => {
     loadPrograms();
@@ -156,6 +165,12 @@ export const ProgramManagement = () => {
     return sorted;
   }, [programs, searchQuery, sortBy, applicationCountBySeminarId]);
 
+  /** 지난 프로그램 (행사 일자가 오늘 이전인 프로그램) */
+  const pastPrograms = useMemo(() => {
+    const todayStart = getTodayStart();
+    return programs.filter((p) => parseDateForSort(p.date) < todayStart);
+  }, [programs]);
+
   /** 현재 페이지에 표시할 프로그램 (6개) */
   const displayPrograms = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
@@ -171,6 +186,76 @@ export const ProgramManagement = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, sortBy]);
+
+  const handleAddTestPrograms = async () => {
+    if (!confirm('테스트용 프로그램 2개(정원 30명, 강의료 5만원)를 추가하시겠습니까?')) return;
+    try {
+      const d = new Date();
+      const date1 = `${d.getFullYear()}.${String(d.getMonth() + 2).padStart(2, '0')}.15 14:00`;
+      const date2 = `${d.getFullYear()}.${String(d.getMonth() + 3).padStart(2, '0')}.01 10:00`;
+      const baseData = (title, desc, date, category) => ({
+        title,
+        description: desc,
+        desc: desc,
+        date,
+        location: '부산 해운대구 센텀시티',
+        capacity: '30',
+        maxParticipants: 30,
+        currentParticipants: 0,
+        category: category || '교육/세미나',
+        applicationFee: 50000,
+        imageUrls: [],
+        images: [],
+      });
+      await firebaseService.createSeminar(baseData(
+        '테스트 프로그램 1 - 비즈니스 세미나',
+        '정원 30명, 강의료 5만원 테스트용 프로그램입니다. 청년 사업가들을 위한 실전 비즈니스 인사이트를 공유합니다.',
+        date1
+      ));
+      await firebaseService.createSeminar(baseData(
+        '테스트 프로그램 2 - 스타트업 네트워킹',
+        '정원 30명, 강의료 5만원 테스트용 프로그램입니다. 스타트업 대표들과의 네트워킹 및 경험 공유의 장입니다.',
+        date2,
+        '네트워킹/모임'
+      ));
+      alert('테스트 프로그램 2개가 추가되었습니다.');
+      loadPrograms();
+    } catch (error) {
+      console.error('테스트 프로그램 추가 오류:', error);
+      alert('테스트 프로그램 추가에 실패했습니다.');
+    }
+  };
+
+  /** 지난 프로그램 전부 정원 만석·종료 처리 */
+  const handleClosePastPrograms = async () => {
+    if (pastPrograms.length === 0) {
+      alert('지난 프로그램이 없습니다.');
+      return;
+    }
+    if (!window.confirm(`진행 완료된 지난 프로그램 ${pastPrograms.length}개를 정원 만석·종료 처리할까요?`)) {
+      return;
+    }
+    setIsClosingPast(true);
+    let success = 0;
+    let fail = 0;
+    for (const p of pastPrograms) {
+      try {
+        const cap = Number(p.maxParticipants ?? p.capacity ?? 0);
+        await firebaseService.updateSeminar(p.id, { status: '종료', currentParticipants: cap });
+        success += 1;
+      } catch (err) {
+        fail += 1;
+        console.error('매진·종료 처리 실패:', p.id, err);
+      }
+    }
+    await loadPrograms();
+    setIsClosingPast(false);
+    if (fail === 0) {
+      alert(`${success}개 프로그램을 정원 만석·종료 처리했습니다.`);
+    } else {
+      alert(`${success}개 성공, ${fail}개 실패했습니다.`);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -199,6 +284,12 @@ export const ProgramManagement = () => {
       payload.currentParticipants = 0;
     } else if (editingProgram.currentParticipants != null) {
       payload.currentParticipants = editingProgram.currentParticipants;
+    }
+    const overflowNum = formData.overflowParticipants !== '' && formData.overflowParticipants != null ? parseInt(String(formData.overflowParticipants).replace(/\D/g, ''), 10) : null;
+    if (overflowNum != null && !isNaN(overflowNum) && overflowNum >= 0) {
+      payload.overflowParticipants = overflowNum;
+    } else {
+      payload.overflowParticipants = null;
     }
     try {
       if (editingProgram) {
@@ -245,48 +336,10 @@ export const ProgramManagement = () => {
       capacity: capacityNorm,
       category: program.category || '',
       applicationFee: program.applicationFee != null && program.applicationFee !== '' ? String(program.applicationFee) : '',
+      overflowParticipants: program.overflowParticipants != null && program.overflowParticipants !== '' ? String(program.overflowParticipants) : '',
       imageEntries
     });
     setShowModal(true);
-  };
-
-  const handleAddTestPrograms = async () => {
-    if (!confirm('테스트용 프로그램 2개(정원 30명, 강의료 5만원)를 추가하시겠습니까?')) return;
-    try {
-      const d = new Date();
-      const date1 = `${d.getFullYear()}.${String(d.getMonth() + 2).padStart(2, '0')}.15 14:00`;
-      const date2 = `${d.getFullYear()}.${String(d.getMonth() + 3).padStart(2, '0')}.01 10:00`;
-      const baseData = (title, desc, date, category) => ({
-        title,
-        description: desc,
-        desc: desc,
-        date,
-        location: '부산 해운대구 센텀시티',
-        capacity: '30',
-        maxParticipants: 30,
-        currentParticipants: 0,
-        category: category || '교육/세미나',
-        applicationFee: 50000,
-        imageUrls: [],
-        images: [],
-      });
-      await firebaseService.createSeminar(baseData(
-        '테스트 프로그램 1 - 비즈니스 세미나',
-        '정원 30명, 강의료 5만원 테스트용 프로그램입니다. 청년 사업가들을 위한 실전 비즈니스 인사이트를 공유합니다.',
-        date1
-      ));
-      await firebaseService.createSeminar(baseData(
-        '테스트 프로그램 2 - 스타트업 네트워킹',
-        '정원 30명, 강의료 5만원 테스트용 프로그램입니다. 스타트업 대표들과의 네트워킹 및 경험 공유의 장입니다.',
-        date2,
-        '네트워킹/모임'
-      ));
-      alert('테스트 프로그램 2개가 추가되었습니다.');
-      loadPrograms();
-    } catch (error) {
-      console.error('테스트 프로그램 추가 오류:', error);
-      alert('테스트 프로그램 추가에 실패했습니다.');
-    }
   };
 
   const handleDelete = async (programId) => {
@@ -314,6 +367,7 @@ export const ProgramManagement = () => {
       capacity: '',
       category: '',
       applicationFee: '',
+      overflowParticipants: '',
       imageEntries: []
     });
   };
@@ -397,6 +451,25 @@ export const ProgramManagement = () => {
             테스트 프로그램 2개 추가
           </button>
           <button
+            type="button"
+            onClick={handleClosePastPrograms}
+            disabled={isClosingPast || pastPrograms.length === 0}
+            className="px-4 py-2 bg-gray-700 text-white rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            title={pastPrograms.length === 0 ? '지난 프로그램이 없습니다' : `지난 프로그램 ${pastPrograms.length}개 정원 만석·종료`}
+          >
+            {isClosingPast ? (
+              <>
+                <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                처리 중...
+              </>
+            ) : (
+              <>
+                <Icons.CheckCircle size={18} />
+                지난 프로그램 만석·종료
+              </>
+            )}
+          </button>
+          <button
             onClick={() => {
               resetForm();
               setShowModal(true);
@@ -435,7 +508,7 @@ export const ProgramManagement = () => {
         </div>
       </div>
 
-      {/* 프로그램 목록 */}
+      {/* 프로그램 목록 (카드 그리드) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredAndSortedPrograms.length === 0 ? (
           <div className="col-span-full text-center py-12">
@@ -448,57 +521,59 @@ export const ProgramManagement = () => {
           displayPrograms.map((program) => {
             const thumb = normalizeImageItem(program.images?.[0]) || program.imageUrls?.[0] || program.imageUrl;
             return (
-            <div key={program.id} className="relative bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
-              <button
-                type="button"
-                onClick={() => handleDelete(program.id)}
-                className="absolute top-3 right-3 z-10 p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="프로그램 삭제"
-                aria-label="삭제"
-              >
-                <Icons.Trash2 size={18} />
-              </button>
-              {thumb && (
-                <img src={thumb} alt={program.title} className="w-full h-40 object-cover rounded-xl mb-3" loading="lazy" decoding="async" />
-              )}
-              <h3 className="font-bold text-lg text-dark mb-2 pr-8">{program.title}</h3>
-              <p className="text-sm text-gray-600 mb-3 line-clamp-2">{program.description}</p>
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Icons.Calendar size={16} />
-                  <span>{program.date || '-'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Icons.MapPin size={16} />
-                  <span className="line-clamp-1">{program.location || '-'}</span>
-                </div>
-                {program.capacity && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Icons.Users size={16} />
-                    <span>{program.capacity}명</span>
-                  </div>
+              <div key={program.id} className="relative bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
+                <button
+                  type="button"
+                  onClick={() => handleDelete(program.id)}
+                  className="absolute top-3 right-3 z-10 p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="프로그램 삭제"
+                  aria-label="삭제"
+                >
+                  <Icons.Trash2 size={18} />
+                </button>
+                {thumb && (
+                  <img src={thumb} alt={program.title} className="w-full h-40 object-cover rounded-xl mb-3" loading="lazy" decoding="async" />
                 )}
+                <h3 className="font-bold text-lg text-dark mb-2 pr-8">{program.title}</h3>
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{program.description}</p>
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Icons.Calendar size={16} />
+                    <span>{program.date || '-'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Icons.MapPin size={16} />
+                    <span className="line-clamp-1">{program.location || '-'}</span>
+                  </div>
+                  {program.capacity && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Icons.Users size={16} />
+                      <span>{program.capacity}명</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 w-full">
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(program)}
+                    className="flex-none whitespace-nowrap px-3 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Icons.Edit2 size={16} />
+                    수정
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setApplicantModalProgram(program);
+                      setShowApplicantModal(true);
+                    }}
+                    className="flex-none whitespace-nowrap px-3 py-2 bg-green-50 text-green-700 rounded-xl font-bold hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Icons.Users size={16} />
+                    신청자명단
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2 w-full">
-                <button
-                  onClick={() => handleEdit(program)}
-                  className="flex-none whitespace-nowrap px-3 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Icons.Edit2 size={16} />
-                  수정
-                </button>
-                <button
-                  onClick={() => {
-                    setApplicantModalProgram(program);
-                    setShowApplicantModal(true);
-                  }}
-                  className="flex-none whitespace-nowrap px-3 py-2 bg-green-50 text-green-700 rounded-xl font-bold hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Icons.Users size={16} />
-                  신청자명단
-                </button>
-              </div>
-            </div>
             );
           })
         )}
@@ -605,6 +680,20 @@ export const ProgramManagement = () => {
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">10~90명은 10명 단위, 100명 이상은 100명 단위 (최대 500명)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">초과 인원 (정모 등)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={formData.overflowParticipants}
+                  onChange={(e) => setFormData({ ...formData, overflowParticipants: e.target.value })}
+                  placeholder="0"
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">정모 등 참여가 정원을 초과한 경우 입력 (표시 시 5~8명이 임의 추가됩니다)</p>
               </div>
 
               <div>

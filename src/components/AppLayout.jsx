@@ -4,6 +4,7 @@ import SignUpModal from './SignUpModal';
 import InquiryModal from './InquiryModal';
 import ModalPortal from './ModalPortal';
 import { useMediaQuery, MOBILE_QUERY } from '../hooks/useMediaQuery';
+import { getDisplayedOverflow, is정모 } from '../utils/seminarDisplay';
 
 const FAB_GAP_PX = 16;
 const FAB_ESTIMATE_HEIGHT_PX = 152;
@@ -287,7 +288,12 @@ const AppLayout = (props) => {
                                                     </div>
                                                 ) : null}
                                                 <div className="flex items-center gap-2">
-                                                    <Icons.Users size={16} className="text-brand" /> {program.currentParticipants || 0} / {program.maxParticipants || 0}명
+                                                    <Icons.Users size={16} className="text-brand" /> {(() => {
+                                                    const max = Number(program.maxParticipants ?? program.capacity) || 0;
+                                                    const overflow = getDisplayedOverflow(program);
+                                                    if (overflow > 0) return (<><span className="text-red-600 font-bold">{max + overflow}</span> / {max}명</>);
+                                                    return (<>{program.status === '종료' ? max : (program.currentParticipants || 0)} / {max}명</>);
+                                                })()}
                                                 </div>
                                             </div>
                                             
@@ -300,13 +306,29 @@ const AppLayout = (props) => {
                                             
                                             {/* 신청하기 버튼 (무료/금액 표기) */}
                                             {currentUser ? (
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => { if (isMobile && onNavigateToProgramApply) { onNavigateToProgramApply(program); } else { handlePopupApply(program); } }}
-                                                    className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
-                                                >
-                                                    참여신청
-                                                </button>
+                                                (() => {
+                                                    const is정모Program = is정모(program);
+                                                    const max = Number(program.maxParticipants ?? program.capacity) || 0;
+                                                    const current = Number(program.currentParticipants) || 0;
+                                                    const isFull = max > 0 && current >= max;
+                                                    const showFullDisabled = isFull && !is정모Program;
+                                                    if (showFullDisabled) {
+                                                        return (
+                                                            <button type="button" disabled className="w-full py-3 bg-gray-300 text-gray-500 font-bold rounded-xl cursor-not-allowed">
+                                                                정원 마감
+                                                            </button>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => { if (isMobile && onNavigateToProgramApply) { onNavigateToProgramApply(program); } else { handlePopupApply(program); } }}
+                                                            className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                                                        >
+                                                            참여신청
+                                                        </button>
+                                                    );
+                                                })()
                                             ) : (
                                                 <button
                                                     type="button"

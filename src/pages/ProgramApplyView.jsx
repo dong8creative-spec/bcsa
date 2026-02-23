@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Icons } from '../components/Icons';
 import { normalizeImagesList } from '../utils/imageUtils';
+import { getDisplayedOverflow, is정모 } from '../utils/seminarDisplay';
 
 const getStatusColor = (status) => {
     switch (status) {
@@ -118,6 +119,11 @@ const ProgramApplyView = ({
 
     const isPaid = program.applicationFee != null && Number(program.applicationFee) > 0;
     const isEnded = program.status === '종료';
+    const maxCap = Number(program.maxParticipants ?? program.capacity) || 0;
+    const currentCap = Number(program.currentParticipants) || 0;
+    const isFull = maxCap > 0 && currentCap >= maxCap;
+    const allowOverflow = is정모(program);
+    const isDisabledByCapacity = isFull && !allowOverflow;
 
     return (
         <>
@@ -241,7 +247,12 @@ const ProgramApplyView = ({
                                 <div className="min-w-0">
                                     <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-0.5">정원</div>
                                     <div className="text-sm font-semibold text-dark">
-                                        {program.currentParticipants ?? 0} / {program.maxParticipants ?? 0}명
+                                        {(() => {
+                                        const max = program.maxParticipants ?? program.capacity ?? 0;
+                                        const overflow = getDisplayedOverflow(program);
+                                        if (overflow > 0) return (<><span className="text-red-600 font-bold">{Number(max) + overflow}</span> / {max}명</>);
+                                        return (<>{program.status === '종료' ? max : (program.currentParticipants ?? 0)} / {max}명</>);
+                                    })()}
                                     </div>
                                 </div>
                             </div>
@@ -340,14 +351,16 @@ const ProgramApplyView = ({
                         <button
                             type="button"
                             onClick={handleSubmit}
-                            disabled={submitting || isEnded}
+                            disabled={submitting || isEnded || isDisabledByCapacity}
                             className="w-full py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
                         >
                             {isEnded
                                 ? '종료된 프로그램입니다'
-                                : submitting
-                                    ? (isPaid ? '결제 진행 중...' : '신청 처리 중...')
-                                    : '참여신청'
+                                : isDisabledByCapacity
+                                    ? '정원 마감'
+                                    : submitting
+                                        ? (isPaid ? '결제 진행 중...' : '신청 처리 중...')
+                                        : '참여신청'
                             }
                         </button>
                     </div>

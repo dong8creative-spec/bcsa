@@ -257,6 +257,15 @@
     transform: scale(1.02);
   }
 
+  /* 인기 뱃지: 5% 크기 펄스 (금장 스타일과 함께 사용) */
+  .badge-popular-pulse {
+    animation: badge-popular-pulse 2s ease-in-out infinite;
+  }
+  @keyframes badge-popular-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+
 }
 
 

@@ -829,8 +829,9 @@ const App = () => {
                 .filter(s => s !== null)
                 .filter(s => !!s.img)
                 .filter(s => {
+                    const is정모 = (s.title || '').includes('정모');
                     const isFull = (s.currentParticipants || 0) >= (s.maxParticipants || 999);
-                    return !isFull;
+                    return is정모 || !isFull;
                 })
                 .sort((a, b) => a.dateObj - b.dateObj)
                 .slice(0, 3);
@@ -2100,7 +2101,13 @@ const App = () => {
         if (!currentUser) { alert("로그인이 필요한 서비스입니다."); return false; }
         if (mySeminars.find(s => s.id === seminar.id)) { alert("이미 신청한 세미나입니다."); return false; }
         if (seminar.status === '종료') { alert("종료된 프로그램입니다."); return false; }
-        
+        const is정모 = (seminar.title || '').includes('정모');
+        const max = Number(seminar.maxParticipants ?? seminar.capacity) || 0;
+        const current = Number(seminar.currentParticipants) || 0;
+        if (!is정모 && max > 0 && current >= max) {
+            alert("정원이 마감되었습니다.");
+            return false;
+        }
         // 신청 정보 저장
         const application = {
             id: Date.now().toString(),
@@ -3400,8 +3407,18 @@ END:VCALENDAR`;
                                             }}
                                             className="flex-shrink-0 w-[280px] md:w-[320px] bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:border-brand/30 transition-all text-left overflow-hidden group flex flex-col"
                                         >
-                                            <div className="w-full flex-shrink-0 aspect-[3/4] bg-gray-100 overflow-hidden">
+                                            <div className="w-full flex-shrink-0 aspect-[3/4] bg-gray-100 overflow-hidden relative">
                                                 {img ? <img src={img} alt={seminar.title} className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><Icons.Calendar size={48} /></div>}
+                                                {(() => {
+                                                    const max = Number(seminar.maxParticipants ?? seminar.capacity) || 0;
+                                                    const current = seminar.status === '종료' ? max : (Number(seminar.currentParticipants) || 0);
+                                                    const isPopular = (seminar.title || '').includes('정모') || (max > 0 && current / max >= 0.8);
+                                                    return isPopular ? (
+                                                        <div className="absolute top-2 left-2" style={{ transform: 'scale(0.667)', transformOrigin: 'top left' }}>
+                                                            <div className="px-5 py-2 rounded-lg bg-gradient-to-r from-yellow-500 to-yellow-700 text-white text-2xl font-bold shadow-lg badge-popular-pulse" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.2)' }}>인기</div>
+                                                        </div>
+                                                    ) : null;
+                                                })()}
                                             </div>
                                             <div className="p-4 flex flex-col flex-shrink-0 w-full min-h-[7rem] box-border">
                                                 <div className="flex flex-wrap gap-2 mb-2 flex-shrink-0">

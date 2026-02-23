@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Icons } from './Icons';
 import ModalPortal from './ModalPortal';
+import { getDisplayedOverflow, is정모 } from '../utils/seminarDisplay';
 
 const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteReview, applications = [] }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -344,7 +345,12 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                         </span>
                                                     )}
                                                     <span className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                                                        <Icons.Users size={14} className="text-brand"/> 신청현황: {ev.currentParticipants || 0} / {ev.maxParticipants || 100}명
+                                                        <Icons.Users size={14} className="text-brand"/> 신청현황: {(() => {
+                                                        const max = Number(ev.maxParticipants ?? ev.capacity) || 100;
+                                                        const overflow = getDisplayedOverflow(ev);
+                                                        if (overflow > 0) return (<><span className="text-red-600 font-bold">{max + overflow}</span> / {max}명</>);
+                                                        return (<>{ev.status === '종료' ? max : (ev.currentParticipants || 0)} / {max}명</>);
+                                                    })()}
                                                     </span>
                                                 </div>
                                                 {ev.desc && (
@@ -398,6 +404,12 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                                 };
                                                             }
                                                             return { text: '참여자만', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
+                                                        }
+                                                        const max = Number(ev.maxParticipants ?? ev.capacity) || 0;
+                                                        const current = Number(ev.currentParticipants) || 0;
+                                                        const isFull = max > 0 && current >= max;
+                                                        if (isFull && !is정모(ev)) {
+                                                            return { text: '정원 마감', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
                                                         }
                                                         return { 
                                                             text: '참여신청', 
