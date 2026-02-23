@@ -5,7 +5,6 @@ api-proxy.php
 
 # Node modules
 node_modules/
-package-lock.json
 
 # Firebase
 .firebase/
