@@ -102,6 +102,39 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'API Proxy is running' });
 });
 
+// PortOne 결제 웹훅 (관리자 콘솔에서 Endpoint URL로 이 경로 등록)
+// POST body: imp_uid, merchant_uid, status 등. 10초 내 200 응답 권장.
+app.post('/api/payment/webhook', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const impUid = body.imp_uid || body.impUid;
+    const merchantUid = body.merchant_uid || body.merchantUid;
+    const status = body.status;
+
+    if (!merchantUid) {
+      console.warn('[Payment Webhook] missing merchant_uid', truncateLog(body));
+      res.status(200).json({ received: true, warning: 'missing merchant_uid' });
+      return;
+    }
+
+    const payload = {
+      imp_uid: impUid,
+      merchant_uid: merchantUid,
+      status,
+      received_at: admin.firestore.FieldValue.serverTimestamp(),
+      raw: truncateLog(body, 1000)
+    };
+
+    await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set(payload, { merge: true });
+    console.log('[Payment Webhook] saved', merchantUid, status);
+
+    res.status(200).json({ received: true, merchant_uid: merchantUid });
+  } catch (err) {
+    console.error('[Payment Webhook] error', err);
+    res.status(200).json({ received: true, error: 'processing' });
+  }
+});
+
 // G2B API 키 설정 여부 진단 (키 값은 노출하지 않음, 502 원인 확인용)
 app.get('/api/diagnose-g2b', (req, res) => {
   const serviceKey = process.env.G2B_API_KEY || process.env.G2B_SERVICE_KEY;

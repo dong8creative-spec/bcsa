@@ -161,6 +161,15 @@ VITE_API_URL=https://apibid-oytjv32jna-du.a.run.app
 
 `src/firebase.js` 파일에서 Firebase 프로젝트 설정을 확인할 수 있습니다.
 
+### 결제 웹훅 (PortOne)
+
+결제 완료 시 포트원 서버에서 우리 서버로 알림을 보내려면 **포트원 관리자 콘솔**에서 웹훅 URL을 설정해야 합니다.
+
+- **경로**: `POST /api/payment/webhook`
+- **전체 URL**: Firebase Functions 배포 주소 + `/api/payment/webhook`  
+  예: `https://asia-northeast3-<프로젝트ID>.cloudfunctions.net/apiBid/api/payment/webhook`
+- **설정 위치**: [PortOne 관리자](https://admin.portone.io) → 결제연동 → 실연동관 → 웹훅 Endpoint URL
+
 ---
 
 ## 🧪 테스트 체크리스트
