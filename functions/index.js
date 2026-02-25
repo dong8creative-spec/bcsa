@@ -244,8 +244,8 @@ app.post('/api/payment/cancel', async (req, res) => {
     const application = matched[0];
     if (!application) {
       res.status(404).json({ cancelled: false, error: 'application_not_found' });
-      return;
-    }
+        return;
+      }
     const merchantUid = application.merchant_uid;
     if (!merchantUid) {
       res.status(400).json({ cancelled: false, error: 'no_merchant_uid' });
@@ -325,9 +325,9 @@ app.get('/api/network-test', async (req, res, next) => {
   try {
     const response = await axios.get(testUrl, {
       timeout: 5000,
-      responseType: 'text',
-      validateStatus: () => true
-    });
+            responseType: 'text',
+            validateStatus: () => true
+          });
 
     res.status(200).json({
       ok: response.status >= 200 && response.status < 400,
