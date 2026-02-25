@@ -118,15 +118,10 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
                 });
                 const data = res.ok ? await res.json().catch(() => ({})) : null;
                 if (!res.ok || !data?.saved) {
-                    alert('결제 준비에 실패했습니다. 잠시 후 다시 시도해 주세요.');
-                    if (onFail) onFail();
-                    return;
+                    console.warn('paymentService: pending save failed, proceeding with payment window');
                 }
             } catch (e) {
                 console.warn('paymentService: pending save failed', e);
-                alert('결제 준비에 실패했습니다. 잠시 후 다시 시도해 주세요.');
-                if (onFail) onFail();
-                return;
             }
         }
         setPaymentPending(merchantUid, { seminar, applicationData });
