@@ -230,6 +230,14 @@ const LoginModal = ({ onClose, onLogin, onGoogleLogin, onSignUpClick }) => {
 
 
 const App = () => {
+    // 결제/API 환경 변수 점검용 (개발 모드에서만 콘솔 출력)
+    if (import.meta.env.DEV) {
+        console.log('[BCSA env]', {
+            api: import.meta?.env?.VITE_API_URL || '(없음)',
+            imp: import.meta?.env?.VITE_PORTONE_IMP_CODE ? '설정됨' : '없음',
+            channel: import.meta?.env?.VITE_PORTONE_CHANNEL_KEY ? '설정됨' : '없음'
+        });
+    }
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const openMobileMenu = useCallback(() => { setIsMenuOpen(true); }, []);
     const closeMobileMenu = useCallback(() => { setIsMenuOpen(false); }, []);
