@@ -60,10 +60,12 @@ export function getPaymentResultRedirectUrl() {
  * @param {Object} params.seminar - 프로그램 정보 (title, applicationFee, id 등)
  * @param {Object} params.applicationData - 신청 폼 데이터
  * @param {Object} params.customer - { fullName, phoneNumber, email }
+ * @param {string} [params.apiBaseUrl] - API 기본 URL (리다이렉트 결제 시 pending 저장용)
+ * @param {string} [params.userId] - 로그인 사용자 id (리다이렉트 결제 시 pending 저장용)
  * @param {Function} params.onSuccess - 표준 결제 시 성공 콜백 (리다이렉트 시에는 /payment/result에서 처리)
  * @param {Function} params.onFail - 표준 결제 시 실패 콜백
  */
-export function requestPayment({ seminar, applicationData, customer, onSuccess, onFail }) {
+export function requestPayment({ seminar, applicationData, customer, apiBaseUrl, userId, onSuccess, onFail }) {
     if (!PORTONE_IMP_CODE || PORTONE_IMP_CODE === 'imp00000000') {
         alert('결제가 설정되지 않았습니다. 관리자에게 문의해주세요.');
         if (onFail) onFail();
@@ -92,13 +94,42 @@ export function requestPayment({ seminar, applicationData, customer, onSuccess, 
     const merchantUid = getMerchantUid();
 
     if (useRedirectPayment()) {
-        setPaymentPending(merchantUid, { seminar, applicationData });
         const IMP = typeof window !== 'undefined' ? window.IMP : null;
         if (!IMP) {
             alert('결제를 불러올 수 없습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.');
             if (onFail) onFail();
             return;
         }
+        if (apiBaseUrl && userId) {
+            try {
+                const base = apiBaseUrl.replace(/\/$/, '');
+                const res = await fetch(`${base}/api/payment/pending`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        merchant_uid: merchantUid,
+                        seminar_id: seminar.id,
+                        user_id: userId,
+                        user_name: fullName,
+                        user_email: email,
+                        user_phone: phoneNumber,
+                        application_data: applicationData || {}
+                    })
+                });
+                const data = res.ok ? await res.json().catch(() => ({})) : null;
+                if (!res.ok || !data?.saved) {
+                    alert('결제 준비에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+                    if (onFail) onFail();
+                    return;
+                }
+            } catch (e) {
+                console.warn('paymentService: pending save failed', e);
+                alert('결제 준비에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+                if (onFail) onFail();
+                return;
+            }
+        }
+        setPaymentPending(merchantUid, { seminar, applicationData });
         let redirectFailHandled = false;
         const handleRedirectFail = () => {
             if (redirectFailHandled) return;

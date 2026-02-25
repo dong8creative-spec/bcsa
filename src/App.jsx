@@ -17,6 +17,7 @@ import {
   saveCurrentUserToStorage
 } from './utils/authUtils';
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from './constants';
+import { getApiBaseUrl } from './utils/api';
 import { requestPayment as paymentServiceRequestPayment } from './services/paymentService';
 import { PaymentResultView } from './pages/PaymentResultView';
 import { defaultContent } from './constants/content';
@@ -2092,6 +2093,8 @@ const App = () => {
             seminar,
             applicationData,
             customer,
+            apiBaseUrl: getApiBaseUrl(),
+            userId: currentUser?.id,
             onSuccess,
             onFail
         });

@@ -102,6 +102,52 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'API Proxy is running' });
 });
 
+// 결제 전 대기 저장 (리다이렉트 결제 직전 클라이언트 호출)
+app.post('/api/payment/pending', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const merchantUid = body.merchant_uid || body.merchantUid;
+    const seminarId = body.seminar_id || body.seminarId;
+    const userId = body.user_id || body.userId;
+    if (!merchantUid || !seminarId || !userId) {
+      res.status(400).json({ saved: false, error: 'merchant_uid, seminar_id, user_id required' });
+      return;
+    }
+    const data = {
+      merchant_uid: merchantUid,
+      seminar_id: seminarId,
+      user_id: userId,
+      user_name: body.user_name || body.userName || '',
+      user_email: body.user_email || body.userEmail || '',
+      user_phone: body.user_phone || body.userPhone || '',
+      application_data: body.application_data || body.applicationData || {},
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    await db.collection('pendingPayments').doc(String(merchantUid)).set(data, { merge: true });
+    res.status(200).json({ saved: true });
+  } catch (err) {
+    console.error('[Payment Pending] error', err);
+    res.status(500).json({ saved: false, error: 'server_error' });
+  }
+});
+
+// 결제 결과 페이지에서 웹훅 처리 완료 여부 확인
+app.get('/api/payment/status', async (req, res) => {
+  try {
+    const merchantUid = req.query.merchant_uid || req.query.merchantUid;
+    if (!merchantUid) {
+      res.status(200).json({ completed: false });
+      return;
+    }
+    const snap = await db.collection('paymentWebhookEvents').doc(String(merchantUid)).get();
+    const completed = snap.exists && snap.data()?.completed === true;
+    res.status(200).json({ completed });
+  } catch (err) {
+    console.error('[Payment Status] error', err);
+    res.status(200).json({ completed: false });
+  }
+});
+
 // PortOne 결제 웹훅 (관리자 콘솔에서 Endpoint URL로 이 경로 등록)
 // POST body: imp_uid, merchant_uid, status 등. 10초 내 200 응답 권장.
 app.post('/api/payment/webhook', async (req, res) => {
@@ -124,9 +170,48 @@ app.post('/api/payment/webhook', async (req, res) => {
       received_at: admin.firestore.FieldValue.serverTimestamp(),
       raw: truncateLog(body, 1000)
     };
-
     await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set(payload, { merge: true });
-    console.log('[Payment Webhook] saved', merchantUid, status);
+
+    if (status === 'paid') {
+      const pendingSnap = await db.collection('pendingPayments').doc(String(merchantUid)).get();
+      if (pendingSnap.exists) {
+        const pending = pendingSnap.data();
+        const seminarId = pending.seminar_id || pending.seminarId;
+        const appData = pending.application_data || pending.applicationData || {};
+        const reason = [appData.participationPath, appData.applyReason].filter(Boolean).join(' / ') || '';
+        const questions = Array.isArray(appData.preQuestions) ? appData.preQuestions : (appData.preQuestions ? [appData.preQuestions] : []);
+
+        await db.collection('applications').add({
+          seminarId,
+          userId: pending.user_id || pending.userId,
+          userName: pending.user_name || pending.userName || '',
+          userEmail: pending.user_email || pending.userEmail || '',
+          userPhone: pending.user_phone || pending.userPhone || '',
+          participationPath: appData.participationPath || '',
+          applyReason: appData.applyReason || '',
+          preQuestions: appData.preQuestions || '',
+          mealAfter: appData.mealAfter || '',
+          privacyAgreed: appData.privacyAgreed === true,
+          reason,
+          questions,
+          appliedAt: new Date().toISOString(),
+          merchant_uid: merchantUid,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        const seminarRef = db.collection('seminars').doc(seminarId);
+        const seminarSnap = await seminarRef.get();
+        if (seminarSnap.exists) {
+          const current = (seminarSnap.data()?.currentParticipants || 0) + 1;
+          await seminarRef.update({ currentParticipants: current });
+        }
+
+        await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set({ completed: true }, { merge: true });
+        await db.collection('pendingPayments').doc(String(merchantUid)).delete();
+        console.log('[Payment Webhook] application completed', merchantUid);
+      }
+    }
 
     res.status(200).json({ received: true, merchant_uid: merchantUid });
   } catch (err) {

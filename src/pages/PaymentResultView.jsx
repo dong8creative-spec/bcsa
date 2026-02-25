@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getPaymentPending, clearPaymentPending } from '../services/paymentService';
+import { getApiBaseUrl } from '../utils/api';
 import { Icons } from '../components/Icons';
 
 /**
  * 리다이렉트 결제 후 복귀 URL (/payment/result)
- * imp_uid, merchant_uid, imp_success (또는 success), error_code, error_msg 쿼리 파싱 후
- * pending 복원하여 결제 완료 처리 또는 실패 안내 후 홈으로 이동
+ * 웹훅 처리 완료 여부를 먼저 확인하고, 완료됐으면 onComplete 생략(중복 방지). 아니면 sessionStorage 기반 fallback.
  */
 export function PaymentResultView({ onComplete }) {
     const location = useLocation();
@@ -28,34 +28,53 @@ export function PaymentResultView({ onComplete }) {
         }
         processedRef.current = true;
 
-        const pending = getPaymentPending(merchantUid);
-        if (!pending || !pending.seminar) {
-            setMessage('세션이 만료되었거나 결제 정보를 복원할 수 없습니다.');
-            setStatus('expired');
-            return;
-        }
-        clearPaymentPending(merchantUid);
-
-        const success = impSuccess === 'true' || impSuccess === true;
-        if (success && onComplete) {
-            onComplete(pending.seminar, pending.applicationData || null)
-                .then((ok) => {
-                    if (ok) {
+        const run = async () => {
+            const base = getApiBaseUrl();
+            if (base) {
+                try {
+                    const res = await fetch(`${base.replace(/\/$/, '')}/api/payment/status?merchant_uid=${encodeURIComponent(merchantUid)}`);
+                    const data = res.ok ? await res.json().catch(() => ({})) : {};
+                    if (data.completed === true) {
+                        clearPaymentPending(merchantUid);
                         setStatus('success');
                         setMessage('결제 및 신청이 완료되었습니다.');
-                    } else {
+                        return;
+                    }
+                } catch (e) {
+                    console.warn('PaymentResultView: status check failed', e);
+                }
+            }
+
+            const pending = getPaymentPending(merchantUid);
+            if (!pending || !pending.seminar) {
+                setMessage('세션이 만료되었거나 결제 정보를 복원할 수 없습니다.');
+                setStatus('expired');
+                return;
+            }
+            clearPaymentPending(merchantUid);
+
+            const success = impSuccess === 'true' || impSuccess === true;
+            if (success && onComplete) {
+                onComplete(pending.seminar, pending.applicationData || null)
+                    .then((ok) => {
+                        if (ok) {
+                            setStatus('success');
+                            setMessage('결제 및 신청이 완료되었습니다.');
+                        } else {
+                            setStatus('fail');
+                            setMessage('신청 처리 중 오류가 발생했습니다.');
+                        }
+                    })
+                    .catch(() => {
                         setStatus('fail');
                         setMessage('신청 처리 중 오류가 발생했습니다.');
-                    }
-                })
-                .catch(() => {
-                    setStatus('fail');
-                    setMessage('신청 처리 중 오류가 발생했습니다.');
-                });
-        } else {
-            setStatus('fail');
-            setMessage(errorMsg || '결제가 취소되었거나 실패했습니다.');
-        }
+                    });
+            } else {
+                setStatus('fail');
+                setMessage(errorMsg || '결제가 취소되었거나 실패했습니다.');
+            }
+        };
+        run();
     }, [location.search, onComplete]);
 
     const goHome = () => {
