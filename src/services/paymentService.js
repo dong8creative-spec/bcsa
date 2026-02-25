@@ -131,10 +131,11 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
         }
         setPaymentPending(merchantUid, { seminar, applicationData });
         let redirectFailHandled = false;
+        const pgHint = ' 관리자: PortOne 콘솔(admin.portone.io) → 결제 연동 → 채널 관리에서 해당 채널에 PG가 연결되어 있는지 확인해 주세요.';
         const handleRedirectFail = () => {
             if (redirectFailHandled) return;
             redirectFailHandled = true;
-            alert('결제창이 열리지 않았습니다. PG 설정을 확인하거나 잠시 후 다시 시도해 주세요.');
+            alert('결제창이 열리지 않았습니다. PG 설정을 확인하거나 잠시 후 다시 시도해 주세요.' + pgHint);
             if (onFail) onFail();
         };
         try {
@@ -159,7 +160,9 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
             }, 8000);
         } catch (e) {
             redirectFailHandled = true;
-            alert(e?.message || '결제 요청 중 오류가 발생했습니다.');
+            const msg = e?.message || '결제 요청 중 오류가 발생했습니다.';
+            const isPgError = /등록된\s*PG|PG\s*설정\s*정보가\s*없습니다/i.test(msg);
+            alert(msg + (isPgError ? '\n\n' + pgHint : ''));
             if (onFail) onFail();
         }
         return;
@@ -185,7 +188,9 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
             if (onSuccess) onSuccess(response);
         }).catch((e) => {
             const msg = e?.message || e?.errorMessage || '결제 요청 중 오류가 발생했습니다.';
-            alert(msg);
+            const pgHintV2 = ' 관리자: PortOne 콘솔(admin.portone.io) → 결제 연동 → 채널 관리에서 해당 채널에 PG가 연결되어 있는지 확인해 주세요.';
+            const isPgError = /등록된\s*PG|PG\s*설정\s*정보가\s*없습니다/i.test(msg);
+            alert(msg + (isPgError ? '\n\n' + pgHintV2 : ''));
             if (onFail) onFail();
         });
         return;
@@ -211,7 +216,10 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
         if (rsp.success) {
             if (onSuccess) onSuccess(rsp);
         } else {
-            if (rsp.error_msg) alert(`결제 실패: ${rsp.error_msg}`);
+            const errMsg = rsp?.error_msg || '';
+            const pgHintPc = ' 관리자: PortOne 콘솔(admin.portone.io) → 결제 연동 → 채널 관리에서 해당 채널에 PG가 연결되어 있는지 확인해 주세요.';
+            const isPgError = /등록된\s*PG|PG\s*설정\s*정보가\s*없습니다/i.test(errMsg);
+            if (errMsg) alert(`결제 실패: ${errMsg}` + (isPgError ? '\n\n' + pgHintPc : ''));
             if (onFail) onFail();
         }
     });

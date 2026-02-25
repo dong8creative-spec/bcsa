@@ -2457,9 +2457,41 @@ END:VCALENDAR`;
         alert('캘린더 파일이 다운로드되었습니다. 파일을 열어 캘린더에 추가해주세요.');
     };
 
-    const handleSeminarCancel = (seminarId) => {
-        setMySeminars(mySeminars.filter(s => s.id !== seminarId));
-        alert("세미나 신청이 취소되었습니다.");
+    const handleSeminarCancel = async (seminarId) => {
+        if (!currentUser) {
+            alert('로그인이 필요합니다.');
+            return;
+        }
+        const base = (getApiBaseUrl() || '').replace(/\/$/, '');
+        if (!base) {
+            alert('취소 요청을 처리할 수 없습니다. API 주소를 확인해 주세요.');
+            return;
+        }
+        try {
+            const res = await fetch(`${base}/api/payment/cancel`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: currentUser.id || currentUser.uid,
+                    seminarId
+                })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const msg = data?.message || data?.error || '취소 처리에 실패했습니다.';
+                alert(msg === 'application_not_found' ? '해당 신청 내역을 찾을 수 없습니다.' : `취소 실패: ${msg}. 이메일로 문의해 주세요.`);
+                return;
+            }
+            if (data.cancelled) {
+                setMySeminars(prev => prev.filter(s => String(s.id) !== String(seminarId)));
+                alert('세미나 신청이 취소되었습니다. 환불은 영업일 기준 3~5일 내 처리됩니다.');
+            } else {
+                alert('취소 처리에 실패했습니다. 이메일로 문의해 주세요.');
+            }
+        } catch (err) {
+            console.error('Seminar cancel error', err);
+            alert('취소 처리 중 오류가 발생했습니다. 이메일로 문의해 주세요.');
+        }
     };
 
     const handleUpdateProfile = async (updatedData) => {

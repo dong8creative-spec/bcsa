@@ -6,7 +6,7 @@ import { uploadImageToImgBB, resizeImage } from '../utils/imageUtils';
 import { openDaumPostcode } from '../utils/daumPostcode';
 import { Icons } from './Icons';
 import ModalPortal from './ModalPortal';
-
+import { PORTONE_IMP_CODE } from '../constants';
 /** 프로필 이미지 data URL을 ImgBB에 업로드 후 URL 반환. 실패 시 null 또는 throw */
 async function uploadProfileImageToUrl(dataUrl, defaultAvatarUrl) {
     if (!dataUrl || !dataUrl.startsWith('data:')) return defaultAvatarUrl;

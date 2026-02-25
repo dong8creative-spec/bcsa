@@ -220,6 +220,104 @@ app.post('/api/payment/webhook', async (req, res) => {
   }
 });
 
+// 결제 취소(환불) API: 신청 취소 시 PortOne 전액 취소 후 application 삭제, 세미나 인원 감소
+app.post('/api/payment/cancel', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const userId = body.user_id || body.userId;
+    const seminarId = body.seminar_id || body.seminarId;
+    if (!userId || !seminarId) {
+      res.status(400).json({ cancelled: false, error: 'user_id and seminar_id required' });
+      return;
+    }
+
+    const appSnap = await db.collection('applications').where('userId', '==', userId).get();
+    const matched = appSnap.docs
+      .filter(d => String(d.data().seminarId) === String(seminarId))
+      .map(d => ({ id: d.id, ...d.data() }));
+    const byCreated = (a, b) => {
+      const at = a.createdAt?.toMillis?.() ?? a.createdAt?.seconds * 1000 ?? 0;
+      const bt = b.createdAt?.toMillis?.() ?? b.createdAt?.seconds * 1000 ?? 0;
+      return bt - at;
+    };
+    matched.sort(byCreated);
+    const application = matched[0];
+    if (!application) {
+      res.status(404).json({ cancelled: false, error: 'application_not_found' });
+      return;
+    }
+    const merchantUid = application.merchant_uid;
+    if (!merchantUid) {
+      res.status(400).json({ cancelled: false, error: 'no_merchant_uid' });
+      return;
+    }
+
+    const apiKey = process.env.PORTONE_API_KEY;
+    const apiSecret = process.env.PORTONE_API_SECRET;
+    if (!apiKey || !apiSecret) {
+      console.error('[Payment Cancel] PORTONE_API_KEY or PORTONE_API_SECRET not set');
+      res.status(500).json({ cancelled: false, error: 'payment_config_missing' });
+      return;
+    }
+
+    const tokenRes = await axios({
+      url: 'https://api.iamport.kr/users/getToken',
+      method: 'post',
+      headers: { 'Content-Type': 'application/json' },
+      data: { imp_key: apiKey, imp_secret: apiSecret }
+    });
+    const tokenData = tokenRes.data;
+    const accessToken = tokenData?.response?.access_token;
+    if (!accessToken) {
+      console.error('[Payment Cancel] getToken failed', truncateLog(tokenData));
+      res.status(500).json({ cancelled: false, error: 'token_failed' });
+      return;
+    }
+
+    const cancelRes = await axios({
+      url: 'https://api.iamport.kr/payments/cancel',
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`
+      },
+      data: {
+        merchant_uid: merchantUid,
+        reason: body.reason || '세미나 신청 취소'
+      }
+    });
+    const cancelBody = cancelRes.data;
+    if (cancelBody?.code !== 0) {
+      console.warn('[Payment Cancel] PortOne cancel failed', truncateLog(cancelBody));
+      res.status(400).json({
+        cancelled: false,
+        error: 'cancel_failed',
+        message: cancelBody?.message || '결제 취소 실패'
+      });
+      return;
+    }
+
+    await db.collection('applications').doc(application.id).delete();
+    const seminarRef = db.collection('seminars').doc(String(seminarId));
+    const seminarSnap = await seminarRef.get();
+    if (seminarSnap.exists) {
+      const current = Math.max(0, (seminarSnap.data()?.currentParticipants || 0) - 1);
+      await seminarRef.update({ currentParticipants: current });
+    }
+    console.log('[Payment Cancel] application cancelled', application.id, merchantUid);
+    res.status(200).json({ cancelled: true, merchant_uid: merchantUid });
+  } catch (err) {
+    console.error('[Payment Cancel] error', err);
+    const status = err.response?.status;
+    const data = err.response?.data;
+    if (status === 404 || data?.code === -1) {
+      res.status(404).json({ cancelled: false, error: 'payment_not_found', message: data?.message || err.message });
+      return;
+    }
+    res.status(500).json({ cancelled: false, error: 'server_error', message: err.message });
+  }
+});
+
 // Blaze 플랜 외부 네트워크 접속 테스트 엔드포인트
 app.get('/api/network-test', async (req, res, next) => {
   const testUrl = 'https://www.google.com/generate_204';
