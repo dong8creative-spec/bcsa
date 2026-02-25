@@ -65,7 +65,7 @@ export function getPaymentResultRedirectUrl() {
  * @param {Function} params.onSuccess - 표준 결제 시 성공 콜백 (리다이렉트 시에는 /payment/result에서 처리)
  * @param {Function} params.onFail - 표준 결제 시 실패 콜백
  */
-export function requestPayment({ seminar, applicationData, customer, apiBaseUrl, userId, onSuccess, onFail }) {
+export async function requestPayment({ seminar, applicationData, customer, apiBaseUrl, userId, onSuccess, onFail }) {
     if (!PORTONE_IMP_CODE || PORTONE_IMP_CODE === 'imp00000000') {
         alert('결제가 설정되지 않았습니다. 관리자에게 문의해주세요.');
         if (onFail) onFail();
