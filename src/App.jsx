@@ -321,47 +321,6 @@ const App = () => {
     const [currentUser, setCurrentUser] = useState(null);
     const [users, setUsers] = useState([]);
     
-    // PortOne 초기화
-    useEffect(() => {
-        const initPortOne = () => {
-            if (typeof window !== 'undefined' && window.IMP) {
-                try {
-                    // IMP_CODE가 기본값이 아닌 경우에만 초기화
-                    if (PORTONE_IMP_CODE && PORTONE_IMP_CODE !== 'imp00000000') {
-                        window.IMP.init(PORTONE_IMP_CODE);
-                    }
-                } catch (error) {
-                    const msg = error?.message || String(error);
-                    if (/PG|설정|등록/.test(msg)) {
-                        if (import.meta.env.MODE === 'development') {
-                            console.warn('PortOne: PG가 등록되지 않았습니다. 결제 테스트 시 config에서 IMP_CODE와 PG를 설정해주세요.');
-                        }
-                    } else {
-                        console.warn('PortOne 초기화:', msg);
-                    }
-                }
-            } else {
-                // SDK가 아직 로드되지 않은 경우, 로드될 때까지 대기
-                const checkInterval = setInterval(() => {
-                    if (typeof window !== 'undefined' && window.IMP) {
-                        clearInterval(checkInterval);
-                        initPortOne();
-                    }
-                }, 100);
-                
-                // 5초 후 타임아웃
-                setTimeout(() => {
-                    clearInterval(checkInterval);
-                    if (typeof window === 'undefined' || !window.IMP) {
-                        console.warn('PortOne SDK가 로드되지 않았습니다.');
-                    }
-                }, 5000);
-            }
-        };
-        
-        initPortOne();
-    }, []);
-    
     // 승인된 회원만 필터링 (테스트 계정 필터링 제거)
     const filterApprovedMembers = (users) => {
         if (!Array.isArray(users)) return [];

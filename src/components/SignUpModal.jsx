@@ -6,7 +6,7 @@ import { uploadImageToImgBB, resizeImage } from '../utils/imageUtils';
 import { openDaumPostcode } from '../utils/daumPostcode';
 import { Icons } from './Icons';
 import ModalPortal from './ModalPortal';
-import { PORTONE_IMP_CODE } from '../constants';
+import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from '../constants';
 /** 프로필 이미지 data URL을 ImgBB에 업로드 후 URL 반환. 실패 시 null 또는 throw */
 async function uploadProfileImageToUrl(dataUrl, defaultAvatarUrl) {
     if (!dataUrl || !dataUrl.startsWith('data:')) return defaultAvatarUrl;
@@ -373,47 +373,43 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
 
     const handleIdentityVerification = async () => {
         try {
-            const IMP = window.IMP;
-            if (!IMP) {
+            if (typeof window === 'undefined' || !window.PortOne) {
                 alert('PortOne SDK가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
                 return;
             }
-            
-            // IMP_CODE 확인
             if (!PORTONE_IMP_CODE || PORTONE_IMP_CODE === 'imp00000000') {
                 alert('PortOne 가맹점 코드가 설정되지 않았습니다. 관리자에게 문의해주세요.');
                 return;
             }
-            
-            IMP.init(PORTONE_IMP_CODE);
-            
-            IMP.certification({
-                // pg를 지정하지 않으면 PortOne 기본 PG 사용
-                merchant_uid: `cert_${Date.now()}`,
-                m_redirect_url: window.location.href,
-                popup: true,
-                name: formData.name || '본인인증',
-                phone: formData.phone || '',
-            }, (rsp) => {
-                if (rsp.success) {
-                    setFormData({
-                        ...formData,
-                        isIdentityVerified: true,
-                        verifiedName: rsp.name,
-                        verifiedPhone: rsp.phone,
-                        verifiedBirthday: rsp.birthday,
-                        verifiedGender: rsp.gender,
-                        impUid: rsp.imp_uid
-                    });
-                    
-                    alert(`본인인증이 완료되었습니다.\n인증된 이름: ${rsp.name}\n인증된 전화번호: ${rsp.phone}`);
-                } else {
-                    alert(`본인인증에 실패했습니다.\n에러 메시지: ${rsp.error_msg || '알 수 없는 오류'}`);
-                }
+            const identityVerificationId = `cert_${Date.now()}`;
+            const request = {
+                storeId: PORTONE_IMP_CODE,
+                identityVerificationId,
+                customer: {
+                    fullName: formData.name || '본인인증',
+                    phoneNumber: formData.phone || ''
+                },
+                popup: true
+            };
+            if (PORTONE_CHANNEL_KEY) {
+                request.channelKey = PORTONE_CHANNEL_KEY;
+            }
+            const response = await window.PortOne.requestIdentityVerification(request);
+            if (response?.code != null) {
+                alert(`본인인증에 실패했습니다.\n에러 메시지: ${response.message || '알 수 없는 오류'}`);
+                return;
+            }
+            setFormData({
+                ...formData,
+                isIdentityVerified: true,
+                verifiedName: formData.name,
+                verifiedPhone: formData.phone,
+                impUid: response?.identityVerificationTxId ?? response?.identityVerificationId
             });
-            
+            alert(`본인인증이 완료되었습니다.\n인증된 이름: ${formData.name || '-'}\n인증된 전화번호: ${formData.phone || '-'}`);
         } catch (error) {
-            alert('본인인증에 실패했습니다. 다시 시도해주세요.');
+            const msg = error?.message || error?.errorMessage || '다시 시도해주세요.';
+            alert(`본인인증에 실패했습니다. ${msg}`);
         }
     };
 

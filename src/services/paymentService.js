@@ -1,6 +1,6 @@
 /**
  * Payment Service Container
- * User-Agent에 따라 모바일/CEP·UXP는 리다이렉트 결제(m_redirect_url), PC는 표준 결제만 사용
+ * PortOne V2 SDK 전용: 모바일은 redirectUrl 리다이렉트, PC는 프로미스 반환
  */
 
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from '../constants';
@@ -47,7 +47,7 @@ export function clearPaymentPending(merchantUid) {
 }
 
 /**
- * 리다이렉트 결제 결과 URL 기준 (m_redirect_url에 사용)
+ * 리다이렉트 결제 결과 URL 기준 (redirectUrl에 사용)
  */
 export function getPaymentResultRedirectUrl() {
     if (typeof window === 'undefined') return '';
@@ -55,7 +55,7 @@ export function getPaymentResultRedirectUrl() {
 }
 
 /**
- * 결제 요청 단일 진입점
+ * 결제 요청 단일 진입점 (V2 PortOne.requestPayment만 사용)
  * @param {Object} params
  * @param {Object} params.seminar - 프로그램 정보 (title, applicationFee, id 등)
  * @param {Object} params.applicationData - 신청 폼 데이터
@@ -93,40 +93,57 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
     const orderName = (seminar?.title || '프로그램 신청').substring(0, 50);
     const merchantUid = getMerchantUid();
 
-    if (useRedirectPayment()) {
-        const IMP = typeof window !== 'undefined' ? window.IMP : null;
-        if (!IMP) {
-            alert('결제를 불러올 수 없습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.');
-            if (onFail) onFail();
-            return;
-        }
-        if (apiBaseUrl && userId) {
-            try {
-                const base = apiBaseUrl.replace(/\/$/, '');
-                const res = await fetch(`${base}/api/payment/pending`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        merchant_uid: merchantUid,
-                        seminar_id: seminar.id,
-                        user_id: userId,
-                        user_name: fullName,
-                        user_email: email,
-                        user_phone: phoneNumber,
-                        application_data: applicationData || {}
-                    })
-                });
-                const data = res.ok ? await res.json().catch(() => ({})) : null;
-                if (!res.ok || !data?.saved) {
-                    console.warn('paymentService: pending save failed, proceeding with payment window');
-                }
-            } catch (e) {
-                console.warn('paymentService: pending save failed', e);
+    if (typeof window === 'undefined' || !window.PortOne) {
+        alert('결제를 불러올 수 없습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.');
+        if (onFail) onFail();
+        return;
+    }
+
+    const pgHint = ' 관리자: PortOne 콘솔(admin.portone.io) → 결제 연동 → 채널 관리에서 해당 채널에 PG가 연결되어 있는지 확인해 주세요.';
+
+    if (apiBaseUrl && userId) {
+        try {
+            const base = apiBaseUrl.replace(/\/$/, '');
+            const res = await fetch(`${base}/api/payment/pending`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    merchant_uid: merchantUid,
+                    seminar_id: seminar.id,
+                    user_id: userId,
+                    user_name: fullName,
+                    user_email: email,
+                    user_phone: phoneNumber,
+                    application_data: applicationData || {}
+                })
+            });
+            const data = res.ok ? await res.json().catch(() => ({})) : null;
+            if (!res.ok || !data?.saved) {
+                console.warn('paymentService: pending save failed, proceeding with payment window');
             }
+        } catch (e) {
+            console.warn('paymentService: pending save failed', e);
         }
-        setPaymentPending(merchantUid, { seminar, applicationData });
+    }
+    setPaymentPending(merchantUid, { seminar, applicationData });
+
+    const baseRequest = {
+        storeId: PORTONE_IMP_CODE,
+        channelKey: PORTONE_CHANNEL_KEY,
+        paymentId: merchantUid,
+        orderName,
+        totalAmount: amount,
+        currency: 'CURRENCY_KRW',
+        payMethod: 'CARD',
+        customer: { fullName, phoneNumber, email }
+    };
+
+    const isRedirect = useRedirectPayment();
+    if (isRedirect) {
+        const redirectBase = getPaymentResultRedirectUrl();
+        baseRequest.redirectUrl = redirectBase;
+        baseRequest.forceRedirect = true;
         let redirectFailHandled = false;
-        const pgHint = ' 관리자: PortOne 콘솔(admin.portone.io) → 결제 연동 → 채널 관리에서 해당 채널에 PG가 연결되어 있는지 확인해 주세요.';
         const handleRedirectFail = () => {
             if (redirectFailHandled) return;
             redirectFailHandled = true;
@@ -134,88 +151,34 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
             if (onFail) onFail();
         };
         try {
-            IMP.init(PORTONE_IMP_CODE);
-            IMP.request_pay({
-                channelKey: PORTONE_CHANNEL_KEY,
-                pay_method: 'card',
-                merchant_uid: merchantUid,
-                name: orderName,
-                amount,
-                buyer_email: email,
-                buyer_name: fullName,
-                buyer_tel: phoneNumber,
-                m_redirect_url: getPaymentResultRedirectUrl()
-            }, () => {
-                // 리다이렉트 방식에서는 콜백이 실행되지 않음. 결과는 /payment/result에서만 처리
-            });
-            setTimeout(() => {
-                if (typeof window === 'undefined') return;
-                if (window.location.pathname === '/payment/result') return;
-                handleRedirectFail();
-            }, 8000);
+            await window.PortOne.requestPayment(baseRequest);
+            // 리다이렉트 방식에서는 여기 도달하지 않음. 결과는 /payment/result에서만 처리
         } catch (e) {
-            redirectFailHandled = true;
-            const msg = e?.message || '결제 요청 중 오류가 발생했습니다.';
+            const msg = e?.message || e?.errorMessage || '결제 요청 중 오류가 발생했습니다.';
             const isPgError = /등록된\s*PG|PG\s*설정\s*정보가\s*없습니다/i.test(msg);
             alert(msg + (isPgError ? '\n\n' + pgHint : ''));
             if (onFail) onFail();
         }
+        setTimeout(() => {
+            if (typeof window === 'undefined') return;
+            if (window.location.pathname === '/payment/result') return;
+            handleRedirectFail();
+        }, 8000);
         return;
     }
 
-    if (typeof window !== 'undefined' && window.PortOne) {
-        const paymentPromise = window.PortOne.requestPayment({
-            storeId: PORTONE_IMP_CODE,
-            channelKey: PORTONE_CHANNEL_KEY,
-            paymentId: merchantUid,
-            orderName,
-            totalAmount: amount,
-            currency: 'CURRENCY_KRW',
-            payMethod: 'CARD',
-            customer: { fullName, phoneNumber, email }
-        });
-        paymentPromise.then((response) => {
-            if (response?.code != null) {
-                alert(response.message || '결제 실패');
-                if (onFail) onFail();
-                return;
-            }
-            if (onSuccess) onSuccess(response);
-        }).catch((e) => {
-            const msg = e?.message || e?.errorMessage || '결제 요청 중 오류가 발생했습니다.';
-            const pgHintV2 = ' 관리자: PortOne 콘솔(admin.portone.io) → 결제 연동 → 채널 관리에서 해당 채널에 PG가 연결되어 있는지 확인해 주세요.';
-            const isPgError = /등록된\s*PG|PG\s*설정\s*정보가\s*없습니다/i.test(msg);
-            alert(msg + (isPgError ? '\n\n' + pgHintV2 : ''));
+    try {
+        const response = await window.PortOne.requestPayment(baseRequest);
+        if (response?.code != null) {
+            alert(response.message || '결제 실패');
             if (onFail) onFail();
-        });
-        return;
-    }
-
-    const IMP = typeof window !== 'undefined' ? window.IMP : null;
-    if (!IMP) {
-        alert('결제를 불러올 수 없습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.');
-        if (onFail) onFail();
-        return;
-    }
-    IMP.init(PORTONE_IMP_CODE);
-    IMP.request_pay({
-        channelKey: PORTONE_CHANNEL_KEY,
-        pay_method: 'card',
-        merchant_uid: merchantUid,
-        name: orderName,
-        amount,
-        buyer_email: email,
-        buyer_name: fullName,
-        buyer_tel: phoneNumber
-    }, (rsp) => {
-        if (rsp.success) {
-            if (onSuccess) onSuccess(rsp);
-        } else {
-            const errMsg = rsp?.error_msg || '';
-            const pgHintPc = ' 관리자: PortOne 콘솔(admin.portone.io) → 결제 연동 → 채널 관리에서 해당 채널에 PG가 연결되어 있는지 확인해 주세요.';
-            const isPgError = /등록된\s*PG|PG\s*설정\s*정보가\s*없습니다/i.test(errMsg);
-            if (errMsg) alert(`결제 실패: ${errMsg}` + (isPgError ? '\n\n' + pgHintPc : ''));
-            if (onFail) onFail();
+            return;
         }
-    });
+        if (onSuccess) onSuccess(response);
+    } catch (e) {
+        const msg = e?.message || e?.errorMessage || '결제 요청 중 오류가 발생했습니다.';
+        const isPgError = /등록된\s*PG|PG\s*설정\s*정보가\s*없습니다/i.test(msg);
+        alert(msg + (isPgError ? '\n\n' + pgHint : ''));
+        if (onFail) onFail();
+    }
 }
