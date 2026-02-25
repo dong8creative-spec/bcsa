@@ -30,8 +30,6 @@
   - `siteContent` — 사이트 콘텐츠
   - `searchLogs` — 검색 로그
   - `restaurants` — 맛집
-  - `bookmarks` — 즐겨찾기 (루트 컬렉션)
-  - `users/{userId}/bookmarks` — 사용자별 즐겨찾기 (서브컬렉션)
 
 ### 2.3 Storage
 - **파일**: `src/firebase.js` (getStorage), `src/utils/imageUtils.js`
@@ -47,9 +45,7 @@
 ## 3. 보안 규칙 (Rules)
 
 ### 3.1 Firestore (`firestore.rules`)
-- **현재 정의된 규칙**: `users/{userId}/bookmarks/{bookmarkId}` 만 존재
-  - `read, write`: `request.auth != null && request.auth.uid == userId`
-- **주의**: `users`, `seminars`, `posts`, `applications`, `settings`, `siteContent`, `searchLogs`, `restaurants`, 루트 `bookmarks` 에 대한 규칙이 **파일에는 없음**.
+- **주의**: `users`, `seminars`, `posts`, `applications`, `settings`, `siteContent`, `searchLogs`, `restaurants` 등에 대한 규칙이 **파일에는 없음**.
   - 이 rules 파일을 그대로 배포하면 위 컬렉션들은 **규칙 불일치로 접근 거부**될 수 있음.
   - 콘솔에서만 규칙을 관리 중이거나, 아직 이 파일로 배포하지 않았다면 콘솔 규칙이 적용 중일 수 있음.
 

@@ -27,7 +27,6 @@ import AboutView from './pages/AboutView';
 import MyPageView from './pages/MyPageView';
 import AllMembersView from './pages/AllMembersView';
 import AllSeminarsView from './pages/AllSeminarsView';
-import { TenderTestView } from './pages/TenderTestView';
 import SignUpPage from './pages/SignUpPage';
 import CalendarSection from './components/CalendarSection';
 import { Icons } from './components/Icons';
@@ -261,15 +260,6 @@ const App = () => {
     const [membersListPage, setMembersListPage] = useState(1);
     const navigate = useNavigate();
     const location = useLocation();
-
-    // 개발 모드에서 테스트 페이지 접근을 위한 URL 파라미터 체크
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const testView = urlParams.get('test');
-        if (testView === 'tender' && import.meta.env.MODE === 'development') {
-            setCurrentView('tenderTest');
-        }
-    }, []);
 
     // 햄버거 클릭을 전역 이벤트로도 수신 (클릭이 콜백보다 확실히 전달되도록)
     useEffect(() => {
@@ -1222,7 +1212,6 @@ const App = () => {
                     '커뮤니티': parsed['커뮤니티'] !== undefined ? parsed['커뮤니티'] : true,
                     '후원': parsed['후원'] !== undefined ? parsed['후원'] : true,
                     '부산맛집': parsed['부산맛집'] !== undefined ? parsed['부산맛집'] : true,
-                    '입찰공고': parsed['입찰공고'] !== undefined ? parsed['입찰공고'] : true,
                     ...parsed
                 };
             }
@@ -1236,8 +1225,7 @@ const App = () => {
             '부청사 회원': true,
             '커뮤니티': true,
             '후원': true,
-            '부산맛집': true,
-            '입찰공고': true
+            '부산맛집': true
         };
     };
 
@@ -1251,8 +1239,7 @@ const App = () => {
         '부청사 회원': '부청사 회원',
         '커뮤니티': '커뮤니티',
         '후원': '후원',
-        '부산맛집': '부산맛집',
-        '입찰공고': '입찰공고'
+        '부산맛집': '부산맛집'
     };
 
     // 로컬 스토리지에서 메뉴 명칭 로드
@@ -1322,7 +1309,7 @@ const App = () => {
     }, []);
 
     // 메뉴 순서 관리
-    const defaultMenuOrder = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '후원', '부산맛집', '입찰공고'];
+    const defaultMenuOrder = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '후원', '부산맛집'];
     
     const loadMenuOrderFromStorage = () => {
         try {
@@ -2659,13 +2646,11 @@ END:VCALENDAR`;
 
     
     // 모바일 메뉴: 모달 형태로 최상단 노출, PC와 동일하게 menuOrder·menuEnabled 기준으로 표시
-    const MEMBERS_ONLY_MENUS = ['부청사 회원', '커뮤니티', '입찰공고'];
+    const MEMBERS_ONLY_MENUS = ['부청사 회원', '커뮤니티'];
     const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames, menuOrder, currentUser }) => {
         if (!isOpen) return null;
         const isLoggedIn = Boolean(currentUser && (currentUser.id || currentUser.uid));
-        const visibleItems = (menuOrder || []).filter(item =>
-            menuEnabled[item] || MEMBERS_ONLY_MENUS.includes(item) || (import.meta.env.MODE === 'development' && item === '입찰공고')
-        );
+        const visibleItems = (menuOrder || []).filter(item => menuEnabled[item] || MEMBERS_ONLY_MENUS.includes(item));
         const handleMenuClick = (item) => {
             onNavigate(item);
             onClose();
@@ -2743,9 +2728,8 @@ END:VCALENDAR`;
             alert('준비중인 서비스입니다.');
             return;
         }
-        // 비활성화된 메뉴 클릭 시 준비중 알림 (개발 모드에서는 입찰공고 테스트 필드 허용)
-        const testFieldOpen = import.meta.env.MODE === 'development' && item === '입찰공고';
-        if (!testFieldOpen && !menuEnabled[item]) {
+        // 비활성화된 메뉴 클릭 시 준비중 알림
+        if (!menuEnabled[item]) {
             alert('준비중인 서비스입니다.');
             return;
         }
@@ -2783,15 +2767,6 @@ END:VCALENDAR`;
         } else if (item === '부산맛집') { 
             setCurrentView('restaurants'); 
             setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
-        } else if (item === '입찰공고') { 
-            if (!currentUser) {
-                alert('로그인이 필요한 서비스입니다.');
-                setPendingView('tenderTest');
-                setShowLoginModal(true);
-                return;
-            }
-            setCurrentView('tenderTest'); 
-            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
         } else {
             // 처리되지 않는 메뉴 항목에 대한 fallback
             console.error(`[Navigation] 처리되지 않는 메뉴 항목: "${item}"`);
@@ -2811,7 +2786,6 @@ END:VCALENDAR`;
         else if (item === '커뮤니티' && (currentView === 'community' || currentView === 'notice')) isActive = true;
         else if (item === '후원' && currentView === 'donation') isActive = true;
         else if (item === '부산맛집' && (currentView === 'restaurants' || currentView === 'restaurantDetail' || currentView === 'restaurantForm')) isActive = true;
-        else if (item === '입찰공고' && currentView === 'tenderTest') isActive = true;
         return `${baseClass} ${isActive ? 'active' : ''}`;
     }
 
@@ -3182,29 +3156,6 @@ END:VCALENDAR`;
             return null;
         }
         if (currentView === 'about') return <AboutView onBack={() => setCurrentView('home')} content={content} pageTitles={pageTitles} />;
-        if (currentView === 'tenderTest' && !currentUser) {
-            return (
-                <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
-                    <div className="container mx-auto max-w-2xl">
-                        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 text-center">
-                            <Icons.AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-                            <h2 className="text-xl font-bold text-dark mb-2">로그인이 필요합니다</h2>
-                            <p className="text-gray-600 mb-6">입찰공고는 로그인한 회원만 볼 수 있습니다.</p>
-                            <div className="flex flex-wrap justify-center gap-3">
-                                <button type="button" onClick={() => { setPendingView('tenderTest'); setShowLoginModal(true); }} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">로그인</button>
-                                <button type="button" onClick={() => setCurrentView('home')} className="px-6 py-3 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5">홈으로</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-        if (currentView === 'tenderTest' && !menuEnabled['입찰공고'] && import.meta.env.MODE !== 'development') {
-            alert('준비중인 서비스입니다.');
-            setCurrentView('home');
-            return null;
-        }
-        if (currentView === 'tenderTest') return <TenderTestView onBack={() => setCurrentView('home')} pageTitles={pageTitles} />;
         
         // 예상치 못한 currentView 값에 대한 fallback (항상 유효한 React 요소 반환 보장)
         // currentView가 'home'이 아니고 위의 모든 조건에 맞지 않으면 홈으로 리다이렉트
@@ -3216,7 +3167,7 @@ END:VCALENDAR`;
                 console.warn('[RenderView] 사용 가능한 뷰:', [
                     'home', 'myPage', 'allMembers', 'allSeminars', 
                     'community', 'notice', 'donation', 'restaurants',
-                    'restaurantDetail', 'restaurantForm', 'about', 'tenderTest'
+                    'restaurantDetail', 'restaurantForm', 'about'
                 ]);
             }
             

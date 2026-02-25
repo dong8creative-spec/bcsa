@@ -11,7 +11,7 @@ export const getApiBaseUrl = () => {
 
 /**
  * API 요청을 수행하는 통합 함수
- * @param {string} endpoint - API 엔드포인트 경로 (예: '/api/bid-search')
+ * @param {string} endpoint - API 엔드포인트 경로 (예: '/api/...')
  * @param {Object} options - 요청 옵션
  * @param {string} options.method - HTTP 메서드 (기본값: 'GET')
  * @param {Object} options.params - URL 쿼리 파라미터 (axios가 자동으로 쿼리 스트링으로 변환)

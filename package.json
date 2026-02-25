@@ -19,10 +19,6 @@
     "deploy:functions": "firebase deploy --only functions",
     "emulators": "firebase emulators:start",
     "emulators:functions": "firebase emulators:start --only functions",
-    "verify:bid-search": "node scripts/verify-bid-search.mjs",
-    "verify:busan": "node scripts/verify-bid-search.mjs --keyword 부산",
-    "compare:bid-search": "node scripts/verify-bid-search.mjs --keyword 부산 --strict",
-    "test:bid-search-keywords": "node scripts/verify-bid-search-keywords.mjs",
     "telemetry": "node scripts/telemetry-server.mjs",
     "close-past-seminars": "node scripts/close-past-seminars.mjs",
     "close-past-seminars:dry-run": "node scripts/close-past-seminars.mjs --dry-run"

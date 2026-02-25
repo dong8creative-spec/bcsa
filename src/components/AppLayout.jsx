@@ -456,11 +456,11 @@ const AppLayout = (props) => {
                         {!isMobile && (
                             <nav className={`flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-3 relative whitespace-nowrap ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md shadow-glass'}`}>
                                 {menuOrder.filter(item => {
-                                        const enabled = menuEnabled[item] || (import.meta.env.MODE === 'development' && item === '입찰공고');
+                                        const enabled = menuEnabled[item];
                                         if (!enabled) return false;
                                         return true;
                                     }).map((item, idx) => {
-                                        const membersOnly = ['부청사 회원', '커뮤니티', '입찰공고'];
+                                        const membersOnly = ['부청사 회원', '커뮤니티'];
                                         const isDisabled = membersOnly.includes(item) && !currentUser;
                                         return (
                                     <div key={idx} className="flex flex-col items-center gap-1 relative flex-shrink-0 min-w-fit">

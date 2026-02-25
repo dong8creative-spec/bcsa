@@ -91,7 +91,7 @@ const SortableMenuItem = ({ id, menu, enabled, name, onToggle, onNameChange }) =
  * 메뉴 관리 컴포넌트
  */
 export const MenuManagement = () => {
-  const defaultMenuOrder = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '후원', '부산맛집', '입찰공고'];
+  const defaultMenuOrder = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '후원', '부산맛집'];
   
   const [menuOrder, setMenuOrder] = useState(defaultMenuOrder);
   const [menuEnabled, setMenuEnabled] = useState({});

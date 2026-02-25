@@ -43,14 +43,13 @@ http://127.0.0.1:5173
 
 - **[빠른 시작 가이드](빠른_시작.md)** - 5분 안에 시작하기
 - **[전체 테스트 가이드](로컬_테스트_가이드.md)** - 모든 기능 상세 테스트
-- **[기존 입찰공고 가이드](LOCAL_TEST.md)** - 입찰공고 기능 특화
+- **[로컬 테스트](LOCAL_TEST.md)** - 프로그램·기능 테스트
 
 ---
 
 ## 🎯 주요 기능
 
 ### 사용자 기능
-- ✅ **입찰공고 검색**: 다양한 조건으로 입찰공고 조회
 - ✅ **회원 관리**: 회원가입, 로그인, 마이페이지
 - ✅ **커뮤니티**: 게시글 작성, 댓글, 검색
 - ✅ **맛집 정보**: 카카오맵 연동 맛집 정보
@@ -86,7 +85,6 @@ http://127.0.0.1:5173
 - **Cloud Functions**: 서버리스 함수
 
 ### External APIs
-- **입찰공고 API**: 나라장터 입찰 정보
 - **Kakao Map API**: 지도 서비스
 - **Daum Postcode API**: 주소 검색
 - **PortOne (아임포트)**: 결제 서비스
@@ -101,7 +99,6 @@ bcsa/
 │   ├── components/          # 재사용 가능한 컴포넌트
 │   │   ├── AppLayout.jsx
 │   │   ├── RestaurantsListView.jsx
-│   │   ├── TenderSearchFilter.jsx
 │   │   └── ...
 │   ├── pages/               # 페이지 컴포넌트
 │   │   ├── Admin/           # 관리자 페이지
@@ -152,7 +149,7 @@ bcsa/
 개발 환경에서는 `.env.development` 파일이 자동으로 로드됩니다:
 
 ```env
-VITE_API_URL=https://apibid-oytjv32jna-du.a.run.app
+VITE_API_URL=https://your-api-url
 ```
 
 프로덕션 환경에서는 `.env.production` 파일을 사용합니다.
@@ -179,13 +176,6 @@ VITE_API_URL=https://apibid-oytjv32jna-du.a.run.app
 - [ ] 네비게이션 메뉴 동작
 - [ ] 반응형 디자인 (모바일/태블릿/데스크톱)
 - [ ] 로고 및 이미지 표시
-
-### 입찰공고 (핵심 기능)
-- [ ] 기본 검색 (공고명, 날짜, 공고종류)
-- [ ] 상세조건 펼치기/접기
-- [ ] 검색 결과 표시
-- [ ] 초기화 버튼
-- [ ] API 연동 확인 (콘솔 로그)
 
 ### 회원 기능
 - [ ] 회원가입
@@ -297,7 +287,7 @@ npm install
 ### Console 탭
 - 에러 메시지 확인
 - 디버그 로그 확인
-- `DEBUG_G2B_PARAMS`, `[TenderSearchFilter]` 등의 로그 확인
+- 에러 및 디버그 로그 확인
 
 ### Network 탭
 - API 요청/응답 확인
