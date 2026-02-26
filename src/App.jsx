@@ -763,23 +763,22 @@ const App = () => {
         });
     }, [currentView, seminarsData]);
 
-    // 메인페이지 진입 시 다가오는 프로그램 팝업 표시 (최대 3개)
+    // 메인페이지 진입 시 다가오는 프로그램 팝업 표시 (최대 3개). 신청 여부와 관계없이 표시, 재진입/일정시간 후 다시 표시.
     useEffect(() => {
-        // 이미 표시된 경우, 24시간 숨김 중, 또는 설정 중인 경우 return
+        // 24시간 숨김 중이면 제외 (직접 닫거나 24h 체크 후 일정시간·재진입 시에는 다시 뜨도록 busan_ycc_popup_shown은 사용하지 않음)
         try {
             if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                if (localStorage.getItem('busan_ycc_popup_shown') === 'true' || popupShownRef.current) {
-                    return;
-                }
                 const hideUntil = localStorage.getItem('busan_ycc_popup_hide_until');
                 if (hideUntil && Date.now() < Number(hideUntil)) {
                     return;
                 }
+                if (popupShownRef.current) {
+                    return;
+                }
             }
         } catch (error) {
-            // localStorage 접근 실패 시 무시
         }
-        
+
         if (currentView === 'home' && seminarsData.length > 0) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -823,10 +822,8 @@ const App = () => {
                     ...s,
                     isDeadlineSoon: isDeadlineSoon(s)
                 }));
-                // 이미 신청한 프로그램은 팝업에서 제외 (신청한 사람은 해당 프로그램 팝업이 뜨지 않음)
-                const appliedIds = new Set((mySeminars || []).map(m => m.id).filter(Boolean));
-                const toShow = seminarsWithDeadline.filter(p => !appliedIds.has(p.id));
-                // 팝업 이미지 사전 로딩 (캐시 미적중 시 대비, 위 useEffect에서 이미 앞당겨 preload함)
+                // 신청 여부와 관계없이 모두 팝업에 표시 (신청한 사람은 버튼에 "신청해주셔서 감사합니다" 표기)
+                const toShow = seminarsWithDeadline;
                 toShow.slice(0, 3).forEach((p) => {
                     if (p.img && typeof p.img === 'string') {
                         const img = new Image();
@@ -2260,13 +2257,10 @@ const App = () => {
         setCurrentView('community');
     };
 
-    // 팝업 닫기 및 표시 기록 함수
+    // 팝업 닫기 (재진입 시 다시 뜨도록 영구 저장하지 않음)
     const closePopupAndMarkAsShown = () => {
         setPopupPrograms([]);
-        try {
-            localStorage.setItem('busan_ycc_popup_shown', 'true');
-        } catch (e) {
-        }
+        popupShownRef.current = false;
     };
 
     // 24시간 동안 팝업 보이지 않게 하고 닫기
@@ -3626,6 +3620,7 @@ END:VCALENDAR`;
             onGoHome={onGoHome}
             popupPrograms={popupPrograms}
             setPopupPrograms={setPopupPrograms}
+            appliedProgramIds={new Set((mySeminars || []).map(m => String(m.id)).filter(Boolean))}
             closePopupAndMarkAsShown={closePopupAndMarkAsShown}
             closePopupAndHide24h={closePopupAndHide24h}
             isPopupApplyModalOpen={isPopupApplyModalOpen}

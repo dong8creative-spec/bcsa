@@ -49,6 +49,7 @@ const AppLayout = (props) => {
         onGoHome,
         popupPrograms,
         setPopupPrograms,
+        appliedProgramIds,
         closePopupAndMarkAsShown,
         closePopupAndHide24h,
         isPopupApplyModalOpen,
@@ -178,15 +179,21 @@ const AppLayout = (props) => {
                                             </div>
                                         )}
                                     </div>
-                                    {/* 프로그램 신청하기 */}
+                                    {/* 프로그램 신청하기 / 신청해주셔서 감사합니다 */}
                                     <div className="p-4 pt-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => onNavigateToProgramApply && onNavigateToProgramApply(program)}
-                                            className="w-full py-3.5 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm"
-                                        >
-                                            프로그램 신청하기
-                                        </button>
+                                        {(appliedProgramIds && appliedProgramIds.has(String(program.id))) ? (
+                                            <div className="w-full py-3.5 bg-gray-200 text-gray-700 font-bold rounded-xl text-sm text-center cursor-default">
+                                                신청해주셔서 감사합니다
+                                            </div>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => onNavigateToProgramApply && onNavigateToProgramApply(program)}
+                                                className="w-full py-3.5 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm"
+                                            >
+                                                프로그램 신청하기
+                                            </button>
+                                        )}
                                         {/* 24시간 동안 팝업 보이지 않기 */}
                                         <label className="mt-4 flex items-center gap-2 cursor-pointer group">
                                             <input
