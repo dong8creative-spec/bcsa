@@ -41,6 +41,7 @@ import ProgramApplyView from './pages/ProgramApplyView';
 import PrivacyPolicyView from './pages/PrivacyPolicyView';
 import TermsOfServiceView from './pages/TermsOfServiceView';
 import RefundPolicyView from './pages/RefundPolicyView';
+import ProgramPopupWindowView from './pages/ProgramPopupWindowView';
 import AppLayout from './components/AppLayout';
 import ModalPortal from './components/ModalPortal';
 import { KakaoMapModal } from './pages/Admin/components/KakaoMapModal';
@@ -49,6 +50,9 @@ const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d
 
 /** 후원 기능 비노출: true면 메뉴·홈 섹션·뷰 접근 모두 없음. 다시 켜려면 false로 변경 */
 const DONATION_FEATURE_DISABLED = true;
+
+/** 프로그램 팝업을 별도 창(새 창)으로 띄울지 여부. true면 오버레이 대신 window.open으로 /program-popup 열기 */
+const POPUP_AS_NEW_WINDOW = false;
 
 /** 메인 검색용 부산 지역구 목록 (구·군) */
 const BUSAN_DISTRICTS = ['전체', '해운대구', '부산진구', '동래구', '남구', '북구', '중구', '영도구', '동구', '서구', '사하구', '금정구', '연제구', '수영구', '사상구', '기장군'];
@@ -822,7 +826,6 @@ const App = () => {
                     ...s,
                     isDeadlineSoon: isDeadlineSoon(s)
                 }));
-                // 신청 여부와 관계없이 모두 팝업에 표시 (신청한 사람은 버튼에 "신청해주셔서 감사합니다" 표기)
                 const toShow = seminarsWithDeadline;
                 toShow.slice(0, 3).forEach((p) => {
                     if (p.img && typeof p.img === 'string') {
@@ -830,9 +833,18 @@ const App = () => {
                         img.src = p.img;
                     }
                 });
-                // 팝업 설정 전에 ref를 true로 설정하여 중복 방지
                 popupShownRef.current = true;
-                setPopupPrograms(toShow.length > 0 ? toShow : []);
+                const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+                if (POPUP_AS_NEW_WINDOW && toShow.length > 0 && !isMobile) {
+                    try {
+                        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                        window.open(origin + '/program-popup', 'bcsaProgramPopup', 'width=460,height=720,scrollbars=yes,resizable=yes');
+                    } catch (e) {
+                        setPopupPrograms(toShow);
+                    }
+                } else {
+                    setPopupPrograms(toShow.length > 0 ? toShow : []);
+                }
             } else {
                 setPopupPrograms([]);
             }
@@ -3595,6 +3607,16 @@ END:VCALENDAR`;
             );
         }
     };
+
+    if (location.pathname === '/program-popup') {
+        return (
+            <ProgramPopupWindowView
+                seminarsData={seminarsData}
+                appliedProgramIds={new Set((mySeminars || []).map(m => String(m.id)).filter(Boolean))}
+            />
+        );
+    }
+
     return (
     <div className="app-main">
         {/* 모바일 메뉴: 상태가 있는 App에서 직접 렌더해 클릭 미반응 방지 */}

@@ -136,7 +136,7 @@ const AppLayout = (props) => {
             {/* 프로그램 팝업: 포스터 + X + 프로그램 신청하기 + 24시간 보이지 않기. 모바일 1개, PC 최대 3개 */}
             {popupPrograms && popupPrograms.length > 0 && !showProfileIncompleteBanner ? (
                 <ModalPortal>
-                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) closePopupAndMarkAsShown(); }}>
+                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) closePopupAndMarkAsShown(); }}>
                     <div className="flex flex-col md:flex-row gap-6 max-w-6xl w-full overflow-x-auto py-4 max-h-[95vh] overflow-y-auto justify-center items-start" onClick={(e) => e.stopPropagation()}>
                         {(() => {
                             const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
