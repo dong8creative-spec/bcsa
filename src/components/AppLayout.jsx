@@ -50,6 +50,7 @@ const AppLayout = (props) => {
         popupPrograms,
         setPopupPrograms,
         closePopupAndMarkAsShown,
+        closePopupAndHide24h,
         isPopupApplyModalOpen,
         applySeminarFromPopup,
         setIsPopupApplyModalOpen,
@@ -130,246 +131,83 @@ const AppLayout = (props) => {
 
     return (
         <div className="min-h-screen flex flex-col bg-white text-dark font-sans selection:bg-accent/30 selection:text-brand relative">
-            {/* 프로그램 팝업: 필수정보 팝업이 떠 있으면 표시하지 않음(순차). 모바일 1개, PC 최대 3개 */}
+            {/* 프로그램 팝업: 포스터 + X + 프로그램 신청하기 + 24시간 보이지 않기. 모바일 1개, PC 최대 3개 */}
             {popupPrograms && popupPrograms.length > 0 && !showProfileIncompleteBanner ? (
                 <ModalPortal>
                 <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) closePopupAndMarkAsShown(); }}>
-                    <div className="flex flex-col md:flex-row gap-4 max-w-6xl w-full overflow-x-auto py-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-col md:flex-row gap-6 max-w-6xl w-full overflow-x-auto py-4 max-h-[95vh] overflow-y-auto justify-center items-start" onClick={(e) => e.stopPropagation()}>
                         {(() => {
                             const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
                             const programsToShow = isMobile ? popupPrograms.slice(0, 1) : popupPrograms;
-                            return programsToShow.map((program, idx) => {
-                            if (isMobile) {
-                                // 모바일: 간단한 팝업 (이미지 + 더 자세히 알아보기 버튼만)
-                                return (
-                                    <div 
-                                        key={program.id || idx} 
-                                        className="bg-white rounded-2xl shadow-2xl w-[85vw] max-w-sm overflow-hidden relative mx-auto max-md:scale-[0.8] origin-center"
-                                    >
-                                        {/* 이미지 영역 (3:4 비율) */}
-                                        <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
-                                            {/* 마감임박 마크 */}
-                                            {program.isDeadlineSoon ? (
-                                                <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
-                                                    마감임박
-                                                </div>
-                                            ) : null}
-                                            {/* 닫기 버튼 */}
-                                            <button 
-                                                type="button" 
-                                                onClick={() => {
-                                                    const remaining = popupPrograms.filter((_, i) => i !== idx);
-                                                    if (remaining.length === 0) {
-                                                        closePopupAndMarkAsShown();
-                                                    } else {
-                                                        setPopupPrograms(remaining);
-                                                    }
-                                                }} 
-                                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 z-10 shadow-md"
-                                            >
-                                                <Icons.X size={18} />
-                                            </button>
-                                            {/* 이미지 */}
-                                            {program.img ? (
-                                                <img 
-                                                    src={program.img} 
-                                                    alt={program.title} 
-                                                    className="w-full h-full object-cover object-center"
-                                                    loading="eager"
-                                                    fetchpriority="high"
-                                                    decoding="async"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                    <Icons.Calendar size={48} />
-                                                </div>
-                                            )}
-                                        </div>
-                                        {/* 더 자세히 알아보기 버튼 */}
-                                        <button 
+                            return programsToShow.map((program, idx) => (
+                                <div
+                                    key={program.id || idx}
+                                    className="bg-white rounded-2xl shadow-2xl overflow-hidden flex-shrink-0 w-[85vw] max-w-sm mx-auto md:max-w-[320px] flex flex-col"
+                                >
+                                    {/* 포스터 + 오른쪽 상단 X */}
+                                    <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
+                                        {program.isDeadlineSoon ? (
+                                            <div className="absolute top-3 left-3 z-20 px-2.5 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+                                                마감임박
+                                            </div>
+                                        ) : null}
+                                        <button
                                             type="button"
                                             onClick={() => {
-                                                closePopupAndMarkAsShown();
-                                                setCurrentView('allSeminars');
-                                                // 해당 프로그램을 선택하여 상세 모달 열기
-                                                setTimeout(() => {
-                                                    const allSeminarsView = document.querySelector('[data-view="allSeminars"]');
-                                                    if (allSeminarsView) {
-                                                        // 프로그램 상세 모달을 열기 위해 이벤트 트리거
-                                                        const programCard = Array.from(allSeminarsView.querySelectorAll('[data-program-id]')).find(
-                                                            el => el.getAttribute('data-program-id') === String(program.id)
-                                                        );
-                                                        if (programCard) {
-                                                            programCard.click();
-                                                        }
-                                                    }
-                                                }, 100);
+                                                const remaining = popupPrograms.filter((_, i) => i !== idx);
+                                                if (remaining.length === 0) closePopupAndMarkAsShown();
+                                                else setPopupPrograms(remaining);
                                             }}
-                                            className="w-full py-4 bg-brand text-white font-bold rounded-b-2xl hover:bg-blue-700 transition-colors"
+                                            className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-full bg-white/95 hover:bg-white text-gray-700 z-10 shadow-md border border-gray-200"
+                                            aria-label="닫기"
                                         >
-                                            더 자세히 알아보기
+                                            <Icons.X size={20} />
                                         </button>
-                                    </div>
-                                );
-                            } else {
-                                // 데스크톱: 가로 레이아웃
-                                return (
-                                    <div 
-                                        key={program.id || idx} 
-                                        className="bg-white rounded-3xl shadow-2xl w-full md:w-auto md:max-w-5xl flex-shrink-0 overflow-hidden relative mx-auto flex flex-col md:flex-row max-h-[100dvh] md:max-h-[90vh] max-md:scale-[0.8] origin-center"
-                                    >
-                                        {/* 이미지 영역 (왼쪽) */}
-                                        <div className="w-full md:flex-[0_0_400px] lg:flex-[0_0_450px] relative bg-gray-50 flex items-center justify-center overflow-hidden" style={{ minHeight: '400px' }}>
-                                            {/* 마감임박 마크 */}
-                                            {program.isDeadlineSoon ? (
-                                                <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
-                                                    마감임박
-                                                </div>
-                                            ) : null}
-                                            {/* 닫기 버튼 */}
-                                            <button 
-                                                type="button" 
-                                                onClick={() => {
-                                                    const remaining = popupPrograms.filter((_, i) => i !== idx);
-                                                    if (remaining.length === 0) {
-                                                        closePopupAndMarkAsShown();
-                                                    } else {
-                                                        setPopupPrograms(remaining);
-                                                    }
-                                                }} 
-                                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 hover:bg-white text-gray-700 z-10 shadow-md"
-                                            >
-                                                <Icons.X size={18} />
-                                            </button>
-                                            {/* 이미지 */}
-                                            {program.img ? (
-                                                <img 
-                                                    src={program.img} 
-                                                    alt={program.title} 
-                                                    className="w-full h-full object-contain"
-                                                    style={{ maxHeight: '90vh' }}
-                                                    loading="eager"
-                                                    fetchpriority="high"
-                                                    decoding="async"
-                                                />
-                                            ) : null}
-                                        </div>
-                                        
-                                        {/* 정보 영역 (오른쪽) */}
-                                        <div className="flex-1 min-h-0 p-6 overflow-y-auto modal-scroll" style={{ minWidth: '300px', maxHeight: '100dvh' }}>
-                                            <h3 className="text-xl font-bold text-dark mb-3">{program.title}</h3>
-                                            
-                                            {/* 카테고리 및 유료/무료 배지 */}
-                                            <div className="flex items-center gap-2 mb-3">
-                                                {program.category ? (
-                                                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${getCategoryColor(program.category)}`}>
-                                                        {program.category}
-                                                    </span>
-                                                ) : null}
-                                                <span className="text-xs font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">
-                                                    {(() => {
-                                                        const fee = program.applicationFee != null ? Number(program.applicationFee) : 0;
-                                                        const price = program.price != null ? Number(program.price) : 0;
-                                                        const isPaid = fee > 0 || (program.requiresPayment && price > 0);
-                                                        const amount = fee > 0 ? fee : price;
-                                                        return isPaid ? (amount > 0 ? `${amount.toLocaleString()}원` : '유료') : '무료';
-                                                    })()}
-                                                </span>
+                                        {program.img ? (
+                                            <img
+                                                src={program.img}
+                                                alt={program.title}
+                                                className="w-full h-full object-cover object-center"
+                                                loading="eager"
+                                                fetchPriority="high"
+                                                decoding="async"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                                                <Icons.Calendar size={48} />
                                             </div>
-                                            
-                                            {/* 날짜, 장소, 신청현황 */}
-                                            <div className="space-y-2 text-sm text-gray-600 mb-4">
-                                                <div className="flex items-center gap-2">
-                                                    <Icons.Calendar size={16} className="text-brand" /> {program.date}
-                                                </div>
-                                                {program.location ? (
-                                                    <div className="flex items-center gap-2">
-                                                        <Icons.MapPin size={16} className="text-brand" /> {program.location}
-                                                    </div>
-                                                ) : null}
-                                                <div className="flex items-center gap-2">
-                                                    <Icons.Users size={16} className="text-brand" /> {(() => {
-                                                    const max = Number(program.maxParticipants ?? program.capacity) || 0;
-                                                    const overflow = getDisplayedOverflow(program);
-                                                    if (overflow > 0) return (<><span className="text-red-600 font-bold">{max + overflow}</span> / {max}명</>);
-                                                    return (<>{program.status === '종료' ? max : (program.currentParticipants || 0)} / {max}명</>);
-                                                })()}
-                                                </div>
-                                            </div>
-                                            
-                                            {/* 프로그램 설명 */}
-                                            {program.desc ? (
-                                                <div className="mb-4">
-                                                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{program.desc}</p>
-                                                </div>
-                                            ) : null}
-                                            
-                                            {/* 신청하기 버튼 (무료/금액 표기) */}
-                                            {currentUser ? (
-                                                (() => {
-                                                    const is정모Program = is정모(program);
-                                                    const max = Number(program.maxParticipants ?? program.capacity) || 0;
-                                                    const current = Number(program.currentParticipants) || 0;
-                                                    const isFull = max > 0 && current >= max;
-                                                    const showFullDisabled = isFull && !is정모Program;
-                                                    if (showFullDisabled) {
-                                                        return (
-                                                            <button type="button" disabled className="w-full py-3 bg-gray-300 text-gray-500 font-bold rounded-xl cursor-not-allowed">
-                                                                정원 마감
-                                                            </button>
-                                                        );
-                                                    }
-                                                    return (
-                                                        <button 
-                                                            type="button"
-                                                            onClick={() => { if (isMobile && onNavigateToProgramApply) { onNavigateToProgramApply(program); } else { handlePopupApply(program); } }}
-                                                            className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
-                                                        >
-                                                            참여신청
-                                                        </button>
-                                                    );
-                                                })()
-                                            ) : (
-                                                <div className="space-y-2">
-                                                    <p className="text-xs text-gray-500 text-center">프로그램 신청은 회원가입 후 가능합니다.</p>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            closePopupAndMarkAsShown();
-                                                            setShowLoginModal(true);
-                                                        }}
-                                                        className="w-full py-3 bg-gray-300 text-gray-500 font-bold rounded-xl cursor-not-allowed"
-                                                        disabled
-                                                    >
-                                                        로그인 후 신청 가능
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
+                                        )}
                                     </div>
-                                );
-                            }
-                            });
+                                    {/* 프로그램 신청하기 */}
+                                    <div className="p-4 pt-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => onNavigateToProgramApply && onNavigateToProgramApply(program)}
+                                            className="w-full py-3.5 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm"
+                                        >
+                                            프로그램 신청하기
+                                        </button>
+                                        {/* 24시간 동안 팝업 보이지 않기 */}
+                                        <label className="mt-4 flex items-center gap-2 cursor-pointer group">
+                                            <input
+                                                type="checkbox"
+                                                onChange={(e) => {
+                                                    if (e.target.checked && closePopupAndHide24h) {
+                                                        closePopupAndHide24h();
+                                                    }
+                                                }}
+                                                className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand"
+                                            />
+                                            <span className="text-sm text-gray-600 group-hover:text-gray-800">24시간 동안 팝업 보이지 않기</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            ));
                         })()}
                     </div>
-                    {/* 전체 닫기 버튼 */}
-                    {(() => {
-                        const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-                        const programsToShow = isMobile ? popupPrograms.slice(0, 1) : popupPrograms;
-                        return programsToShow.length > 1;
-                    })() ? (
-                        <button 
-                            type="button" 
-                            onClick={() => closePopupAndMarkAsShown()} 
-                            className="fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 bg-white/90 hover:bg-white text-gray-700 rounded-full font-bold shadow-lg z-20"
-                        >
-                            모두 닫기
-                        </button>
-                    ) : null}
                 </div>
                 </ModalPortal>
             ) : null}
-            
             {/* 팝업 신청 모달 (ESC 미적용) */}
             {isPopupApplyModalOpen && applySeminarFromPopup ? (
                 <ModalPortal>

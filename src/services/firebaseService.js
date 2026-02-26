@@ -485,12 +485,12 @@ export const firebaseService = {
     try {
       // orderBy를 제거하여 인덱스 불필요하도록 수정
       const q = query(
-        collection(db, 'applications'), 
+        collection(db, 'applications'),
         where('userId', '==', userId)
       );
       const snapshot = await getDocs(q);
       const applications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
+
       // 클라이언트 측에서 정렬 (createdAt 기준 내림차순)
       return applications.sort((a, b) => {
         const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
@@ -505,6 +505,72 @@ export const firebaseService = {
       }
       throw error;
     }
+  },
+
+  /**
+   * 사용자(id, 이메일, 연락처) 기준으로 신청 목록 조회.
+   * 동일인이라도 userId가 다른 경우(다른 로그인 수단 등) 이메일/연락처로 연결해 '내가 신청한 모임'에 포함.
+   */
+  async getApplicationsForUser(user) {
+    if (!user) return [];
+    const idSet = new Set();
+    [user.id, user.uid].filter(Boolean).forEach((id) => idSet.add(String(id)));
+    const normEmail = (v) => (v && String(v).trim().toLowerCase()) || '';
+    const normPhone = (v) => (v && String(v).replace(/\D/g, '')) || '';
+    const userEmail = normEmail(user.email);
+    const userPhone = normPhone(user.phone || user.phoneNumber);
+
+    const byId = [];
+    for (const uid of idSet) {
+      try {
+        const list = await this.getApplicationsByUserId(uid);
+        byId.push(...list);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    if (!userEmail && !userPhone) {
+      const seen = new Set();
+      return byId.filter((app) => {
+        const k = app.id;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      }).sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
+        const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
+        return bTime - aTime;
+      });
+    }
+
+    let byEmailPhone = [];
+    try {
+      const all = await this.getApplications();
+      byEmailPhone = all.filter((app) => {
+        if (idSet.has(String(app.userId))) return false;
+        if (userEmail && normEmail(app.userEmail) === userEmail) return true;
+        if (userPhone && normPhone(app.userPhone || app.userPhoneNumber) === userPhone) return true;
+        return false;
+      });
+    } catch (e) {
+      // getApplications 실패 시 id로 찾은 것만 반환
+    }
+
+    const seen = new Set(byId.map((a) => a.id).filter(Boolean));
+    const merged = [...byId];
+    byEmailPhone.forEach((app) => {
+      if (app.id && !seen.has(app.id)) {
+        seen.add(app.id);
+        merged.push(app);
+      }
+    });
+    merged.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
+      const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
+      return bTime - aTime;
+    });
+    return merged;
   },
 
   async getApplication(applicationId) {

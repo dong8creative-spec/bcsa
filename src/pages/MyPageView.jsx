@@ -85,11 +85,12 @@ function getInitialEditForm(user) {
     };
 }
 
-const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, pageTitles, onUpdatePost }) => {
+const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApplication, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, pageTitles, onUpdatePost }) => {
     const [activeTab, setActiveTab] = useState('seminars');
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingPost, setEditingPost] = useState(null);
+    const [editingApplication, setEditingApplication] = useState(null); // { seminar, application } 신청 내용 정정 모달
     const [uploadingImages, setUploadingImages] = useState(false);
     const [profileImageUploading, setProfileImageUploading] = useState(false);
     const [editFormData, setEditFormData] = useState(() => getInitialEditForm(user));
@@ -560,22 +561,35 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                             { key: '커피챗', label: '커피챗' },
                             { key: '', label: '기타' }
                         ];
-                        const renderItem = (s, idx) => (
-                            <li key={s.id || idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:bg-gray-50 transition-all">
-                                <div>
-                                    <div className="font-medium text-gray-900 text-base mb-1">{s.title}</div>
-                                    <div className="text-xs text-gray-500">{s.date} · {s.location}</div>
-                                </div>
-                                <div className="flex gap-3 items-center">
-                                    <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1 font-medium">신청완료</span>
-                                    <button type="button" onClick={() => {
-                                        if (confirm("세미나 신청을 취소하시겠습니까?")) {
-                                            if (onCancelSeminar) onCancelSeminar(s.id);
-                                        }
-                                    }} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1 border border-blue-300 hover:bg-gray-50 transition-colors">취소</button>
-                                </div>
-                            </li>
-                        );
+                        const appForSeminar = (seminar) => (myApplications || []).find((a) => String(a.seminarId) === String(seminar.id));
+                        const renderItem = (s, idx) => {
+                            const app = appForSeminar(s);
+                            return (
+                                <li key={s.id || idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:bg-gray-50 transition-all">
+                                    <div>
+                                        <div className="font-medium text-gray-900 text-base mb-1">{s.title}</div>
+                                        <div className="text-xs text-gray-500">{s.date} · {s.location}</div>
+                                    </div>
+                                    <div className="flex gap-3 items-center">
+                                        <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1 font-medium">신청완료</span>
+                                        {app?.id && onUpdateApplication ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditingApplication({ seminar: s, application: app })}
+                                                className="text-xs text-brand hover:text-blue-700 px-3 py-1 border border-brand hover:bg-blue-50 transition-colors font-medium"
+                                            >
+                                                신청 내용 정정
+                                            </button>
+                                        ) : null}
+                                        <button type="button" onClick={() => {
+                                            if (confirm("세미나 신청을 취소하시겠습니까?")) {
+                                                if (onCancelSeminar) onCancelSeminar(s.id);
+                                            }
+                                        }} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1 border border-blue-300 hover:bg-gray-50 transition-colors">취소</button>
+                                    </div>
+                                </li>
+                            );
+                        };
                         if (mySeminars.length === 0) {
                             return <ul className="space-y-3"><li className="text-center text-gray-500 py-16 text-sm">신청한 모임이 없습니다.</li></ul>;
                         }
@@ -1039,8 +1053,107 @@ const MyPageView = ({ onBack, user, mySeminars, myPosts, onWithdraw, onUpdatePro
                 </div>
                 </ModalPortal>
             ) : null}
+
+            {/* 신청 내용 정정 모달 */}
+            {editingApplication && (
+                <ApplicationEditModal
+                    seminar={editingApplication.seminar}
+                    application={editingApplication.application}
+                    onClose={() => setEditingApplication(null)}
+                    onSave={async (payload) => {
+                        if (!onUpdateApplication || !editingApplication.application?.id) return;
+                        await onUpdateApplication(editingApplication.application.id, payload);
+                        setEditingApplication(null);
+                        alert('신청 내용이 정정되었습니다.');
+                    }}
+                />
+            )}
         </div>
     );
 };
+
+/** 신청 내용 정정 모달 (참여 경로, 신청 계기, 사전 질문, 식사 여부, 개인정보 동의) */
+function ApplicationEditModal({ seminar, application, onClose, onSave }) {
+    const [participationPath, setParticipationPath] = useState(application?.participationPath ?? '');
+    const [applyReason, setApplyReason] = useState(application?.applyReason ?? '');
+    const [preQuestions, setPreQuestions] = useState(application?.preQuestions ?? '');
+    const [mealAfter, setMealAfter] = useState(application?.mealAfter ?? '');
+    const [privacyAgreed, setPrivacyAgreed] = useState(application?.privacyAgreed === true);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        setParticipationPath(application?.participationPath ?? '');
+        setApplyReason(application?.applyReason ?? '');
+        setPreQuestions(application?.preQuestions ?? '');
+        setMealAfter(application?.mealAfter ?? '');
+        setPrivacyAgreed(application?.privacyAgreed === true);
+    }, [application?.id]);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            await onSave({
+                participationPath: participationPath.trim(),
+                applyReason: applyReason.trim(),
+                preQuestions: preQuestions.trim(),
+                mealAfter: mealAfter.trim(),
+                privacyAgreed: !!privacyAgreed,
+                reason: [participationPath.trim(), applyReason.trim()].filter(Boolean).join(' / ') || '',
+                questions: preQuestions.trim() ? [preQuestions.trim()] : [],
+            });
+        } catch (err) {
+            alert('저장에 실패했습니다. 다시 시도해 주세요.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <ModalPortal>
+            <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+                <div className="bg-white rounded-2xl shadow-xl border border-blue-200 max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                    <div className="shrink-0 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
+                        <h3 className="text-lg font-bold text-dark">신청 내용 정정</h3>
+                        <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500" aria-label="닫기">
+                            <Icons.X size={22} />
+                        </button>
+                    </div>
+                    <div className="px-6 py-4 border-b border-blue-100">
+                        <p className="text-sm text-gray-700 font-medium truncate" title={seminar?.title}>{seminar?.title}</p>
+                    </div>
+                    <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">참여 경로</label>
+                            <input type="text" className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none" value={participationPath} onChange={(e) => setParticipationPath(e.target.value)} placeholder="예: 부청사 오픈채팅, 지인 추천" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">강연 신청 계기</label>
+                            <textarea className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none resize-none h-20" value={applyReason} onChange={(e) => setApplyReason(e.target.value)} placeholder="신청하신 이유를 적어 주세요." />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">강연 사전 질문</label>
+                            <textarea className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none resize-none h-20" value={preQuestions} onChange={(e) => setPreQuestions(e.target.value)} placeholder="강연 전에 궁금한 점이 있으면 적어 주세요." />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">강연 후 식사 여부</label>
+                            <input type="text" className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none" value={mealAfter} onChange={(e) => setMealAfter(e.target.value)} placeholder="예: 참여함 / 불참" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <input type="checkbox" id="app-edit-privacy" checked={privacyAgreed} onChange={(e) => setPrivacyAgreed(e.target.checked)} className="rounded border-blue-300 text-brand focus:ring-brand" />
+                            <label htmlFor="app-edit-privacy" className="text-sm text-gray-700">개인정보 수집·이용 동의</label>
+                        </div>
+                        <div className="flex gap-3 pt-4">
+                            <button type="button" onClick={onClose} className="flex-1 py-3 border border-blue-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50">취소</button>
+                            <button type="submit" disabled={saving} className="flex-1 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60">
+                                {saving ? '저장 중…' : '저장'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </ModalPortal>
+    );
+}
 
 export default MyPageView;

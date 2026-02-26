@@ -489,6 +489,7 @@ const App = () => {
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [pendingView, setPendingView] = useState(null); // 로그인 후 이동할 뷰
     const [mySeminars, setMySeminars] = useState([]);
+    const [myApplications, setMyApplications] = useState([]); // 신청한 모임별 신청서(정정용)
     const [myPosts, setMyPosts] = useState([]);
     const [reviewSeminar, setReviewSeminar] = useState(null); // 후기 작성할 프로그램
     const [programAlerts, setProgramAlerts] = useState([]); // 프로그램 알람 목록
@@ -764,10 +765,14 @@ const App = () => {
 
     // 메인페이지 진입 시 다가오는 프로그램 팝업 표시 (최대 3개)
     useEffect(() => {
-        // 이미 표시된 경우 또는 설정 중인 경우 return
+        // 이미 표시된 경우, 24시간 숨김 중, 또는 설정 중인 경우 return
         try {
             if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
                 if (localStorage.getItem('busan_ycc_popup_shown') === 'true' || popupShownRef.current) {
+                    return;
+                }
+                const hideUntil = localStorage.getItem('busan_ycc_popup_hide_until');
+                if (hideUntil && Date.now() < Number(hideUntil)) {
                     return;
                 }
             }
@@ -947,17 +952,19 @@ const App = () => {
                             setCurrentUser(userDoc);
                             setMyPosts(communityPosts.filter(p => p.author === userDoc.name));
                             
-                            // Firestore에서 신청한 프로그램 목록 가져오기
+                            // Firestore에서 신청한 프로그램 목록 가져오기 (userId + 이메일/연락처 매칭으로 동일인 연결)
                             try {
-                                if (firebaseService && firebaseService.getApplicationsByUserId) {
-                                    const applications = await firebaseService.getApplicationsByUserId(userDoc.id);
-                                    // applications에서 seminarId를 추출하여 해당 seminar 찾기 (타입 통일 비교)
+                                if (firebaseService && (firebaseService.getApplicationsForUser || firebaseService.getApplicationsByUserId)) {
+                                    const applications = firebaseService.getApplicationsForUser
+                                        ? await firebaseService.getApplicationsForUser(userDoc)
+                                        : await firebaseService.getApplicationsByUserId(userDoc.id);
                                     const appliedSeminarIds = applications.map(app => String(app.seminarId));
-                                    const appliedSeminars = seminarsData.filter(seminar => 
+                                    const appliedSeminars = seminarsData.filter(seminar =>
                                         appliedSeminarIds.includes(String(seminar.id))
                                     );
                                     setMySeminars(appliedSeminars);
-                                    
+                                    setMyApplications(Array.isArray(applications) ? applications : []);
+
                                     // 프로그램 알람 체크 (시작 3일 전)
                                     checkProgramAlerts(appliedSeminars, userDoc.id);
                                 }
@@ -966,8 +973,11 @@ const App = () => {
                                 // 실패 시 localStorage에서 가져오기 (폴백)
                                 try {
                                     const localApplications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
+                                    const meId = String(userDoc.id || userDoc.uid || '');
+                                    const meEmail = (userDoc.email || '').trim().toLowerCase();
+                                    const mePhone = (userDoc.phone || userDoc.phoneNumber || '').replace(/\D/g, '');
                                     const localAppliedSeminarIds = localApplications
-                                        .filter(app => String(app.userId) === String(userDoc.id))
+                                        .filter(app => String(app.userId) === meId || (meEmail && (app.userEmail || '').trim().toLowerCase() === meEmail) || (mePhone.length >= 10 && (app.userPhone || '').replace(/\D/g, '') === mePhone))
                                         .map(app => String(app.seminarId));
                                     const localAppliedSeminars = seminarsData.filter(seminar => 
                                         localAppliedSeminarIds.includes(String(seminar.id))
@@ -988,6 +998,7 @@ const App = () => {
                     setCurrentUser(null);
                     setMyPosts([]);
                     setMySeminars([]);
+                    setMyApplications([]);
                     setProgramAlerts([]);
                     setShowProgramAlertModal(false);
                 }
@@ -997,19 +1008,22 @@ const App = () => {
         }
     }, [communityPosts, seminarsData]);
 
-    // currentUser + seminarsData가 모두 있을 때 신청한 프로그램 목록 동기화 (seminarsData가 나중에 로드된 경우 대비)
+    // currentUser + seminarsData가 모두 있을 때 신청한 프로그램 목록 동기화 (userId + 이메일/연락처로 동일인 연결)
     useEffect(() => {
         if (!currentUser?.id || !Array.isArray(seminarsData) || seminarsData.length === 0) return;
         const loadMySeminars = async () => {
             try {
-                if (firebaseService?.getApplicationsByUserId) {
-                    const applications = await firebaseService.getApplicationsByUserId(currentUser.id);
+                if (firebaseService && (firebaseService.getApplicationsForUser || firebaseService.getApplicationsByUserId)) {
+                    const applications = firebaseService.getApplicationsForUser
+                        ? await firebaseService.getApplicationsForUser(currentUser)
+                        : await firebaseService.getApplicationsByUserId(currentUser.id);
                     const appliedIds = applications.map(app => String(app.seminarId));
                     const applied = seminarsData.filter(s => appliedIds.includes(String(s.id)));
                     setMySeminars(prev => {
                         if (prev.length === applied.length && prev.every((p, i) => String(p?.id) === String(applied[i]?.id))) return prev;
                         return applied;
                     });
+                    setMyApplications(Array.isArray(applications) ? applications : []);
                     checkProgramAlerts(applied, currentUser.id);
                     return;
                 }
@@ -1018,8 +1032,11 @@ const App = () => {
             }
             try {
                 const local = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
+                const meId = String(currentUser.id || '');
+                const meEmail = (currentUser.email || '').trim().toLowerCase();
+                const mePhone = (currentUser.phone || currentUser.phoneNumber || '').replace(/\D/g, '');
                 const appliedIds = local
-                    .filter(app => String(app.userId) === String(currentUser.id))
+                    .filter(app => String(app.userId) === meId || (meEmail && (app.userEmail || '').trim().toLowerCase() === meEmail) || (mePhone.length >= 10 && (app.userPhone || '').replace(/\D/g, '') === mePhone))
                     .map(app => String(app.seminarId));
                 const applied = seminarsData.filter(s => appliedIds.includes(String(s.id)));
                 setMySeminars(applied);
@@ -1890,6 +1907,7 @@ const App = () => {
         setCurrentUser(null);
         setCurrentView('home');
         setMySeminars([]);
+        setMyApplications([]);
         setMyFoods([]);
         setMyPosts([]);
             alert("Logged out successfully.");
@@ -2248,7 +2266,15 @@ const App = () => {
         try {
             localStorage.setItem('busan_ycc_popup_shown', 'true');
         } catch (e) {
-            
+        }
+    };
+
+    // 24시간 동안 팝업 보이지 않게 하고 닫기
+    const closePopupAndHide24h = () => {
+        setPopupPrograms([]);
+        try {
+            localStorage.setItem('busan_ycc_popup_hide_until', String(Date.now() + 24 * 60 * 60 * 1000));
+        } catch (e) {
         }
     };
     
@@ -2256,8 +2282,9 @@ const App = () => {
         window.resetPopupShown = () => {
             try {
                 localStorage.removeItem('busan_ycc_popup_shown');
+                localStorage.removeItem('busan_ycc_popup_hide_until');
                 if (import.meta.env.MODE === 'development') {
-                    console.log('[개발] 프로그램 팝업 표시 기록 초기화됨. 새로고침 후 홈에서 다시 뜹니다.');
+                    console.log('[개발] 프로그램 팝업 표시/24시간 숨김 초기화됨. 새로고침 후 홈에서 다시 뜹니다.');
                 }
             } catch {}
         };
@@ -2504,6 +2531,7 @@ END:VCALENDAR`;
             }
             if (data.cancelled) {
                 setMySeminars(prev => prev.filter(s => String(s.id) !== String(seminarId)));
+                setMyApplications(prev => prev.filter(a => String(a.seminarId) !== String(seminarId)));
                 alert('세미나 신청이 취소되었습니다. 환불은 영업일 기준 3~5일 내 처리됩니다.');
             } else {
                 alert('취소 처리에 실패했습니다. 이메일로 문의해 주세요.');
@@ -2511,6 +2539,17 @@ END:VCALENDAR`;
         } catch (err) {
             console.error('Seminar cancel error', err);
             alert('취소 처리 중 오류가 발생했습니다. 이메일로 문의해 주세요.');
+        }
+    };
+
+    const handleUpdateApplication = async (applicationId, payload) => {
+        if (!applicationId || !firebaseService?.updateApplication) return;
+        try {
+            await firebaseService.updateApplication(applicationId, payload);
+            setMyApplications(prev => prev.map(a => (a.id === applicationId ? { ...a, ...payload } : a)));
+        } catch (e) {
+            console.error('신청 내용 정정 실패:', e);
+            throw e;
         }
     };
 
@@ -2785,7 +2824,9 @@ END:VCALENDAR`;
             alert('준비중인 서비스입니다.');
             return;
         }
-        
+        // 헤더/푸터 버튼 클릭 시 지정된 페이지가 우선되도록 메인 경로로 이동 후 뷰 전환
+        if (navigate) navigate('/');
+
         if (item === '홈') { 
             setCurrentView('home'); 
             setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
@@ -2959,7 +3000,7 @@ END:VCALENDAR`;
                         </div>
                     );
                 }
-                return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} />;
+                return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myApplications={myApplications} onUpdateApplication={handleUpdateApplication} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} />;
             }
         if (currentView === 'allMembers' && !currentUser) {
             return (
@@ -3586,6 +3627,7 @@ END:VCALENDAR`;
             popupPrograms={popupPrograms}
             setPopupPrograms={setPopupPrograms}
             closePopupAndMarkAsShown={closePopupAndMarkAsShown}
+            closePopupAndHide24h={closePopupAndHide24h}
             isPopupApplyModalOpen={isPopupApplyModalOpen}
             applySeminarFromPopup={applySeminarFromPopup}
             setIsPopupApplyModalOpen={setIsPopupApplyModalOpen}

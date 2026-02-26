@@ -820,10 +820,29 @@ export const ProgramManagement = () => {
         const programId = String(applicantModalProgram.id);
         const list = (applications || []).filter((app) => toSeminarId(app.seminarId) === programId);
         const userMap = {};
+        const userMapByEmail = {};
+        const userMapByPhone = {};
         (applicantModalUsers || []).forEach((u) => {
           if (u.id) { userMap[String(u.id)] = u; userMap[u.id] = u; }
           if (u.uid) { userMap[String(u.uid)] = u; userMap[u.uid] = u; }
+          const email = (u.email || '').toString().trim().toLowerCase();
+          if (email) userMapByEmail[email] = u;
+          const phone = (u.phone || u.phoneNumber || '').toString().replace(/\D/g, '');
+          if (phone.length >= 10) userMapByPhone[phone] = u;
         });
+        const resolveUser = (app) => {
+          const uid = app.userId != null ? String(app.userId) : '';
+          let user = userMap[app.userId] || userMap[uid] || userMap[app.userId?.toString()];
+          if (!user && app.userEmail) {
+            const key = (app.userEmail || '').toString().trim().toLowerCase();
+            if (key) user = userMapByEmail[key];
+          }
+          if (!user && (app.userPhone || app.userPhoneNumber)) {
+            const digits = (app.userPhone || app.userPhoneNumber || '').toString().replace(/\D/g, '');
+            if (digits.length >= 10) user = userMapByPhone[digits];
+          }
+          return user;
+        };
         const formatDate = (v) => {
           if (!v) return '-';
           if (v.toDate && typeof v.toDate === 'function') return v.toDate().toLocaleString('ko-KR');
@@ -839,11 +858,10 @@ export const ProgramManagement = () => {
         ];
         const toCsvRow = (arr) => arr.map((cell) => `"${getCell(cell)}"`).join(',');
         const rowForApp = (app, i) => {
-          const uid = app.userId != null ? String(app.userId) : '';
-          const user = userMap[app.userId] || userMap[uid] || userMap[app.userId?.toString()];
+          const user = resolveUser(app);
           return [
             i + 1,
-            app.userName || user?.name || '',
+            (user?.name || app.userName || '').trim() || '-',
             user?.nickname || '',
             user?.gender || '',
             user?.birthdate || '',
@@ -948,12 +966,11 @@ export const ProgramManagement = () => {
                         </thead>
                         <tbody>
                           {list.map((app, i) => {
-                            const uid = app.userId != null ? String(app.userId) : '';
-                            const user = userMap[app.userId] || userMap[uid] || userMap[app.userId?.toString()];
+                            const user = resolveUser(app);
                             return (
                               <tr key={app.id || i} className="border-b border-blue-100">
                                 <td className="px-2 py-2 text-gray-600">{i + 1}</td>
-                                <td className="px-2 py-2">{app.userName || user?.name || '-'}</td>
+                                <td className="px-2 py-2">{(user?.name || app.userName || '').trim() || '-'}</td>
                                 <td className="px-2 py-2 text-gray-600">{user?.nickname || '-'}</td>
                                 <td className="px-2 py-2 text-gray-600">{user?.gender || '-'}</td>
                                 <td className="px-2 py-2 text-gray-600">{user?.birthdate || '-'}</td>
