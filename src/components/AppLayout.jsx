@@ -583,9 +583,9 @@ const AppLayout = (props) => {
                         })()}
                         <p className="text-[8px] text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가 포럼 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
                         <p className="text-[8px] text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (navigate) navigate('/'); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
                             <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (navigate) navigate('/'); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
                             <span className="text-white/50">|</span>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/terms'); }} className="hover:text-white/90 transition-colors">서비스 이용약관</button>
                             <span className="text-white/50">|</span>
@@ -608,9 +608,9 @@ const AppLayout = (props) => {
                         </p>
                         <p className="text-[8px] md:text-xs text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가 포럼 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
                         <p className="text-[8px] md:text-xs text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (navigate) navigate('/'); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
                             <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (navigate) navigate('/'); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
                             <span className="text-white/50">|</span>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/terms'); }} className="hover:text-white/90 transition-colors">서비스 이용약관</button>
                             <span className="text-white/50">|</span>
