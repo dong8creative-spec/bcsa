@@ -693,8 +693,8 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                                     </button>
                                                 );
                                             })() : (
-                                                <div className="flex items-center justify-center py-4 px-3 min-h-[76px]">
-                                                    <span className="text-sm font-semibold text-white">참여신청</span>
+                                                <div className="flex items-center justify-center py-4 px-3 min-h-[76px] bg-blue-900">
+                                                    <span className="text-sm font-semibold text-white">로그인 후 신청가능</span>
                                                 </div>
                                             )}
                                             <button

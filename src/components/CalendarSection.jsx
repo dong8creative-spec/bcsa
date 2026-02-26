@@ -359,14 +359,17 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                     </p>
                                                 )}
                                                 {!currentUser ? (
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); alert("로그인이 필요한 서비스입니다. 먼저 로그인해주세요."); }} 
-                                                        className="w-full py-2.5 text-sm font-medium rounded-lg transition-colors bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300" 
-                                                        disabled
-                                                    >
-                                                        로그인 후 신청 가능
-                                                    </button>
+                                                    <div className="space-y-1.5">
+                                                        <p className="text-[11px] text-gray-500 text-center leading-tight">프로그램 신청은 회원가입 후 가능합니다.</p>
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); alert("프로그램 신청은 회원가입 후 가능합니다. 먼저 로그인해 주세요."); }} 
+                                                            className="w-full py-2.5 text-sm font-medium rounded-lg transition-colors bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300" 
+                                                            disabled
+                                                        >
+                                                            로그인 후 신청 가능
+                                                        </button>
+                                                    </div>
                                                 ) : (() => {
                                                     const getFeeLabel = (e) => {
                                                         const fee = e.applicationFee != null ? Number(e.applicationFee) : 0;

@@ -461,8 +461,23 @@ export const firebaseService = {
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
-      console.error('Error getting applications:', error);
-      throw error;
+      // orderBy 인덱스 미설정 시 폴백: 인덱스 없이 전체 조회 후 메모리에서 정렬
+      console.warn('getApplications orderBy 실패, 전체 조회 후 정렬:', error?.message);
+      try {
+        const snapshot = await getDocs(collection(db, 'applications'));
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const toMs = (v) => {
+          if (!v) return 0;
+          if (v.toMillis && typeof v.toMillis === 'function') return v.toMillis();
+          if (v.seconds != null) return v.seconds * 1000;
+          return new Date(v).getTime() || 0;
+        };
+        list.sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt));
+        return list;
+      } catch (fallbackError) {
+        console.error('Error getting applications (fallback):', fallbackError);
+        throw fallbackError;
+      }
     }
   },
 

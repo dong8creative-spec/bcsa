@@ -40,9 +40,9 @@ const AppLayout = (props) => {
     const fabRef = useRef(null);
     const prevViewRef = useRef(null);
     const [fabStyle, setFabStyle] = useState({ position: 'fixed', right: '1.5rem', bottom: '10rem' });
-    const [showRefundPolicyModal, setShowRefundPolicyModal] = useState(false);
     const [profileIncompleteModalClosed, setProfileIncompleteModalClosed] = useState(false);
     const {
+        navigate,
         renderView,
         currentView,
         setCurrentView,
@@ -81,7 +81,7 @@ const AppLayout = (props) => {
         handleProgramAlertConfirm,
         handleSignUp,
         handleLogin,
-        handleGoogleLogin,
+        handleKakaoLogin,
         users,
         LoginModal,
         content,
@@ -330,17 +330,20 @@ const AppLayout = (props) => {
                                                     );
                                                 })()
                                             ) : (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        closePopupAndMarkAsShown();
-                                                        setShowLoginModal(true);
-                                                    }}
-                                                    className="w-full py-3 bg-gray-300 text-gray-500 font-bold rounded-xl cursor-not-allowed"
-                                                    disabled
-                                                >
-                                                    로그인 후 신청 가능
-                                                </button>
+                                                <div className="space-y-2">
+                                                    <p className="text-xs text-gray-500 text-center">프로그램 신청은 회원가입 후 가능합니다.</p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            closePopupAndMarkAsShown();
+                                                            setShowLoginModal(true);
+                                                        }}
+                                                        className="w-full py-3 bg-gray-300 text-gray-500 font-bold rounded-xl cursor-not-allowed"
+                                                        disabled
+                                                    >
+                                                        로그인 후 신청 가능
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -429,7 +432,7 @@ const AppLayout = (props) => {
                 </ModalPortal>
             ) : null}
             
-            <header className={`fixed top-0 w-full z-50 transition-all duration-300 ease-in-out ${isMobile ? 'px-4 py-3' : 'px-6 py-5'} ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : isMobile ? 'bg-white/70 backdrop-blur-sm' : 'bg-transparent'}`}>
+            <header className={`fixed top-0 w-full z-[1000] transition-all duration-300 ease-in-out ${isMobile ? 'px-4 py-3' : 'px-6 py-5'} ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : isMobile ? 'bg-white/70 backdrop-blur-sm' : 'bg-transparent'}`}>
                 <div className={`container mx-auto flex items-center relative w-full ${isMobile ? 'grid grid-cols-[auto_1fr_auto] gap-2' : 'flex justify-between gap-0'}`}>
                     {/* 모바일 전용: 가운데 로고(홈 버튼) */}
                     {isMobile && (
@@ -553,7 +556,6 @@ const AppLayout = (props) => {
 
             <footer ref={footerRef} className="py-12 px-6 text-white bg-[#0046a5]">
                 <div className="container mx-auto max-w-6xl">
-                    {/* 모바일 전용 푸터 (최근 작업 디자인) */}
                     <div className="md:hidden text-center">
                         <h3 className="text-lg font-bold text-white mb-4">{content?.footer_title || '부산청년사업가 포럼'}</h3>
                         <div className="mb-2">
@@ -567,51 +569,54 @@ const AppLayout = (props) => {
                         </p>
                         {(() => {
                             const line2Raw = content?.footer_line2 || '부산광역시 연제구 법원남로9번길 17(거제동) | 대표 정은지 | 사업자등록번호 792-72-00616';
-                            const parts = line2Raw.split(/\s*\|\s*/);
-                            const address = parts[0]?.trim() || '';
-                            const businessStart = line2Raw.indexOf('사업자등록번호');
-                            const businessLine = businessStart >= 0 ? line2Raw.slice(businessStart).trim() : '';
+                            const address = line2Raw.split(/\s*\|\s*/)[0]?.trim() || '';
+                            const businessNum = '792-72-00616';
                             return (
                                 <>
                                     {address && <p className="text-[10px] text-white/90 mb-2">{address}</p>}
-                                    {businessLine && <p className="text-[10px] text-white/90 mb-2">{businessLine}</p>}
+                                    <p className="text-[10px] text-white/90 mb-2">
+                                        대표 정은지 | 사업자등록번호{' '}
+                                        <a href="http://www.ftc.go.kr/bizCommPop.do?wrkr_no=7927200616" target="_blank" rel="noopener noreferrer" className="hover:text-white/90 underline">792-72-00616</a>
+                                    </p>
                                 </>
                             );
                         })()}
-                        <p className="text-[8px] text-white/70 mb-4">{content?.footer_copyright || '© 2025 부산청년사업가 포럼 (BCSA). All rights reserved.'}</p>
+                        <p className="text-[8px] text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가 포럼 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
                         <p className="text-[8px] text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
                             <span className="text-white/50">|</span>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
                             <span className="text-white/50">|</span>
-                            <a href="#" className="hover:text-white/90 transition-colors">서비스 이용약관</a>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/terms'); }} className="hover:text-white/90 transition-colors">서비스 이용약관</button>
                             <span className="text-white/50">|</span>
-                            <a href="#" className="hover:text-white/90 transition-colors">개인정보 처리방침</a>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/privacy'); }} className="hover:text-white/90 transition-colors">개인정보 처리방침</button>
                             <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowRefundPolicyModal(true); }} className="hover:text-white/90 transition-colors">취소/환불 규정</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/refund'); }} className="hover:text-white/90 transition-colors">취소/환불 규정</button>
                             <span className="text-white/50">|</span>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = '/admin'; }} className="text-white/60 hover:text-white/90 transition-colors" title="관리자">Admin</button>
                         </p>
                     </div>
-                    {/* PC 전용 푸터 (원래 디자인) */}
                     <div className="hidden md:block text-left">
                         <h3 className="text-lg font-bold text-white mb-4">{content?.footer_title || '부산청년사업가 포럼'}</h3>
-                        <p className="text-[10px] md:text-sm text-white/90 mb-2">{content?.footer_line2 || '부산광역시 연제구 법원남로9번길 17(거제동) | 대표 정은지 | 사업자등록번호 792-72-00616'}</p>
+                        <p className="text-[10px] md:text-sm text-white/90 mb-2">
+                            부산광역시 연제구 법원남로9번길 17(거제동) | 대표 정은지 | 사업자등록번호{' '}
+                            <a href="http://www.ftc.go.kr/bizCommPop.do?wrkr_no=7927200616" target="_blank" rel="noopener noreferrer" className="hover:text-white underline">792-72-00616</a>
+                        </p>
                         <p className="text-[10px] md:text-sm text-white/90 mb-2">
                             대표번호 <a href={`tel:${(content?.footer_phone || '070-8064-7238').replace(/\s/g, '')}`} className="hover:text-white transition-colors font-bold">{content?.footer_phone || '070-8064-7238'}</a>
                             {content?.footer_hours ? ` (${content.footer_hours})` : ' (평일 09:00–18:00 / 주말·공휴일 휴무)'} | 대표 메일 <a href={`mailto:${content?.footer_email || 'pujar@naver.com'}`} className="hover:text-white transition-colors font-bold">{content?.footer_email || 'pujar@naver.com'}</a>
                         </p>
-                        <p className="text-[8px] md:text-xs text-white/70 mb-4">{content?.footer_copyright || '© 2025 부산청년사업가 포럼 (BCSA). All rights reserved.'}</p>
+                        <p className="text-[8px] md:text-xs text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가 포럼 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
                         <p className="text-[8px] md:text-xs text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
                             <span className="text-white/50">|</span>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
                             <span className="text-white/50">|</span>
-                            <a href="#" className="hover:text-white/90 transition-colors">서비스 이용약관</a>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/terms'); }} className="hover:text-white/90 transition-colors">서비스 이용약관</button>
                             <span className="text-white/50">|</span>
-                            <a href="#" className="hover:text-white/90 transition-colors">개인정보 처리방침</a>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/privacy'); }} className="hover:text-white/90 transition-colors">개인정보 처리방침</button>
                             <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowRefundPolicyModal(true); }} className="hover:text-white/90 transition-colors">취소/환불 규정</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/refund'); }} className="hover:text-white/90 transition-colors">취소/환불 규정</button>
                             <span className="text-white/50">|</span>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = '/admin'; }} className="text-white/60 hover:text-white/90 transition-colors" title="관리자">Admin</button>
                         </p>
@@ -631,10 +636,10 @@ const AppLayout = (props) => {
                 />
             ) : null}
             {showLoginModal === true ? (
-                <LoginModal 
-                    onClose={() => setShowLoginModal(false)} 
+                <LoginModal
+                    onClose={() => setShowLoginModal(false)}
                     onLogin={handleLogin}
-                    onGoogleLogin={handleGoogleLogin}
+                    onKakaoLogin={handleKakaoLogin}
                     onSignUpClick={() => {
                         setShowLoginModal(false);
                         onSignUpClick?.();
@@ -642,62 +647,6 @@ const AppLayout = (props) => {
                 />
             ) : null}
 
-            {/* 취소/환불 규정 모달 */}
-            {showRefundPolicyModal ? (
-                <ModalPortal>
-                    <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setShowRefundPolicyModal(false); }}>
-                        <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                            <div className="shrink-0 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
-                                <h3 className="text-xl font-bold text-dark">취소/환불 규정</h3>
-                                <button type="button" onClick={() => setShowRefundPolicyModal(false)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                                    <Icons.X size={24} className="text-gray-500" />
-                                </button>
-                            </div>
-                            <div className="flex-1 overflow-y-auto p-6 modal-scroll text-gray-800 text-sm leading-relaxed">
-                                <h2 className="text-lg font-bold text-dark mb-6 text-center">[부산청년사업가 포럼] 취소 및 환불 규정</h2>
-                                <section className="mb-6">
-                                    <h3 className="font-bold text-dark mb-2">제1조 (목적)</h3>
-                                    <p className="mb-0">본 규정은 '부산청년사업가 포럼'(이하 "포럼")이 제공하는 유료 세미나 및 교육 프로그램의 취소 및 환불에 관한 사항을 규정함을 목적으로 합니다.</p>
-                                </section>
-                                <section className="mb-6">
-                                    <h3 className="font-bold text-dark mb-2">제2조 (환불 기준)</h3>
-                                    <p className="mb-4">회원은 세미나 시작 전까지 취소를 요청할 수 있으며, 환불액은 '소비자분쟁해결기준'에 의거하여 취소 시점에 따라 차등 적용됩니다.</p>
-                                    <div className="mb-4">
-                                        <h4 className="font-bold text-dark mb-3">1. 환불 적용 기간 및 비율</h4>
-                                        <ul className="list-none space-y-2 pl-0">
-                                            <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 개최 3일 전 (23:59까지): 결제 금액 100% 환불</span></li>
-                                            <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 개최 2일 전 (23:59까지): 결제 금액의 90% 환불 (위약금 10% 공제)</span></li>
-                                            <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 개최 1일 전 (23:59까지): 결제 금액의 80% 환불 (위약금 20% 공제)</span></li>
-                                            <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 당일 및 시작 시간 이후: 환불 불가 (노쇼 포함)</span></li>
-                                        </ul>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-dark mb-3">2. 패키지 상품 (세미나+자료) 예외 조항</h4>
-                                        <ul className="list-none space-y-2 pl-0">
-                                            <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 참가권과 디지털 자료(PDF, 영상 등)가 결합된 상품의 경우, 자료를 다운로드하거나 열람한 이력이 확인되면 해당 자료 비용(정가 기준)을 공제한 후 남은 차액에 대해 위 기간별 비율을 적용합니다.</span></li>
-                                        </ul>
-                                    </div>
-                                </section>
-                                <section className="mb-6">
-                                    <h3 className="font-bold text-dark mb-2">제3조 (환불 신청 방법)</h3>
-                                    <ol className="list-decimal list-inside space-y-2 pl-2">
-                                        <li>환불 신청은 [마이페이지 &gt; 결제내역]에서 직접 취소하거나, 포럼 공식 이메일(<a href={`mailto:${content?.footer_email || 'pujar@naver.com'}`} className="text-brand hover:underline">{content?.footer_email || 'pujar@naver.com'}</a>)로 접수해야 합니다.</li>
-                                        <li>유선(전화)을 통한 구두 취소는 정확한 시점 확인이 어려워 인정되지 않으며, 시스템상 기록이 남는 온라인 신청을 원칙으로 합니다.</li>
-                                    </ol>
-                                </section>
-                                <section className="mb-0">
-                                    <h3 className="font-bold text-dark mb-2">제4조 (포럼 귀책사유 및 폐강)</h3>
-                                    <ol className="list-decimal list-inside space-y-2 pl-2">
-                                        <li>천재지변, 강사 부재, 최소 인원 미달 등 포럼 측의 사정으로 세미나가 취소될 경우, 시점과 관계없이 결제 금액 100%를 전액 환불합니다.</li>
-                                        <li>환불 처리는 취소 확정일로부터 영업일 기준 3~5일 이내에 진행됩니다.</li>
-                                    </ol>
-                                </section>
-                            </div>
-                        </div>
-                    </div>
-                </ModalPortal>
-            ) : null}
-            
             {/* 문의하기 모달 */}
             {isInquiryModalOpen ? (
                 <InquiryModal 

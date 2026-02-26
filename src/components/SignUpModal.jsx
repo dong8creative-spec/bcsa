@@ -492,7 +492,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
     return (
         <>
         <ModalPortal>
-            <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
                 <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70 backdrop-blur-lg"></div>
                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl z-10 relative border-[0.5px] border-brand max-h-[95vh] overflow-hidden flex flex-col max-md:scale-[0.8] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
                     {/* 글 작성 모달이므로 ESC 키 미적용 */}
@@ -696,13 +696,11 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                         <RequiredFieldBadge number={7} isFilled={formData.privacyAgreed} />
                                                         <div>
                                                             <span className="text-sm font-bold text-gray-700">
-                                                                개인정보 수집 및 이용에 동의합니다 <span className="text-red-500">*</span>
+                                                                개인정보처리방침을 읽었으며 동의합니다 <span className="text-red-500">*</span>
                                                             </span>
                                                             <p className="text-xs text-gray-600 mt-1">
-                                                                부청사는 회원가입을 위해 최소한의 개인정보를 수집합니다. 
-                                                                <a href="#" className="text-brand hover:underline ml-1" onClick={(e) => { e.preventDefault(); alert('개인정보처리방침 페이지로 이동합니다.'); }}>
-                                                                    자세한 내용 보기
-                                                                </a>
+                                                                회원가입 전 개인정보처리방침을 반드시 읽어 주세요. 
+                                                                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline ml-1">전문 보기</a>
                                                             </p>
                                                             <div className="text-xs text-gray-500 mt-2 space-y-1">
                                                                 <p>• 수집 항목: 이메일(로그인용), 비밀번호(해시), 이름, 전화번호, 주소, 사업자정보(사업자만)</p>
@@ -1162,7 +1160,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         {/* 중복 확인 안내 모달 (화면 중앙) */}
         {duplicateCheckModal.open && (
             <ModalPortal>
-                <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDuplicateCheckModal({ open: false, message: '', isError: false })}>
+                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDuplicateCheckModal({ open: false, message: '', isError: false })}>
                     <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center transform animate-fade-in" onClick={(e) => e.stopPropagation()}>
                         <p className={`text-base font-medium mb-6 ${duplicateCheckModal.isError ? 'text-red-600' : 'text-gray-800'}`}>
                             {duplicateCheckModal.message}

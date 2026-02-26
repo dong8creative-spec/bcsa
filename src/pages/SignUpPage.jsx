@@ -531,7 +531,7 @@ const SignUpPage = ({ onSignUp }) => {
                                             <input type="checkbox" id="privacyAgreed" checked={form.privacyAgreed} onChange={e => setForm(f => ({ ...f, privacyAgreed: e.target.checked }))} className="mt-1 w-5 h-5 text-brand rounded" />
                                             <div className="flex-1 flex items-start gap-2">
                                                 <RequiredFieldBadge number={10} isFilled={form.privacyAgreed} />
-                                                <label htmlFor="privacyAgreed" className="text-sm font-bold text-gray-700 cursor-pointer">(필수) 개인정보 수집 및 이용 동의 <span className="text-red-500">*</span></label>
+                                                <label htmlFor="privacyAgreed" className="text-sm font-bold text-gray-700 cursor-pointer">(필수) 개인정보처리방침을 읽었으며 동의합니다 <span className="text-red-500">*</span></label>
                                                 <button type="button" onClick={() => setTermsModal({ open: true, type: 'privacy' })} className="ml-2 text-xs text-brand font-medium hover:underline">내용보기</button>
                                             </div>
                                         </div>

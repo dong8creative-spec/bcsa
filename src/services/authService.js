@@ -1,8 +1,7 @@
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
-  signInWithPopup,
-  GoogleAuthProvider,
+  signInWithCustomToken,
   signOut, 
   sendPasswordResetEmail,
   deleteUser,
@@ -10,6 +9,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { firebaseService } from './firebaseService';
+import { CONFIG } from '../config';
 
 export const authService = {
   // Sign up with email and password
@@ -43,15 +43,35 @@ export const authService = {
     }
   },
 
-  // Sign in with Google
-  async signInWithGoogle() {
-    try {
-      const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
-      return userCredential.user;
-    } catch (error) {
-      throw error;
+  /**
+   * 카카오 로그인 시작: 카카오 인증 페이지로 리다이렉트.
+   * @param {string} callbackUrl - 백엔드 콜백 URL (예: https://apibid-xxx.run.app/api/auth/kakao/callback)
+   */
+  startKakaoLogin(callbackUrl) {
+    if (typeof window === 'undefined' || !window.Kakao) {
+      throw new Error('카카오 SDK가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
     }
+    const key = CONFIG.KAKAO?.JAVASCRIPT_KEY;
+    if (!key) {
+      throw new Error('카카오 로그인이 설정되지 않았습니다.');
+    }
+    if (!window.Kakao.isInitialized()) {
+      window.Kakao.init(key);
+    }
+    window.Kakao.Auth.authorize({
+      redirectUri: callbackUrl,
+      scope: 'profile_nickname,account_email,phone_number'
+    });
+  },
+
+  /**
+   * 카카오 콜백 후 전달받은 커스텀 토큰으로 Firebase 로그인
+   * @param {string} customToken - 백엔드에서 발급한 Firebase 커스텀 토큰
+   * @returns {Promise<import('firebase/auth').User>}
+   */
+  async signInWithKakaoToken(customToken) {
+    const userCredential = await signInWithCustomToken(auth, customToken);
+    return userCredential.user;
   },
 
   // Sign out

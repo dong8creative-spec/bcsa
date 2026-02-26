@@ -33,12 +33,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # 결제·API용 환경 변수: GitHub Secrets에 VITE_API_URL, VITE_PORTONE_IMP_CODE, VITE_PORTONE_CHANNEL_KEY 등록 시 빌드에 반영됨
+      # 결제·API·카카오 로그인: GitHub Secrets에 VITE_* 및 KAKAO 키 등록 시 빌드에 반영됨
       - name: Create .env.production from Secrets
         run: |
           echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" >> .env.production
           echo "VITE_PORTONE_IMP_CODE=${{ secrets.VITE_PORTONE_IMP_CODE }}" >> .env.production
           echo "VITE_PORTONE_CHANNEL_KEY=${{ secrets.VITE_PORTONE_CHANNEL_KEY }}" >> .env.production
+          echo "VITE_KAKAO_JS_KEY=${{ secrets.VITE_KAKAO_JS_KEY }}" >> .env.production
 
       - name: Build
         run: npm run build

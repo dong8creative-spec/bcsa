@@ -49,6 +49,14 @@ const getTodayStart = () => {
   return d.getTime();
 };
 
+/** application.seminarId를 문자열로 통일 (Firestore 참조/문자열 혼용 대비) */
+const toSeminarId = (v) => {
+  if (v == null || v === undefined) return '';
+  if (typeof v === 'string') return v.trim();
+  if (typeof v === 'object' && v != null && 'id' in v) return String(v.id);
+  return String(v);
+};
+
 /**
  * 프로그램 관리 컴포넌트
  */
@@ -125,8 +133,8 @@ export const ProgramManagement = () => {
   const applicationCountBySeminarId = useMemo(() => {
     const map = {};
     (applications || []).forEach((app) => {
-      const sid = app.seminarId != null ? String(app.seminarId) : '';
-      map[sid] = (map[sid] || 0) + 1;
+      const sid = toSeminarId(app.seminarId);
+      if (sid) map[sid] = (map[sid] || 0) + 1;
     });
     return map;
   }, [applications]);
@@ -430,22 +438,22 @@ export const ProgramManagement = () => {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-dark flex items-center gap-3">
+      <div className="flex flex-nowrap items-center justify-between gap-4 mb-6 min-w-0 overflow-x-auto">
+        <h2 className="text-2xl font-bold text-dark flex items-center gap-3 flex-shrink-0 whitespace-nowrap">
           <Icons.Calendar size={28} />
           프로그램 관리
         </h2>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-nowrap items-center gap-2 flex-shrink-0">
           <button
             onClick={loadPrograms}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2 whitespace-nowrap"
           >
             <Icons.RefreshCw size={18} />
             새로고침
           </button>
           <button
             onClick={handleAddTestPrograms}
-            className="px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold hover:bg-amber-200 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold hover:bg-amber-200 transition-colors flex items-center gap-2 whitespace-nowrap"
           >
             <Icons.Plus size={18} />
             테스트 프로그램 2개 추가
@@ -454,7 +462,7 @@ export const ProgramManagement = () => {
             type="button"
             onClick={handleClosePastPrograms}
             disabled={isClosingPast || pastPrograms.length === 0}
-            className="px-4 py-2 bg-gray-700 text-white rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-gray-700 text-white rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 whitespace-nowrap"
             title={pastPrograms.length === 0 ? '지난 프로그램이 없습니다' : `지난 프로그램 ${pastPrograms.length}개 정원 만석·종료`}
           >
             {isClosingPast ? (
@@ -474,7 +482,7 @@ export const ProgramManagement = () => {
               resetForm();
               setShowModal(true);
             }}
-            className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap"
           >
             <Icons.Plus size={18} />
             프로그램 추가
@@ -810,11 +818,11 @@ export const ProgramManagement = () => {
       {/* 신청자명단 모달 */}
       {showApplicantModal && applicantModalProgram && (() => {
         const programId = String(applicantModalProgram.id);
-        const list = (applications || []).filter((app) => String(app.seminarId) === programId);
+        const list = (applications || []).filter((app) => toSeminarId(app.seminarId) === programId);
         const userMap = {};
         (applicantModalUsers || []).forEach((u) => {
-          if (u.id) userMap[u.id] = u;
-          if (u.uid) userMap[u.uid] = u;
+          if (u.id) { userMap[String(u.id)] = u; userMap[u.id] = u; }
+          if (u.uid) { userMap[String(u.uid)] = u; userMap[u.uid] = u; }
         });
         const formatDate = (v) => {
           if (!v) return '-';
@@ -831,7 +839,8 @@ export const ProgramManagement = () => {
         ];
         const toCsvRow = (arr) => arr.map((cell) => `"${getCell(cell)}"`).join(',');
         const rowForApp = (app, i) => {
-          const user = userMap[app.userId] || userMap[app.userId?.toString()];
+          const uid = app.userId != null ? String(app.userId) : '';
+          const user = userMap[app.userId] || userMap[uid] || userMap[app.userId?.toString()];
           return [
             i + 1,
             app.userName || user?.name || '',
@@ -939,7 +948,8 @@ export const ProgramManagement = () => {
                         </thead>
                         <tbody>
                           {list.map((app, i) => {
-                            const user = userMap[app.userId] || userMap[app.userId?.toString()];
+                            const uid = app.userId != null ? String(app.userId) : '';
+                            const user = userMap[app.userId] || userMap[uid] || userMap[app.userId?.toString()];
                             return (
                               <tr key={app.id || i} className="border-b border-blue-100">
                                 <td className="px-2 py-2 text-gray-600">{i + 1}</td>

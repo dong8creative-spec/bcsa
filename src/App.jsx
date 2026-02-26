@@ -38,6 +38,9 @@ import RestaurantFormView from './components/RestaurantFormView';
 import InquiryModal from './components/InquiryModal';
 import DonationView from './components/DonationView';
 import ProgramApplyView from './pages/ProgramApplyView';
+import PrivacyPolicyView from './pages/PrivacyPolicyView';
+import TermsOfServiceView from './pages/TermsOfServiceView';
+import RefundPolicyView from './pages/RefundPolicyView';
 import AppLayout from './components/AppLayout';
 import ModalPortal from './components/ModalPortal';
 import { KakaoMapModal } from './pages/Admin/components/KakaoMapModal';
@@ -133,7 +136,7 @@ const openDaumPostcode = (onComplete) => {
 };
 
 // LoginModal Component
-const LoginModal = ({ onClose, onLogin, onGoogleLogin, onSignUpClick }) => {
+const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) => {
     const [id, setId] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -164,7 +167,7 @@ const LoginModal = ({ onClose, onLogin, onGoogleLogin, onSignUpClick }) => {
     
     return (
         <ModalPortal>
-            <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm z-10 flex flex-col max-h-[90vh] relative border-[0.5px] border-brand scale-90 origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
                     <div className="flex-1 min-h-0 overflow-hidden p-4 text-center">
                         <div className="mb-4">
@@ -192,11 +195,27 @@ const LoginModal = ({ onClose, onLogin, onGoogleLogin, onSignUpClick }) => {
                                 로그인
                             </button>
                         </form>
+                        <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                            {onKakaoLogin && (
+                                <button
+                                    type="button"
+                                    disabled
+                                    className="w-full py-2.5 bg-[#FEE500]/50 text-[#191919]/70 font-bold rounded-xl cursor-not-allowed opacity-60 text-sm flex items-center justify-center gap-2"
+                                >
+                                    <span className="inline-flex shrink-0" aria-hidden="true">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M12 3C6.2 3 1.5 6.66 1.5 11.18c0 2.84 1.8 5.36 4.61 6.94-.12.44-.42 1.58-.48 1.83-.08.38.14.37.33.27.15-.08 2.42-1.58 3.4-2.27.57.08 1.17.12 1.79.12 5.8 0 10.5-3.66 10.5-8.18S17.8 3 12 3z"/>
+                                        </svg>
+                                    </span>
+                                    <span>카카오로 로그인</span>
+                                </button>
+                            )}
+                        </div>
                         {onSignUpClick ? (
                             <button
                                 type="button"
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSignUpClick(); }}
-                                className="w-full mt-2 py-2.5 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5 transition-colors text-sm"
+                                className="w-full mt-2 py-2.5 border-[0.5px] border-brand/30 text-brand font-bold rounded-xl hover:bg-brand/5 transition-colors text-sm"
                             >
                                 회원가입
                             </button>
@@ -915,7 +934,7 @@ const App = () => {
             setShowProgramAlertModal(true);
         }
     };
-    
+
     // Firebase Auth 상태 변경 리스너 - 새로고침 시 로그인 세션 유지
     useEffect(() => {
         if (authService && authService.onAuthStateChanged) {
@@ -1773,61 +1792,95 @@ const App = () => {
         }
     };
 
-    const handleGoogleLogin = async () => {
+    const applySocialLoginResult = useCallback(async (user, userDoc) => {
+        setCurrentUser(userDoc);
+        setShowLoginModal(false);
+        setShowSignUpChoiceModal(false);
+        setMyPosts(communityPosts.filter(p => p.author === userDoc.name));
+        const hasPhone = (userDoc.phone || userDoc.phoneNumber || '').toString().trim();
+        const hasEmail = (userDoc.email || '').toString().trim();
+        if (!hasPhone || !hasEmail) {
+            setGoogleSignupExtraPhone((userDoc.phone || userDoc.phoneNumber || '').toString().trim());
+            setGoogleSignupExtraEmail((userDoc.email || '').toString().trim());
+            setGoogleSignupExtraInfoUser(userDoc);
+            setShowGoogleSignupExtraInfoModal(true);
+            return;
+        }
+        const approvalStatus = userDoc.approvalStatus || 'pending';
+        if (approvalStatus === 'pending') {
+            alert("로그인 성공!\n\n회원가입 승인 대기 중입니다.");
+        } else if (approvalStatus === 'rejected') {
+            alert("로그인 성공!\n\n회원가입이 거부되었습니다. 관리자에게 문의해주세요.");
+        } else {
+            alert("로그인 성공!");
+        }
+        if (pendingView) {
+            setCurrentView(pendingView);
+            setPendingView(null);
+        }
+    }, [communityPosts, pendingView]);
+
+    const handleKakaoLogin = () => {
         try {
-            if (!authService?.signInWithGoogle) {
-                throw new Error('Firebase Auth가 초기화되지 않았습니다.');
+            const base = getApiBaseUrl();
+            if (!base) {
+                alert('API URL이 설정되지 않았습니다. 환경 변수 VITE_API_URL을 확인해주세요.');
+                return;
             }
-            const user = await authService.signInWithGoogle();
-            let userDoc = await authService.getUserData(user.uid);
-            if (!userDoc) {
-                if (!firebaseService?.createUser) {
-                    throw new Error('사용자 생성에 실패했습니다.');
-                }
-                await firebaseService.createUser({
-                    uid: user.uid,
-                    email: user.email || '',
-                    name: user.displayName || user.email || 'Google 사용자',
-                    approvalStatus: 'pending',
-                    createdAt: new Date().toISOString()
-                });
-                userDoc = await authService.getUserData(user.uid);
-            }
-            if (!userDoc) {
-                throw new Error('사용자 정보를 찾을 수 없습니다.');
-            }
-            setCurrentUser(userDoc);
-            setShowLoginModal(false);
-            setShowSignUpChoiceModal(false);
-            setMyPosts(communityPosts.filter(p => p.author === userDoc.name));
-            const hasPhone = (userDoc.phone || userDoc.phoneNumber || '').toString().trim();
-            const hasEmail = (userDoc.email || '').toString().trim();
-            if (!hasPhone || !hasEmail) {
-                setGoogleSignupExtraPhone((userDoc.phone || userDoc.phoneNumber || '').toString().trim());
-                setGoogleSignupExtraEmail((userDoc.email || '').toString().trim());
-                setGoogleSignupExtraInfoUser(userDoc);
-                setShowGoogleSignupExtraInfoModal(true);
-                return true;
-            }
-            const approvalStatus = userDoc.approvalStatus || 'pending';
-            if (approvalStatus === 'pending') {
-                alert("로그인 성공!\n\n회원가입 승인 대기 중입니다.");
-            } else if (approvalStatus === 'rejected') {
-                alert("로그인 성공!\n\n회원가입이 거부되었습니다. 관리자에게 문의해주세요.");
-            } else {
-                alert("로그인 성공!");
-            }
-            if (pendingView) {
-                setCurrentView(pendingView);
-                setPendingView(null);
-            }
-            return true;
+            const callbackUrl = `${base.replace(/\/$/, '')}/api/auth/kakao/callback`;
+            authService.startKakaoLogin(callbackUrl);
         } catch (error) {
-            const errorMessage = translateFirebaseError(error);
-            alert(errorMessage);
-            return false;
+            alert(error?.message || '카카오 로그인을 시작할 수 없습니다.');
         }
     };
+
+    // 카카오 로그인 콜백: URL 해시에 auth=kakao&token= 있으면 커스텀 토큰으로 로그인 후 결과 적용. p 있으면 프로필(name, phone, email) 자동 기입.
+    useEffect(() => {
+        const hash = location.hash.slice(1);
+        if (!hash) return;
+        const params = new URLSearchParams(hash);
+        if (params.get('auth') !== 'kakao') return;
+        let token = params.get('token');
+        if (token) try { token = decodeURIComponent(token); } catch (_) {}
+        if (!token || !authService?.signInWithKakaoToken) return;
+        let profile = null;
+        const pRaw = params.get('p');
+        if (pRaw) {
+            try {
+                const decoded = decodeURIComponent(pRaw);
+                const base64 = decoded.replace(/-/g, '+').replace(/_/g, '/');
+                const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+                const jsonStr = atob(padded);
+                profile = JSON.parse(jsonStr);
+            } catch (_) {}
+        }
+        (async () => {
+            try {
+                const user = await authService.signInWithKakaoToken(token);
+                let userDoc = await authService.getUserData(user.uid);
+                if (!userDoc && firebaseService?.createUser) {
+                    const name = (profile?.name && profile.name.trim()) || '카카오 사용자';
+                    const phone = (profile?.phone && String(profile.phone).trim()) || '';
+                    const email = (profile?.email && String(profile.email).trim()) || '';
+                    await firebaseService.createUser({
+                        uid: user.uid,
+                        email,
+                        name,
+                        phone,
+                        approvalStatus: 'pending',
+                        createdAt: new Date().toISOString()
+                    });
+                    userDoc = await authService.getUserData(user.uid);
+                }
+                if (userDoc) {
+                    await applySocialLoginResult(user, userDoc);
+                }
+            } catch (e) {
+                alert(e?.message || '카카오 로그인 처리에 실패했습니다.');
+            }
+            window.history.replaceState(null, '', location.pathname + location.search);
+        })();
+    }, [location.hash, authService, firebaseService, applySocialLoginResult]);
 
     const handleLogout = async () => {
         try {
@@ -2802,6 +2855,15 @@ END:VCALENDAR`;
                     />
                 );
             }
+            if (location.pathname === '/privacy') {
+                return <PrivacyPolicyView onBack={() => navigate('/')} />;
+            }
+            if (location.pathname === '/terms') {
+                return <TermsOfServiceView onBack={() => navigate('/')} />;
+            }
+            if (location.pathname === '/refund') {
+                return <RefundPolicyView onBack={() => navigate('/')} content={content} />;
+            }
             // 프로그램 신청 전용 페이지 (URL: /program/apply/:programId)
             const programApplyMatch = location.pathname.match(/^\/program\/apply\/([^/]+)/);
             if (programApplyMatch) {
@@ -2831,7 +2893,8 @@ END:VCALENDAR`;
                                 <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 text-center">
                                     <Icons.AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
                                     <h2 className="text-xl font-bold text-dark mb-2">로그인이 필요합니다</h2>
-                                    <p className="text-gray-600 mb-6">프로그램 신청을 위해 로그인해 주세요.</p>
+                                    <p className="text-gray-600 mb-2">프로그램 신청은 회원가입 후 가능합니다.</p>
+                                    <p className="text-gray-600 mb-6">회원이시면 로그인해 주세요.</p>
                                     <div className="flex flex-wrap justify-center gap-3">
                                         <button type="button" onClick={() => setShowLoginModal(true)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">로그인</button>
                                         <button type="button" onClick={() => navigate(-1)} className="px-6 py-3 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5">돌아가기</button>
@@ -3515,6 +3578,7 @@ END:VCALENDAR`;
             />
         )}
         <AppLayout
+            navigate={navigate}
             renderView={renderView}
             currentView={currentView}
             setCurrentView={setCurrentView}
@@ -3553,7 +3617,7 @@ END:VCALENDAR`;
             handleProgramAlertConfirm={handleProgramAlertConfirm}
             handleSignUp={handleSignUp}
             handleLogin={handleLogin}
-            handleGoogleLogin={handleGoogleLogin}
+            handleKakaoLogin={handleKakaoLogin}
             users={users}
             LoginModal={LoginModal}
             setIsMenuOpen={setIsMenuOpen}
@@ -3584,10 +3648,10 @@ END:VCALENDAR`;
         )}
         {showSignUpChoiceModal && (
             <ModalPortal>
-                <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setShowSignUpChoiceModal(false); }}>
+                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setShowSignUpChoiceModal(false); }}>
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 scale-90 origin-center" onClick={(e) => e.stopPropagation()}>
                         <h3 className="text-lg font-bold text-dark mb-1 text-center">회원가입</h3>
-                        <p className="text-xs text-gray-500 mb-4 text-center">개인정보를 입력해 가입해주세요.</p>
+                        <p className="text-xs text-gray-500 mb-4 text-center">회원가입 또는 카카오로 회원가입 중 선택하세요.</p>
                         <div className="space-y-2">
                             <button
                                 type="button"
@@ -3597,7 +3661,19 @@ END:VCALENDAR`;
                                 }}
                                 className="w-full py-3 px-4 bg-blue-50 text-blue-700 border-2 border-blue-200 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 text-sm"
                             >
-                                개인정보로 회원가입
+                                회원가입
+                            </button>
+                            <button
+                                type="button"
+                                disabled
+                                className="w-full py-3 px-4 bg-[#FEE500]/50 text-[#191919]/70 border-2 border-[#FDD835]/50 rounded-xl font-bold cursor-not-allowed opacity-60 flex items-center justify-center gap-2 text-sm"
+                            >
+                                <span className="inline-flex shrink-0" aria-hidden="true">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 3C6.2 3 1.5 6.66 1.5 11.18c0 2.84 1.8 5.36 4.61 6.94-.12.44-.42 1.58-.48 1.83-.08.38.14.37.33.27.15-.08 2.42-1.58 3.4-2.27.57.08 1.17.12 1.79.12 5.8 0 10.5-3.66 10.5-8.18S17.8 3 12 3z"/>
+                                    </svg>
+                                </span>
+                                <span>카카오로 회원가입</span>
                             </button>
                         </div>
                         <button type="button" onClick={() => setShowSignUpChoiceModal(false)} className="w-full mt-3 py-2 text-xs text-gray-500 hover:text-gray-700 font-medium">취소</button>
@@ -3607,7 +3683,7 @@ END:VCALENDAR`;
         )}
         {showGoogleSignupExtraInfoModal && googleSignupExtraInfoUser && (
             <ModalPortal>
-                <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) { setShowGoogleSignupExtraInfoModal(false); setGoogleSignupExtraInfoUser(null); } }}>
+                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) { setShowGoogleSignupExtraInfoModal(false); setGoogleSignupExtraInfoUser(null); } }}>
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
                         <h3 className="text-lg font-bold text-dark mb-2">추가 개인정보 기입</h3>
                         <p className="text-sm text-gray-500 mb-4">회원 확인에 필요한 연락처 정보가 없습니다. 아래 항목을 필수로 입력해주세요.</p>
@@ -3680,7 +3756,7 @@ END:VCALENDAR`;
                 <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) { setPaymentInfoModalOpen(false); setPendingPaymentContext(null); pendingPaymentContext.onFail?.(); } }}>
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
                         <h3 className="text-lg font-bold text-dark mb-2">결제를 위해 연락처를 입력해주세요</h3>
-                        <p className="text-sm text-gray-500 mb-4">구글 로그인 시 연락처가 없을 수 있습니다. 입력한 정보는 프로필에 저장됩니다.</p>
+                        <p className="text-sm text-gray-500 mb-4">소셜 로그인 시 연락처가 없을 수 있습니다. 입력한 정보는 프로필에 저장됩니다.</p>
                         <div className="space-y-3 mb-5">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">휴대폰 번호 *</label>
