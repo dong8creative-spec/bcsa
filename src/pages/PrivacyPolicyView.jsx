@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icons } from '../components/Icons';
+import { defaultContent } from '../constants/content';
 
 const TITLE = '[부산청년사업가 포럼] 개인정보처리방침';
 
@@ -48,14 +49,19 @@ const SECTIONS = [
     body: `· 성명: 정은지
 · 직책: 대표
 · 연락처:`,
-    contactLines: ['☎ 070-8064-7238', '✉ pujar@naver.com'],
+    contactLinesKey: 'footer', // 푸터 대표번호·이메일과 동일하게 표시
   },
 ];
 
 /**
  * 개인정보처리방침 전용 페이지 (푸터 링크 등에서 별도 페이지로 진입)
+ * 연락처는 푸터에 있는 대표번호·이메일과 동일하게 표시
  */
-export default function PrivacyPolicyView({ onBack }) {
+export default function PrivacyPolicyView({ onBack, content }) {
+  const footerPhone = content?.footer_phone || defaultContent.footer_phone;
+  const footerEmail = content?.footer_email || defaultContent.footer_email;
+  const contactLines = [`☎ ${footerPhone}`, `✉ ${footerEmail}`];
+
   return (
     <div className="min-h-screen bg-soft pt-24 pb-20 px-4 md:px-6">
       <div className="container mx-auto max-w-3xl">
@@ -69,11 +75,11 @@ export default function PrivacyPolicyView({ onBack }) {
               <section key={index}>
                 <h2 className="text-base md:text-lg font-bold text-dark mb-3">{section.title}</h2>
                 <div className="text-sm text-gray-700 leading-relaxed">
-                  {section.contactLines ? (
+                  {section.contactLinesKey === 'footer' ? (
                     <>
                       <span className="whitespace-pre-line">{section.body}</span>
                       <span className="inline-block align-top ml-1">
-                        {section.contactLines.map((line, i) => (
+                        {contactLines.map((line, i) => (
                           <div key={i} className="leading-relaxed">{line}</div>
                         ))}
                       </span>

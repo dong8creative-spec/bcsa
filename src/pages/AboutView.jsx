@@ -1,5 +1,6 @@
 import React, { Fragment } from 'react';
 import { Icons } from '../components/Icons';
+import { defaultContent } from '../constants/content';
 
 const AboutView = ({ onBack, content, pageTitles }) => {
     const historyData = [
@@ -221,14 +222,14 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                                 <Icons.Phone size={24} />
                         </div>
                             <h3 className="font-bold text-gray-500 mb-1 text-sm">문의 전화</h3>
-                            <p className="text-xl font-bold text-dark">{content.about_contact_phone || "010-5323-9310"}</p>
+                            <p className="text-xl font-bold text-dark">{content?.about_contact_phone || defaultContent.about_contact_phone}</p>
                     </div>
                         <div className="bg-white p-6 rounded-2xl shadow-sm flex-1 flex flex-col items-center border border-blue-100 hover:border-brand/30 transition-all hover:shadow-md">
                             <div className="w-12 h-12 bg-brand/10 text-brand rounded-full flex items-center justify-center mb-3">
                                 <Icons.Mail size={24} />
                             </div>
                             <h3 className="font-bold text-gray-500 mb-1 text-sm">이메일</h3>
-                            <p className="text-xl font-bold text-dark">{content.about_contact_email || "pujar@naver.com"}</p>
+                            <p className="text-xl font-bold text-dark">{content?.about_contact_email || defaultContent.about_contact_email}</p>
                         </div>
             </div>
                 </div>

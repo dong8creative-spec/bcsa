@@ -2891,7 +2891,7 @@ END:VCALENDAR`;
                 );
             }
             if (location.pathname === '/privacy') {
-                return <PrivacyPolicyView onBack={() => navigate('/')} />;
+                return <PrivacyPolicyView onBack={() => navigate('/')} content={content} />;
             }
             if (location.pathname === '/terms') {
                 return <TermsOfServiceView onBack={() => navigate('/')} />;

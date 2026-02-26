@@ -5,6 +5,7 @@ import InquiryModal from './InquiryModal';
 import ModalPortal from './ModalPortal';
 import { useMediaQuery, MOBILE_QUERY } from '../hooks/useMediaQuery';
 import { getDisplayedOverflow, is정모 } from '../utils/seminarDisplay';
+import { defaultContent } from '../constants/content';
 
 const FAB_GAP_PX = 16;
 const FAB_ESTIMATE_HEIGHT_PX = 152;
@@ -405,12 +406,12 @@ const AppLayout = (props) => {
                         <h3 className="text-lg font-bold text-white mb-4">{content?.footer_title || '부산청년사업가 포럼'}</h3>
                         <div className="mb-2">
                             <p className="text-[26px] text-white font-bold mb-0">
-                                <span className="mr-2" aria-hidden="true">☎</span><a href={`tel:${(content?.footer_phone || '070-8064-7238').replace(/\s/g, '')}`} className="hover:text-white/90 transition-colors">{content?.footer_phone || '070-8064-7238'}</a>
+                                <span className="mr-2" aria-hidden="true">☎</span><a href={`tel:${(content?.footer_phone || defaultContent.footer_phone).replace(/\s/g, '')}`} className="hover:text-white/90 transition-colors">{content?.footer_phone || defaultContent.footer_phone}</a>
                             </p>
                             <p className="text-[13px] font-normal text-white/90 mt-1 mb-0">{content?.footer_hours ? `(${content.footer_hours})` : '(평일 09:00–18:00 / 주말·공휴일 휴무)'}</p>
                         </div>
                         <p className="text-[26px] text-white font-bold mb-8">
-                            <span className="mr-2" aria-hidden="true">✉</span><a href={`mailto:${content?.footer_email || 'pujar@naver.com'}`} className="hover:text-white/90 transition-colors">{content?.footer_email || 'pujar@naver.com'}</a>
+                            <span className="mr-2" aria-hidden="true">✉</span><a href={`mailto:${content?.footer_email || defaultContent.footer_email}`} className="hover:text-white/90 transition-colors">{content?.footer_email || defaultContent.footer_email}</a>
                         </p>
                         {(() => {
                             const line2Raw = content?.footer_line2 || '부산광역시 연제구 법원남로9번길 17(거제동) | 대표 정은지 | 사업자등록번호 792-72-00616';
@@ -448,8 +449,8 @@ const AppLayout = (props) => {
                             <a href="http://www.ftc.go.kr/bizCommPop.do?wrkr_no=7927200616" target="_blank" rel="noopener noreferrer" className="hover:text-white underline">792-72-00616</a>
                         </p>
                         <p className="text-[10px] md:text-sm text-white/90 mb-2">
-                            대표번호 <a href={`tel:${(content?.footer_phone || '070-8064-7238').replace(/\s/g, '')}`} className="hover:text-white transition-colors font-bold">{content?.footer_phone || '070-8064-7238'}</a>
-                            {content?.footer_hours ? ` (${content.footer_hours})` : ' (평일 09:00–18:00 / 주말·공휴일 휴무)'} | 대표 메일 <a href={`mailto:${content?.footer_email || 'pujar@naver.com'}`} className="hover:text-white transition-colors font-bold">{content?.footer_email || 'pujar@naver.com'}</a>
+                            대표번호 <a href={`tel:${(content?.footer_phone || defaultContent.footer_phone).replace(/\s/g, '')}`} className="hover:text-white transition-colors font-bold">{content?.footer_phone || defaultContent.footer_phone}</a>
+                            {content?.footer_hours ? ` (${content.footer_hours})` : ' (평일 09:00–18:00 / 주말·공휴일 휴무)'} | 대표 메일 <a href={`mailto:${content?.footer_email || defaultContent.footer_email}`} className="hover:text-white transition-colors font-bold">{content?.footer_email || defaultContent.footer_email}</a>
                         </p>
                         <p className="text-[8px] md:text-xs text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가 포럼 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
                         <p className="text-[8px] md:text-xs text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
