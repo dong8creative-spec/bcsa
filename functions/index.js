@@ -168,7 +168,14 @@ app.get('/api/auth/kakao/callback', async (req, res) => {
     const pParam = encodeURIComponent(base64url);
     res.redirect(`${FRONTEND_URL}/#auth=kakao&token=${tokenParam}&p=${pParam}`);
   } catch (err) {
+    const kakaoError = err.response?.data?.error;
+    const kakaoDesc = err.response?.data?.error_description || '';
     console.error('[Kakao Auth]', err.response?.data || err.message);
+    // KOE010: Bad client credentials → REST API 키 또는 Client Secret 불일치
+    if (kakaoError === 'invalid_client' || (kakaoDesc && kakaoDesc.toLowerCase().includes('client credential'))) {
+      res.redirect(`${FRONTEND_URL}/?auth=kakao&error=bad_credentials`);
+      return;
+    }
     res.redirect(`${FRONTEND_URL}/?auth=kakao&error=server_error`);
   }
 });

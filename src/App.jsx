@@ -1815,7 +1815,9 @@ const App = () => {
                         ? '서버 설정을 확인해 주세요.'
                         : errorParam === 'no_token'
                             ? '카카오 토큰을 받지 못했습니다.'
-                            : '카카오 로그인 처리 중 오류가 발생했습니다.';
+                            : errorParam === 'bad_credentials'
+                                ? '카카오 REST API 키 또는 Client Secret이 맞지 않습니다. 서버 환경 변수(KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET)를 확인해 주세요.'
+                                : '카카오 로그인 처리 중 오류가 발생했습니다.';
             alert(`${msg}\n\n처음 이용하시는 분은 '가입하기' → '카카오로 회원가입'을 이용해 주세요.`);
             window.history.replaceState(null, '', location.pathname || '/');
             return;
