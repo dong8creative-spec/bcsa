@@ -17,7 +17,7 @@ import {
   saveCurrentUserToStorage
 } from './utils/authUtils';
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from './constants';
-import { getApiBaseUrl } from './utils/api';
+import { getApiBaseUrl, getKakaoCallbackBaseUrl } from './utils/api';
 import { requestPayment as paymentServiceRequestPayment } from './services/paymentService';
 import { PaymentResultView } from './pages/PaymentResultView';
 import { defaultContent } from './constants/content';
@@ -88,8 +88,17 @@ const imageMetadata = [
 
 // 주소 검색: src/utils/daumPostcode.js 의 openDaumPostcode 사용 (SignUpPage, MyPageView, SignUpModal에서 import)
 
+/** 카카오 심볼 아이콘 (로그인/회원가입 버튼용) */
+const KakaoSymbol = ({ className = 'w-5 h-5', ...rest }) => (
+    <span className={`inline-flex shrink-0 ${className}`} aria-hidden="true" {...rest}>
+        <svg width="100%" height="100%" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3C6.2 3 1.5 6.66 1.5 11.18c0 2.84 1.8 5.36 4.61 6.94-.12.44-.42 1.58-.48 1.83-.08.38.14.37.33.27.15-.08 2.42-1.58 3.4-2.27.57.08 1.17.12 1.79.12 5.8 0 10.5-3.66 10.5-8.18S17.8 3 12 3z" />
+        </svg>
+    </span>
+);
+
 // LoginModal Component
-const LoginModal = ({ onClose, onLogin, onSignUpClick }) => {
+const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) => {
     const [id, setId] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -148,6 +157,16 @@ const LoginModal = ({ onClose, onLogin, onSignUpClick }) => {
                                 로그인
                             </button>
                         </form>
+                        {onKakaoLogin && (
+                            <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onKakaoLogin(); }}
+                                className="w-full mt-3 py-2.5 bg-[#FEE500] text-[#191919] font-bold rounded-xl hover:bg-[#FDD835] transition-colors text-sm flex items-center justify-center gap-2"
+                            >
+                                <KakaoSymbol className="w-5 h-5" />
+                                <span>카카오로 로그인</span>
+                            </button>
+                        )}
                         {onSignUpClick ? (
                             <button
                                 type="button"
@@ -422,6 +441,7 @@ const App = () => {
     }, [content?.hero_image]);
 
     const [showSignUpModal, setShowSignUpModal] = useState(false);
+    const [showSignUpChoiceModal, setShowSignUpChoiceModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [pendingView, setPendingView] = useState(null); // 로그인 후 이동할 뷰
     const [mySeminars, setMySeminars] = useState([]);
@@ -1768,6 +1788,91 @@ const App = () => {
             setPendingView(null);
         }
     }, [communityPosts, pendingView]);
+
+    const handleKakaoLogin = useCallback(() => {
+        try {
+            const base = getKakaoCallbackBaseUrl().replace(/\/$/, '');
+            const callbackUrl = `${base}/api/auth/kakao/callback`;
+            authService.startKakaoLogin(callbackUrl);
+        } catch (err) {
+            alert(err?.message || '카카오 로그인을 시작할 수 없습니다.');
+        }
+    }, []);
+
+    // 카카오 OAuth 콜백: URL에 auth=kakao&token= 있으면 커스텀 토큰으로 로그인, error 있으면 안내
+    useEffect(() => {
+        const hashPart = (location.hash || '').slice(1);
+        const queryPart = (location.search || '').slice(1);
+        const params = new URLSearchParams(hashPart || queryPart);
+        if (params.get('auth') !== 'kakao') return;
+        const errorParam = params.get('error');
+        if (errorParam) {
+            const msg = errorParam === 'no_user' || errorParam === 'not_found'
+                ? '가입되지 않은 카카오 계정입니다.'
+                : errorParam === 'no_code'
+                    ? '카카오 인증 코드가 없습니다.'
+                    : errorParam === 'server_config'
+                        ? '서버 설정을 확인해 주세요.'
+                        : errorParam === 'no_token'
+                            ? '카카오 토큰을 받지 못했습니다.'
+                            : '카카오 로그인 처리 중 오류가 발생했습니다.';
+            alert(`${msg}\n\n처음 이용하시는 분은 '가입하기' → '카카오로 회원가입'을 이용해 주세요.`);
+            window.history.replaceState(null, '', location.pathname || '/');
+            return;
+        }
+        if (!hashPart) return;
+        let token = params.get('token');
+        if (token) try { token = decodeURIComponent(token); } catch (_) {}
+        if (!token || !authService?.signInWithKakaoToken) return;
+        let profile = null;
+        const pRaw = params.get('p');
+        if (pRaw) {
+            try {
+                const decoded = decodeURIComponent(pRaw);
+                const base64 = decoded.replace(/-/g, '+').replace(/_/g, '/');
+                const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+                profile = JSON.parse(atob(padded));
+            } catch (_) {}
+        }
+        const isKakaoSignup = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('kakao_signup') === '1';
+        (async () => {
+            try {
+                const user = await authService.signInWithKakaoToken(token);
+                if (isKakaoSignup) {
+                    try {
+                        sessionStorage.removeItem('kakao_signup');
+                        if (profile && typeof sessionStorage !== 'undefined') {
+                            sessionStorage.setItem('kakao_signup_profile', JSON.stringify(profile));
+                        }
+                    } catch (_) {}
+                    window.history.replaceState(null, '', location.pathname + (location.search || ''));
+                    navigate('/signup?from=kakao', { replace: true });
+                    return;
+                }
+                let userDoc = await authService.getUserData(user.uid);
+                if (!userDoc && firebaseService?.createUser) {
+                    const name = (profile?.name && profile.name.trim()) || '카카오 사용자';
+                    const phone = (profile?.phone && String(profile.phone).trim()) || '';
+                    const email = (profile?.email && String(profile.email).trim()) || '';
+                    await firebaseService.createUser({
+                        uid: user.uid,
+                        email,
+                        name,
+                        phone,
+                        approvalStatus: 'pending',
+                        createdAt: new Date().toISOString()
+                    });
+                    userDoc = await authService.getUserData(user.uid);
+                }
+                if (userDoc) {
+                    await applySocialLoginResult(user, userDoc);
+                }
+            } catch (e) {
+                alert(e?.message || '카카오 로그인 처리에 실패했습니다.');
+            }
+            if (!isKakaoSignup) window.history.replaceState(null, '', location.pathname + (location.search || ''));
+        })();
+    }, [location.hash, location.search, authService, firebaseService, applySocialLoginResult, navigate]);
 
     const handleLogout = async () => {
         try {
@@ -3422,7 +3527,7 @@ END:VCALENDAR`;
                                     <button type="button" onClick={(e) => { 
                                         e.preventDefault(); 
                                         e.stopPropagation(); 
-                                        navigate('/signup'); 
+                                        setShowSignUpChoiceModal(true); 
                                     }} className="px-8 py-4 bg-white text-brand font-bold rounded-2xl hover:bg-gray-50 transition-all shadow-lg btn-hover">{content.cta_join_button || '지금 가입하기'}</button>
                                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsInquiryModalOpen(true); }} className="px-8 py-4 bg-transparent border border-white/30 text-white font-bold rounded-2xl hover:bg-white/10 transition-all">{content.cta_contact_button || '문의하기'}</button>
                                 </div>
@@ -3526,7 +3631,10 @@ END:VCALENDAR`;
             setShowLoginModal={setShowLoginModal}
             showSignUpModal={showSignUpModal}
             setShowSignUpModal={setShowSignUpModal}
-            onSignUpClick={() => navigate('/signup')}
+            showSignUpChoiceModal={showSignUpChoiceModal}
+            setShowSignUpChoiceModal={setShowSignUpChoiceModal}
+            onSignUpClick={() => setShowSignUpChoiceModal(true)}
+            handleKakaoLogin={handleKakaoLogin}
             isInquiryModalOpen={isInquiryModalOpen}
             setIsInquiryModalOpen={setIsInquiryModalOpen}
             handleInquirySubmit={handleInquirySubmit}

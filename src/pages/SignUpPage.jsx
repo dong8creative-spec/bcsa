@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Icons } from '../components/Icons';
 import { authService } from '../services/authService';
 import { firebaseService } from '../services/firebaseService';
@@ -43,8 +43,13 @@ const TERMS_PRIVACY = `개인정보 수집 및 이용 동의
 const TERMS_MARKETING = `마케팅 정보 수신 및 활용 동의 (선택)
 부청사 및 제휴사의 이벤트, 혜택, 사업자 지원 프로그램 등 마케팅 정보를 이메일·문자·앱 푸시로 수신하는 것에 동의합니다. 미동의 시에도 회원가입 및 서비스 이용에 제한이 없습니다.`;
 
+const KAKAO_PROFILE_KEY = 'kakao_signup_profile';
+
 const SignUpPage = ({ onSignUp }) => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const fromKakao = searchParams.get('from') === 'kakao';
+    const [kakaoFilledFields, setKakaoFilledFields] = useState({});
     const [userType, setUserType] = useState('');
     const [form, setForm] = useState({
         name: '',
@@ -83,6 +88,36 @@ const SignUpPage = ({ onSignUp }) => {
     const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (!fromKakao || typeof sessionStorage === 'undefined') return;
+        try {
+            const raw = sessionStorage.getItem(KAKAO_PROFILE_KEY);
+            if (!raw) return;
+            const profile = JSON.parse(raw);
+            const filled = {};
+            setForm((prev) => {
+                const next = { ...prev };
+                const name = (profile.name && profile.name.trim()) || '';
+                if (name) { next.name = name; filled.name = true; }
+                const phone = (profile.phone && String(profile.phone).replace(/\D/g, '').slice(0, 11)) || '';
+                if (phone) { next.phone = phone; filled.phone = true; }
+                const email = (profile.email && String(profile.email).trim()) || '';
+                if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    next.email = email;
+                    const at = email.indexOf('@');
+                    next.emailId = email.slice(0, at);
+                    const domain = email.slice(at + 1);
+                    const inList = EMAIL_DOMAINS.filter((d) => d !== '직접입력').includes(domain);
+                    next.emailDomain = inList ? domain : '직접입력';
+                    next.emailDomainCustom = inList ? '' : domain;
+                    filled.email = true;
+                }
+                return next;
+            });
+            setKakaoFilledFields((f) => ({ ...f, ...filled }));
+        } catch (_) {}
+    }, [fromKakao]);
 
     const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || '');
     /** 이메일 앞부분 + 도메인(드롭다운/직접입력) 조합 */
@@ -132,6 +167,12 @@ const SignUpPage = ({ onSignUp }) => {
     const isBusinessNumberValid = businessNumberDigits.length === 10;
 
     const inputClass = 'w-full p-3 border border-blue-200 rounded-xl focus:outline-none focus:border-brand';
+    const inputClassKakao = (fieldKey) => {
+        const base = 'w-full p-3 border rounded-xl focus:outline-none';
+        const green = 'border-green-500 bg-green-50/50 focus:border-green-600 focus:ring-2 focus:ring-green-200';
+        const normal = 'border-blue-200 focus:border-brand';
+        return `${base} ${kakaoFilledFields[fieldKey] ? green : normal}`;
+    };
 
     const isRequiredFilled = useMemo(() => {
         if (!userType) return false;
@@ -141,9 +182,11 @@ const SignUpPage = ({ onSignUp }) => {
         if (!form.gender) return false;
         if (!(form.phone || '').trim() || !validatePhone(form.phone)) return false;
         if (!(form.email || '').trim() || !validateEmail(form.email)) return false;
-        if (!(form.password || '').trim() || !(form.passwordConfirm || '').trim()) return false;
-        if (!validatePassword(form.password).valid) return false;
-        if (form.password !== form.passwordConfirm) return false;
+        if (!fromKakao) {
+            if (!(form.password || '').trim() || !(form.passwordConfirm || '').trim()) return false;
+            if (!validatePassword(form.password).valid) return false;
+            if (form.password !== form.passwordConfirm) return false;
+        }
         if (!form.termsAgreed || !form.privacyAgreed) return false;
         if (!(form.roadAddress || '').trim()) return false;
         if (userType === '사업자') {
@@ -151,7 +194,7 @@ const SignUpPage = ({ onSignUp }) => {
             if (!(form.collaborationIndustry || '').trim() || !(form.keyCustomers || '').trim()) return false;
         }
         return true;
-    }, [userType, form, isBusinessNumberValid]);
+    }, [userType, form, isBusinessNumberValid, fromKakao]);
 
     /** 누락 필수 항목 수집 → "1. 회원 유형을 입력해주십시오.\n2. ..." */
     const getMissingMessages = () => {
@@ -165,10 +208,12 @@ const SignUpPage = ({ onSignUp }) => {
         else if (!validatePhone(form.phone)) missing.push('연락처(숫자 11자리)');
         if (!(form.email || '').trim()) missing.push('이메일');
         else if (!validateEmail(form.email)) missing.push('이메일(올바른 형식)');
-        if (!(form.password || '').trim()) missing.push('비밀번호');
-        else if (!validatePassword(form.password).valid) missing.push('비밀번호(요건 충족)');
-        if (!(form.passwordConfirm || '').trim()) missing.push('비밀번호 확인');
-        else if (form.password !== form.passwordConfirm) missing.push('비밀번호 일치');
+        if (!fromKakao) {
+            if (!(form.password || '').trim()) missing.push('비밀번호');
+            else if (!validatePassword(form.password).valid) missing.push('비밀번호(요건 충족)');
+            if (!(form.passwordConfirm || '').trim()) missing.push('비밀번호 확인');
+            else if (form.password !== form.passwordConfirm) missing.push('비밀번호 일치');
+        }
         if (!form.termsAgreed) missing.push('이용약관 동의');
         if (!form.privacyAgreed) missing.push('개인정보 수집 및 이용 동의');
         if (!(form.roadAddress || '').trim()) missing.push('주소');
@@ -271,11 +316,26 @@ const SignUpPage = ({ onSignUp }) => {
                 img: `https://ui-avatars.com/api/?name=${encodeURIComponent(form.name.trim())}&background=random`,
             };
 
-            const user = await authService.signUp(form.email, form.password, userData);
-            const fullUserData = { uid: user.uid, ...userData, createdAt: new Date().toISOString() };
-            if (onSignUp) onSignUp(fullUserData);
-            alert('회원가입이 완료되었습니다.\n관리자 승인 후 서비스를 이용하실 수 있습니다.');
-            navigate('/', { replace: true });
+            if (fromKakao) {
+                const currentUser = authService?.getCurrentUser?.();
+                if (!currentUser?.uid) {
+                    setError('카카오 로그인 세션이 만료되었습니다. 카카오로 회원가입을 다시 시도해 주세요.');
+                    setSubmitting(false);
+                    return;
+                }
+                await firebaseService.createUser({ uid: currentUser.uid, ...userData });
+                try { sessionStorage.removeItem(KAKAO_PROFILE_KEY); } catch (_) {}
+                const fullUserData = { uid: currentUser.uid, ...userData, createdAt: new Date().toISOString() };
+                if (onSignUp) onSignUp(fullUserData);
+                alert('회원가입이 완료되었습니다.\n관리자 승인 후 서비스를 이용하실 수 있습니다.');
+                navigate('/', { replace: true });
+            } else {
+                const user = await authService.signUp(form.email, form.password, userData);
+                const fullUserData = { uid: user.uid, ...userData, createdAt: new Date().toISOString() };
+                if (onSignUp) onSignUp(fullUserData);
+                alert('회원가입이 완료되었습니다.\n관리자 승인 후 서비스를 이용하실 수 있습니다.');
+                navigate('/', { replace: true });
+            }
         } catch (err) {
             const code = err?.code ?? '없음';
             console.error('SignUp failed', { code, message: err?.message, error: err });
@@ -299,6 +359,12 @@ const SignUpPage = ({ onSignUp }) => {
                     </button>
                     <h1 className="text-2xl md:text-3xl font-bold text-dark">회원가입</h1>
                     <p className="text-sm text-gray-500 mt-1">표시(*)된 항목은 필수 입력입니다.</p>
+                    {fromKakao && (
+                        <p className="text-sm text-green-700 mt-2 flex items-center gap-2">
+                            <span className="inline-flex w-6 h-6 rounded-full bg-[#FEE500] items-center justify-center text-[#191919] text-xs font-bold">K</span>
+                            카카오에서 가져온 정보는 초록색으로 표시됩니다. 회원 유형(사업자/예비창업자)을 선택한 뒤 나머지를 입력해 주세요.
+                        </p>
+                    )}
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-lg border border-blue-100 p-6 md:p-8">
@@ -343,8 +409,9 @@ const SignUpPage = ({ onSignUp }) => {
                                         <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                                             <RequiredFieldBadge number={2} isFilled={!!(form.name || '').trim()} />
                                             이름 <span className="text-red-500">*</span>
+                                            {kakaoFilledFields.name && <span className="text-xs text-green-600 font-normal">(카카오에서 가져옴)</span>}
                                         </label>
-                                        <input type="text" required placeholder="이름 입력" className={inputClass} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                                        <input type="text" required placeholder="이름 입력" className={fromKakao ? inputClassKakao('name') : inputClass} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">닉네임 <span className="text-gray-400 text-xs">(선택, 부청사 활동용)</span></label>
@@ -373,8 +440,9 @@ const SignUpPage = ({ onSignUp }) => {
                                         <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                                             <RequiredFieldBadge number={5} isFilled={!!(form.phone || '').trim() && validatePhone(form.phone)} />
                                             연락처 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(숫자 11자리)</span>
+                                            {kakaoFilledFields.phone && <span className="text-xs text-green-600 font-normal">(카카오에서 가져옴)</span>}
                                         </label>
-                                        <input type="tel" inputMode="numeric" required placeholder="01012345678" className={inputClass} value={form.phone} onChange={e => {
+                                        <input type="tel" inputMode="numeric" required placeholder="01012345678" className={fromKakao ? inputClassKakao('phone') : inputClass} value={form.phone} onChange={e => {
                                             const raw = e.target.value.replace(/\D/g, '');
                                             if (raw.length > 11) {
                                                 setError('연락처는 숫자 11자리만 입력 가능합니다.');
@@ -394,18 +462,21 @@ const SignUpPage = ({ onSignUp }) => {
                                         <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                                             <RequiredFieldBadge number={6} isFilled={!!(form.email || '').trim() && validateEmail(form.email)} />
                                             이메일 <span className="text-red-500">*</span>
+                                            {kakaoFilledFields.email && <span className="text-xs text-green-600 font-normal">(카카오에서 가져옴)</span>}
                                         </label>
-                                        <div className="flex flex-wrap gap-2 items-center p-2 rounded-xl">
-                                            <input type="text" inputMode="email" required placeholder="example" className="flex-1 min-w-[100px] p-3 rounded-xl focus:outline-none border border-blue-200 focus:border-brand" value={form.emailId} onChange={e => setForm(f => ({ ...f, emailId: e.target.value, email: composeEmail(e.target.value, f.emailDomain, f.emailDomainCustom) }))} />
+                                        <div className={`flex flex-wrap gap-2 items-center p-2 rounded-xl ${kakaoFilledFields.email ? 'bg-green-50/50 border border-green-200' : ''}`}>
+                                            <input type="text" inputMode="email" required placeholder="example" className={`flex-1 min-w-[100px] p-3 rounded-xl focus:outline-none ${kakaoFilledFields.email ? 'border border-green-500 bg-white' : 'border border-blue-200 focus:border-brand'}`} value={form.emailId} onChange={e => setForm(f => ({ ...f, emailId: e.target.value, email: composeEmail(e.target.value, f.emailDomain, f.emailDomainCustom) }))} />
                                             <span className="text-slate-500">@</span>
-                                            <select className="p-3 rounded-xl focus:outline-none bg-white border border-blue-200 focus:border-brand" value={form.emailDomain} onChange={e => setForm(f => ({ ...f, emailDomain: e.target.value, email: composeEmail(f.emailId, e.target.value, f.emailDomainCustom) }))}>
+                                            <select className={`p-3 rounded-xl focus:outline-none bg-white ${kakaoFilledFields.email ? 'border border-green-500' : 'border border-blue-200 focus:border-brand'}`} value={form.emailDomain} onChange={e => setForm(f => ({ ...f, emailDomain: e.target.value, email: composeEmail(f.emailId, e.target.value, f.emailDomainCustom) }))}>
                                                 {EMAIL_DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
                                             </select>
                                             {form.emailDomain === '직접입력' && (
-                                                <input type="text" placeholder="도메인 입력" className="flex-1 min-w-[120px] p-3 rounded-xl focus:outline-none border border-blue-200 focus:border-brand" value={form.emailDomainCustom} onChange={e => setForm(f => ({ ...f, emailDomainCustom: e.target.value, email: composeEmail(f.emailId, f.emailDomain, e.target.value) }))} />
+                                                <input type="text" placeholder="도메인 입력" className={`flex-1 min-w-[120px] p-3 rounded-xl focus:outline-none ${kakaoFilledFields.email ? 'border border-green-500 bg-white' : 'border border-blue-200 focus:border-brand'}`} value={form.emailDomainCustom} onChange={e => setForm(f => ({ ...f, emailDomainCustom: e.target.value, email: composeEmail(f.emailId, f.emailDomain, e.target.value) }))} />
                                             )}
                                         </div>
                                     </div>
+                                    {!fromKakao && (
+                                    <>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                                             <RequiredFieldBadge number={7} isFilled={!!(form.password || '').trim() && validatePassword(form.password).valid} />
@@ -428,6 +499,8 @@ const SignUpPage = ({ onSignUp }) => {
                                         </div>
                                         {form.passwordConfirm && form.password !== form.passwordConfirm && <p className="text-xs text-red-500 mt-1">비밀번호가 일치하지 않습니다.</p>}
                                     </div>
+                                    </>
+                                    )}
                                 </div>
 
                                 <div className="md:col-span-2">

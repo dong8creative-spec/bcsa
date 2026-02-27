@@ -102,6 +102,106 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'API Proxy is running' });
 });
 
+// 카카오 로그인: 인증 코드 → 액세스 토큰 → 사용자 정보 → Firebase 커스텀 토큰 → 프론트 리다이렉트
+const KAKAO_REST_KEY = process.env.KAKAO_REST_API_KEY || process.env.KAKAO_JS_KEY || '';
+const KAKAO_CLIENT_SECRET = process.env.KAKAO_CLIENT_SECRET || '';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://bcsa.co.kr';
+
+app.get('/api/auth/kakao/callback', async (req, res) => {
+  const code = req.query.code;
+  if (!code) {
+    res.redirect(`${FRONTEND_URL}/?auth=kakao&error=no_code`);
+    return;
+  }
+  if (!KAKAO_REST_KEY) {
+    console.error('[Kakao Auth] KAKAO_REST_API_KEY not set');
+    res.redirect(`${FRONTEND_URL}/?auth=kakao&error=server_config`);
+    return;
+  }
+  const baseUrl = (process.env.FUNCTION_URL || process.env.VITE_API_URL || `https://${req.get('host') || ''}`).replace(/\/$/, '');
+  const redirectUri = `${baseUrl}/api/auth/kakao/callback`;
+  try {
+    const tokenRes = await axios.post(
+      'https://kauth.kakao.com/oauth/token',
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: KAKAO_REST_KEY,
+        redirect_uri: redirectUri,
+        code
+      }),
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        ...(KAKAO_CLIENT_SECRET ? {
+          auth: { username: KAKAO_REST_KEY, password: KAKAO_CLIENT_SECRET }
+        } : {})
+      }
+    );
+    const accessToken = tokenRes.data?.access_token;
+    if (!accessToken) {
+      res.redirect(`${FRONTEND_URL}/?auth=kakao&error=no_token`);
+      return;
+    }
+    const meRes = await axios.get('https://kapi.kakao.com/v2/user/me', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const kakaoId = meRes.data?.id;
+    const kakaoAccount = meRes.data?.kakao_account || {};
+    const profile = kakaoAccount.profile || {};
+    const email = (kakaoAccount.email || '').toString();
+    const nickname = (profile.nickname || '').toString();
+    const legalName = (kakaoAccount.legal_name || kakaoAccount.name || '').toString();
+    const phoneNumber = (kakaoAccount.phone_number || '').toString();
+    const name = legalName || nickname || '카카오 사용자';
+    if (!kakaoId) {
+      res.redirect(`${FRONTEND_URL}/?auth=kakao&error=no_user`);
+      return;
+    }
+    const firebaseUid = `kakao_${kakaoId}`;
+    const customToken = await admin.auth().createCustomToken(firebaseUid);
+    const tokenParam = encodeURIComponent(customToken);
+    const profilePayload = { name, phone: phoneNumber, email };
+    const base64url = Buffer.from(JSON.stringify(profilePayload), 'utf8')
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    const pParam = encodeURIComponent(base64url);
+    res.redirect(`${FRONTEND_URL}/#auth=kakao&token=${tokenParam}&p=${pParam}`);
+  } catch (err) {
+    console.error('[Kakao Auth]', err.response?.data || err.message);
+    res.redirect(`${FRONTEND_URL}/?auth=kakao&error=server_error`);
+  }
+});
+
+// 카카오 계정 상태 변경 웹훅 (OAuth: user-linked 등) — Content-Type: application/secevent+jwt
+// JWT payload만 디코딩해 이벤트 타입·sub(카카오 사용자 ID) 로깅 후 200 응답
+app.post('/api/webhook/kakao', express.raw({ type: 'application/secevent+jwt' }), (req, res) => {
+  try {
+    const raw = req.body;
+    const jwtStr = Buffer.isBuffer(raw) ? raw.toString('utf8') : (typeof raw === 'string' ? raw : '');
+    if (jwtStr) {
+      const parts = jwtStr.split('.');
+      if (parts.length >= 2) {
+        const payload = JSON.parse(
+          Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
+        );
+        const sub = payload.sub;
+        const events = payload.events || {};
+        const eventTypes = Object.keys(events);
+        console.log('[Kakao Webhook]', { sub, eventTypes, aud: payload.aud, iss: payload.iss });
+      } else {
+        console.log('[Kakao Webhook] raw length', jwtStr.length);
+      }
+    } else {
+      console.log('[Kakao Webhook] no body');
+    }
+    res.status(200).json({ received: true });
+  } catch (err) {
+    console.error('[Kakao Webhook]', err);
+    res.status(200).json({ received: true });
+  }
+});
+
 // 결제 전 대기 저장 (리다이렉트 결제 직전 클라이언트 호출)
 app.post('/api/payment/pending', async (req, res) => {
   try {

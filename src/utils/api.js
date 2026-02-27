@@ -9,6 +9,17 @@ export const getApiBaseUrl = () => {
   return import.meta.env.VITE_API_URL || '';
 };
 
+/** 카카오 로그인 콜백은 백엔드에서 처리하므로 백엔드 기준 URL 사용 (프론트와 동일할 수 있음) */
+const KAKAO_CALLBACK_BACKEND_FALLBACK = 'https://apibid-oytjv32jna-du.a.run.app';
+
+/**
+ * 카카오 OAuth 콜백 URL의 origin. 백엔드 API 서버 주소.
+ */
+export const getKakaoCallbackBaseUrl = () => {
+  const base = import.meta.env.VITE_API_URL || '';
+  return (base && base.replace(/\/$/, '')) || KAKAO_CALLBACK_BACKEND_FALLBACK;
+};
+
 /**
  * API 요청을 수행하는 통합 함수
  * @param {string} endpoint - API 엔드포인트 경로 (예: '/api/...')
