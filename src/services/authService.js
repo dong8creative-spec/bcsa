@@ -60,7 +60,7 @@ export const authService = {
     }
     window.Kakao.Auth.authorize({
       redirectUri: callbackUrl,
-      scope: 'profile_nickname,account_email'
+      scope: 'profile_nickname,account_email,phone_number'
     });
   },
 
