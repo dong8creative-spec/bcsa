@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icons } from '../components/Icons';
 import { authService } from '../services/authService';
@@ -130,6 +130,8 @@ const SignUpPage = ({ onSignUp }) => {
     /** 사업자등록번호: 숫자만 허용, 10자리 */
     const businessNumberDigits = (form.businessRegistrationNumber || '').replace(/\D/g, '');
     const isBusinessNumberValid = businessNumberDigits.length === 10;
+
+    const inputClass = 'w-full p-3 border border-blue-200 rounded-xl focus:outline-none focus:border-brand';
 
     const isRequiredFilled = useMemo(() => {
         if (!userType) return false;
@@ -268,6 +270,7 @@ const SignUpPage = ({ onSignUp }) => {
                 approvalStatus: 'pending',
                 img: `https://ui-avatars.com/api/?name=${encodeURIComponent(form.name.trim())}&background=random`,
             };
+
             const user = await authService.signUp(form.email, form.password, userData);
             const fullUserData = { uid: user.uid, ...userData, createdAt: new Date().toISOString() };
             if (onSignUp) onSignUp(fullUserData);
@@ -341,7 +344,7 @@ const SignUpPage = ({ onSignUp }) => {
                                             <RequiredFieldBadge number={2} isFilled={!!(form.name || '').trim()} />
                                             이름 <span className="text-red-500">*</span>
                                         </label>
-                                        <input type="text" required placeholder="이름 입력" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                                        <input type="text" required placeholder="이름 입력" className={inputClass} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">닉네임 <span className="text-gray-400 text-xs">(선택, 부청사 활동용)</span></label>
@@ -371,7 +374,7 @@ const SignUpPage = ({ onSignUp }) => {
                                             <RequiredFieldBadge number={5} isFilled={!!(form.phone || '').trim() && validatePhone(form.phone)} />
                                             연락처 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(숫자 11자리)</span>
                                         </label>
-                                        <input type="tel" inputMode="numeric" required placeholder="01012345678" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.phone} onChange={e => {
+                                        <input type="tel" inputMode="numeric" required placeholder="01012345678" className={inputClass} value={form.phone} onChange={e => {
                                             const raw = e.target.value.replace(/\D/g, '');
                                             if (raw.length > 11) {
                                                 setError('연락처는 숫자 11자리만 입력 가능합니다.');
@@ -392,14 +395,14 @@ const SignUpPage = ({ onSignUp }) => {
                                             <RequiredFieldBadge number={6} isFilled={!!(form.email || '').trim() && validateEmail(form.email)} />
                                             이메일 <span className="text-red-500">*</span>
                                         </label>
-                                        <div className="flex flex-wrap gap-2 items-center">
-                                            <input type="text" inputMode="email" required placeholder="example" className="flex-1 min-w-[100px] p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.emailId} onChange={e => setForm(f => ({ ...f, emailId: e.target.value, email: composeEmail(e.target.value, f.emailDomain, f.emailDomainCustom) }))} />
+                                        <div className="flex flex-wrap gap-2 items-center p-2 rounded-xl">
+                                            <input type="text" inputMode="email" required placeholder="example" className="flex-1 min-w-[100px] p-3 rounded-xl focus:outline-none border border-blue-200 focus:border-brand" value={form.emailId} onChange={e => setForm(f => ({ ...f, emailId: e.target.value, email: composeEmail(e.target.value, f.emailDomain, f.emailDomainCustom) }))} />
                                             <span className="text-slate-500">@</span>
-                                            <select className="p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={form.emailDomain} onChange={e => setForm(f => ({ ...f, emailDomain: e.target.value, email: composeEmail(f.emailId, e.target.value, f.emailDomainCustom) }))}>
+                                            <select className="p-3 rounded-xl focus:outline-none bg-white border border-blue-200 focus:border-brand" value={form.emailDomain} onChange={e => setForm(f => ({ ...f, emailDomain: e.target.value, email: composeEmail(f.emailId, e.target.value, f.emailDomainCustom) }))}>
                                                 {EMAIL_DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
                                             </select>
                                             {form.emailDomain === '직접입력' && (
-                                                <input type="text" placeholder="도메인 입력" className="flex-1 min-w-[120px] p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.emailDomainCustom} onChange={e => setForm(f => ({ ...f, emailDomainCustom: e.target.value, email: composeEmail(f.emailId, f.emailDomain, e.target.value) }))} />
+                                                <input type="text" placeholder="도메인 입력" className="flex-1 min-w-[120px] p-3 rounded-xl focus:outline-none border border-blue-200 focus:border-brand" value={form.emailDomainCustom} onChange={e => setForm(f => ({ ...f, emailDomainCustom: e.target.value, email: composeEmail(f.emailId, f.emailDomain, e.target.value) }))} />
                                             )}
                                         </div>
                                     </div>

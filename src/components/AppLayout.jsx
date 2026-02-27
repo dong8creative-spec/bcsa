@@ -74,7 +74,6 @@ const AppLayout = (props) => {
         setShowLoginModal,
         showSignUpModal,
         setShowSignUpModal,
-        setShowSignUpChoiceModal,
         onSignUpClick,
         isInquiryModalOpen,
         setIsInquiryModalOpen,
@@ -84,7 +83,6 @@ const AppLayout = (props) => {
         handleProgramAlertConfirm,
         handleSignUp,
         handleLogin,
-        handleKakaoLogin,
         users,
         LoginModal,
         content,
@@ -342,7 +340,7 @@ const AppLayout = (props) => {
                                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="text-xs font-semibold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">
                                             로그인
                                         </button>
-                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onSignUpClick) onSignUpClick(); else setShowSignUpChoiceModal(true); }} className="inline-flex px-4 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover whitespace-nowrap flex-shrink-0">가입하기</button>
+                                        <button type="button" data-testid="header-signup-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSignUpClick?.(); }} className="inline-flex px-4 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover whitespace-nowrap flex-shrink-0">가입하기</button>
                                     </>
                                 )}
                             </div>
@@ -485,7 +483,6 @@ const AppLayout = (props) => {
                 <LoginModal
                     onClose={() => setShowLoginModal(false)}
                     onLogin={handleLogin}
-                    onKakaoLogin={handleKakaoLogin}
                     onSignUpClick={() => {
                         setShowLoginModal(false);
                         onSignUpClick?.();

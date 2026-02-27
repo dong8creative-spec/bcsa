@@ -59,11 +59,6 @@ export const CONFIG = {
     GOOGLE_APPS_SCRIPT: {
         WEB_APP_URL: '',
         SPREADSHEET_ID: ''
-    },
-    KAKAO: {
-        JAVASCRIPT_KEY: typeof import.meta !== 'undefined' && import.meta.env?.VITE_KAKAO_JS_KEY
-            ? import.meta.env.VITE_KAKAO_JS_KEY
-            : ''
     }
 };
 

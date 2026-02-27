@@ -86,61 +86,10 @@ const imageMetadata = [
 
 // AllSeminarsView는 pages/AllSeminarsView.jsx로 분리됨
 
-// Daum Postcode helper function
-const openDaumPostcode = (onComplete) => {
-    if (window.location.protocol === 'file:') {
-        alert('⚠️ 주소 검색 기능은 HTTP 서버에서만 작동합니다.\n\n로컬 서버를 실행하려면:\nnpm run http\n\n그 후 브라우저에서 http://localhost:3000/index.html 을 열어주세요.');
-        return;
-    }
-    
-    if (typeof window.daum === 'undefined' || !window.daum.Postcode) {
-        alert('주소 검색 서비스가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
-        return;
-    }
-    
-    new window.daum.Postcode({
-        oncomplete: function(data) {
-            try {
-                let fullRoadAddr = '';
-                let extraRoadAddr = '';
-                
-                if (data.userSelectedType === 'R') {
-                    fullRoadAddr = data.roadAddress;
-                    
-                    if (data.bname !== '' && /[동|로|가]$/g.test(data.bname)) {
-                        extraRoadAddr += data.bname;
-                    }
-                    if (data.buildingName !== '' && data.apartment === 'Y') {
-                        extraRoadAddr += (extraRoadAddr !== '' ? ', ' + data.buildingName : data.buildingName);
-                    }
-                    if (extraRoadAddr !== '') {
-                        extraRoadAddr = ' (' + extraRoadAddr + ')';
-                    }
-                    fullRoadAddr += extraRoadAddr;
-                } else {
-                    fullRoadAddr = data.jibunAddress || data.autoJibunAddress || data.roadAddress;
-                }
-                
-                const zonecode = data.zonecode;
-                const jibunAddress = data.jibunAddress || data.autoJibunAddress;
-                
-                if (onComplete && typeof onComplete === 'function') {
-                    onComplete({
-                        roadAddress: fullRoadAddr || data.roadAddress || '',
-                        jibunAddress: jibunAddress || '',
-                        zipCode: zonecode || '',
-                        buildingName: data.buildingName || ''
-                    });
-                }
-            } catch (error) {
-                alert('주소 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
-            }
-        }
-    }).open();
-};
+// 주소 검색: src/utils/daumPostcode.js 의 openDaumPostcode 사용 (SignUpPage, MyPageView, SignUpModal에서 import)
 
 // LoginModal Component
-const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) => {
+const LoginModal = ({ onClose, onLogin, onSignUpClick }) => {
     const [id, setId] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -199,22 +148,6 @@ const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) => {
                                 로그인
                             </button>
                         </form>
-                        <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
-                            {onKakaoLogin && (
-                                <button
-                                    type="button"
-                                    disabled
-                                    className="w-full py-2.5 bg-[#FEE500]/50 text-[#191919]/70 font-bold rounded-xl cursor-not-allowed opacity-60 text-sm flex items-center justify-center gap-2"
-                                >
-                                    <span className="inline-flex shrink-0" aria-hidden="true">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M12 3C6.2 3 1.5 6.66 1.5 11.18c0 2.84 1.8 5.36 4.61 6.94-.12.44-.42 1.58-.48 1.83-.08.38.14.37.33.27.15-.08 2.42-1.58 3.4-2.27.57.08 1.17.12 1.79.12 5.8 0 10.5-3.66 10.5-8.18S17.8 3 12 3z"/>
-                                        </svg>
-                                    </span>
-                                    <span>카카오로 로그인</span>
-                                </button>
-                            )}
-                        </div>
                         {onSignUpClick ? (
                             <button
                                 type="button"
@@ -489,7 +422,6 @@ const App = () => {
     }, [content?.hero_image]);
 
     const [showSignUpModal, setShowSignUpModal] = useState(false);
-    const [showSignUpChoiceModal, setShowSignUpChoiceModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [pendingView, setPendingView] = useState(null); // 로그인 후 이동할 뷰
     const [mySeminars, setMySeminars] = useState([]);
@@ -718,14 +650,6 @@ const App = () => {
     useEffect(() => {
         
     }, [showLoginModal]);
-    
-    // 회원가입 선택 모달 열릴 때 배경 스크롤 방지
-    useEffect(() => {
-        if (!showSignUpChoiceModal) return;
-        const prev = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
-        return () => { document.body.style.overflow = prev; };
-    }, [showSignUpChoiceModal]);
     
     // 마감임박 판단 함수
     const isDeadlineSoon = (seminar) => {
@@ -1821,7 +1745,6 @@ const App = () => {
     const applySocialLoginResult = useCallback(async (user, userDoc) => {
         setCurrentUser(userDoc);
         setShowLoginModal(false);
-        setShowSignUpChoiceModal(false);
         setMyPosts(communityPosts.filter(p => p.author === userDoc.name));
         const hasPhone = (userDoc.phone || userDoc.phoneNumber || '').toString().trim();
         const hasEmail = (userDoc.email || '').toString().trim();
@@ -1846,68 +1769,6 @@ const App = () => {
         }
     }, [communityPosts, pendingView]);
 
-    const handleKakaoLogin = () => {
-        try {
-            const base = getApiBaseUrl();
-            if (!base) {
-                alert('API URL이 설정되지 않았습니다. 환경 변수 VITE_API_URL을 확인해주세요.');
-                return;
-            }
-            const callbackUrl = `${base.replace(/\/$/, '')}/api/auth/kakao/callback`;
-            authService.startKakaoLogin(callbackUrl);
-        } catch (error) {
-            alert(error?.message || '카카오 로그인을 시작할 수 없습니다.');
-        }
-    };
-
-    // 카카오 로그인 콜백: URL 해시에 auth=kakao&token= 있으면 커스텀 토큰으로 로그인 후 결과 적용. p 있으면 프로필(name, phone, email) 자동 기입.
-    useEffect(() => {
-        const hash = location.hash.slice(1);
-        if (!hash) return;
-        const params = new URLSearchParams(hash);
-        if (params.get('auth') !== 'kakao') return;
-        let token = params.get('token');
-        if (token) try { token = decodeURIComponent(token); } catch (_) {}
-        if (!token || !authService?.signInWithKakaoToken) return;
-        let profile = null;
-        const pRaw = params.get('p');
-        if (pRaw) {
-            try {
-                const decoded = decodeURIComponent(pRaw);
-                const base64 = decoded.replace(/-/g, '+').replace(/_/g, '/');
-                const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-                const jsonStr = atob(padded);
-                profile = JSON.parse(jsonStr);
-            } catch (_) {}
-        }
-        (async () => {
-            try {
-                const user = await authService.signInWithKakaoToken(token);
-                let userDoc = await authService.getUserData(user.uid);
-                if (!userDoc && firebaseService?.createUser) {
-                    const name = (profile?.name && profile.name.trim()) || '카카오 사용자';
-                    const phone = (profile?.phone && String(profile.phone).trim()) || '';
-                    const email = (profile?.email && String(profile.email).trim()) || '';
-                    await firebaseService.createUser({
-                        uid: user.uid,
-                        email,
-                        name,
-                        phone,
-                        approvalStatus: 'pending',
-                        createdAt: new Date().toISOString()
-                    });
-                    userDoc = await authService.getUserData(user.uid);
-                }
-                if (userDoc) {
-                    await applySocialLoginResult(user, userDoc);
-                }
-            } catch (e) {
-                alert(e?.message || '카카오 로그인 처리에 실패했습니다.');
-            }
-            window.history.replaceState(null, '', location.pathname + location.search);
-        })();
-    }, [location.hash, authService, firebaseService, applySocialLoginResult]);
-
     const handleLogout = async () => {
         try {
             if (authService && authService.signOut) {
@@ -1931,7 +1792,6 @@ const App = () => {
         setCurrentView('home');
         setShowLoginModal(false);
         setShowSignUpModal(false);
-        setShowSignUpChoiceModal(false);
         setIsMenuOpen(false);
         setIsPopupApplyModalOpen(false);
         window.scrollTo({ top: 0, behavior: 'instant' });
@@ -3666,7 +3526,6 @@ END:VCALENDAR`;
             setShowLoginModal={setShowLoginModal}
             showSignUpModal={showSignUpModal}
             setShowSignUpModal={setShowSignUpModal}
-            setShowSignUpChoiceModal={setShowSignUpChoiceModal}
             onSignUpClick={() => navigate('/signup')}
             isInquiryModalOpen={isInquiryModalOpen}
             setIsInquiryModalOpen={setIsInquiryModalOpen}
@@ -3676,7 +3535,6 @@ END:VCALENDAR`;
             handleProgramAlertConfirm={handleProgramAlertConfirm}
             handleSignUp={handleSignUp}
             handleLogin={handleLogin}
-            handleKakaoLogin={handleKakaoLogin}
             users={users}
             LoginModal={LoginModal}
             setIsMenuOpen={setIsMenuOpen}
@@ -3704,41 +3562,6 @@ END:VCALENDAR`;
                 }}
                 initialLocation={null}
             />
-        )}
-        {showSignUpChoiceModal && (
-            <ModalPortal>
-                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setShowSignUpChoiceModal(false); }}>
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 scale-90 origin-center" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-bold text-dark mb-1 text-center">회원가입</h3>
-                        <p className="text-xs text-gray-500 mb-4 text-center">회원가입 또는 카카오로 회원가입 중 선택하세요.</p>
-                        <div className="space-y-2">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowSignUpChoiceModal(false);
-                                    navigate('/signup');
-                                }}
-                                className="w-full py-3 px-4 bg-blue-50 text-blue-700 border-2 border-blue-200 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 text-sm"
-                            >
-                                회원가입
-                            </button>
-                            <button
-                                type="button"
-                                disabled
-                                className="w-full py-3 px-4 bg-[#FEE500]/50 text-[#191919]/70 border-2 border-[#FDD835]/50 rounded-xl font-bold cursor-not-allowed opacity-60 flex items-center justify-center gap-2 text-sm"
-                            >
-                                <span className="inline-flex shrink-0" aria-hidden="true">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M12 3C6.2 3 1.5 6.66 1.5 11.18c0 2.84 1.8 5.36 4.61 6.94-.12.44-.42 1.58-.48 1.83-.08.38.14.37.33.27.15-.08 2.42-1.58 3.4-2.27.57.08 1.17.12 1.79.12 5.8 0 10.5-3.66 10.5-8.18S17.8 3 12 3z"/>
-                                    </svg>
-                                </span>
-                                <span>카카오로 회원가입</span>
-                            </button>
-                        </div>
-                        <button type="button" onClick={() => setShowSignUpChoiceModal(false)} className="w-full mt-3 py-2 text-xs text-gray-500 hover:text-gray-700 font-medium">취소</button>
-                    </div>
-                </div>
-            </ModalPortal>
         )}
         {showGoogleSignupExtraInfoModal && googleSignupExtraInfoUser && (
             <ModalPortal>
