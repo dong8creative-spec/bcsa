@@ -49,7 +49,7 @@ const getTodayStart = () => {
   return d.getTime();
 };
 
-/** application.seminarId를 문자열로 통일 (Firestore 참조/문자열 혼용 대비) */
+/** application.seminarId(또는 programId)를 문자열로 통일 (Firestore 참조/문자열 혼용 대비) */
 const toSeminarId = (v) => {
   if (v == null || v === undefined) return '';
   if (typeof v === 'string') return v.trim();
@@ -94,7 +94,7 @@ export const ProgramManagement = () => {
     loadPrograms();
   }, []);
 
-  /** 신청자 명단 모달 열릴 때 회원 목록 로드 (기본 정보 CSV용) */
+  /** 신청자 명단 모달 열릴 때 회원 목록 + 신청 목록 최신화 (기본 정보 CSV용, 신청자 표시 정확도) */
   useEffect(() => {
     if (!showApplicantModal || !applicantModalProgram) {
       setApplicantModalUsers([]);
@@ -103,8 +103,14 @@ export const ProgramManagement = () => {
     let cancelled = false;
     (async () => {
       try {
-        const users = firebaseService.getUsers ? await firebaseService.getUsers() : [];
-        if (!cancelled) setApplicantModalUsers(Array.isArray(users) ? users : []);
+        const [users, apps] = await Promise.all([
+          firebaseService.getUsers ? firebaseService.getUsers() : [],
+          firebaseService.getApplications ? firebaseService.getApplications().catch(() => []) : []
+        ]);
+        if (!cancelled) {
+          setApplicantModalUsers(Array.isArray(users) ? users : []);
+          setApplications(Array.isArray(apps) ? apps : []);
+        }
       } catch (e) {
         if (!cancelled) setApplicantModalUsers([]);
       }
@@ -129,11 +135,11 @@ export const ProgramManagement = () => {
     }
   };
 
-  /** 프로그램별 신청 수 */
+  /** 프로그램별 신청 수 (seminarId / programId 둘 다 반영) */
   const applicationCountBySeminarId = useMemo(() => {
     const map = {};
     (applications || []).forEach((app) => {
-      const sid = toSeminarId(app.seminarId);
+      const sid = toSeminarId(app.seminarId ?? app.programId);
       if (sid) map[sid] = (map[sid] || 0) + 1;
     });
     return map;
@@ -818,7 +824,10 @@ export const ProgramManagement = () => {
       {/* 신청자명단 모달 */}
       {showApplicantModal && applicantModalProgram && (() => {
         const programId = String(applicantModalProgram.id);
-        const list = (applications || []).filter((app) => toSeminarId(app.seminarId) === programId);
+        const list = (applications || []).filter((app) => {
+          const sid = toSeminarId(app.seminarId ?? app.programId);
+          return sid === programId;
+        });
         const userMap = {};
         const userMapByEmail = {};
         const userMapByPhone = {};
