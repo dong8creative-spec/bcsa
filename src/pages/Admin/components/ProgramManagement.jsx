@@ -443,82 +443,30 @@ export const ProgramManagement = () => {
   }
 
   return (
-    <div>
-      <div className="flex flex-nowrap items-center justify-between gap-4 mb-6 min-w-0 overflow-x-auto">
-        <h2 className="text-2xl font-bold text-dark flex items-center gap-3 flex-shrink-0 whitespace-nowrap">
-          <Icons.Calendar size={28} />
-          프로그램 관리
+    <div className="min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 min-w-0">
+        <h2 className="text-xl sm:text-2xl font-bold text-dark flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <Icons.Calendar size={24} className="sm:w-7 sm:h-7 flex-shrink-0" />
+          <span className="truncate">프로그램 관리</span>
         </h2>
-        <div className="flex flex-nowrap items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
           <button
             onClick={loadPrograms}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2 whitespace-nowrap"
+            className="px-3 py-2 sm:px-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base whitespace-nowrap"
           >
-            <Icons.RefreshCw size={18} />
+            <Icons.RefreshCw size={16} className="sm:w-[18px] sm:h-[18px] flex-shrink-0" />
             새로고침
-          </button>
-          <button
-            onClick={handleAddTestPrograms}
-            className="px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold hover:bg-amber-200 transition-colors flex items-center gap-2 whitespace-nowrap"
-          >
-            <Icons.Plus size={18} />
-            테스트 프로그램 2개 추가
-          </button>
-          <button
-            type="button"
-            onClick={handleClosePastPrograms}
-            disabled={isClosingPast || pastPrograms.length === 0}
-            className="px-4 py-2 bg-gray-700 text-white rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 whitespace-nowrap"
-            title={pastPrograms.length === 0 ? '지난 프로그램이 없습니다' : `지난 프로그램 ${pastPrograms.length}개 정원 만석·종료`}
-          >
-            {isClosingPast ? (
-              <>
-                <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                처리 중...
-              </>
-            ) : (
-              <>
-                <Icons.CheckCircle size={18} />
-                지난 프로그램 만석·종료
-              </>
-            )}
           </button>
           <button
             onClick={() => {
               resetForm();
               setShowModal(true);
             }}
-            className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap"
+            className="px-3 py-2 sm:px-4 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base whitespace-nowrap"
           >
-            <Icons.Plus size={18} />
+            <Icons.Plus size={16} className="sm:w-[18px] sm:h-[18px] flex-shrink-0" />
             프로그램 추가
           </button>
-        </div>
-      </div>
-
-      {/* 검색 및 정렬 */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1">
-          <Icons.Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="제목, 설명, 카테고리, 장소, 일시로 검색..."
-            className="w-full pl-10 pr-4 py-2.5 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
-          />
-        </div>
-        <div className="flex items-center gap-2 sm:w-56">
-          <label className="text-sm font-bold text-gray-700 whitespace-nowrap">정렬:</label>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="flex-1 px-3 py-2.5 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white"
-          >
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
         </div>
       </div>
 
