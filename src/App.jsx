@@ -1811,9 +1811,16 @@ const App = () => {
         const params = new URLSearchParams(hashPart || queryPart);
         if (params.get('auth') !== 'kakao') return;
         const clearKakaoHash = () => {
-            const base = (typeof window !== 'undefined' && window.location.pathname) || '/';
-            const search = (typeof window !== 'undefined' && window.location.search) || '';
-            window.history.replaceState(null, '', base + search);
+            if (typeof window === 'undefined') return;
+            const base = (window.location.pathname || '/');
+            const currentSearch = (window.location.search || '').slice(1);
+            const rest = new URLSearchParams(currentSearch);
+            rest.delete('auth');
+            rest.delete('token');
+            rest.delete('p');
+            rest.delete('error');
+            const restStr = rest.toString();
+            window.history.replaceState(null, '', base + (restStr ? `?${restStr}` : ''));
         };
         const errorParam = params.get('error');
         if (errorParam) {
@@ -1832,7 +1839,7 @@ const App = () => {
             clearKakaoHash();
             return;
         }
-        if (!hashPart) return;
+        // 해시 또는 쿼리 모두 처리 (백엔드가 쿼리로 리다이렉트할 수 있음)
         let token = params.get('token');
         if (token) try { token = decodeURIComponent(token); } catch (_) {}
         if (!token || !authService?.signInWithKakaoToken) return;

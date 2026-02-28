@@ -208,9 +208,10 @@ app.get('/api/auth/kakao/callback', async (req, res) => {
       .replace(/\//g, '_')
       .replace(/=+$/, '');
     const pParam = encodeURIComponent(base64url);
-    const redirectTo = `${FRONTEND_URL}/#auth=kakao&token=${tokenParam}&p=${pParam}`;
+    // 해시(#)는 리다이렉트 시 일부 환경에서 유실될 수 있어 쿼리 파라미터로 전달
+    const redirectTo = `${FRONTEND_URL}/?auth=kakao&token=${tokenParam}&p=${pParam}`;
     console.log('[Kakao Auth] Success: redirecting to frontend', FRONTEND_URL, '(token length:', tokenParam.length, ')');
-    res.redirect(redirectTo);
+    res.redirect(302, redirectTo);
   } catch (err) {
     const kakaoError = err.response?.data?.error;
     const kakaoDesc = err.response?.data?.error_description || '';
