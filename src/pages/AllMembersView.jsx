@@ -116,21 +116,26 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
     
     // 회원 강퇴 핸들러 (Auth 삭제 후 Firestore 삭제 → 재가입 가능)
     const handleDeleteMember = async (member) => {
-        if (!confirm('정말 이 회원을 강퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        if (!confirm('정말 이 회원을 강퇴하시겠습니까? 강제 탈퇴 시 1년간 재가입이 제한됩니다.')) {
             return;
         }
 
         const uid = member?.uid || member?.id;
         const memberId = member?.id || member?.uid;
+        const email = (member?.email || '').toString().trim();
+        const phone = (member?.phone || member?.phoneNumber || '').toString().trim();
 
         if (firebaseService && firebaseService.deleteUser) {
             try {
+                if (firebaseService.addBlockedRegistration && uid) {
+                    await firebaseService.addBlockedRegistration(uid, email, phone);
+                }
                 if (firebaseService.deleteAuthUser && uid) {
                     await firebaseService.deleteAuthUser(uid);
                 }
                 await firebaseService.deleteUser(memberId);
                 setFilteredMembers(filteredMembers.filter(m => m.id !== memberId && m.uid !== memberId));
-                alert('회원이 강퇴되었습니다.');
+                alert('회원이 강퇴되었습니다. 해당 회원은 1년간 재가입이 제한됩니다.');
             } catch (error) {
                 const errorMessage = translateFirebaseError ? translateFirebaseError(error) : (error?.message || '회원 강퇴 중 오류가 발생했습니다.');
                 alert(`회원 강퇴에 실패했습니다.\n${errorMessage}`);

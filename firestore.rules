@@ -54,5 +54,10 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if request.auth != null;
     }
+
+    // 강제 탈퇴 재가입 차단 목록: 클라이언트 접근 불가, Cloud Functions(Admin)에서만 사용
+    match /blockedRegistrations/{docId} {
+      allow read, write: if false;
+    }
   }
 }

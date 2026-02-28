@@ -74,17 +74,22 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
   }, []);
 
   const handleDeleteUser = async (user) => {
-    if (!confirm('정말 이 회원을 강제 탈퇴 처리하시겠습니까?')) return;
+    if (!confirm('정말 이 회원을 강제 탈퇴 처리하시겠습니까? 강제 탈퇴 시 1년간 재가입이 제한됩니다.')) return;
 
     const uid = user?.uid || user?.id;
     const userId = user?.id || user?.uid;
+    const email = (user?.email || '').toString().trim();
+    const phone = (user?.phone || user?.phoneNumber || '').toString().trim();
 
     try {
+      if (firebaseService.addBlockedRegistration && uid) {
+        await firebaseService.addBlockedRegistration(uid, email, phone);
+      }
       if (firebaseService.deleteAuthUser && uid) {
         await firebaseService.deleteAuthUser(uid);
       }
       await firebaseService.deleteUser(userId);
-      alert('회원이 강제 탈퇴 처리되었습니다.');
+      alert('회원이 강제 탈퇴 처리되었습니다. 해당 회원은 1년간 재가입이 제한됩니다.');
       if (!firebaseService.subscribeUsers) loadUsers();
     } catch (error) {
       console.error('회원 삭제 오류:', error);
@@ -233,18 +238,23 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
       alert('탈퇴 처리할 회원을 선택해주세요.');
       return;
     }
-    if (!confirm(`선택한 ${selectedIds.size}명 회원을 강제 탈퇴 처리하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) return;
+    if (!confirm(`선택한 ${selectedIds.size}명 회원을 강제 탈퇴 처리하시겠습니까? 강제 탈퇴된 회원은 1년간 재가입이 제한됩니다.`)) return;
 
     try {
       const list = filteredUsers.filter(u => selectedIds.has(u.id));
       for (const user of list) {
         const uid = user.uid || user.id;
+        const email = (user.email || '').toString().trim();
+        const phone = (user.phone || user.phoneNumber || '').toString().trim();
+        if (firebaseService.addBlockedRegistration && uid) {
+          await firebaseService.addBlockedRegistration(uid, email, phone);
+        }
         if (firebaseService.deleteAuthUser && uid) {
           await firebaseService.deleteAuthUser(uid);
         }
         await firebaseService.deleteUser(user.id);
       }
-      alert(`${selectedIds.size}명 회원이 탈퇴 처리되었습니다.`);
+      alert(`${selectedIds.size}명 회원이 탈퇴 처리되었습니다. 해당 회원들은 1년간 재가입이 제한됩니다.`);
       setSelectedIds(new Set());
       setMemberModalUser(null);
       if (!firebaseService.subscribeUsers) loadUsers();

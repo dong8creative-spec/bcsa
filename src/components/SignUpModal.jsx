@@ -320,6 +320,17 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                     setIsCreatingAccount(false);
                     return alert("이미 사용 중인 연락처입니다. 다른 번호를 입력해주세요.");
                 }
+                const blockCheck = firebaseService?.checkBlockedRegistration
+                    ? await firebaseService.checkBlockedRegistration({
+                        email: formData.email?.trim(),
+                        phone: formData.phone?.trim()
+                    })
+                    : { blocked: false };
+                if (blockCheck.blocked) {
+                    const until = blockCheck.blockedUntil ? new Date(blockCheck.blockedUntil).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+                    setIsCreatingAccount(false);
+                    return alert(`관리자에 의해 강제 탈퇴된 계정입니다. ${until ? until + '까지' : '1년 동안'} 재가입이 제한됩니다. 문의는 관리자에게 해 주세요.`);
+                }
                 const defaultAvatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=random`;
                 let imgUrl = formData.img && !formData.img.startsWith('data:') ? formData.img : defaultAvatarUrl;
                 if (formData.img && formData.img.startsWith('data:')) {

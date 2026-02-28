@@ -333,6 +333,19 @@ const SignUpPage = ({ onSignUp }) => {
                     setSubmitting(false);
                     return;
                 }
+                const blockCheck = firebaseService.checkBlockedRegistration
+                    ? await firebaseService.checkBlockedRegistration({
+                        uid: currentUser.uid,
+                        email: form.email?.trim(),
+                        phone: form.phone?.trim()
+                    })
+                    : { blocked: false };
+                if (blockCheck.blocked) {
+                    const until = blockCheck.blockedUntil ? new Date(blockCheck.blockedUntil).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+                    setError(`관리자에 의해 강제 탈퇴된 계정입니다. ${until ? until + '까지' : '1년 동안'} 재가입이 제한됩니다. 문의는 관리자에게 해 주세요.`);
+                    setSubmitting(false);
+                    return;
+                }
                 await firebaseService.createUser({ uid: currentUser.uid, ...userData });
                 try { sessionStorage.removeItem(KAKAO_PROFILE_KEY); } catch (_) {}
                 const fullUserData = { uid: currentUser.uid, ...userData, createdAt: new Date().toISOString() };
@@ -340,6 +353,18 @@ const SignUpPage = ({ onSignUp }) => {
                 alert('회원가입이 완료되었습니다.\n관리자 승인 후 서비스를 이용하실 수 있습니다.');
                 navigate('/', { replace: true });
             } else {
+                const blockCheck = firebaseService.checkBlockedRegistration
+                    ? await firebaseService.checkBlockedRegistration({
+                        email: form.email?.trim(),
+                        phone: form.phone?.trim()
+                    })
+                    : { blocked: false };
+                if (blockCheck.blocked) {
+                    const until = blockCheck.blockedUntil ? new Date(blockCheck.blockedUntil).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+                    setError(`관리자에 의해 강제 탈퇴된 계정입니다. ${until ? until + '까지' : '1년 동안'} 재가입이 제한됩니다. 문의는 관리자에게 해 주세요.`);
+                    setSubmitting(false);
+                    return;
+                }
                 const user = await authService.signUp(form.email, form.password, userData);
                 const fullUserData = { uid: user.uid, ...userData, createdAt: new Date().toISOString() };
                 if (onSignUp) onSignUp(fullUserData);
@@ -369,6 +394,7 @@ const SignUpPage = ({ onSignUp }) => {
                     </button>
                     <h1 className="text-2xl md:text-3xl font-bold text-dark">회원가입</h1>
                     <p className="text-sm text-gray-500 mt-1">표시(*)된 항목은 필수 입력입니다.</p>
+                    <p className="text-xs text-gray-400 mt-1">자진 탈퇴 시 언제든 재가입 가능하며, 강제 탈퇴 시 1년간 재가입이 제한됩니다. (이용약관 제6조의2)</p>
                     {fromKakao && (
                         <p className="text-sm text-green-700 mt-2 flex items-center gap-2">
                             <span className="inline-flex w-6 h-6 rounded-full bg-[#FEE500] items-center justify-center text-[#191919] text-xs font-bold">K</span>

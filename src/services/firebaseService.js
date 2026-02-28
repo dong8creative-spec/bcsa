@@ -156,6 +156,42 @@ export const firebaseService = {
     }
   },
 
+  /** 관리자 강제 탈퇴 시 1년간 재가입 차단 목록에 등록 (관리자만, Cloud Function 호출) */
+  async addBlockedRegistration(uid, email, phone) {
+    const uidStr = typeof uid === 'string' ? uid.trim() : (uid ? String(uid).trim() : '');
+    if (!uidStr) return;
+    try {
+      const functions = getFunctions(app, 'asia-northeast3');
+      const callable = httpsCallable(functions, 'addBlockedRegistration');
+      await callable({
+        uid: uidStr,
+        email: (email != null && email !== undefined) ? String(email).trim() : '',
+        phone: (phone != null && phone !== undefined) ? String(phone).replace(/\D/g, '').slice(0, 11) : ''
+      });
+    } catch (error) {
+      console.error('Error adding blocked registration:', error);
+      throw error;
+    }
+  },
+
+  /** 회원가입 전 1년 차단 여부 조회 (uid/email/phone 기준, 비인증 호출 가능) */
+  async checkBlockedRegistration({ uid, email, phone }) {
+    try {
+      const functions = getFunctions(app, 'asia-northeast3');
+      const callable = httpsCallable(functions, 'checkBlockedRegistration');
+      const res = await callable({
+        uid: uid ? String(uid).trim() : '',
+        email: email != null ? String(email).trim().toLowerCase() : '',
+        phone: phone != null ? String(phone).replace(/\D/g, '').slice(0, 11) : ''
+      });
+      const data = res?.data;
+      return data && typeof data.blocked === 'boolean' ? data : { blocked: false };
+    } catch (error) {
+      console.error('Error checking blocked registration:', error);
+      return { blocked: false };
+    }
+  },
+
   subscribeUsers(callback) {
     return onSnapshot(collection(db, 'users'), (snapshot) => {
       const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

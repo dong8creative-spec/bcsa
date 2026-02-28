@@ -520,6 +520,98 @@ app.use((err, req, res, next) => {
   });
 });
 
+// 관리자 강제 탈퇴 시 1년간 재가입 차단 목록에 등록 (document id = uid)
+const BLOCKED_REGISTRATIONS = 'blockedRegistrations';
+const BLOCK_YEARS = 1;
+
+const normalizeEmail = (v) => (typeof v === 'string' ? v.trim().toLowerCase() : '') || '';
+const normalizePhone = (v) => (typeof v === 'string' ? v.replace(/\D/g, '').slice(0, 11) : '') || '';
+
+/** 관리자만 호출: 강제 탈퇴한 회원을 1년간 재가입 차단 목록에 등록 */
+export const addBlockedRegistration = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+    const callerUid = request.auth.uid;
+    const uid = typeof request.data?.uid === 'string' ? request.data.uid.trim() : null;
+    if (!uid) {
+      throw new HttpsError('invalid-argument', 'uid is required');
+    }
+
+    let callerDoc = await db.collection('users').doc(callerUid).get();
+    if (!callerDoc.exists) {
+      const byUid = await db.collection('users').where('uid', '==', callerUid).limit(1).get();
+      if (!byUid.empty) callerDoc = byUid.docs[0];
+    }
+    if (!callerDoc || !callerDoc.exists) {
+      throw new HttpsError('permission-denied', '권한이 없습니다.');
+    }
+    if (callerDoc.data()?.role !== 'admin') {
+      throw new HttpsError('permission-denied', '관리자만 실행할 수 있습니다.');
+    }
+
+    const email = normalizeEmail(request.data?.email || '');
+    const phone = normalizePhone(request.data?.phone || '');
+    const now = new Date();
+    const blockedUntil = new Date(now);
+    blockedUntil.setFullYear(blockedUntil.getFullYear() + BLOCK_YEARS);
+
+    await db.collection(BLOCKED_REGISTRATIONS).doc(uid).set({
+      uid,
+      email,
+      phone,
+      blockedAt: admin.firestore.FieldValue.serverTimestamp(),
+      blockedUntil: admin.firestore.Timestamp.fromDate(blockedUntil),
+      reason: 'admin_forced'
+    });
+    console.log('[addBlockedRegistration] uid=', uid, 'blockedUntil=', blockedUntil.toISOString());
+    return { success: true, blockedUntil: blockedUntil.toISOString() };
+  }
+);
+
+/** 회원가입 전 호출: uid/email/phone 기준 1년 차단 여부 조회 (비인증 호출 가능) */
+export const checkBlockedRegistration = onCall(
+  { region: 'asia-northeast3' },
+  async (request) => {
+    const uid = typeof request.data?.uid === 'string' ? request.data.uid.trim() : null;
+    const email = normalizeEmail(request.data?.email || '');
+    const phone = normalizePhone(request.data?.phone || '');
+    const now = new Date();
+
+    const checkDoc = (snap) => {
+      if (!snap || !snap.exists) return null;
+      const d = snap.data();
+      let until = d?.blockedUntil;
+      if (until && typeof until.toDate === 'function') until = until.toDate();
+      if (!until || (until instanceof Date && until.getTime() <= now.getTime())) return null;
+      return until instanceof Date ? until.toISOString() : (typeof until === 'string' ? until : null);
+    };
+
+    if (uid) {
+      const byUid = await db.collection(BLOCKED_REGISTRATIONS).doc(uid).get();
+      const until = checkDoc(byUid);
+      if (until) return { blocked: true, blockedUntil: until };
+    }
+    if (email) {
+      const byEmail = await db.collection(BLOCKED_REGISTRATIONS).where('email', '==', email).limit(1).get();
+      if (!byEmail.empty) {
+        const until = checkDoc(byEmail.docs[0]);
+        if (until) return { blocked: true, blockedUntil: until };
+      }
+    }
+    if (phone) {
+      const byPhone = await db.collection(BLOCKED_REGISTRATIONS).where('phone', '==', phone).limit(1).get();
+      if (!byPhone.empty) {
+        const until = checkDoc(byPhone.docs[0]);
+        if (until) return { blocked: true, blockedUntil: until };
+      }
+    }
+    return { blocked: false };
+  }
+);
+
 // 관리자 강제 탈퇴 시 Firebase Auth 사용자 삭제 (재가입 가능하도록)
 export const deleteAuthUser = onCall(
   { region: 'asia-northeast3' },

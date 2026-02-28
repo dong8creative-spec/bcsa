@@ -2044,29 +2044,49 @@ const App = () => {
     
     const handleWithdraw = async () => {
          if (!currentUser) return;
+         // Firestore 문서 id = Auth uid 이므로, 로그인 중인 uid로 삭제
          const userId = currentUser.id || currentUser.uid;
+         const authUid = authService?.getCurrentUser?.()?.uid;
+         const docIdToDelete = authUid || userId;
 
-         // 1) Auth 삭제 먼저 (실패 시 Firestore 삭제하지 않음 → 재가입 가능하도록)
-         if (authService && authService.deleteCurrentUser) {
+         // 1) 로그인 상태에서 먼저 Firestore 사용자 문서 삭제 (Auth 삭제 후에는 request.auth가 null이 되어 삭제 불가)
+         if (firebaseService?.deleteUser && docIdToDelete) {
              try {
-                 await authService.deleteCurrentUser();
+                 await firebaseService.deleteUser(docIdToDelete);
              } catch (err) {
-                 const code = err?.code || err?.message || '';
-                 if (code === 'auth/requires-recent-login') {
-                     alert('보안을 위해 다시 로그인한 뒤 탈퇴를 시도해 주세요.');
-                 } else {
-                     alert('계정 삭제에 실패했습니다. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요.');
-                 }
+                 console.error('Firestore 사용자 삭제 오류:', err);
+                 alert('회원 정보 삭제에 실패했습니다. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요.');
                  return;
              }
          }
 
-         // 2) Firestore 사용자 문서 삭제 (Firebase 사용 시)
-         if (firebaseService && firebaseService.deleteUser && userId) {
+         // 2) Firebase Auth 계정 삭제 (재가입 가능하도록)
+         if (authService?.deleteCurrentUser) {
              try {
-                 await firebaseService.deleteUser(userId);
+                 await authService.deleteCurrentUser();
              } catch (err) {
-                 console.error('Firestore 사용자 삭제 오류:', err);
+                 const code = err?.code || err?.message || '';
+                 // Firestore는 이미 삭제됐으므로 로그아웃·상태 정리 후 안내
+                 if (code === 'auth/requires-recent-login') {
+                     alert('회원 정보는 삭제되었습니다. 보안상 다시 로그인한 뒤 한 번 더 탈퇴를 시도해 주세요.');
+                 } else {
+                     alert('회원 정보는 삭제되었습니다. 계정 삭제에 실패했을 수 있어, 다시 로그인 후 탈퇴를 한 번 더 시도해 주세요.');
+                 }
+                 handleLogout();
+                 setCurrentUser(null);
+                 setCurrentView('home');
+                 setMySeminars([]);
+                 setMyApplications([]);
+                 setMyFoods([]);
+                 setMyPosts([]);
+                 const updatedPosts = communityPosts.filter(p => p.author !== currentUser.name || p.category === '프로그램 후기');
+                 setCommunityPosts(updatedPosts);
+                 const updatedUsers = users.filter(u => u.id !== currentUser.id && u.uid !== currentUser.uid);
+                 setUsers(updatedUsers);
+                 saveUsersToStorage(updatedUsers);
+                 const updatedMembers = membersData.filter(m => m.name !== currentUser.name);
+                 setMembersData(updatedMembers);
+                 return;
              }
          }
 

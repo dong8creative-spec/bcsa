@@ -777,6 +777,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                     )}
                 </div>
                 <div className="border-t border-blue-200 pt-10 text-center">
+                    <p className="text-xs text-gray-500 mb-2">자진 탈퇴 시 언제든 재가입할 수 있습니다. (강제 탈퇴 시 1년간 재가입 제한·이용약관 제6조의2)</p>
                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleWithdrawClick(); }} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">회원 탈퇴하기</button>
                 </div>
             </div>
