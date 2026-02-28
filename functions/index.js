@@ -103,23 +103,58 @@ app.get('/health', (req, res) => {
 });
 
 // 카카오 로그인: 인증 코드 → 액세스 토큰 → 사용자 정보 → Firebase 커스텀 토큰 → 프론트 리다이렉트
-const KAKAO_REST_KEY = process.env.KAKAO_REST_API_KEY || process.env.KAKAO_JS_KEY || '';
-const KAKAO_CLIENT_SECRET = process.env.KAKAO_CLIENT_SECRET || '';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://bcsa.co.kr';
+// 환경 변수는 요청 시점에 읽음 (Cloud Run 등에서 런타임에 주입되는 경우 대비)
+function getKakaoEnv() {
+  const restKey = process.env.KAKAO_REST_API_KEY || process.env.KAKAO_JS_KEY || process.env.KAKAO_REST_KEY || '';
+  const clientSecret = process.env.KAKAO_CLIENT_SECRET || '';
+  const frontendUrl = (process.env.FRONTEND_URL || 'https://bcsa.co.kr').replace(/\/$/, '');
+  return { restKey: restKey.trim(), clientSecret: clientSecret.trim(), frontendUrl };
+}
+
+// Cloud Run 부팅(모듈 로드) 시 KAKAO_CLIENT_SECRET 로드 여부 검증 — 없으면 JSON 에러 로그만 남김
+(function validateKakaoClientSecretOnLoad() {
+  const secret = (process.env.KAKAO_CLIENT_SECRET || '').trim();
+  if (!secret) {
+    console.error(JSON.stringify({ error: 'Cloud Run Environment Variable Missing: KAKAO_CLIENT_SECRET' }));
+  }
+})();
 
 app.get('/api/auth/kakao/callback', async (req, res) => {
+  const { restKey: KAKAO_REST_KEY, clientSecret: KAKAO_CLIENT_SECRET, frontendUrl: FRONTEND_URL } = getKakaoEnv();
   const code = req.query.code;
   if (!code) {
     res.redirect(`${FRONTEND_URL}/?auth=kakao&error=no_code`);
     return;
   }
   if (!KAKAO_REST_KEY) {
-    console.error('[Kakao Auth] KAKAO_REST_API_KEY not set');
+    console.error('[Kakao Auth] REST API key not set. Check KAKAO_REST_API_KEY or KAKAO_JS_KEY in Cloud Run env.');
     res.redirect(`${FRONTEND_URL}/?auth=kakao&error=server_config`);
     return;
   }
-  const baseUrl = (process.env.FUNCTION_URL || process.env.VITE_API_URL || `https://${req.get('host') || ''}`).replace(/\/$/, '');
+  const EXPECTED_SECRET_LENGTH = 32;
+  if (!KAKAO_CLIENT_SECRET) {
+    const errPayload = { error: 'Cloud Run Environment Variable Missing: KAKAO_CLIENT_SECRET' };
+    console.error(JSON.stringify(errPayload));
+    throw new Error('KAKAO_CLIENT_SECRET is not set in environment.');
+  }
+  if (KAKAO_CLIENT_SECRET.length !== EXPECTED_SECRET_LENGTH) {
+    throw new Error(`KAKAO_CLIENT_SECRET length is invalid (expected ${EXPECTED_SECRET_LENGTH}, got ${KAKAO_CLIENT_SECRET.length}).`);
+  }
+  console.log('Secret key is set, length:', KAKAO_CLIENT_SECRET.length);
+  const host = req.get('host') || '';
+  const baseUrl = (
+    process.env.KAKAO_REDIRECT_BASE_URL ||
+    process.env.FUNCTION_URL ||
+    process.env.VITE_API_URL ||
+    (host ? `https://${host}` : '')
+  ).replace(/\/$/, '');
+  if (!baseUrl) {
+    console.error('[Kakao Auth] Could not determine base URL. Set KAKAO_REDIRECT_BASE_URL or FUNCTION_URL in Cloud Run.');
+    res.redirect(`${FRONTEND_URL}/?auth=kakao&error=server_config`);
+    return;
+  }
   const redirectUri = `${baseUrl}/api/auth/kakao/callback`;
+  console.log('[Kakao Auth] redirectUri=', redirectUri, 'hasClientSecret=', !!KAKAO_CLIENT_SECRET);
   try {
     const tokenRes = await axios.post(
       'https://kauth.kakao.com/oauth/token',

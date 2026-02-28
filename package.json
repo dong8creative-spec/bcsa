@@ -17,6 +17,7 @@
     "deploy": "npm run build && firebase deploy",
     "deploy:hosting": "npm run build && firebase deploy --only hosting",
     "deploy:functions": "firebase deploy --only functions",
+    "deploy:cloudrun-env": "bash scripts/deploy-cloudrun-env.sh",
     "emulators": "firebase emulators:start",
     "emulators:functions": "firebase emulators:start --only functions",
     "telemetry": "node scripts/telemetry-server.mjs",
