@@ -171,8 +171,19 @@ app.get('/api/auth/kakao/callback', async (req, res) => {
     const email = (kakaoAccount.email || '').toString();
     const nickname = (profile.nickname || '').toString();
     const legalName = (kakaoAccount.legal_name || kakaoAccount.name || '').toString();
-    const phoneNumber = (kakaoAccount.phone_number || '').toString();
+    let phoneNumber = (kakaoAccount.phone_number || '').toString();
+    const digits = phoneNumber.replace(/\D/g, '');
+    if (digits.length === 12 && digits.startsWith('82')) {
+      phoneNumber = '0' + digits.slice(2);
+    } else {
+      phoneNumber = digits.slice(0, 11);
+    }
     const name = legalName || nickname || '카카오 사용자';
+    const gender = (kakaoAccount.gender || '').toString();
+    const birthday = (kakaoAccount.birthday || '').toString();
+    const birthyear = (kakaoAccount.birthyear || '').toString();
+    const ageRange = (kakaoAccount.age_range || '').toString();
+    const profileImageUrl = (profile.profile_image_url || profile.thumbnail_image_url || '').toString();
     if (!kakaoId) {
       res.redirect(`${FRONTEND_URL}/?auth=kakao&error=no_user`);
       return;
@@ -180,7 +191,16 @@ app.get('/api/auth/kakao/callback', async (req, res) => {
     const firebaseUid = `kakao_${kakaoId}`;
     const customToken = await admin.auth().createCustomToken(firebaseUid);
     const tokenParam = encodeURIComponent(customToken);
-    const profilePayload = { name, phone: phoneNumber, email };
+    const profilePayload = {
+      name,
+      phone: phoneNumber,
+      email,
+      gender,
+      birthday,
+      birthyear,
+      age_range: ageRange,
+      profile_image_url: profileImageUrl
+    };
     const base64url = Buffer.from(JSON.stringify(profilePayload), 'utf8')
       .toString('base64')
       .replace(/\+/g, '-')

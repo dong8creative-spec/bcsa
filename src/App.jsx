@@ -1833,7 +1833,11 @@ const App = () => {
                 const decoded = decodeURIComponent(pRaw);
                 const base64 = decoded.replace(/-/g, '+').replace(/_/g, '/');
                 const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-                profile = JSON.parse(atob(padded));
+                const binary = atob(padded);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                const utf8 = new TextDecoder().decode(bytes);
+                profile = JSON.parse(utf8);
             } catch (_) {}
         }
         const isKakaoSignup = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('kakao_signup') === '1';
@@ -1852,23 +1856,13 @@ const App = () => {
                     return;
                 }
                 let userDoc = await authService.getUserData(user.uid);
-                if (!userDoc && firebaseService?.createUser) {
-                    const name = (profile?.name && profile.name.trim()) || '카카오 사용자';
-                    const phone = (profile?.phone && String(profile.phone).trim()) || '';
-                    const email = (profile?.email && String(profile.email).trim()) || '';
-                    await firebaseService.createUser({
-                        uid: user.uid,
-                        email,
-                        name,
-                        phone,
-                        approvalStatus: 'pending',
-                        createdAt: new Date().toISOString()
-                    });
-                    userDoc = await authService.getUserData(user.uid);
+                if (!userDoc) {
+                    await authService.signOut();
+                    alert('가입되지 않은 카카오 계정입니다. 가입하기 → 카카오로 회원가입을 이용해 주세요.');
+                    window.history.replaceState(null, '', location.pathname + (location.search || ''));
+                    return;
                 }
-                if (userDoc) {
-                    await applySocialLoginResult(user, userDoc);
-                }
+                await applySocialLoginResult(user, userDoc);
             } catch (e) {
                 alert(e?.message || '카카오 로그인 처리에 실패했습니다.');
             }

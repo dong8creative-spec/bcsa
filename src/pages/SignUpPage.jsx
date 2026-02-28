@@ -113,6 +113,16 @@ const SignUpPage = ({ onSignUp }) => {
                     next.emailDomainCustom = inList ? '' : domain;
                     filled.email = true;
                 }
+                const genderVal = (profile.gender && String(profile.gender).trim()) || '';
+                if (genderVal) { next.gender = genderVal; filled.gender = true; }
+                const by = (profile.birthyear && String(profile.birthyear).trim()) || '';
+                const bd = (profile.birthday && String(profile.birthday).replace(/\D/g, '')) || '';
+                if (by && bd.length >= 4) {
+                    const mm = bd.slice(0, 2);
+                    const dd = bd.slice(2, 4);
+                    next.birthdate = `${by}-${mm}-${dd}`;
+                    filled.birthdate = true;
+                }
                 return next;
             });
             setKakaoFilledFields((f) => ({ ...f, ...filled }));

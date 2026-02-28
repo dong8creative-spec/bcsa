@@ -53,7 +53,7 @@ export const authService = {
     if (!key) {
       throw new Error('카카오 로그인이 설정되지 않았습니다. (VITE_KAKAO_JS_KEY)');
     }
-    const scope = 'profile_nickname,account_email,phone_number';
+    const scope = 'profile_nickname,profile_image,account_email,name,gender,age_range,birthday,birthyear,phone_number';
 
     // 동의 화면 강제: SDK는 prompt를 쿼리로 넘기지 않을 수 있어, 직접 인증 URL로 이동
     if (options.forceConsent) {
