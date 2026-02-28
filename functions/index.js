@@ -111,14 +111,6 @@ function getKakaoEnv() {
   return { restKey: restKey.trim(), clientSecret: clientSecret.trim(), frontendUrl };
 }
 
-// Cloud Run 부팅(모듈 로드) 시 KAKAO_CLIENT_SECRET 로드 여부 검증 — 없으면 JSON 에러 로그만 남김
-(function validateKakaoClientSecretOnLoad() {
-  const secret = (process.env.KAKAO_CLIENT_SECRET || '').trim();
-  if (!secret) {
-    console.error(JSON.stringify({ error: 'Cloud Run Environment Variable Missing: KAKAO_CLIENT_SECRET' }));
-  }
-})();
-
 app.get('/api/auth/kakao/callback', async (req, res) => {
   const { restKey: KAKAO_REST_KEY, clientSecret: KAKAO_CLIENT_SECRET, frontendUrl: FRONTEND_URL } = getKakaoEnv();
   const code = req.query.code;
@@ -131,16 +123,6 @@ app.get('/api/auth/kakao/callback', async (req, res) => {
     res.redirect(`${FRONTEND_URL}/?auth=kakao&error=server_config`);
     return;
   }
-  const EXPECTED_SECRET_LENGTH = 32;
-  if (!KAKAO_CLIENT_SECRET) {
-    const errPayload = { error: 'Cloud Run Environment Variable Missing: KAKAO_CLIENT_SECRET' };
-    console.error(JSON.stringify(errPayload));
-    throw new Error('KAKAO_CLIENT_SECRET is not set in environment.');
-  }
-  if (KAKAO_CLIENT_SECRET.length !== EXPECTED_SECRET_LENGTH) {
-    throw new Error(`KAKAO_CLIENT_SECRET length is invalid (expected ${EXPECTED_SECRET_LENGTH}, got ${KAKAO_CLIENT_SECRET.length}).`);
-  }
-  console.log('Secret key is set, length:', KAKAO_CLIENT_SECRET.length);
   const host = req.get('host') || '';
   const baseUrl = (
     process.env.KAKAO_REDIRECT_BASE_URL ||

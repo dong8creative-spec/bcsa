@@ -21,28 +21,38 @@ ENV_FILE="$ROOT_DIR/functions/.env"
 if [[ -f "$ENV_FILE" ]]; then
   echo "Loading env from $ENV_FILE"
   tmp_env=$(mktemp)
-  grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$ENV_FILE" | sed 's/^export[[:space:]]*//' | tr -d '\r' > "$tmp_env"
-  set -a
-  source "$tmp_env" 2>/dev/null || true
-  set +a
+  # 줄 끝 \r 제거 후 KEY=value로 시작하는 줄만 (앞뒤 공백 제거)
+  while IFS= read -r line; do
+    line="${line//$'\r'/}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "$line" || "$line" =~ ^# ]] && continue
+    line="${line#export }"; line="${line#export}"
+    if [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+      echo "$line" >> "$tmp_env"
+    fi
+  done < "$ENV_FILE"
+  if [[ -s "$tmp_env" ]]; then
+    set -a
+    source "$tmp_env" 2>/dev/null || true
+    set +a
+  fi
   rm -f "$tmp_env"
 fi
 
-# 필수 환경 변수 (다른 이름으로 넣었을 수 있음)
+# 필수: KAKAO_REST_API_KEY. 선택: KAKAO_CLIENT_SECRET (카카오에서 클라이언트 시크릿 사용 시에만)
 KAKAO_REST_API_KEY="${KAKAO_REST_API_KEY:-${KAKAO_JS_KEY:-}}"
 KAKAO_CLIENT_SECRET="${KAKAO_CLIENT_SECRET:-}"
 FRONTEND_URL="${FRONTEND_URL:-https://bcsa.co.kr}"
 
-if [[ -z "$KAKAO_REST_API_KEY" || -z "$KAKAO_CLIENT_SECRET" ]]; then
-  echo "Error: KAKAO_REST_API_KEY and KAKAO_CLIENT_SECRET must be set (in env or $ENV_FILE)"
-  echo "  Check that $ENV_FILE contains exactly: KAKAO_REST_API_KEY=..., KAKAO_CLIENT_SECRET=..."
-  echo "  (no spaces around =, one per line)"
+if [[ -z "$KAKAO_REST_API_KEY" ]]; then
+  echo "Error: KAKAO_REST_API_KEY must be set (in env or $ENV_FILE)"
   exit 1
 fi
 
 # Cloud Run 서비스에 환경 변수 주입 (새 리비전 생성)
-# --set-env-vars: 기존 변수에 덮어쓰기
-ENV_VARS="KAKAO_REST_API_KEY=${KAKAO_REST_API_KEY},KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET},FRONTEND_URL=${FRONTEND_URL}"
+ENV_VARS="KAKAO_REST_API_KEY=${KAKAO_REST_API_KEY},FRONTEND_URL=${FRONTEND_URL}"
+[[ -n "$KAKAO_CLIENT_SECRET" ]] && ENV_VARS="${ENV_VARS},KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}"
 
 echo "Updating Cloud Run service: $SERVICE_NAME in $REGION (project: $PROJECT_ID)"
 gcloud run services update "$SERVICE_NAME" \
