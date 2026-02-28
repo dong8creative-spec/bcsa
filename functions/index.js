@@ -124,12 +124,16 @@ app.get('/api/auth/kakao/callback', async (req, res) => {
     return;
   }
   const host = req.get('host') || '';
-  const baseUrl = (
+  let baseUrl = (
     process.env.KAKAO_REDIRECT_BASE_URL ||
     process.env.FUNCTION_URL ||
     process.env.VITE_API_URL ||
     (host ? `https://${host}` : '')
   ).replace(/\/$/, '');
+  // redirect_uri는 반드시 백엔드 주소여야 함. env에 프론트 URL(bcsa.co.kr)이 들어가 있으면 KOE303 발생 → 요청 호스트로 보정
+  if (baseUrl.includes('bcsa.co.kr') && host) {
+    baseUrl = `https://${host}`.replace(/\/$/, '');
+  }
   if (!baseUrl) {
     console.error('[Kakao Auth] Could not determine base URL. Set KAKAO_REDIRECT_BASE_URL or FUNCTION_URL in Cloud Run.');
     res.redirect(`${FRONTEND_URL}/?auth=kakao&error=server_config`);
