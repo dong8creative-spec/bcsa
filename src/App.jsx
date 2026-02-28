@@ -1800,11 +1800,21 @@ const App = () => {
     }, []);
 
     // 카카오 OAuth 콜백: URL에 auth=kakao&token= 있으면 커스텀 토큰으로 로그인, error 있으면 안내
+    const kakaoCallbackProcessedRef = useRef(false);
+    const kakaoProcessingRef = useRef(false);
     useEffect(() => {
-        const hashPart = (location.hash || '').slice(1);
-        const queryPart = (location.search || '').slice(1);
+        // 실제 URL 기준으로 파싱 (React Router location이 해시를 늦게 반영하는 경우 대비)
+        const rawHash = typeof window !== 'undefined' ? (window.location.hash || '') : '';
+        const rawSearch = typeof window !== 'undefined' ? (window.location.search || '') : '';
+        const hashPart = rawHash.slice(1);
+        const queryPart = rawSearch.slice(1);
         const params = new URLSearchParams(hashPart || queryPart);
         if (params.get('auth') !== 'kakao') return;
+        const clearKakaoHash = () => {
+            const base = (typeof window !== 'undefined' && window.location.pathname) || '/';
+            const search = (typeof window !== 'undefined' && window.location.search) || '';
+            window.history.replaceState(null, '', base + search);
+        };
         const errorParam = params.get('error');
         if (errorParam) {
             const msg = errorParam === 'no_user' || errorParam === 'not_found'
@@ -1819,13 +1829,15 @@ const App = () => {
                                 ? '카카오 REST API 키 또는 Client Secret이 맞지 않습니다. 서버 환경 변수(KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET)를 확인해 주세요.'
                                 : '카카오 로그인 처리 중 오류가 발생했습니다.';
             alert(`${msg}\n\n처음 이용하시는 분은 '가입하기' → '카카오로 회원가입'을 이용해 주세요.`);
-            window.history.replaceState(null, '', location.pathname || '/');
+            clearKakaoHash();
             return;
         }
         if (!hashPart) return;
         let token = params.get('token');
         if (token) try { token = decodeURIComponent(token); } catch (_) {}
         if (!token || !authService?.signInWithKakaoToken) return;
+        if (kakaoCallbackProcessedRef.current) return;
+        kakaoCallbackProcessedRef.current = true;
         let profile = null;
         const pRaw = params.get('p');
         if (pRaw) {
@@ -1841,7 +1853,14 @@ const App = () => {
             } catch (_) {}
         }
         const isKakaoSignup = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('kakao_signup') === '1';
+        kakaoProcessingRef.current = true;
         (async () => {
+            const timeoutMs = 20000;
+            const timeoutId = setTimeout(() => {
+                if (!kakaoProcessingRef.current) return;
+                alert('로그인 처리 시간이 초과되었습니다. 다시 시도해 주세요.');
+                clearKakaoHash();
+            }, timeoutMs);
             try {
                 const user = await authService.signInWithKakaoToken(token);
                 if (isKakaoSignup) {
@@ -1851,7 +1870,7 @@ const App = () => {
                             sessionStorage.setItem('kakao_signup_profile', JSON.stringify(profile));
                         }
                     } catch (_) {}
-                    window.history.replaceState(null, '', location.pathname + (location.search || ''));
+                    clearKakaoHash();
                     navigate('/signup?from=kakao', { replace: true });
                     return;
                 }
@@ -1859,14 +1878,20 @@ const App = () => {
                 if (!userDoc) {
                     await authService.signOut();
                     alert('가입되지 않은 카카오 계정입니다. 가입하기 → 카카오로 회원가입을 이용해 주세요.');
-                    window.history.replaceState(null, '', location.pathname + (location.search || ''));
+                    clearKakaoHash();
                     return;
                 }
                 await applySocialLoginResult(user, userDoc);
             } catch (e) {
-                alert(e?.message || '카카오 로그인 처리에 실패했습니다.');
+                const msg = (e && (e.message || String(e))) || '카카오 로그인 처리에 실패했습니다.';
+                alert(msg);
+                clearKakaoHash();
+            } finally {
+                clearTimeout(timeoutId);
+                kakaoProcessingRef.current = false;
+                if (!isKakaoSignup) clearKakaoHash();
+                kakaoCallbackProcessedRef.current = false;
             }
-            if (!isKakaoSignup) window.history.replaceState(null, '', location.pathname + (location.search || ''));
         })();
     }, [location.hash, location.search, authService, firebaseService, applySocialLoginResult, navigate]);
 

@@ -112,6 +112,7 @@ function getKakaoEnv() {
 }
 
 app.get('/api/auth/kakao/callback', async (req, res) => {
+  console.log('[Kakao Auth] Callback hit, query:', Object.keys(req.query || {}));
   const { restKey: KAKAO_REST_KEY, clientSecret: KAKAO_CLIENT_SECRET, frontendUrl: FRONTEND_URL } = getKakaoEnv();
   const code = req.query.code;
   if (!code) {
@@ -207,7 +208,9 @@ app.get('/api/auth/kakao/callback', async (req, res) => {
       .replace(/\//g, '_')
       .replace(/=+$/, '');
     const pParam = encodeURIComponent(base64url);
-    res.redirect(`${FRONTEND_URL}/#auth=kakao&token=${tokenParam}&p=${pParam}`);
+    const redirectTo = `${FRONTEND_URL}/#auth=kakao&token=${tokenParam}&p=${pParam}`;
+    console.log('[Kakao Auth] Success: redirecting to frontend', FRONTEND_URL, '(token length:', tokenParam.length, ')');
+    res.redirect(redirectTo);
   } catch (err) {
     const kakaoError = err.response?.data?.error;
     const kakaoDesc = err.response?.data?.error_description || '';
