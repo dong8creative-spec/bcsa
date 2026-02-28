@@ -524,7 +524,7 @@ const AppLayout = (props) => {
                                         try {
                                             sessionStorage.setItem('kakao_signup', '1');
                                         } catch (_) {}
-                                        handleKakaoLogin?.();
+                                        handleKakaoLogin?.(true);
                                     }}
                                     className="w-full py-3 px-4 bg-[#FEE500] text-[#191919] border-2 border-[#FDD835] rounded-xl font-bold hover:bg-[#FDD835]/90 transition-colors flex items-center justify-center gap-2 text-sm"
                                 >

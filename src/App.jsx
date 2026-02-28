@@ -1789,11 +1789,11 @@ const App = () => {
         }
     }, [communityPosts, pendingView]);
 
-    const handleKakaoLogin = useCallback(() => {
+    const handleKakaoLogin = useCallback((forceConsent = false) => {
         try {
             const base = getKakaoCallbackBaseUrl().replace(/\/$/, '');
             const callbackUrl = `${base}/api/auth/kakao/callback`;
-            authService.startKakaoLogin(callbackUrl);
+            authService.startKakaoLogin(callbackUrl, { forceConsent });
         } catch (err) {
             alert(err?.message || '카카오 로그인을 시작할 수 없습니다.');
         }

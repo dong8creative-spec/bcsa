@@ -46,8 +46,9 @@ export const authService = {
   /**
    * 카카오 로그인 시작: Kakao OAuth로 리다이렉트 (콜백은 백엔드 /api/auth/kakao/callback)
    * @param {string} callbackUrl - 백엔드 콜백 전체 URL
+   * @param {{ forceConsent?: boolean }} options - forceConsent: true면 동의 화면을 매번 표시(회원가입 시 권장)
    */
-  startKakaoLogin(callbackUrl) {
+  startKakaoLogin(callbackUrl, options = {}) {
     if (typeof window === 'undefined' || !window.Kakao) {
       throw new Error('카카오 SDK가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
     }
@@ -58,10 +59,15 @@ export const authService = {
     if (!window.Kakao.isInitialized()) {
       window.Kakao.init(key);
     }
-    window.Kakao.Auth.authorize({
+    const authorizeOptions = {
       redirectUri: callbackUrl,
       scope: 'profile_nickname,account_email,phone_number'
-    });
+    };
+    // 회원가입 등 동의를 반드시 받아야 할 때: prompt='login'으로 재인증·동의 화면 표시
+    if (options.forceConsent) {
+      authorizeOptions.prompt = 'login';
+    }
+    window.Kakao.Auth.authorize(authorizeOptions);
   },
 
   /**
