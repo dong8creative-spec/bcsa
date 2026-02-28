@@ -46,28 +46,42 @@ export const authService = {
   /**
    * 카카오 로그인 시작: Kakao OAuth로 리다이렉트 (콜백은 백엔드 /api/auth/kakao/callback)
    * @param {string} callbackUrl - 백엔드 콜백 전체 URL
-   * @param {{ forceConsent?: boolean }} options - forceConsent: true면 동의 화면을 매번 표시(회원가입 시 권장)
+   * @param {{ forceConsent?: boolean }} options - forceConsent: true면 동의 화면을 매번 표시(회원가입 시). SDK 대신 직접 URL로 이동해 prompt 적용.
    */
   startKakaoLogin(callbackUrl, options = {}) {
-    if (typeof window === 'undefined' || !window.Kakao) {
-      throw new Error('카카오 SDK가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
-    }
     const key = CONFIG.KAKAO?.JAVASCRIPT_KEY;
     if (!key) {
       throw new Error('카카오 로그인이 설정되지 않았습니다. (VITE_KAKAO_JS_KEY)');
     }
+    const scope = 'profile_nickname,account_email,phone_number';
+
+    // 동의 화면 강제: SDK는 prompt를 쿼리로 넘기지 않을 수 있어, 직접 인증 URL로 이동
+    if (options.forceConsent) {
+      const clientId = (CONFIG.KAKAO?.REST_API_KEY && CONFIG.KAKAO.REST_API_KEY.trim()) ? CONFIG.KAKAO.REST_API_KEY : key;
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: callbackUrl,
+        response_type: 'code',
+        scope,
+        prompt: 'login' // 재인증·동의 화면 표시
+      });
+      const url = `https://kauth.kakao.com/oauth/authorize?${params.toString()}`;
+      if (typeof window !== 'undefined') {
+        window.location.href = url;
+        return;
+      }
+    }
+
+    if (typeof window === 'undefined' || !window.Kakao) {
+      throw new Error('카카오 SDK가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
+    }
     if (!window.Kakao.isInitialized()) {
       window.Kakao.init(key);
     }
-    const authorizeOptions = {
+    window.Kakao.Auth.authorize({
       redirectUri: callbackUrl,
-      scope: 'profile_nickname,account_email,phone_number'
-    };
-    // 회원가입 등 동의를 반드시 받아야 할 때: prompt='login'으로 재인증·동의 화면 표시
-    if (options.forceConsent) {
-      authorizeOptions.prompt = 'login';
-    }
-    window.Kakao.Auth.authorize(authorizeOptions);
+      scope
+    });
   },
 
   /**
