@@ -1,7 +1,6 @@
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
-  signInWithCustomToken,
   signOut, 
   sendPasswordResetEmail,
   deleteUser,
@@ -9,7 +8,6 @@ import {
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { firebaseService } from './firebaseService';
-import { CONFIG } from '../config';
 
 export const authService = {
   // Sign up with email and password
@@ -41,55 +39,6 @@ export const authService = {
       // 호출부(handleLogin)에서 translateFirebaseError로 사용자 안내
       throw error;
     }
-  },
-
-  /**
-   * 카카오 로그인 시작: Kakao OAuth로 리다이렉트 (콜백은 백엔드 /api/auth/kakao/callback)
-   * @param {string} callbackUrl - 백엔드 콜백 전체 URL
-   * @param {{ forceConsent?: boolean }} options - forceConsent: true면 동의 화면을 매번 표시(회원가입 시). SDK 대신 직접 URL로 이동해 prompt 적용.
-   */
-  startKakaoLogin(callbackUrl, options = {}) {
-    const key = CONFIG.KAKAO?.JAVASCRIPT_KEY;
-    if (!key) {
-      throw new Error('카카오 로그인이 설정되지 않았습니다. (VITE_KAKAO_JS_KEY)');
-    }
-    const scope = 'profile_nickname,profile_image,account_email,name,gender,age_range,birthday,birthyear,phone_number';
-
-    // 동의 화면 강제: SDK는 prompt를 쿼리로 넘기지 않을 수 있어, 직접 인증 URL로 이동
-    if (options.forceConsent) {
-      const clientId = (CONFIG.KAKAO?.REST_API_KEY && CONFIG.KAKAO.REST_API_KEY.trim()) ? CONFIG.KAKAO.REST_API_KEY : key;
-      const params = new URLSearchParams({
-        client_id: clientId,
-        redirect_uri: callbackUrl,
-        response_type: 'code',
-        scope,
-        prompt: 'login' // 재인증·동의 화면 표시
-      });
-      const url = `https://kauth.kakao.com/oauth/authorize?${params.toString()}`;
-      if (typeof window !== 'undefined') {
-        window.location.href = url;
-        return;
-      }
-    }
-
-    if (typeof window === 'undefined' || !window.Kakao) {
-      throw new Error('카카오 SDK가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
-    }
-    if (!window.Kakao.isInitialized()) {
-      window.Kakao.init(key);
-    }
-    window.Kakao.Auth.authorize({
-      redirectUri: callbackUrl,
-      scope
-    });
-  },
-
-  /**
-   * 카카오 콜백 후 백엔드가 준 커스텀 토큰으로 Firebase 로그인
-   */
-  async signInWithKakaoToken(customToken) {
-    const userCredential = await signInWithCustomToken(auth, customToken);
-    return userCredential.user;
   },
 
   // Sign out

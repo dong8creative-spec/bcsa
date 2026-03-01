@@ -59,15 +59,6 @@ export const CONFIG = {
     GOOGLE_APPS_SCRIPT: {
         WEB_APP_URL: '',
         SPREADSHEET_ID: ''
-    },
-    KAKAO: {
-        JAVASCRIPT_KEY: typeof import.meta !== 'undefined' && import.meta.env?.VITE_KAKAO_JS_KEY
-            ? import.meta.env.VITE_KAKAO_JS_KEY
-            : '',
-        // 동의 화면 강제(직접 URL 이동) 시 client_id용. 없으면 JAVASCRIPT_KEY 사용
-        REST_API_KEY: typeof import.meta !== 'undefined' && import.meta.env?.VITE_KAKAO_REST_KEY
-            ? import.meta.env.VITE_KAKAO_REST_KEY
-            : ''
     }
 };
 
