@@ -1961,11 +1961,11 @@ const App = () => {
             if (onFail) onFail();
             return;
         }
-        let phoneNumber = overrideCustomer?.phoneNumber?.trim() || (currentUser?.phone || currentUser?.phoneNumber || '').toString().trim();
-        let email = overrideCustomer?.email?.trim() || (currentUser?.email || '').toString().trim();
+        let phoneNumber = overrideCustomer?.phoneNumber?.trim() || (currentUser?.phone || currentUser?.phoneNumber || currentUser?.verifiedPhone || '').toString().trim();
+        let email = overrideCustomer?.email?.trim() || (currentUser?.email || currentUser?.verifiedEmail || '').toString().trim();
         if (!phoneNumber || !email) {
-            setPaymentInfoPhone((currentUser?.phone || currentUser?.phoneNumber || '').toString().trim());
-            setPaymentInfoEmail((currentUser?.email || '').toString().trim());
+            setPaymentInfoPhone((currentUser?.phone || currentUser?.phoneNumber || currentUser?.verifiedPhone || '').toString().trim());
+            setPaymentInfoEmail((currentUser?.email || currentUser?.verifiedEmail || '').toString().trim());
             setPendingPaymentContext({ seminar, applicationData, onSuccess, onFail });
             setPaymentInfoModalOpen(true);
             return;
@@ -1997,14 +1997,22 @@ const App = () => {
             alert("정원이 마감되었습니다.");
             return false;
         }
+        // 신청서 제출에 필요한 회원 정보 (phone/phoneNumber/verifiedPhone 통일)
+        const userName = (currentUser.name || '').toString().trim();
+        const userEmail = (currentUser.email || currentUser.verifiedEmail || '').toString().trim();
+        const userPhone = (currentUser.phone || currentUser.phoneNumber || currentUser.verifiedPhone || '').toString().trim();
+        if (!userName || !userEmail || !userPhone) {
+            alert('프로그램 신청을 위해 마이페이지에서 이름·연락처·이메일을 입력해 주세요.');
+            return false;
+        }
         // 신청 정보 저장
         const application = {
             id: Date.now().toString(),
             seminarId: seminar.id,
             userId: currentUser.id,
-            userName: currentUser.name,
-            userEmail: currentUser.email,
-            userPhone: currentUser.phone || '',
+            userName,
+            userEmail,
+            userPhone,
             participationPath: applicationData?.participationPath || '',
             applyReason: applicationData?.applyReason || '',
             preQuestions: applicationData?.preQuestions || '',
@@ -2020,8 +2028,8 @@ const App = () => {
             try {
                 const result = await addSeminarApplicationToSheet(application);
                 if (!result.success) {
-                    
-                    alert('신청 저장에 실패했습니다. 다시 시도해주세요.');
+                    const msg = (result.error || '').toString().trim();
+                    alert(msg || '신청 저장에 실패했습니다. 다시 시도해주세요.');
                     return false;
                 }
             } catch (error) {
@@ -2048,9 +2056,9 @@ const App = () => {
                 await firebaseService.createApplication({
                     seminarId: seminar.id,
                     userId: currentUser.id,
-                    userName: currentUser.name,
-                    userEmail: currentUser.email,
-                    userPhone: currentUser.phone || '',
+                    userName,
+                    userEmail,
+                    userPhone,
                     participationPath: applicationData?.participationPath || '',
                     applyReason: applicationData?.applyReason || '',
                     preQuestions: applicationData?.preQuestions || '',

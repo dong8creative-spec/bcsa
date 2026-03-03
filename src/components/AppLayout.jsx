@@ -28,9 +28,10 @@ function isProfileIncomplete(user) {
     const verifiedGender = (user.verifiedGender || '').toString().trim();
     const genderValid = !!gender || verifiedGender === 'M' || verifiedGender === 'F';
     if (!genderValid) return true;
-    // 연락처: phone/phoneNumber 또는 본인인증 verifiedPhone(11자리 01x)
-    const phone = (user.phone || user.phoneNumber || user.verifiedPhone || '').toString().replace(/\D/g, '');
-    if (phone.length !== 11 || !/^01[0-9]/.test(phone)) return true;
+    // 연락처: phone/phoneNumber/verifiedPhone, 10~11자리 01x 형식 허용
+    const phoneDigits = (user.phone || user.phoneNumber || user.verifiedPhone || '').toString().replace(/\D/g, '');
+    const phoneValid = (phoneDigits.length === 10 || phoneDigits.length === 11) && /^0?1[0-9]{8,9}$/.test(phoneDigits);
+    if (!phoneValid) return true;
     // userType 없으면 company/bno로 사업자 여부 추론 (MyPage와 동일). 비사업자(예창)면 사업자 필드 검사 생략
     const hasCompanyOrBno = !!(user.company || '').toString().trim() || ((user.businessRegistrationNumber || '').toString().replace(/\D/g, '').length === 10);
     const effectiveUserType = (user.userType || '').toString().trim() || (hasCompanyOrBno ? '사업자' : '');
