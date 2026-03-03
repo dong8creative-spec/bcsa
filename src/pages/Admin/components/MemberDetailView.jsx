@@ -15,8 +15,9 @@ const MEMBER_GRADE_OPTIONS = [
 
 /**
  * 회원정보 한눈에 보기: 회원 선택 후 전체 정보 열람 + 수정 가능 항목만 편집
+ * @param {Object} [props.currentUser] - Firebase 로그인 사용자 (저장 시 필수)
  */
-export const MemberDetailView = () => {
+export const MemberDetailView = ({ currentUser }) => {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -63,6 +64,10 @@ export const MemberDetailView = () => {
 
   const handleSave = async () => {
     if (!selectedUser) return;
+    if (!currentUser) {
+      alert('회원 정보 수정을 하려면 먼저 로그인해 주세요. 메인 페이지에서 로그인한 뒤 관리자 페이지로 다시 들어와 주세요.');
+      return;
+    }
     const u = selectedUser;
     const userId = u.id || u.uid;
     const payload = {};

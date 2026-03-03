@@ -10,26 +10,35 @@ import { defaultContent } from '../constants/content';
 const FAB_GAP_PX = 16;
 const FAB_ESTIMATE_HEIGHT_PX = 152;
 
-/** 필수 회원정보 미기입 여부 (SignUpPage 필수 항목과 동일 기준) */
+/** 필수 회원정보 미기입 여부 (SignUp/MyPage·Firestore·본인인증 필드와 동일 기준) */
 function isProfileIncomplete(user) {
     if (!user) return false;
     const name = (user.name || '').toString().trim();
     if (!name) return true;
+    // 생년월일: birthdate 또는 본인인증 verifiedBirthday(8자리)
     const birthdate = (user.birthdate || '').toString().trim();
+    const verifiedBirthday = (user.verifiedBirthday || '').toString().replace(/\D/g, '');
     const birthdateDigits = birthdate.replace(/\D/g, '');
-    const birthdateValid = birthdate.length >= 8 && (birthdateDigits.length >= 8 || /^\d{4}-\d{2}-\d{2}$/.test(birthdate));
+    const birthdateValid =
+        (birthdate.length >= 8 && (birthdateDigits.length >= 8 || /^\d{4}-\d{2}-\d{2}$/.test(birthdate))) ||
+        (verifiedBirthday.length >= 8);
     if (!birthdateValid) return true;
+    // 성별: gender 또는 본인인증 verifiedGender('M'/'F')
     const gender = (user.gender || '').toString().trim();
-    if (!gender) return true;
-    const phone = (user.phone || user.phoneNumber || '').toString().replace(/\D/g, '');
+    const verifiedGender = (user.verifiedGender || '').toString().trim();
+    const genderValid = !!gender || verifiedGender === 'M' || verifiedGender === 'F';
+    if (!genderValid) return true;
+    // 연락처: phone/phoneNumber 또는 본인인증 verifiedPhone(11자리 01x)
+    const phone = (user.phone || user.phoneNumber || user.verifiedPhone || '').toString().replace(/\D/g, '');
     if (phone.length !== 11 || !/^01[0-9]/.test(phone)) return true;
-    const userType = (user.userType || '').toString().trim();
-    if (!userType) return true;
-    if (userType === '사업자') {
+    // userType 없으면 company/bno로 사업자 여부 추론 (MyPage와 동일). 비사업자(예창)면 사업자 필드 검사 생략
+    const hasCompanyOrBno = !!(user.company || '').toString().trim() || ((user.businessRegistrationNumber || '').toString().replace(/\D/g, '').length === 10);
+    const effectiveUserType = (user.userType || '').toString().trim() || (hasCompanyOrBno ? '사업자' : '');
+    if (effectiveUserType === '사업자') {
         if (!(user.company || '').toString().trim()) return true;
         const bno = (user.businessRegistrationNumber || '').toString().replace(/\D/g, '');
         if (bno.length !== 10) return true;
-        if (!(user.businessCategory || '').toString().trim()) return true;
+        if (!(user.businessCategory || user.industry || '').toString().trim()) return true;
         if (!(user.collaborationIndustry || '').toString().trim()) return true;
         if (!(user.keyCustomers || '').toString().trim()) return true;
     }
@@ -332,12 +341,9 @@ const AppLayout = (props) => {
                         ) : (
                             <div className="flex items-center gap-3">
                                 {isMobile ? (
-                                    <div className="flex items-center gap-2">
-                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="px-3 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 whitespace-nowrap flex-shrink-0">
-                                            로그인
-                                        </button>
-                                        <button type="button" data-testid="header-signup-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSignUpClick?.(); }} className="px-3 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover whitespace-nowrap flex-shrink-0">가입하기</button>
-                                    </div>
+                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="px-3 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 whitespace-nowrap flex-shrink-0">
+                                        로그인
+                                    </button>
                                 ) : (
                                     <>
                                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="text-xs font-semibold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">

@@ -32,8 +32,9 @@ const GRADE_STYLES = {
  * 회원 관리 컴포넌트
  * @param {Object} props
  * @param {Function} [props.onNavigateToMemberDetail] - 회원정보 상세 탭으로 이동 콜백
+ * @param {Object} [props.currentUser] - Firebase 로그인 사용자 (쓰기 시 필수)
  */
-export const UserManagement = ({ onNavigateToMemberDetail }) => {
+export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -74,6 +75,10 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
   }, []);
 
   const handleDeleteUser = async (user) => {
+    if (!currentUser) {
+      alert('탈퇴 처리를 하려면 먼저 로그인해 주세요. 메인 페이지에서 로그인한 뒤 관리자 페이지로 다시 들어와 주세요.');
+      return;
+    }
     if (!confirm('정말 이 회원을 강제 탈퇴 처리하시겠습니까? 강제 탈퇴 시 1년간 재가입이 제한됩니다.')) return;
 
     const uid = user?.uid || user?.id;
@@ -99,22 +104,36 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
 
   /** 회원등급 지정 시 승인 처리 + 역할 지정(마스터/운영진=관리자, 그 외=일반 회원) */
   const handleGradeChange = async (userId, value) => {
+    if (!currentUser) {
+      alert('회원 등급 변경을 하려면 먼저 로그인해 주세요. 메인 페이지에서 로그인한 뒤 관리자 페이지로 다시 들어와 주세요.');
+      return;
+    }
+    const id = String(userId ?? '').trim();
+    if (!id) {
+      alert('회원 정보를 찾을 수 없습니다.');
+      return;
+    }
+    const grade = (value || '').trim();
+    const role = (grade === '마스터' || grade === '운영진') ? 'admin' : 'user';
+    const payload = { memberGrade: grade, approvalStatus: 'approved', role };
     try {
-      const grade = value || '';
-      const role = (grade === '마스터' || grade === '운영진') ? 'admin' : 'user';
-      await firebaseService.updateUser(userId, {
-        memberGrade: grade,
-        approvalStatus: 'approved',
-        role,
-      });
+      await firebaseService.updateUser(id, payload);
+      setUsers(prev => prev.map(u => (String(u.id) === id || String(u.uid) === id) ? { ...u, ...payload } : u));
+      if (memberModalUser && (String(memberModalUser.id) === id || String(memberModalUser.uid) === id)) {
+        setMemberModalUser(prev => prev ? { ...prev, ...payload } : null);
+      }
       if (!firebaseService.subscribeUsers) loadUsers();
     } catch (error) {
       console.error('회원등급 변경 오류:', error);
-      alert('회원등급 변경에 실패했습니다.');
+      alert(`회원등급 변경에 실패했습니다. ${error?.message || ''}`);
     }
   };
 
   const handleRoleChange = async (userId, newRole) => {
+    if (!currentUser) {
+      alert('권한 변경을 하려면 먼저 로그인해 주세요. 메인 페이지에서 로그인한 뒤 관리자 페이지로 다시 들어와 주세요.');
+      return;
+    }
     if (!confirm(`이 회원을 ${newRole === 'admin' ? '관리자' : '일반 회원'}으로 변경하시겠습니까?`)) return;
 
     try {
@@ -134,6 +153,10 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
 
   const handleMemberEditSave = async () => {
     if (!memberModalUser) return;
+    if (!currentUser) {
+      alert('회원 정보 수정을 하려면 먼저 로그인해 주세요. 메인 페이지에서 로그인한 뒤 관리자 페이지로 다시 들어와 주세요.');
+      return;
+    }
     const userId = memberModalUser.id || memberModalUser.uid;
     const u = memberModalUser;
     const payload = {};
@@ -207,6 +230,10 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
   };
 
   const handleBulkGradeChange = async () => {
+    if (!currentUser) {
+      alert('일괄 등급 변경을 하려면 먼저 로그인해 주세요. 메인 페이지에서 로그인한 뒤 관리자 페이지로 다시 들어와 주세요.');
+      return;
+    }
     if (selectedIds.size === 0) {
       alert('등급을 변경할 회원을 선택해주세요.');
       return;
@@ -214,14 +241,15 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
     if (!confirm(`선택한 ${selectedIds.size}명의 회원 등급을 "${MEMBER_GRADE_OPTIONS.find(o => o.value === bulkGradeValue)?.label || bulkGradeValue || '등급 없음'}"(으)로 변경하시겠습니까?`)) return;
 
     try {
-      const grade = bulkGradeValue || '';
+      const grade = (bulkGradeValue || '').trim();
       const role = (grade === '마스터' || grade === '운영진') ? 'admin' : 'user';
+      const payload = { memberGrade: grade, approvalStatus: 'approved', role };
       for (const id of selectedIds) {
-        await firebaseService.updateUser(id, {
-          memberGrade: grade,
-          approvalStatus: 'approved',
-          role,
-        });
+        await firebaseService.updateUser(id, payload);
+      }
+      setUsers(prev => prev.map(u => (selectedIds.has(u.id) || selectedIds.has(u.uid)) ? { ...u, ...payload } : u));
+      if (memberModalUser && (selectedIds.has(memberModalUser.id) || selectedIds.has(memberModalUser.uid))) {
+        setMemberModalUser(prev => prev ? { ...prev, ...payload } : null);
       }
       alert(`${selectedIds.size}명 회원 등급·승인·역할이 적용되었습니다.`);
       setSelectedIds(new Set());
@@ -234,6 +262,10 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
   };
 
   const handleBulkWithdraw = async () => {
+    if (!currentUser) {
+      alert('일괄 탈퇴 처리를 하려면 먼저 로그인해 주세요. 메인 페이지에서 로그인한 뒤 관리자 페이지로 다시 들어와 주세요.');
+      return;
+    }
     if (selectedIds.size === 0) {
       alert('탈퇴 처리할 회원을 선택해주세요.');
       return;
@@ -532,7 +564,7 @@ export const UserManagement = ({ onNavigateToMemberDetail }) => {
                   <td className="px-4 py-3 text-center align-middle">
                     <select
                       value={user.memberGrade || ''}
-                      onChange={(e) => handleGradeChange(user.id, e.target.value)}
+                      onChange={(e) => handleGradeChange(user.id || user.uid, e.target.value)}
                       className="mx-auto block max-w-[140px] px-2 py-1.5 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none bg-white"
                     >
                       {MEMBER_GRADE_OPTIONS.map((opt) => (

@@ -27,7 +27,7 @@ export const firebaseService = {
   async getUsers() {
     try {
       const snapshot = await getDocs(collection(db, 'users'));
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
     } catch (error) {
       console.error('Error getting users:', error);
       throw error;
@@ -39,7 +39,7 @@ export const firebaseService = {
       const docRef = doc(db, 'users', userId);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() };
+        return { ...docSnap.data(), id: docSnap.id };
       }
       return null;
     } catch (error) {
@@ -60,7 +60,7 @@ export const firebaseService = {
       const snapshot = await getDocs(q);
       if (snapshot.empty) return null;
       const d = snapshot.docs[0];
-      return { id: d.id, ...d.data() };
+      return { ...d.data(), id: d.id };
     } catch (error) {
       console.error('Error getting user by email:', error);
       throw error;
@@ -88,10 +88,10 @@ export const firebaseService = {
         const snap2 = await getDocs(q2);
         if (snap2.empty) return null;
         const d = snap2.docs[0];
-        return { id: d.id, ...d.data() };
+        return { ...d.data(), id: d.id };
       }
       const d = snapshot.docs[0];
-      return { id: d.id, ...d.data() };
+      return { ...d.data(), id: d.id };
     } catch (error) {
       console.error('Error getting user by phone:', error);
       throw error;
@@ -119,11 +119,16 @@ export const firebaseService = {
 
   async updateUser(userId, userData) {
     try {
-      const docRef = doc(db, 'users', userId);
-      await updateDoc(docRef, {
-        ...userData,
-        updatedAt: serverTimestamp()
-      });
+      const id = (userId ?? '').toString().trim();
+      if (!id) {
+        throw new Error('updateUser: userId가 비어 있습니다.');
+      }
+      const docRef = doc(db, 'users', id);
+      const payload = { updatedAt: serverTimestamp() };
+      for (const [key, value] of Object.entries(userData || {})) {
+        if (value !== undefined) payload[key] = value;
+      }
+      await updateDoc(docRef, payload);
     } catch (error) {
       console.error('Error updating user:', error);
       throw error;
@@ -194,7 +199,7 @@ export const firebaseService = {
 
   subscribeUsers(callback) {
     return onSnapshot(collection(db, 'users'), (snapshot) => {
-      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const users = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
       callback(users);
     });
   },

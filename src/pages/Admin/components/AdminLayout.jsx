@@ -55,6 +55,12 @@ export const AdminLayout = ({ children, activeTab, onTabChange, onLogout, curren
         </div>
       </header>
 
+      {!currentUser && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-center text-sm text-amber-800">
+          회원 등급·정보 수정 등 쓰기 작업을 하려면 <a href="/" className="font-bold underline hover:no-underline">메인 페이지에서 로그인</a>한 뒤 관리자 페이지로 다시 들어와 주세요.
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* 사이드바 */}

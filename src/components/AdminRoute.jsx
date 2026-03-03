@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
 import { useAdminAuth } from '../hooks/useAdminAuth';
 import { Icons } from './Icons';
 
@@ -10,18 +9,15 @@ import { Icons } from './Icons';
  * @param {string} props.redirectTo - 권한이 없는 경우 리다이렉트할 경로
  */
 export const AdminRoute = ({ children, redirectTo = '/' }) => {
-  const { isAdmin, isLoading, checkAdminCode } = useAdminAuth();
-  const [showCodeInput, setShowCodeInput] = useState(false);
+  const { checkAdminCode } = useAdminAuth();
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState('');
   const [isVerified, setIsVerified] = useState(false);
 
   const handleCodeSubmit = (e) => {
     e.preventDefault();
-    
     if (checkAdminCode(codeInput)) {
       setIsVerified(true);
-      setShowCodeInput(false);
       setCodeError('');
     } else {
       setCodeError('잘못된 마스터 코드입니다.');
@@ -29,25 +25,8 @@ export const AdminRoute = ({ children, redirectTo = '/' }) => {
     }
   };
 
-  // 로딩 중
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-soft flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand"></div>
-          <p className="mt-4 text-gray-600">권한 확인 중...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // 관리자가 아니고 코드도 확인되지 않은 경우
-  if (!isAdmin && !isVerified) {
-    // 마스터 코드 입력 모달 표시
-    if (!showCodeInput) {
-      setShowCodeInput(true);
-    }
-
+  // 마스터 코드로만 권한 부여 — 코드 미입력 시 코드 입력 화면
+  if (!isVerified) {
     return (
       <div className="min-h-screen bg-soft flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-card p-8 max-w-md w-full">
@@ -108,6 +87,5 @@ export const AdminRoute = ({ children, redirectTo = '/' }) => {
     );
   }
 
-  // 관리자이거나 코드가 확인된 경우
   return children;
 };

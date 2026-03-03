@@ -55,9 +55,9 @@ export const AdminDashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'users':
-        return <UserManagement onNavigateToMemberDetail={() => setActiveTab('memberDetail')} />;
+        return <UserManagement onNavigateToMemberDetail={() => setActiveTab('memberDetail')} currentUser={currentUser} />;
       case 'memberDetail':
-        return <MemberDetailView />;
+        return <MemberDetailView currentUser={currentUser} />;
       case 'programs':
         return <ProgramManagement />;
       case 'posts':
