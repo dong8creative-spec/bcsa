@@ -113,7 +113,7 @@ export const defaultContent = {
         programs: { text: "프로그램", fontSize: "text-3xl", fontWeight: "font-bold" },
         members: { text: "부청사 회원", fontSize: "text-3xl", fontWeight: "font-bold" },
         community: { text: "커뮤니티", fontSize: "text-3xl", fontWeight: "font-bold" },
-        restaurants: { text: "부산맛집", fontSize: "text-3xl", fontWeight: "font-bold" },
+        restaurants: { text: "맛집", fontSize: "text-3xl", fontWeight: "font-bold" },
         donation: { text: "후원", fontSize: "text-3xl", fontWeight: "font-bold" },
         myPage: { text: "마이페이지", fontSize: "text-3xl", fontWeight: "font-bold" }
     }

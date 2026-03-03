@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Icons } from '../components/Icons';
 import { authService } from '../services/authService';
 import { firebaseService } from '../services/firebaseService';
@@ -43,8 +43,34 @@ const TERMS_PRIVACY = `개인정보 수집 및 이용 동의
 const TERMS_MARKETING = `마케팅 정보 수신 및 활용 동의 (선택)
 부청사 및 제휴사의 이벤트, 혜택, 사업자 지원 프로그램 등 마케팅 정보를 이메일·문자·앱 푸시로 수신하는 것에 동의합니다. 미동의 시에도 회원가입 및 서비스 이용에 제한이 없습니다.`;
 
+/** URL의 카카오 프로필 payload(base64url) 디코딩 */
+function decodeKakaoPayload(pBase64) {
+    if (!pBase64 || typeof pBase64 !== 'string') return null;
+    try {
+        const json = atob(pBase64.replace(/-/g, '+').replace(/_/g, '/'));
+        return JSON.parse(json);
+    } catch (_) {
+        return null;
+    }
+}
+
+/** 이메일에서 @ 앞부분과 도메인 분리 (도메인 목록에 있으면 해당 키, 없으면 직접입력) */
+function parseEmailForForm(email) {
+    const e = (email || '').toString().trim();
+    if (!e || !e.includes('@')) return { emailId: '', emailDomain: 'naver.com', emailDomainCustom: '', email: e };
+    const [id, domain] = e.split('@');
+    const found = EMAIL_DOMAINS.find(d => d !== '직접입력' && d === domain);
+    return {
+        emailId: (id || '').trim(),
+        emailDomain: found ? domain : '직접입력',
+        emailDomainCustom: (domain || '').trim(),
+        email: e
+    };
+}
+
 const SignUpPage = ({ onSignUp }) => {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [userType, setUserType] = useState('');
     const [form, setForm] = useState({
         name: '',
@@ -83,6 +109,41 @@ const SignUpPage = ({ onSignUp }) => {
     const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
+
+    // 카카오 회원가입 콜백: URL에 from=kakao&p=base64 있으면 폼 자동 기입 (옵션 A: nickname을 name 초기값으로)
+    useEffect(() => {
+        const from = searchParams.get('from');
+        const pEnc = searchParams.get('p');
+        const err = searchParams.get('error');
+        if (from !== 'kakao') return;
+        if (err) {
+            if (err === 'no_code') setError('카카오 인증이 취소되었거나 코드를 받지 못했습니다.');
+            else if (err === 'token_failed') setError('카카오 토큰 발급에 실패했습니다. 다시 시도해 주세요.');
+            else if (err === 'user_info_failed') setError('카카오 프로필을 가져오지 못했습니다. 다시 시도해 주세요.');
+            else setError('카카오 연동 중 오류가 발생했습니다. 다시 시도해 주세요.');
+            setSearchParams({}, { replace: true });
+            return;
+        }
+        const profile = decodeKakaoPayload(pEnc);
+        if (!profile) {
+            setSearchParams({}, { replace: true });
+            return;
+        }
+        const emailParsed = parseEmailForForm(profile.email || '');
+        setForm(prev => ({
+            ...prev,
+            name: (profile.name || profile.nickname || '').toString().trim() || prev.name,
+            nickname: (profile.nickname || '').toString().trim() || prev.nickname,
+            birthdate: (profile.birthdate || '').toString().trim() || prev.birthdate,
+            gender: (profile.gender || '').toString().trim() || prev.gender,
+            phone: (profile.phone || '').toString().trim() || prev.phone,
+            email: emailParsed.email || prev.email,
+            emailId: emailParsed.emailId || prev.emailId,
+            emailDomain: emailParsed.emailDomain || prev.emailDomain,
+            emailDomainCustom: emailParsed.emailDomainCustom || prev.emailDomainCustom,
+        }));
+        setSearchParams({}, { replace: true });
+    }, [searchParams, setSearchParams]);
 
     const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || '');
     /** 이메일 앞부분 + 도메인(드롭다운/직접입력) 조합 */

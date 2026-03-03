@@ -960,10 +960,23 @@ export const firebaseService = {
 
   subscribeRestaurants(callback) {
     const q = query(collection(db, 'restaurants'), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snapshot) => {
-      const restaurants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      callback(restaurants);
-    });
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const restaurants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        callback(restaurants);
+      },
+      async (error) => {
+        console.error('subscribeRestaurants error:', error);
+        try {
+          const restaurants = await this.getRestaurants();
+          callback(restaurants);
+        } catch (fallbackError) {
+          console.error('getRestaurants fallback error:', fallbackError);
+          callback([]);
+        }
+      }
+    );
   },
 
   // ==========================================

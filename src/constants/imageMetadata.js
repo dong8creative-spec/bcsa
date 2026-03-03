@@ -87,24 +87,3 @@ export const imageMetadata = [
     required: false
   }
 ];
-
-/**
- * 이미지 메타데이터를 필드명으로 조회
- */
-export const getImageMetadata = (field) => {
-  return imageMetadata.find(img => img.field === field);
-};
-
-/**
- * 페이지별 이미지 목록 조회
- */
-export const getImagesByPage = (page) => {
-  return imageMetadata.filter(img => img.page === page);
-};
-
-/**
- * 섹션별 이미지 목록 조회
- */
-export const getImagesBySection = (section) => {
-  return imageMetadata.filter(img => img.section === section);
-};

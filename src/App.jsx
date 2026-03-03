@@ -9,15 +9,12 @@ import { translateFirebaseError } from './utils/errorUtils';
 import { 
   loadUsersFromStorage, 
   hashPassword, 
-  verifyPassword, 
-  generateTemporaryPassword, 
-  sendEmailViaEmailJS,
   saveUsersToStorage,
   loadCurrentUserFromStorage,
   saveCurrentUserToStorage
 } from './utils/authUtils';
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from './constants';
-import { getApiBaseUrl } from './utils/api';
+import { getApiBaseUrl, getKakaoAuthorizeUrl } from './utils/api';
 import { requestPayment as paymentServiceRequestPayment } from './services/paymentService';
 import { PaymentResultView } from './pages/PaymentResultView';
 import { defaultContent } from './constants/content';
@@ -67,18 +64,6 @@ const PARTNER_LOGOS = [
     '/assets/images/partners/partner6.png',
 ];
 const PARTNER_NAMES = ['중소벤처기업부', '15분도시', '나라장터', 'KOTRA', '부산경제진흥원', '부산광역시'];
-
-// 이미지 메타데이터
-const imageMetadata = [
-    { year: 2017, filename: '2017.png', alt: '부산지역자활센터협회 2017년 활동 사진' },
-    { year: 2018, filename: '2018.png', alt: '부산지역자활센터협회 2018년 활동 사진' },
-    { year: 2019, filename: '2019.png', alt: '부산지역자활센터협회 2019년 활동 사진' },
-    { year: 2020, filename: '2020.png', alt: '부산지역자활센터협회 2020년 활동 사진' },
-    { year: 2021, filename: '2021.png', alt: '부산지역자활센터협회 2021년 활동 사진' },
-    { year: 2022, filename: '2022.png', alt: '부산지역자활센터협회 2022년 활동 사진' },
-    { year: 2023, filename: '2023.png', alt: '부산지역자활센터협회 2023년 활동 사진' },
-    { year: 2024, filename: '2024.png', alt: '부산지역자활센터협회 2024년 활동 사진' },
-];
 
 // ==========================================
 // View 컴포넌트들 (RestaurantsListView, RestaurantDetailView, RestaurantFormView, InquiryModal, DonationView는 components/로 분리됨)
@@ -321,28 +306,26 @@ const App = () => {
     useEffect(() => {
         if (firebaseService && firebaseService.subscribeContent) {
             const unsubscribe = firebaseService.subscribeContent((contentData) => {
-                if (contentData && Object.keys(contentData).length > 0) {
-                    // 기본값과 Firebase Content 병합 (기본값을 기준으로 Firebase 설정으로 덮어쓰기)
-                    const merged = { ...defaultContent, ...contentData };
-                    setContent(() => merged);
-                    try {
-                        if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                            localStorage.setItem('busan_ycc_content', JSON.stringify(merged));
-                        }
-                    } catch (_) {}
-                    // menuNames도 Firebase에서 가져오기 (우선 사용)
-                    if (contentData.menuNames) {
-                        setMenuNames(prev => ({ ...defaultMenuNames, ...contentData.menuNames }));
-                    } else {
-                        // Firebase에 menuNames가 없으면 localStorage 사용 (폴백)
-                        const localMenuNames = loadMenuNamesFromStorage();
-                        setMenuNames(localMenuNames);
+                const data = contentData && typeof contentData === 'object' ? contentData : {};
+                // 기본값과 Firebase Content 병합 (빈 객체여도 defaultContent로 비회원 등에 안정 표시)
+                const merged = { ...defaultContent, ...data };
+                setContent(() => merged);
+                try {
+                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                        localStorage.setItem('busan_ycc_content', JSON.stringify(merged));
                     }
-                    
-                    // menuEnabled도 Firebase에서 가져오기 (우선 사용)
-                    if (contentData.menuEnabled) {
-                        setMenuEnabled(prev => ({ ...loadMenuEnabledFromStorage(), ...contentData.menuEnabled }));
-                    }
+                } catch (_) {}
+                // menuNames도 Firebase에서 가져오기 (우선 사용)
+                if (data.menuNames) {
+                    setMenuNames(prev => ({ ...defaultMenuNames, ...data.menuNames }));
+                } else {
+                    // Firebase에 menuNames가 없으면 localStorage 사용 (폴백)
+                    const localMenuNames = loadMenuNamesFromStorage();
+                    setMenuNames(localMenuNames);
+                }
+                // menuEnabled도 Firebase에서 가져오기 (우선 사용)
+                if (data.menuEnabled) {
+                    setMenuEnabled(prev => ({ ...loadMenuEnabledFromStorage(), ...data.menuEnabled }));
                 }
             });
             
@@ -353,28 +336,26 @@ const App = () => {
                         if (firebaseService && firebaseService.getContent) {
                     try {
                                 const contentData = await firebaseService.getContent();
-                        if (contentData && Object.keys(contentData).length > 0) {
-                            // 기본값과 Firebase Content 병합 (기본값을 기준으로 Firebase 설정으로 덮어쓰기)
-                            const merged = { ...defaultContent, ...contentData };
-                            setContent(() => merged);
-                            try {
-                                if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                                    localStorage.setItem('busan_ycc_content', JSON.stringify(merged));
-                                }
-                            } catch (_) {}
-                            // menuNames도 Firebase에서 가져오기
-                            if (contentData.menuNames) {
-                                setMenuNames(prev => ({ ...defaultMenuNames, ...contentData.menuNames }));
-                            } else {
-                                // Firebase에 없으면 localStorage 사용
-                                const localMenuNames = loadMenuNamesFromStorage();
-                                setMenuNames(localMenuNames);
+                        const data = contentData && typeof contentData === 'object' ? contentData : {};
+                        // 기본값과 Firebase Content 병합 (빈 객체여도 defaultContent로 비회원 등에 안정 표시)
+                        const merged = { ...defaultContent, ...data };
+                        setContent(() => merged);
+                        try {
+                            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                                localStorage.setItem('busan_ycc_content', JSON.stringify(merged));
                             }
-                            
-                            // menuEnabled도 Firebase에서 가져오기
-                            if (contentData.menuEnabled) {
-                                setMenuEnabled(prev => ({ ...loadMenuEnabledFromStorage(), ...contentData.menuEnabled }));
-                            }
+                        } catch (_) {}
+                        // menuNames도 Firebase에서 가져오기
+                        if (data.menuNames) {
+                            setMenuNames(prev => ({ ...defaultMenuNames, ...data.menuNames }));
+                        } else {
+                            // Firebase에 없으면 localStorage 사용
+                            const localMenuNames = loadMenuNamesFromStorage();
+                            setMenuNames(localMenuNames);
+                        }
+                        // menuEnabled도 Firebase에서 가져오기
+                        if (data.menuEnabled) {
+                            setMenuEnabled(prev => ({ ...loadMenuEnabledFromStorage(), ...data.menuEnabled }));
                         }
                     } catch (error) {
                         console.error('Content 로드 오류:', error);
@@ -422,6 +403,7 @@ const App = () => {
     }, [content?.hero_image]);
 
     const [showSignUpModal, setShowSignUpModal] = useState(false);
+    const [showSignUpChoiceModal, setShowSignUpChoiceModal] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [pendingView, setPendingView] = useState(null); // 로그인 후 이동할 뷰
     const [mySeminars, setMySeminars] = useState([]);
@@ -878,7 +860,10 @@ const App = () => {
         if (authService && authService.onAuthStateChanged) {
             const unsubscribe = authService.onAuthStateChanged(async (user) => {
                 if (user) {
-                    // 사용자가 로그인되어 있으면 Firestore에서 사용자 데이터 로드
+                    // Auth 복원 직후 최소 사용자로 즉시 로그인 상태 반영 (한 박자 늦음 방지)
+                    const minimalUser = { id: user.uid, uid: user.uid, email: user.email || '', name: user.displayName || '' };
+                    setCurrentUser(minimalUser);
+                    // Firestore에서 사용자 데이터 로드 후 전체 정보로 갱신
                     try {
                         const userDoc = await authService.getUserData(user.uid);
                         if (userDoc) {
@@ -1175,7 +1160,7 @@ const App = () => {
         '부청사 회원': '부청사 회원',
         '커뮤니티': '커뮤니티',
         '후원': '후원',
-        '부산맛집': '부산맛집'
+        '부산맛집': '맛집'
     };
 
     // 로컬 스토리지에서 메뉴 명칭 로드
@@ -3442,7 +3427,7 @@ END:VCALENDAR`;
                                     <button type="button" onClick={(e) => { 
                                         e.preventDefault(); 
                                         e.stopPropagation(); 
-                                        navigate('/signup'); 
+                                        setShowSignUpChoiceModal(true); 
                                     }} className="px-8 py-4 bg-white text-brand font-bold rounded-2xl hover:bg-gray-50 transition-all shadow-lg btn-hover">{content.cta_join_button || '지금 가입하기'}</button>
                                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsInquiryModalOpen(true); }} className="px-8 py-4 bg-transparent border border-white/30 text-white font-bold rounded-2xl hover:bg-white/10 transition-all">{content.cta_contact_button || '문의하기'}</button>
                                 </div>
@@ -3546,7 +3531,7 @@ END:VCALENDAR`;
             setShowLoginModal={setShowLoginModal}
             showSignUpModal={showSignUpModal}
             setShowSignUpModal={setShowSignUpModal}
-            onSignUpClick={() => navigate('/signup')}
+            onSignUpClick={() => setShowSignUpChoiceModal(true)}
             isInquiryModalOpen={isInquiryModalOpen}
             setIsInquiryModalOpen={setIsInquiryModalOpen}
             handleInquirySubmit={handleInquirySubmit}
@@ -3562,6 +3547,37 @@ END:VCALENDAR`;
             content={content}
             isMenuOpen={isMenuOpen}
         />
+        {showSignUpChoiceModal && (
+            <ModalPortal>
+                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setShowSignUpChoiceModal(false); }}>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold text-gray-800 mb-4">회원가입</h3>
+                        <div className="flex flex-col gap-3">
+                            <button
+                                type="button"
+                                onClick={() => { setShowSignUpChoiceModal(false); navigate('/signup'); }}
+                                className="w-full py-3 px-4 bg-brand text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+                            >
+                                이메일로 가입
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const url = getKakaoAuthorizeUrl();
+                                    setShowSignUpChoiceModal(false);
+                                    if (url) window.location.href = url;
+                                    else alert('카카오 로그인 설정이 필요합니다.');
+                                }}
+                                className="w-full py-3 px-4 bg-[#FEE500] text-[#191919] font-semibold rounded-xl hover:bg-[#FDD835] transition-colors flex items-center justify-center gap-2"
+                            >
+                                <span className="text-lg">카카오</span> 로 회원가입
+                            </button>
+                        </div>
+                        <button type="button" onClick={() => setShowSignUpChoiceModal(false)} className="mt-4 w-full py-2 text-gray-500 text-sm hover:text-gray-700">취소</button>
+                    </div>
+                </div>
+            </ModalPortal>
+        )}
         {showKakaoMapModal && (
             <KakaoMapModal
                 onClose={() => setShowKakaoMapModal(false)}

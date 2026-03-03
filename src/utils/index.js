@@ -40,7 +40,7 @@ export const calculateStatus = (dateStr) => {
  * @param {string} url - Google Drive 공유 링크
  * @returns {string} 변환된 이미지 URL
  */
-export const convertDriveLink = (url) => {
+const convertDriveLink = (url) => {
     if (!url) return "";
     if (url.includes('drive.google.com') && url.includes('/d/')) {
         try {
@@ -59,7 +59,7 @@ export const convertDriveLink = (url) => {
  * @param {string} csvText - CSV 텍스트
  * @returns {Array} 파싱된 데이터 배열
  */
-export const parseCSV = (csvText) => {
+const parseCSV = (csvText) => {
     if (!csvText) return [];
     
     try {
@@ -143,7 +143,7 @@ export const parseCSV = (csvText) => {
  * @param {Error} error - 에러 객체
  * @param {string} context - 에러 발생 컨텍스트
  */
-export const handleError = (error, context = '') => {
+const handleError = (error, context = '') => {
     console.error(`[${context}] 에러 발생:`, error);
     // 필요시 사용자에게 알림 표시
     // alert(`오류가 발생했습니다: ${error.message}`);
@@ -155,7 +155,7 @@ export const handleError = (error, context = '') => {
  * @param {string} format - 포맷 형식 (기본: 'YYYY.MM.DD')
  * @returns {string} 포맷된 날짜 문자열
  */
-export const formatDate = (date, format = 'YYYY.MM.DD') => {
+const formatDate = (date, format = 'YYYY.MM.DD') => {
     try {
         const d = date instanceof Date ? date : new Date(date);
         if (isNaN(d.getTime())) return '';
@@ -225,7 +225,7 @@ export const fetchSheetData = async (url, retries = 3, delay = 1000) => {
  * @param {HTMLElement} imgElement - 이미지 엘리먼트
  * @param {string} fallbackUrl - 대체 이미지 URL
  */
-export const setImageFallback = (imgElement, fallbackUrl = '') => {
+const setImageFallback = (imgElement, fallbackUrl = '') => {
     if (!imgElement) return;
     
     imgElement.onerror = () => {
@@ -245,7 +245,7 @@ export const setImageFallback = (imgElement, fallbackUrl = '') => {
  * @param {Array} headers - CSV 헤더 배열 (선택사항, 자동 감지 가능)
  * @returns {string} CSV 문자열
  */
-export const convertToCSV = (data, headers = null) => {
+const convertToCSV = (data, headers = null) => {
     if (!data || !Array.isArray(data) || data.length === 0) {
         return '';
     }

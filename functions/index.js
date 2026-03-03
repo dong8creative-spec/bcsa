@@ -102,6 +102,140 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'API Proxy is running' });
 });
 
+// --- 카카오 로그인/회원가입: OAuth 콜백 (토큰 교환 + 사용자 정보 조회 후 프론트 리다이렉트) ---
+function getKakaoEnv() {
+  const restApiKey = process.env.KAKAO_REST_API_KEY || '';
+  const clientSecret = process.env.KAKAO_CLIENT_SECRET || '';
+  const frontendOrigin = (process.env.FRONTEND_ORIGIN || 'https://bcsa.co.kr').replace(/\/$/, '');
+  return { restApiKey, clientSecret, frontendOrigin };
+}
+
+/** 카카오 전화번호 +82 10-1234-5678 → 01012345678 */
+function normalizeKakaoPhone(phone) {
+  if (!phone || typeof phone !== 'string') return '';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length >= 10 && digits.startsWith('82')) {
+    return '0' + digits.slice(2).slice(0, 11);
+  }
+  return digits.slice(0, 11);
+}
+
+/** birthyear(YYYY) + birthday(MMDD) → YYYY-MM-DD */
+function toBirthdate(birthyear, birthday) {
+  const y = (birthyear || '').toString().trim();
+  const md = (birthday || '').toString().replace(/\D/g, '').padStart(4, '0');
+  if (y.length === 4 && md.length === 4) {
+    const mm = md.slice(0, 2);
+    const dd = md.slice(2, 4);
+    if (parseInt(mm, 10) >= 1 && parseInt(mm, 10) <= 12 && parseInt(dd, 10) >= 1 && parseInt(dd, 10) <= 31) {
+      return `${y}-${mm}-${dd}`;
+    }
+  }
+  return '';
+}
+
+/** 카카오 gender male/female → 우리 폼 값 */
+function mapKakaoGender(gender) {
+  const g = (gender || '').toString().toLowerCase();
+  if (g === 'male') return '남성';
+  if (g === 'female') return '여성';
+  return '';
+}
+
+app.get('/api/auth/kakao/callback', async (req, res) => {
+  try {
+    const code = req.query.code;
+    const error = req.query.error;
+    if (error) {
+      const frontendOrigin = getKakaoEnv().frontendOrigin;
+      res.redirect(302, `${frontendOrigin}/signup?from=kakao&error=${encodeURIComponent(error)}`);
+      return;
+    }
+    if (!code) {
+      const frontendOrigin = getKakaoEnv().frontendOrigin;
+      res.redirect(302, `${frontendOrigin}/signup?from=kakao&error=no_code`);
+      return;
+    }
+
+    const { restApiKey, clientSecret, frontendOrigin } = getKakaoEnv();
+    if (!restApiKey) {
+      console.error('[Kakao] KAKAO_REST_API_KEY not set');
+      res.redirect(302, `${frontendOrigin}/signup?from=kakao&error=server_error`);
+      return;
+    }
+
+    const redirectUri = process.env.KAKAO_REDIRECT_URI || `${process.env.FUNCTION_URL || req.protocol + '://' + req.get('host')}/api/auth/kakao/callback`;
+    const tokenParams = {
+      grant_type: 'authorization_code',
+      client_id: restApiKey,
+      redirect_uri: redirectUri,
+      code
+    };
+    if (clientSecret) tokenParams.client_secret = clientSecret;
+    const tokenRes = await axios.post(
+      'https://kauth.kakao.com/oauth/token',
+      new URLSearchParams(tokenParams).toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    ).catch((err) => {
+      console.error('[Kakao] token error', err.response?.data || err.message);
+      return null;
+    });
+
+    if (!tokenRes || !tokenRes.data || !tokenRes.data.access_token) {
+      res.redirect(302, `${frontendOrigin}/signup?from=kakao&error=token_failed`);
+      return;
+    }
+
+    const accessToken = tokenRes.data.access_token;
+    const userRes = await axios.get('https://kapi.kakao.com/v2/user/me', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      params: {
+        property_keys: JSON.stringify([
+          'kakao_account.profile',
+          'kakao_account.email',
+          'kakao_account.phone_number',
+          'kakao_account.gender',
+          'kakao_account.birthyear',
+          'kakao_account.birthday'
+        ])
+      }
+    }).catch((err) => {
+      console.error('[Kakao] user/me error', err.response?.data || err.message);
+      return null;
+    });
+
+    if (!userRes || !userRes.data) {
+      res.redirect(302, `${frontendOrigin}/signup?from=kakao&error=user_info_failed`);
+      return;
+    }
+
+    const k = userRes.data.kakao_account || {};
+    const profile = k.profile || {};
+    const nickname = (profile.nickname || '').toString().trim();
+    const email = (k.email || '').toString().trim();
+    const phone = normalizeKakaoPhone(k.phone_number);
+    const gender = mapKakaoGender(k.gender);
+    const birthdate = toBirthdate(k.birthyear, k.birthday);
+    const profileImageUrl = (profile.profile_image_url || '').toString().trim();
+
+    const payload = {
+      nickname,
+      name: nickname,
+      email,
+      phone,
+      gender,
+      birthdate,
+      profile_image_url: profileImageUrl
+    };
+    const pBase64 = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+    res.redirect(302, `${frontendOrigin}/signup?from=kakao&p=${pBase64}`);
+  } catch (err) {
+    console.error('[Kakao] callback error', err);
+    const frontendOrigin = getKakaoEnv().frontendOrigin;
+    res.redirect(302, `${frontendOrigin}/signup?from=kakao&error=server_error`);
+  }
+});
+
 // 결제 전 대기 저장 (리다이렉트 결제 직전 클라이언트 호출)
 app.post('/api/payment/pending', async (req, res) => {
   try {
