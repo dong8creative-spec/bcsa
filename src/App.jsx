@@ -17,7 +17,7 @@ import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from './constants';
 import { getApiBaseUrl, getKakaoAuthorizeUrl } from './utils/api';
 import { requestPayment as paymentServiceRequestPayment } from './services/paymentService';
 import { PaymentResultView } from './pages/PaymentResultView';
-import { defaultContent } from './constants/content';
+import { defaultContent, defaultMenuOrder, defaultMenuNames } from './constants/content';
 import PageTitle from './components/PageTitle';
 import NoticeView from './pages/NoticeView';
 import AboutView from './pages/AboutView';
@@ -1152,17 +1152,6 @@ const App = () => {
 
     const [menuEnabled, setMenuEnabled] = useState(loadMenuEnabledFromStorage());
 
-    // 메뉴 명칭 관리 (기본값)
-    const defaultMenuNames = {
-        '홈': '홈',
-        '소개': '소개',
-        '프로그램': '프로그램',
-        '부청사 회원': '부청사 회원',
-        '커뮤니티': '커뮤니티',
-        '후원': '후원',
-        '부산맛집': '맛집'
-    };
-
     // 로컬 스토리지에서 메뉴 명칭 로드
     const loadMenuNamesFromStorage = () => {
         try {
@@ -1230,8 +1219,6 @@ const App = () => {
     }, []);
 
     // 메뉴 순서 관리
-    const defaultMenuOrder = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '후원', '부산맛집'];
-    
     const loadMenuOrderFromStorage = () => {
         try {
             if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
@@ -3045,6 +3032,7 @@ END:VCALENDAR`;
                     isFoodBusinessOwner={isFoodBusinessOwner}
                     menuNames={menuNames}
                     pageTitles={pageTitles}
+                    waitForKakaoMap={waitForKakaoMap}
                     onRestaurantClick={(restaurant) => {
                         setSelectedRestaurant(restaurant);
                         setCurrentView('restaurantDetail');

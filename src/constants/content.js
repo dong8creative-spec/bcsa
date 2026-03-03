@@ -118,3 +118,16 @@ export const defaultContent = {
         myPage: { text: "마이페이지", fontSize: "text-3xl", fontWeight: "font-bold" }
     }
 };
+
+/** 메뉴 순서·명칭 기본값 (index·admin 공통, 일치율 100%) */
+export const defaultMenuOrder = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '후원', '부산맛집'];
+
+export const defaultMenuNames = {
+    '홈': '홈',
+    '소개': '소개',
+    '프로그램': '프로그램',
+    '부청사 회원': '부청사 회원',
+    '커뮤니티': '커뮤니티',
+    '후원': '후원',
+    '부산맛집': '맛집'
+};

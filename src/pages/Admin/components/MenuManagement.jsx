@@ -4,6 +4,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 import { firebaseService } from '../../../services/firebaseService';
 import { authService } from '../../../services/authService';
+import { defaultMenuOrder, defaultMenuNames } from '../../../constants/content';
 import { Icons } from '../../../components/Icons';
 
 /**
@@ -91,8 +92,6 @@ const SortableMenuItem = ({ id, menu, enabled, name, onToggle, onNameChange }) =
  * 메뉴 관리 컴포넌트
  */
 export const MenuManagement = () => {
-  const defaultMenuOrder = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '후원', '부산맛집'];
-  
   const [menuOrder, setMenuOrder] = useState(defaultMenuOrder);
   const [menuEnabled, setMenuEnabled] = useState({});
   const [menuNames, setMenuNames] = useState({});
@@ -159,12 +158,8 @@ export const MenuManagement = () => {
         const stored = JSON.parse(localStorage.getItem('busan_ycc_menu_names'));
         setMenuNames(stored);
       } else {
-        // 기본값: 키와 동일
-        const defaultNames = {};
-        defaultMenuOrder.forEach(menu => {
-          defaultNames[menu] = menu;
-        });
-        setMenuNames(defaultNames);
+        // 기본값: index와 동일 (공통 상수)
+        setMenuNames({ ...defaultMenuNames });
       }
     } catch (error) {
       console.error('데이터 로드 오류:', error);
@@ -238,13 +233,11 @@ export const MenuManagement = () => {
 
     setMenuOrder(defaultMenuOrder);
     const defaultEnabled = {};
-    const defaultNames = {};
     defaultMenuOrder.forEach(menu => {
       defaultEnabled[menu] = true;
-      defaultNames[menu] = menu;
     });
     setMenuEnabled(defaultEnabled);
-    setMenuNames(defaultNames);
+    setMenuNames({ ...defaultMenuNames });
   };
 
   if (isLoading) {
