@@ -111,23 +111,3 @@ export const apiDelete = (endpoint, options = {}) => {
   return apiRequest(endpoint, { method: 'DELETE', ...options });
 };
 
-/**
- * 카카오 OAuth: 백엔드 콜백 URL (카카오 디벨로퍼스 Redirect URI에 등록된 값과 동일)
- */
-export const getKakaoCallbackBackendUrl = () => {
-  const base = getApiBaseUrl();
-  const path = (CONFIG.KAKAO && CONFIG.KAKAO.CALLBACK_BACKEND_PATH) ? CONFIG.KAKAO.CALLBACK_BACKEND_PATH : '/api/auth/kakao/callback';
-  return base ? `${base.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}` : '';
-};
-
-/**
- * 카카오 회원가입/로그인용 authorize URL (프론트에서 이 URL로 이동)
- * scope: 프로필(닉네임/이미지), 이메일, 전화번호, 성별, 생일, 생년
- */
-export const getKakaoAuthorizeUrl = () => {
-  const clientId = (CONFIG.KAKAO && CONFIG.KAKAO.REST_API_KEY) ? CONFIG.KAKAO.REST_API_KEY : '';
-  const redirectUri = getKakaoCallbackBackendUrl();
-  if (!clientId || !redirectUri) return '';
-  const scope = 'profile_nickname,profile_image,account_email,phone_number,gender,birthday,birthyear';
-  return `https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
-};

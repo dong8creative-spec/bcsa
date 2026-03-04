@@ -121,7 +121,7 @@
     opacity: 0.9;
   }
   
-  /* 모바일 메뉴: 카카오 CTA 말풍선 (버튼 아래, 꼬리는 위로) */
+  /* 모바일 메뉴: 오픈채팅 CTA 말풍선 (버튼 아래, 꼬리는 위로) */
   .mobile-menu-speech-bubble {
     position: absolute;
     top: 100%;
@@ -153,17 +153,6 @@
   @keyframes mobile-menu-bubble-float {
     0%, 100% { transform: translate(-50%, 0.75rem); }
     50% { transform: translate(-50%, 1rem); }
-  }
-  
-  /* 모바일 메뉴: 단톡방 버튼 노란색 ↔ 흰색 1.3초 간격 디졸브 점등 */
-  .mobile-menu-kakao-glow {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    animation: mobile-menu-kakao-glow 2.6s ease-in-out infinite;
-  }
-  @keyframes mobile-menu-kakao-glow {
-    0%, 45% { background-color: #facc15; }
-    55%, 95% { background-color: #ffffff; }
-    100% { background-color: #facc15; }
   }
   
   /* 모바일: 스크롤 가능·전체 내용 보기 (flex 자식이 줄어들어 스크롤 영역 생성) */

@@ -14,7 +14,7 @@ import {
   saveCurrentUserToStorage
 } from './utils/authUtils';
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from './constants';
-import { getApiBaseUrl, getKakaoAuthorizeUrl } from './utils/api';
+import { getApiBaseUrl } from './utils/api';
 import { requestPayment as paymentServiceRequestPayment } from './services/paymentService';
 import { PaymentResultView } from './pages/PaymentResultView';
 import { defaultContent, defaultMenuOrder, defaultMenuNames } from './constants/content';
@@ -2658,7 +2658,7 @@ END:VCALENDAR`;
                     </nav>
                     <div className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-gray-50 rounded-b-2xl relative z-0">
                         <div className="relative flex items-center justify-center">
-                            <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className={isLoggedIn ? 'w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors' : 'mobile-menu-kakao-glow w-11 h-11 rounded-full flex items-center justify-center text-gray-900'} style={isLoggedIn ? { boxShadow: '0 2px 8px rgba(0,0,0,0.1)' } : undefined} aria-label="부청사 오픈채팅방">
+                            <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} aria-label="부청사 오픈채팅방">
                                 <Icons.MessageSquare className="w-5 h-5" />
                             </a>
                             {!isLoggedIn && (
@@ -3555,18 +3555,6 @@ END:VCALENDAR`;
                                 className="w-full py-3 px-4 bg-brand text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors"
                             >
                                 이메일로 가입
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const url = getKakaoAuthorizeUrl();
-                                    setShowSignUpChoiceModal(false);
-                                    if (url) window.location.href = url;
-                                    else alert('카카오 로그인 설정이 필요합니다.');
-                                }}
-                                className="w-full py-3 px-4 bg-[#FEE500] text-[#191919] font-semibold rounded-xl hover:bg-[#FDD835] transition-colors flex items-center justify-center gap-2"
-                            >
-                                <span className="text-lg">카카오</span> 로 회원가입
                             </button>
                         </div>
                         <button type="button" onClick={() => setShowSignUpChoiceModal(false)} className="mt-4 w-full py-2 text-gray-500 text-sm hover:text-gray-700">취소</button>

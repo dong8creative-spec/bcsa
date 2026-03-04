@@ -76,7 +76,7 @@ export const defaultContent = {
     about_history_2014_title: "지주회사 설립 기획",
     about_history_2014_desc: "부산청년사업가들 필요성 검토 및 기획",
     about_history_2017_title: "커뮤니티 구축",
-    about_history_2017_desc: "회원간 소통 내부망 구축 및 카카오 오픈채팅방 개설",
+    about_history_2017_desc: "회원간 소통 내부망 구축 및 오픈채팅방 개설",
     about_history_2018_title: "첫 오프라인 활동",
     about_history_2018_desc: "창업자들을 위한 첫 세미나 개최 및 네트워킹 모임 운영",
     about_history_2024_title: "정기 세미나 구축",

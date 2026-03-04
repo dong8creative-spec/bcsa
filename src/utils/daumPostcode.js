@@ -44,7 +44,7 @@ function loadPostcodeScript() {
 }
 
 /**
- * 다음(카카오) 우편번호 검색 공용 헬퍼
+ * 다음 우편번호 검색 공용 헬퍼
  * 스크립트가 없으면 동적 로드 후 팝업 오픈.
  * @param {function} onComplete - 콜백(data: { roadAddress, jibunAddress, zipCode, buildingName })
  */

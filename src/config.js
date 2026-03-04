@@ -59,15 +59,6 @@ export const CONFIG = {
     GOOGLE_APPS_SCRIPT: {
         WEB_APP_URL: '',
         SPREADSHEET_ID: ''
-    },
-
-    // 카카오 로그인/회원가입 (동의 항목: 프로필, 이메일, 전화번호, 성별, 생년/생일)
-    KAKAO: {
-        REST_API_KEY: typeof import.meta !== 'undefined' && import.meta.env?.VITE_KAKAO_REST_API_KEY
-            ? import.meta.env.VITE_KAKAO_REST_API_KEY
-            : '',
-        // 백엔드 콜백 URL (카카오 디벨로퍼스 Redirect URI에 등록된 값과 동일해야 함)
-        CALLBACK_BACKEND_PATH: '/api/auth/kakao/callback'
     }
 };
 

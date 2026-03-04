@@ -5,7 +5,7 @@ import { defaultContent } from '../constants/content';
 const AboutView = ({ onBack, content, pageTitles }) => {
     const historyData = [
         { year: "2014", title: content.about_history_2014_title || "지주회사 설립 기획", desc: content.about_history_2014_desc || "부산청년사업가들 필요성 검토 및 기획" },
-        { year: "2017", title: content.about_history_2017_title || "커뮤니티 구축", desc: content.about_history_2017_desc || "회원간 소통 내부망 구축 및 카카오 오픈채팅방 개설" },
+        { year: "2017", title: content.about_history_2017_title || "커뮤니티 구축", desc: content.about_history_2017_desc || "회원간 소통 내부망 구축 및 오픈채팅방 개설" },
         { year: "2018", title: content.about_history_2018_title || "첫 오프라인 활동", desc: content.about_history_2018_desc || "창업자들을 위한 첫 세미나 개최 및 네트워킹 모임 운영" },
         { year: "2024", title: content.about_history_2024_title || "정기 세미나 구축", desc: content.about_history_2024_desc || "창업/세무/마케팅 교육 프로그램 및 정기 모임 활성화" },
         { year: "2025", title: content.about_history_2025_title || "비영리 법인 설립", desc: content.about_history_2025_desc || "공식 단체 법인화 및 온라인 플랫폼(어플) 개발 추진" },
