@@ -500,13 +500,13 @@ export const firebaseService = {
     try {
       const q = query(collection(db, 'applications'), orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
     } catch (error) {
       // orderBy 인덱스 미설정 시 폴백: 인덱스 없이 전체 조회 후 메모리에서 정렬
       console.warn('getApplications orderBy 실패, 전체 조회 후 정렬:', error?.message);
       try {
         const snapshot = await getDocs(collection(db, 'applications'));
-        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const list = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
         const toMs = (v) => {
           if (!v) return 0;
           if (v.toMillis && typeof v.toMillis === 'function') return v.toMillis();
@@ -522,6 +522,45 @@ export const firebaseService = {
     }
   },
 
+  /**
+   * 결제 대기(pendingPayments) 목록 조회.
+   * 신청자 명단에 결제 미완료 건도 포함해 보여주기 위해 applications와 동일한 필드 형태로 정규화하여 반환.
+   */
+  async getPendingPayments() {
+    try {
+      const snapshot = await getDocs(collection(db, 'pendingPayments'));
+      const toMs = (v) => {
+        if (!v) return 0;
+        if (v && typeof v.toMillis === 'function') return v.toMillis();
+        if (v && v.seconds != null) return v.seconds * 1000;
+        return new Date(v).getTime() || 0;
+      };
+      return snapshot.docs.map((d) => {
+        const raw = d.data();
+        const appData = raw.application_data || raw.applicationData || {};
+        return {
+          id: d.id,
+          seminarId: raw.seminar_id ?? raw.seminarId,
+          programId: raw.seminar_id ?? raw.seminarId,
+          userId: raw.user_id ?? raw.userId,
+          userName: raw.user_name ?? raw.userName ?? '',
+          userEmail: raw.user_email ?? raw.userEmail ?? '',
+          userPhone: raw.user_phone ?? raw.userPhone ?? '',
+          participationPath: appData.participationPath ?? '',
+          applyReason: appData.applyReason ?? '',
+          preQuestions: appData.preQuestions ?? '',
+          mealAfter: appData.mealAfter ?? '',
+          privacyAgreed: appData.privacyAgreed === true,
+          createdAt: raw.createdAt,
+          _isPending: true
+        };
+      }).sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt));
+    } catch (error) {
+      console.warn('getPendingPayments failed:', error?.message);
+      return [];
+    }
+  },
+
   async getApplicationsByUserId(userId) {
     try {
       // orderBy를 제거하여 인덱스 불필요하도록 수정
@@ -530,7 +569,7 @@ export const firebaseService = {
         where('userId', '==', userId)
       );
       const snapshot = await getDocs(q);
-      const applications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const applications = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
 
       // 클라이언트 측에서 정렬 (createdAt 기준 내림차순)
       return applications.sort((a, b) => {
@@ -619,7 +658,7 @@ export const firebaseService = {
       const docRef = doc(db, 'applications', applicationId);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() };
+        return { ...docSnap.data(), id: docSnap.id };
       }
       return null;
     } catch (error) {
@@ -642,13 +681,19 @@ export const firebaseService = {
     }
   },
 
+  /**
+   * 신청 내용 정정 시 허용 필드만 병합하여 seminarId/userId 등이 덮어쓰이지 않도록 함.
+   * 미허용 필드는 제거해 신청자 목록에서 누락되지 않게 함.
+   */
   async updateApplication(applicationId, applicationData) {
     try {
+      const allowed = ['participationPath', 'applyReason', 'preQuestions', 'mealAfter', 'privacyAgreed', 'reason', 'questions'];
+      const payload = { updatedAt: serverTimestamp() };
+      for (const key of allowed) {
+        if (applicationData && key in applicationData && applicationData[key] !== undefined) payload[key] = applicationData[key];
+      }
       const docRef = doc(db, 'applications', applicationId);
-      await updateDoc(docRef, {
-        ...applicationData,
-        updatedAt: serverTimestamp()
-      });
+      await updateDoc(docRef, payload);
     } catch (error) {
       console.error('Error updating application:', error);
       throw error;
@@ -667,7 +712,7 @@ export const firebaseService = {
   subscribeApplications(callback) {
     const q = query(collection(db, 'applications'), orderBy('createdAt', 'desc'));
     return onSnapshot(q, (snapshot) => {
-      const applications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const applications = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
       callback(applications);
     });
   },

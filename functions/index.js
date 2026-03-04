@@ -220,6 +220,59 @@ app.post('/api/payment/webhook', async (req, res) => {
   }
 });
 
+// 결제대기 → 신청자 편입 (관리자 수동 처리용). body: { merchant_uid: 'p_xxx' }
+app.post('/api/admin/application-from-pending', async (req, res) => {
+  try {
+    const merchantUid = (req.body && (req.body.merchant_uid || req.body.merchantUid)) || '';
+    if (!merchantUid) {
+      res.status(400).json({ success: false, error: 'merchant_uid required' });
+      return;
+    }
+    const pendingSnap = await db.collection('pendingPayments').doc(String(merchantUid)).get();
+    if (!pendingSnap.exists) {
+      res.status(404).json({ success: false, error: 'pending_not_found' });
+      return;
+    }
+    const pending = pendingSnap.data();
+    const seminarId = pending.seminar_id || pending.seminarId;
+    const appData = pending.application_data || pending.applicationData || {};
+    const reason = [appData.participationPath, appData.applyReason].filter(Boolean).join(' / ') || '';
+    const questions = Array.isArray(appData.preQuestions) ? appData.preQuestions : (appData.preQuestions ? [appData.preQuestions] : []);
+
+    const appRef = await db.collection('applications').add({
+      seminarId,
+      userId: pending.user_id || pending.userId,
+      userName: pending.user_name || pending.userName || '',
+      userEmail: pending.user_email || pending.userEmail || '',
+      userPhone: pending.user_phone || pending.userPhone || '',
+      participationPath: appData.participationPath || '',
+      applyReason: appData.applyReason || '',
+      preQuestions: appData.preQuestions || '',
+      mealAfter: appData.mealAfter || '',
+      privacyAgreed: appData.privacyAgreed === true,
+      reason,
+      questions,
+      appliedAt: new Date().toISOString(),
+      merchant_uid: merchantUid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    const seminarRef = db.collection('seminars').doc(seminarId);
+    const seminarSnap = await seminarRef.get();
+    if (seminarSnap.exists) {
+      const current = (seminarSnap.data()?.currentParticipants || 0) + 1;
+      await seminarRef.update({ currentParticipants: current });
+    }
+
+    await db.collection('pendingPayments').doc(String(merchantUid)).delete();
+    res.status(200).json({ success: true, applicationId: appRef.id });
+  } catch (err) {
+    console.error('[application-from-pending] error', err);
+    res.status(500).json({ success: false, error: err.message || 'server_error' });
+  }
+});
+
 // 결제 취소(환불) API: 신청 취소 시 PortOne 전액 취소 후 application 삭제, 세미나 인원 감소
 app.post('/api/payment/cancel', async (req, res) => {
   try {

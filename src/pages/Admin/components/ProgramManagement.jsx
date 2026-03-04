@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
+import { getApiBaseUrl } from '../../../utils/api';
 import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
 import { KakaoMapModal } from './KakaoMapModal';
@@ -49,12 +50,26 @@ const getTodayStart = () => {
   return d.getTime();
 };
 
-/** application.seminarId(또는 programId)를 문자열로 통일 (Firestore 참조/문자열 혼용 대비) */
+/** application.seminarId(또는 programId)를 문자열로 통일 (Firestore 참조/문자열/숫자 혼용 대비) */
 const toSeminarId = (v) => {
   if (v == null || v === undefined) return '';
   if (typeof v === 'string') return v.trim();
-  if (typeof v === 'object' && v != null && 'id' in v) return String(v.id);
-  return String(v);
+  if (typeof v === 'number' && !Number.isNaN(v)) return String(v);
+  if (typeof v === 'object' && v != null) {
+    if ('id' in v && v.id != null) return String(v.id);
+    if ('path' in v && typeof v.path === 'string') {
+      const parts = v.path.split('/');
+      return (parts[parts.length - 1] || '').trim();
+    }
+  }
+  return String(v).trim();
+};
+
+/** 두 id가 같은 프로그램을 가리키는지 비교 */
+const seminarIdsMatch = (programIdNorm, app) => {
+  const s1 = toSeminarId(app.seminarId);
+  const s2 = toSeminarId(app.programId);
+  return s1 === programIdNorm || s2 === programIdNorm;
 };
 
 /**
@@ -88,35 +103,73 @@ export const ProgramManagement = () => {
   const [showApplicantModal, setShowApplicantModal] = useState(false);
   const [applicantModalProgram, setApplicantModalProgram] = useState(null);
   const [applicantModalUsers, setApplicantModalUsers] = useState([]);
+  const [applicantModalDataLoading, setApplicantModalDataLoading] = useState(false);
+  const [promotePendingId, setPromotePendingId] = useState('p_mmana36j_h0bzdo');
+  const [promotePendingLoading, setPromotePendingLoading] = useState(false);
   const [isClosingPast, setIsClosingPast] = useState(false);
+
+  /** 신청자 명단용 회원·신청 목록 최신 조회 (결제 완료된 applications만 사용, 결제대기 제외) */
+  const loadApplicantModalData = useCallback(async () => {
+    setApplicantModalDataLoading(true);
+    try {
+      const [users, apps] = await Promise.all([
+        firebaseService.getUsers ? firebaseService.getUsers() : Promise.resolve([]),
+        firebaseService.getApplications ? firebaseService.getApplications().catch(() => []) : Promise.resolve([])
+      ]);
+      setApplicantModalUsers(Array.isArray(users) ? users : []);
+      setApplications(Array.isArray(apps) ? apps : []);
+    } catch (e) {
+      setApplicantModalUsers([]);
+    } finally {
+      setApplicantModalDataLoading(false);
+    }
+  }, []);
+
+  /** 결제대기(pendingPayments) 문서를 신청(applications)으로 편입 */
+  const handlePromotePendingToApplication = useCallback(async () => {
+    const base = (getApiBaseUrl() || '').replace(/\/$/, '');
+    if (!base) {
+      alert('API URL이 설정되지 않았습니다. .env의 VITE_API_URL을 확인하세요.');
+      return;
+    }
+    const merchantUid = (promotePendingId || '').trim();
+    if (!merchantUid) {
+      alert('결제대기 문서 ID(merchant_uid)를 입력하세요.');
+      return;
+    }
+    setPromotePendingLoading(true);
+    try {
+      const res = await fetch(`${base}/api/admin/application-from-pending`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ merchant_uid: merchantUid })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        alert('편입되었습니다. 목록을 새로고침합니다.');
+        await loadApplicantModalData();
+      } else {
+        alert(data.error || '편입에 실패했습니다.');
+      }
+    } catch (e) {
+      alert('요청 실패: ' + (e.message || '네트워크 오류'));
+    } finally {
+      setPromotePendingLoading(false);
+    }
+  }, [promotePendingId, loadApplicantModalData]);
 
   useEffect(() => {
     loadPrograms();
   }, []);
 
-  /** 신청자 명단 모달 열릴 때 회원 목록 + 신청 목록 최신화 (기본 정보 CSV용, 신청자 표시 정확도) */
+  /** 신청자 명단 모달 열릴 때 회원·신청 목록 최신화 */
   useEffect(() => {
     if (!showApplicantModal || !applicantModalProgram) {
       setApplicantModalUsers([]);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      try {
-        const [users, apps] = await Promise.all([
-          firebaseService.getUsers ? firebaseService.getUsers() : [],
-          firebaseService.getApplications ? firebaseService.getApplications().catch(() => []) : []
-        ]);
-        if (!cancelled) {
-          setApplicantModalUsers(Array.isArray(users) ? users : []);
-          setApplications(Array.isArray(apps) ? apps : []);
-        }
-      } catch (e) {
-        if (!cancelled) setApplicantModalUsers([]);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [showApplicantModal, applicantModalProgram]);
+    loadApplicantModalData();
+  }, [showApplicantModal, applicantModalProgram, loadApplicantModalData]);
 
   const loadPrograms = async () => {
     try {
@@ -135,12 +188,16 @@ export const ProgramManagement = () => {
     }
   };
 
-  /** 프로그램별 신청 수 (seminarId / programId 둘 다 반영) */
+  /** 프로그램별 신청 수 (seminarId / programId 둘 다 반영, 동일 id는 한 번만 카운트) */
   const applicationCountBySeminarId = useMemo(() => {
     const map = {};
     (applications || []).forEach((app) => {
-      const sid = toSeminarId(app.seminarId ?? app.programId);
-      if (sid) map[sid] = (map[sid] || 0) + 1;
+      const s1 = toSeminarId(app.seminarId);
+      const s2 = toSeminarId(app.programId);
+      const ids = new Set();
+      if (s1) ids.add(s1);
+      if (s2) ids.add(s2);
+      ids.forEach((sid) => { map[sid] = (map[sid] || 0) + 1; });
     });
     return map;
   }, [applications]);
@@ -771,11 +828,8 @@ export const ProgramManagement = () => {
 
       {/* 신청자명단 모달 */}
       {showApplicantModal && applicantModalProgram && (() => {
-        const programId = String(applicantModalProgram.id);
-        const list = (applications || []).filter((app) => {
-          const sid = toSeminarId(app.seminarId ?? app.programId);
-          return sid === programId;
-        });
+        const programIdNorm = toSeminarId(applicantModalProgram.id);
+        const list = (applications || []).filter((app) => seminarIdsMatch(programIdNorm, app));
         const userMap = {};
         const userMapByEmail = {};
         const userMapByPhone = {};
@@ -807,7 +861,7 @@ export const ProgramManagement = () => {
           return String(v);
         };
         const getCell = (val) => (val == null || val === undefined ? '' : String(val).replace(/\n/g, ' ').replace(/"/g, '""'));
-        // 기본 정보(가입 정보) + 세미나 신청 시 항목
+        // 기본 정보(가입 정보) + 세미나 신청 시 항목 (결제 완료된 신청만 표시)
         const headers = [
           '번호', '이름', '닉네임(부청사활동)', '성별', '생년월일', '연락처', '이메일',
           '업종/업태', '협업 업종', '핵심 고객',
@@ -848,7 +902,7 @@ export const ProgramManagement = () => {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `신청자명단_${(applicantModalProgram.title || programId).replace(/[/\\?%*:|"]/g, '_')}.csv`;
+          a.download = `신청자명단_${(applicantModalProgram.title || programIdNorm || '프로그램').replace(/[/\\?%*:|"]/g, '_')}.csv`;
           a.click();
           URL.revokeObjectURL(url);
           alert('CSV 파일이 다운로드되었습니다. Google 스프레드시트에서 파일 → 가져오기로 업로드할 수 있습니다.');
@@ -878,7 +932,18 @@ export const ProgramManagement = () => {
                     <Icons.X size={24} />
                   </button>
                 </div>
-                <div className="flex gap-2 p-4 border-b border-blue-100">
+                <div className="flex flex-wrap gap-2 p-4 border-b border-blue-100">
+                  <button
+                    type="button"
+                    onClick={loadApplicantModalData}
+                    disabled={applicantModalDataLoading}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {applicantModalDataLoading ? (
+                      <span className="inline-block w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                    ) : null}
+                    목록 새로고침
+                  </button>
                   <button
                     type="button"
                     onClick={handleCsvDownload}
@@ -893,6 +958,27 @@ export const ProgramManagement = () => {
                     className="px-4 py-2 bg-green-100 text-green-700 rounded-xl font-bold hover:bg-green-200 transition-colors flex items-center gap-2"
                   >
                     스프레드시트에 붙여넣기
+                  </button>
+                </div>
+                <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-b flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-gray-600">결제대기 → 신청자 편입:</span>
+                  <input
+                    type="text"
+                    value={promotePendingId}
+                    onChange={(e) => setPromotePendingId(e.target.value)}
+                    placeholder="merchant_uid (예: p_mmana36j_h0bzdo)"
+                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm min-w-[200px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handlePromotePendingToApplication}
+                    disabled={promotePendingLoading}
+                    className="px-4 py-2 bg-amber-100 text-amber-800 rounded-xl font-bold hover:bg-amber-200 transition-colors disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {promotePendingLoading ? (
+                      <span className="inline-block w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                    ) : null}
+                    편입 실행
                   </button>
                 </div>
                 <div className="flex-1 min-h-0 overflow-auto p-4">

@@ -32,6 +32,12 @@ service cloud.firestore {
       allow create, update, delete: if request.auth != null;
     }
 
+    // 결제 대기: 읽기는 관리자 명단에 결제대기 건 포함 표시용. 쓰기/삭제는 Cloud Functions(Admin)에서만.
+    match /pendingPayments/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // 앱 설정(메뉴 등): 읽기 공개, 쓰기는 로그인 사용자만
     match /settings/{document=**} {
       allow read: if true;
