@@ -109,7 +109,6 @@ export const ProgramManagement = () => {
   const [promotePendingLoading, setPromotePendingLoading] = useState(false);
   const [isClosingPast, setIsClosingPast] = useState(false);
   const [closingRecruitmentId, setClosingRecruitmentId] = useState(null);
-  const [closingRecruitmentId, setClosingRecruitmentId] = useState(null);
 
   /** 신청자 명단용 회원·신청 목록 최신 조회 (결제 완료된 applications만 사용, 결제대기 제외) */
   const loadApplicantModalData = useCallback(async () => {
@@ -414,30 +413,6 @@ export const ProgramManagement = () => {
       imageEntries
     });
     setShowModal(true);
-  };
-
-  /** 관리자가 모집을 중단 (신청 불가 처리, 사용자 화면에는 '종료'로 표시) */
-  const handleCloseRecruitment = async (program) => {
-    if (program.recruitmentClosedByAdmin) return;
-    const todayStart = getTodayStart();
-    if (parseDateForSort(program.date) < todayStart) {
-      alert('이미 지난 프로그램입니다. "지난 프로그램 일괄 종료"를 사용하세요.');
-      return;
-    }
-    if (!window.confirm(`"${program.title || '이 프로그램'}"의 모집을 중단하시겠습니까?\n중단 후에는 사용자가 신청할 수 없습니다.`)) {
-      return;
-    }
-    setClosingRecruitmentId(program.id);
-    try {
-      await firebaseService.updateSeminar(program.id, { recruitmentClosedByAdmin: true });
-      alert('모집이 중단되었습니다.');
-      await loadPrograms();
-    } catch (err) {
-      console.error('모집 중단 처리 실패:', program.id, err);
-      alert('모집 중단에 실패했습니다. 다시 시도해 주세요.');
-    } finally {
-      setClosingRecruitmentId(null);
-    }
   };
 
   const handleDelete = async (programId) => {
