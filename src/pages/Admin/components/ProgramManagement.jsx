@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { getApiBaseUrl } from '../../../utils/api';
+import { calculateStatus } from '../../../utils';
 import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
 import { KakaoMapModal } from './KakaoMapModal';
@@ -104,9 +105,11 @@ export const ProgramManagement = () => {
   const [applicantModalProgram, setApplicantModalProgram] = useState(null);
   const [applicantModalUsers, setApplicantModalUsers] = useState([]);
   const [applicantModalDataLoading, setApplicantModalDataLoading] = useState(false);
-  const [promotePendingId, setPromotePendingId] = useState('p_mmana36j_h0bzdo');
+  const [promotePendingId, setPromotePendingId] = useState('');
   const [promotePendingLoading, setPromotePendingLoading] = useState(false);
   const [isClosingPast, setIsClosingPast] = useState(false);
+  const [closingRecruitmentId, setClosingRecruitmentId] = useState(null);
+  const [closingRecruitmentId, setClosingRecruitmentId] = useState(null);
 
   /** 신청자 명단용 회원·신청 목록 최신 조회 (결제 완료된 applications만 사용, 결제대기 제외) */
   const loadApplicantModalData = useCallback(async () => {
@@ -413,6 +416,30 @@ export const ProgramManagement = () => {
     setShowModal(true);
   };
 
+  /** 관리자가 모집을 중단 (신청 불가 처리, 사용자 화면에는 '종료'로 표시) */
+  const handleCloseRecruitment = async (program) => {
+    if (program.recruitmentClosedByAdmin) return;
+    const todayStart = getTodayStart();
+    if (parseDateForSort(program.date) < todayStart) {
+      alert('이미 지난 프로그램입니다. "지난 프로그램 일괄 종료"를 사용하세요.');
+      return;
+    }
+    if (!window.confirm(`"${program.title || '이 프로그램'}"의 모집을 중단하시겠습니까?\n중단 후에는 사용자가 신청할 수 없습니다.`)) {
+      return;
+    }
+    setClosingRecruitmentId(program.id);
+    try {
+      await firebaseService.updateSeminar(program.id, { recruitmentClosedByAdmin: true });
+      alert('모집이 중단되었습니다.');
+      await loadPrograms();
+    } catch (err) {
+      console.error('모집 중단 처리 실패:', program.id, err);
+      alert('모집 중단에 실패했습니다. 다시 시도해 주세요.');
+    } finally {
+      setClosingRecruitmentId(null);
+    }
+  };
+
   const handleDelete = async (programId) => {
     if (!confirm('정말 이 프로그램을 삭제하시겠습니까?')) return;
 
@@ -423,6 +450,33 @@ export const ProgramManagement = () => {
     } catch (error) {
       console.error('프로그램 삭제 오류:', error);
       alert('프로그램 삭제에 실패했습니다.');
+    }
+  };
+
+  /** 관리자가 모집을 중단 (사용자 화면에서는 '종료'로 표시, 신청 불가) */
+  const handleCloseRecruitment = async (program) => {
+    if (program.recruitmentClosedByAdmin) {
+      alert('이미 모집이 중단된 프로그램입니다.');
+      return;
+    }
+    const todayStart = getTodayStart();
+    if (parseDateForSort(program.date) < todayStart) {
+      alert('이미 지난 프로그램입니다. "지난 프로그램 일괄 종료"를 사용하세요.');
+      return;
+    }
+    if (!window.confirm(`"${program.title || '이 프로그램'}" 모집을 중단하시겠습니까?\n중단 후에는 사용자가 신청할 수 없습니다.`)) {
+      return;
+    }
+    setClosingRecruitmentId(program.id);
+    try {
+      await firebaseService.updateSeminar(program.id, { recruitmentClosedByAdmin: true });
+      alert('모집이 중단되었습니다.');
+      await loadPrograms();
+    } catch (err) {
+      console.error('모집 중단 처리 실패:', err);
+      alert('모집 중단에 실패했습니다.');
+    } finally {
+      setClosingRecruitmentId(null);
     }
   };
 
@@ -527,6 +581,28 @@ export const ProgramManagement = () => {
         </div>
       </div>
 
+      {/* 검색 및 정렬 */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="제목, 설명, 카테고리, 장소, 일시로 검색..."
+          className="flex-1 min-w-[200px] px-4 py-2.5 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          aria-label="프로그램 검색"
+        />
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="px-4 py-2.5 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white font-medium text-gray-700 min-w-[180px]"
+          aria-label="정렬 기준"
+        >
+          {SORT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+
       {/* 프로그램 목록 (카드 그리드) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredAndSortedPrograms.length === 0 ? (
@@ -539,6 +615,10 @@ export const ProgramManagement = () => {
         ) : (
           displayPrograms.map((program) => {
             const thumb = normalizeImageItem(program.images?.[0]) || program.imageUrls?.[0] || program.imageUrl;
+            const displayStatus = program.recruitmentClosedByAdmin ? '모집중단' : (program.status || calculateStatus(program.date || ''));
+            const canCloseRecruitment = !program.recruitmentClosedByAdmin && parseDateForSort(program.date) >= getTodayStart();
+            const isClosingThis = closingRecruitmentId === program.id;
+            const statusClass = displayStatus === '모집중단' ? 'bg-amber-100 text-amber-800' : displayStatus === '종료' ? 'bg-gray-100 text-gray-600' : displayStatus === '마감임박' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700';
             return (
               <div key={program.id} className="relative bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
                 <button
@@ -553,7 +633,10 @@ export const ProgramManagement = () => {
                 {thumb && (
                   <img src={thumb} alt={program.title} className="w-full h-40 object-cover rounded-xl mb-3" loading="lazy" decoding="async" />
                 )}
-                <h3 className="font-bold text-lg text-dark mb-2 pr-8">{program.title}</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusClass}`}>{displayStatus}</span>
+                  <h3 className="font-bold text-lg text-dark flex-1 truncate pr-8">{program.title}</h3>
+                </div>
                 <p className="text-sm text-gray-600 mb-3 line-clamp-2">{program.description}</p>
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -571,7 +654,7 @@ export const ProgramManagement = () => {
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2 w-full">
+                <div className="flex flex-wrap gap-2 w-full">
                   <button
                     type="button"
                     onClick={() => handleEdit(program)}
@@ -591,6 +674,22 @@ export const ProgramManagement = () => {
                     <Icons.Users size={16} />
                     신청자명단
                   </button>
+                  {canCloseRecruitment && (
+                    <button
+                      type="button"
+                      onClick={() => handleCloseRecruitment(program)}
+                      disabled={isClosingThis}
+                      className="flex-none whitespace-nowrap px-3 py-2 bg-amber-50 text-amber-700 rounded-xl font-bold hover:bg-amber-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      title="모집 중단 후 사용자는 신청할 수 없습니다"
+                    >
+                      {isClosingThis ? (
+                        <span className="inline-block w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Icons.X size={16} />
+                      )}
+                      모집중단
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -815,7 +914,7 @@ export const ProgramManagement = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setShowModal(false)}
+                onClick={() => { setShowModal(false); resetForm(); }}
                 className="flex-1 max-w-[12rem] px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200"
               >
                 닫기
@@ -918,7 +1017,7 @@ export const ProgramManagement = () => {
         return (
           <ModalPortal>
             <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
-              <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl">
+              <div className="bg-white rounded-2xl max-w-[78.4rem] w-full max-h-[90vh] flex flex-col shadow-xl">
                 <div className="flex items-center justify-between p-4 border-b border-blue-200">
                   <h3 className="text-xl font-bold text-dark">
                     신청자명단: {applicantModalProgram.title || '(제목 없음)'}

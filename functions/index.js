@@ -131,17 +131,75 @@ app.post('/api/payment/pending', async (req, res) => {
   }
 });
 
-// 결제 결과 페이지에서 웹훅 처리 완료 여부 확인
+// 결제 결과 페이지에서 웹훅 처리 완료 여부 확인 (입금됐는데 오류 나는 경우 복구)
 app.get('/api/payment/status', async (req, res) => {
   try {
-    const merchantUid = req.query.merchant_uid || req.query.merchantUid;
+    const merchantUid = String(req.query.merchant_uid || req.query.merchantUid || '').trim();
     if (!merchantUid) {
       res.status(200).json({ completed: false });
       return;
     }
-    const snap = await db.collection('paymentWebhookEvents').doc(String(merchantUid)).get();
-    const completed = snap.exists && snap.data()?.completed === true;
-    res.status(200).json({ completed });
+
+    const webhookSnap = await db.collection('paymentWebhookEvents').doc(merchantUid).get();
+    const webhookData = webhookSnap.exists ? webhookSnap.data() : {};
+    if (webhookData.completed === true) {
+      res.status(200).json({ completed: true });
+      return;
+    }
+
+    // 이미 신청(applications)에 등록된 경우(웹훅은 됐는데 completed 미갱신 등) → 완료로 간주
+    const appSnap = await db.collection('applications').where('merchant_uid', '==', merchantUid).limit(1).get();
+    if (!appSnap.empty) {
+      await db.collection('paymentWebhookEvents').doc(merchantUid).set({ completed: true }, { merge: true });
+      res.status(200).json({ completed: true });
+      return;
+    }
+
+    // 웹훅에서 paid 수신했는데 신청 처리만 실패한 경우: pendingPayments 기반으로 신청 생성 후 완료 처리
+    if (webhookData.status === 'paid') {
+      const pendingSnap = await db.collection('pendingPayments').doc(merchantUid).get();
+      if (pendingSnap.exists) {
+        const pending = pendingSnap.data();
+        const seminarId = pending.seminar_id || pending.seminarId;
+        const appData = pending.application_data || pending.applicationData || {};
+        const reason = [appData.participationPath, appData.applyReason].filter(Boolean).join(' / ') || '';
+        const questions = Array.isArray(appData.preQuestions) ? appData.preQuestions : (appData.preQuestions ? [appData.preQuestions] : []);
+
+        await db.collection('applications').add({
+          seminarId,
+          userId: pending.user_id || pending.userId,
+          userName: pending.user_name || pending.userName || '',
+          userEmail: pending.user_email || pending.userEmail || '',
+          userPhone: pending.user_phone || pending.userPhone || '',
+          participationPath: appData.participationPath || '',
+          applyReason: appData.applyReason || '',
+          preQuestions: appData.preQuestions || '',
+          mealAfter: appData.mealAfter || '',
+          privacyAgreed: appData.privacyAgreed === true,
+          reason,
+          questions,
+          appliedAt: new Date().toISOString(),
+          merchant_uid: merchantUid,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        const seminarRef = db.collection('seminars').doc(seminarId);
+        const seminarSnap = await seminarRef.get();
+        if (seminarSnap.exists) {
+          const current = (seminarSnap.data()?.currentParticipants || 0) + 1;
+          await seminarRef.update({ currentParticipants: current });
+        }
+
+        await db.collection('paymentWebhookEvents').doc(merchantUid).set({ completed: true }, { merge: true });
+        await db.collection('pendingPayments').doc(merchantUid).delete();
+        console.log('[Payment Status] recovered application from paid webhook', merchantUid);
+        res.status(200).json({ completed: true });
+        return;
+      }
+    }
+
+    res.status(200).json({ completed: false });
   } catch (err) {
     console.error('[Payment Status] error', err);
     res.status(200).json({ completed: false });

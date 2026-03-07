@@ -17,7 +17,7 @@ export function PaymentResultView({ onComplete }) {
     useEffect(() => {
         if (processedRef.current) return;
         const params = new URLSearchParams(location.search);
-        const merchantUid = params.get('merchant_uid');
+        const merchantUid = params.get('merchant_uid') || params.get('merchant_uid');
         const impSuccess = params.get('imp_success') ?? params.get('success');
         const errorMsg = params.get('error_msg') ?? params.get('error_message');
 
@@ -28,13 +28,24 @@ export function PaymentResultView({ onComplete }) {
         }
         processedRef.current = true;
 
+        const checkStatus = async () => {
+            const base = getApiBaseUrl();
+            if (!base) return false;
+            const res = await fetch(`${base.replace(/\/$/, '')}/api/payment/status?merchant_uid=${encodeURIComponent(merchantUid)}`);
+            const data = res.ok ? await res.json().catch(() => ({})) : {};
+            return data.completed === true;
+        };
+
         const run = async () => {
             const base = getApiBaseUrl();
             if (base) {
                 try {
-                    const res = await fetch(`${base.replace(/\/$/, '')}/api/payment/status?merchant_uid=${encodeURIComponent(merchantUid)}`);
-                    const data = res.ok ? await res.json().catch(() => ({})) : {};
-                    if (data.completed === true) {
+                    let completed = await checkStatus();
+                    if (!completed) {
+                        await new Promise((r) => setTimeout(r, 2000));
+                        completed = await checkStatus();
+                    }
+                    if (completed) {
                         clearPaymentPending(merchantUid);
                         setStatus('success');
                         setMessage('결제 및 신청이 완료되었습니다.');
@@ -47,7 +58,7 @@ export function PaymentResultView({ onComplete }) {
 
             const pending = getPaymentPending(merchantUid);
             if (!pending || !pending.seminar) {
-                setMessage('세션이 만료되었거나 결제 정보를 복원할 수 없습니다.');
+                setMessage('세션이 만료되었거나 결제 정보를 복원할 수 없습니다. 입금이 완료되었는데 이 메시지가 보이면, 아래 결제 번호를 관리자에게 알려주시면 확인해 드립니다.');
                 setStatus('expired');
                 return;
             }
@@ -62,12 +73,12 @@ export function PaymentResultView({ onComplete }) {
                             setMessage('결제 및 신청이 완료되었습니다.');
                         } else {
                             setStatus('fail');
-                            setMessage('신청 처리 중 오류가 발생했습니다.');
+                            setMessage('신청 처리 중 오류가 발생했습니다. 입금이 완료되었으면 결제 번호를 관리자에게 알려주세요.');
                         }
                     })
                     .catch(() => {
                         setStatus('fail');
-                        setMessage('신청 처리 중 오류가 발생했습니다.');
+                        setMessage('신청 처리 중 오류가 발생했습니다. 입금이 완료되었으면 결제 번호를 관리자에게 알려주세요.');
                     });
             } else {
                 setStatus('fail');
@@ -112,7 +123,12 @@ export function PaymentResultView({ onComplete }) {
                         <h2 className="text-xl font-bold text-dark mb-2">
                             {status === 'expired' ? '세션 만료' : '결제 실패'}
                         </h2>
-                        <p className="text-gray-600 mb-6">{message}</p>
+                        <p className="text-gray-600 mb-4 whitespace-pre-line">{message}</p>
+                        {location.search && location.search.includes('merchant_uid') && (
+                            <p className="text-sm text-gray-500 mb-6 break-all">
+                                결제 번호: <code className="bg-gray-100 px-1 rounded">{new URLSearchParams(location.search).get('merchant_uid') || ''}</code>
+                            </p>
+                        )}
                     </>
                 )}
                 <button

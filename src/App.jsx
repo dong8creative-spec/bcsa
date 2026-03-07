@@ -42,133 +42,12 @@ import ProgramPopupWindowView from './pages/ProgramPopupWindowView';
 import AppLayout from './components/AppLayout';
 import ModalPortal from './components/ModalPortal';
 import { KakaoMapModal } from './pages/Admin/components/KakaoMapModal';
+import { DONATION_FEATURE_DISABLED, POPUP_AS_NEW_WINDOW, BUSAN_DISTRICTS, PARTNER_LOGOS, PARTNER_NAMES } from './constants/appConstants';
+import { filterApprovedMembers, getCategoryColor, isDeadlineSoon } from './appHelpers';
+import { LoginModal } from './components/LoginModal';
+import { MobileMenu } from './components/MobileMenu';
 
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
-
-/** 후원 기능 비노출: true면 메뉴·홈 섹션·뷰 접근 모두 없음. 다시 켜려면 false로 변경 */
-const DONATION_FEATURE_DISABLED = true;
-
-/** 프로그램 팝업을 별도 창(새 창)으로 띄울지 여부. true면 오버레이 대신 window.open으로 /program-popup 열기 */
-const POPUP_AS_NEW_WINDOW = false;
-
-/** 메인 검색용 부산 지역구 목록 (구·군) */
-const BUSAN_DISTRICTS = ['전체', '해운대구', '부산진구', '동래구', '남구', '북구', '중구', '영도구', '동구', '서구', '사하구', '금정구', '연제구', '수영구', '사상구', '기장군'];
-
-/** 협력기관 로고 경로 (메인 페이지 협력기관 섹션, partner1~6 순) */
-const PARTNER_LOGOS = [
-    '/assets/images/partners/partner1.png',
-    '/assets/images/partners/partner2.png',
-    '/assets/images/partners/partner3.png',
-    '/assets/images/partners/partner4.png',
-    '/assets/images/partners/partner5.png',
-    '/assets/images/partners/partner6.png',
-];
-const PARTNER_NAMES = ['중소벤처기업부', '15분도시', '나라장터', 'KOTRA', '부산경제진흥원', '부산광역시'];
-
-// ==========================================
-// View 컴포넌트들 (RestaurantsListView, RestaurantDetailView, RestaurantFormView, InquiryModal, DonationView는 components/로 분리됨)
-// ==========================================
-
-// AllSeminarsView는 pages/AllSeminarsView.jsx로 분리됨
-
-// 주소 검색: src/utils/daumPostcode.js 의 openDaumPostcode 사용 (SignUpPage, MyPageView, SignUpModal에서 import)
-
-// LoginModal Component
-const LoginModal = ({ onClose, onLogin, onSignUpClick }) => {
-    const [id, setId] = useState('');
-    const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    
-    // 모달 열릴 때 배경 스크롤 방지
-    useEffect(() => {
-        const prev = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
-        return () => { document.body.style.overflow = prev; };
-    }, []);
-    // ESC 키로 모달 닫기
-    useEffect(() => {
-        const handleEscKey = (e) => {
-            if (e.key === 'Escape') {
-                onClose();
-            }
-        };
-        window.addEventListener('keydown', handleEscKey);
-        return () => {
-            window.removeEventListener('keydown', handleEscKey);
-        };
-    }, [onClose]);
-
-    const handleSubmit = (e) => { 
-        e.preventDefault(); 
-        onLogin(id, password); 
-    };
-    
-    return (
-        <ModalPortal>
-            <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm z-10 flex flex-col max-h-[90vh] relative border-[0.5px] border-brand scale-90 origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
-                    <div className="flex-1 min-h-0 overflow-hidden p-4 text-center">
-                        <div className="mb-4">
-                            <div className="w-12 h-12 bg-gradient-to-br from-brand to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-lg shadow-brand/30">
-                                <Icons.Users className="w-6 h-6 text-white" />
-                            </div>
-                            <h3 className="text-xl font-bold text-dark mb-0.5">로그인</h3>
-                            <p className="text-xs text-gray-500">부청사 커뮤니티에 오신 것을 환영합니다</p>
-                        </div>
-                        <form onSubmit={handleSubmit} className="space-y-3 text-left">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-1">아이디 또는 이메일</label>
-                                <input type="text" placeholder="아이디 또는 이메일을 입력하세요" autoComplete="username" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={id} onChange={e => setId(e.target.value)} />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-1">비밀번호</label>
-                                <div className="relative">
-                                    <input type={showPassword ? "text" : "password"} placeholder="비밀번호를 입력하세요" autoComplete="current-password" className="w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors pr-10 text-sm" value={password} onChange={e => setPassword(e.target.value)} />
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                                        {showPassword ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
-                                    </button>
-                                </div>
-                            </div>
-                            <button type="submit" className="w-full py-2.5 bg-gradient-to-r from-brand to-blue-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-brand/30 transition-all mt-2 text-sm">
-                                로그인
-                            </button>
-                        </form>
-                        {onSignUpClick ? (
-                            <button
-                                type="button"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSignUpClick(); }}
-                                className="w-full mt-2 py-2.5 border-[0.5px] border-brand/30 text-brand font-bold rounded-xl hover:bg-brand/5 transition-colors text-sm"
-                            >
-                                회원가입
-                            </button>
-                        ) : null}
-                        <button 
-                            type="button" 
-                            onClick={(e) => { 
-                                e.preventDefault(); 
-                                e.stopPropagation(); 
-                                alert('아이디/비밀번호 찾기는 관리자에게 문의해주세요.');
-                            }} 
-                            className="w-full mt-2 text-xs text-brand hover:text-blue-700 font-medium transition-colors underline"
-                        >
-                            아이디/비밀번호 찾기
-                        </button>
-                    </div>
-                    <div className="shrink-0 border-t border-blue-200 p-2.5 flex justify-end">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-brand text-white font-bold rounded-lg hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200 text-sm">
-                            닫기
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </ModalPortal>
-    );
-};
-
-// SignUpModal Component
-
-
-
 
 const App = () => {
     // 결제/API 환경 변수 점검용 (개발 모드에서만 콘솔 출력)
@@ -261,17 +140,6 @@ const App = () => {
     }, [currentView]);
     const [currentUser, setCurrentUser] = useState(null);
     const [users, setUsers] = useState([]);
-    
-    // 승인된 회원만 필터링 (테스트 계정 필터링 제거)
-    const filterApprovedMembers = (users) => {
-        if (!Array.isArray(users)) return [];
-        
-        // approvalStatus가 'approved'이거나 없는 회원만 표시
-        return users.filter(user => {
-            const isApproved = !user.approvalStatus || user.approvalStatus === 'approved';
-            return isApproved;
-        });
-    };
 
     // 사용자 데이터 로드 (페이지 로드 시)
     useEffect(() => {
@@ -610,20 +478,6 @@ const App = () => {
         setShowKakaoMapModal(true);
     };
     
-    // 카테고리별 컬러 반환 함수
-    const getCategoryColor = (category) => {
-        const colorMap = {
-            '네트워킹 모임': 'bg-green-100 text-green-700',
-            '교육/세미나': 'bg-blue-100 text-blue-700',
-            '커피챗': 'bg-amber-100 text-amber-700',
-            '네트워킹/모임': 'bg-green-100 text-green-700',
-            '투자/IR': 'bg-orange-100 text-orange-700',
-            '멘토링/상담': 'bg-purple-100 text-purple-700',
-            '기타': 'bg-gray-100 text-gray-700'
-        };
-        return colorMap[category] || 'bg-gray-100 text-gray-700';
-    };
-    
     // 모달 상태 변경 디버깅 (개발 환경에서만)
     useEffect(() => {
         
@@ -632,15 +486,6 @@ const App = () => {
     useEffect(() => {
         
     }, [showLoginModal]);
-    
-    // 마감임박 판단 함수
-    const isDeadlineSoon = (seminar) => {
-        if (!seminar.dateObj) return false;
-        const today = new Date();
-        const daysLeft = Math.ceil((seminar.dateObj - today) / (1000 * 60 * 60 * 24));
-        const participantRatio = (seminar.currentParticipants || 0) / (seminar.maxParticipants || 999);
-        return daysLeft <= 3 || participantRatio >= 0.8;
-    };
     
     // 홈 + 세미나 데이터 있을 때 팝업 후보 이미지 미리 preload (팝업 표시 전에 캐시 적재)
     useEffect(() => {
@@ -1032,8 +877,8 @@ const App = () => {
                 // 호환성을 위해 img 필드도 유지 (첫 번째 이미지)
                 img: images.length > 0 ? images[0] : (seminar.img && typeof seminar.img === 'string' && seminar.img.trim() !== '' ? seminar.img : ''),
                 date: seminar.date || '',
-                // 항상 최신 상태로 재계산 (Firestore의 오래된 status 무시)
-                status: calculateStatus(seminar.date || '')
+                // 관리자가 모집 중단한 경우 '종료', 아니면 날짜 기준 재계산
+                status: seminar.recruitmentClosedByAdmin ? '종료' : calculateStatus(seminar.date || '')
             };
         };
         
@@ -2600,85 +2445,6 @@ END:VCALENDAR`;
         alert("건의사항이 등록되었습니다. 관리자에게 전달되었습니다.");
     };
 
-
-    
-    // 모바일 메뉴: 모달 형태로 최상단 노출, PC와 동일하게 menuOrder·menuEnabled 기준으로 표시
-    const MEMBERS_ONLY_MENUS = ['부청사 회원', '커뮤니티'];
-    const MobileMenu = ({ isOpen, onClose, onNavigate, menuEnabled, menuNames, menuOrder, currentUser }) => {
-        if (!isOpen) return null;
-        const isLoggedIn = Boolean(currentUser && (currentUser.id || currentUser.uid));
-        const visibleItems = (menuOrder || []).filter(item => menuEnabled[item] || MEMBERS_ONLY_MENUS.includes(item));
-        const handleMenuClick = (item) => {
-            onNavigate(item);
-            onClose();
-        };
-        return (
-            <ModalPortal>
-            <div
-                role="dialog"
-                aria-modal="true"
-                aria-label="메뉴"
-                className="fixed inset-0 flex flex-col items-center justify-center"
-                style={{
-                    zIndex: 2147483647,
-                    isolation: 'isolate',
-                    overflow: 'hidden',
-                    backgroundColor: 'rgba(0,0,0,0.55)',
-                    opacity: 1,
-                    pointerEvents: 'auto',
-                    touchAction: 'none',
-                }}
-                onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-            >
-                <div className="w-full max-w-[280px] rounded-2xl overflow-hidden shadow-xl relative flex flex-col items-center justify-center py-10 px-4" style={{ backgroundColor: '#ffffff', opacity: 1, touchAction: 'manipulation' }} onClick={(e) => e.stopPropagation()}>
-                    <button type="button" aria-label="메뉴 닫기" className="absolute top-4 right-4 min-w-[44px] min-h-[44px] flex items-center justify-center p-2 text-gray-600 bg-white rounded-full touch-manipulation z-[110] hover:bg-gray-100 hover:text-gray-800 shadow-md transition-colors" style={{ opacity: 1 }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }} onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}><Icons.X size={22} className="text-current"/></button>
-                    <nav className="flex flex-col w-full items-center pt-2 pb-4 relative z-0">
-                        {visibleItems.map((item, idx) => {
-                            const isMemberOnlyDisabled = MEMBERS_ONLY_MENUS.includes(item) && !currentUser;
-                            return (
-                            <button
-                                key={idx}
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleMenuClick(item);
-                                }}
-                                onPointerDown={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleMenuClick(item);
-                                }}
-                                className={`w-full max-w-[240px] py-4 px-6 text-base font-bold text-center touch-manipulation transition-colors ${isMemberOnlyDisabled ? 'mobile-menu-item-disabled text-gray-400 cursor-not-allowed hover:bg-transparent active:bg-transparent' : 'text-gray-800 hover:bg-gray-50 active:bg-gray-100'}`}
-                            >
-                                {menuNames[item] || item}
-                            </button>
-                            );
-                        })}
-                    </nav>
-                    <div className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-gray-50 rounded-b-2xl relative z-0">
-                        <div className="relative flex items-center justify-center">
-                            <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} aria-label="부청사 오픈채팅방">
-                                <Icons.MessageSquare className="w-5 h-5" />
-                            </a>
-                            {!isLoggedIn && (
-                                <a href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer" className="mobile-menu-speech-bubble" aria-label="부청사 단톡방으로 이동">
-                                    부청사 단톡방으로 이동
-                                </a>
-                            )}
-                        </div>
-                        <a href="https://www.instagram.com/businessmen_in_busan" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} aria-label="부청사 인스타그램">
-                            <Icons.Instagram className="w-5 h-5" />
-                        </a>
-                        <a href="https://www.youtube.com/@businessmen_in_busan" target="_blank" rel="noopener noreferrer" className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} aria-label="부청사 유튜브">
-                            <Icons.Youtube className="w-5 h-5" />
-                        </a>
-                    </div>
-                </div>
-            </div>
-            </ModalPortal>
-        );
-    };
 
     const handleNavigation = (item) => {
         if (item === '후원' && DONATION_FEATURE_DISABLED) {
