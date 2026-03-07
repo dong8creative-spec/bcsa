@@ -650,22 +650,36 @@ export const ProgramManagement = () => {
                     신청자명단
                   </button>
                   {canToggleRecruitment && (
-                    <button
-                      type="button"
-                      onClick={() => handleCloseRecruitment(program)}
-                      disabled={isClosingThis}
-                      className={`flex-none whitespace-nowrap px-3 py-2 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 ${isRecruitmentClosed ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
-                      title={isRecruitmentClosed ? '모집 재개 후 사용자가 다시 신청할 수 있습니다' : '모집 중단 후 사용자는 신청할 수 없습니다'}
-                    >
-                      {isClosingThis ? (
-                        <span className={`inline-block w-4 h-4 border-2 border-t-transparent rounded-full animate-spin ${isRecruitmentClosed ? 'border-emerald-600' : 'border-amber-600'}`} />
-                      ) : isRecruitmentClosed ? (
-                        <Icons.RefreshCw size={16} />
-                      ) : (
-                        <Icons.X size={16} />
-                      )}
-                      {isRecruitmentClosed ? '모집 재개' : '모집중단'}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleCloseRecruitment(program)}
+                        disabled={isClosingThis || isRecruitmentClosed}
+                        title={isRecruitmentClosed ? '이미 모집이 중단된 상태입니다' : '모집 중단 후 사용자는 신청할 수 없습니다'}
+                        className="flex-none whitespace-nowrap px-3 py-2 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:bg-gray-100 disabled:text-gray-400"
+                      >
+                        {isClosingThis && !isRecruitmentClosed ? (
+                          <span className="inline-block w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Icons.X size={16} />
+                        )}
+                        모집 중단
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCloseRecruitment(program)}
+                        disabled={isClosingThis || !isRecruitmentClosed}
+                        title={!isRecruitmentClosed ? '모집 중인 상태입니다. 중단 후 재개할 수 있습니다' : '모집 재개 후 사용자가 다시 신청할 수 있습니다'}
+                        className="flex-none whitespace-nowrap px-3 py-2 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:bg-gray-100 disabled:text-gray-400"
+                      >
+                        {isClosingThis && isRecruitmentClosed ? (
+                          <span className="inline-block w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Icons.RefreshCw size={16} />
+                        )}
+                        모집 재개
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
