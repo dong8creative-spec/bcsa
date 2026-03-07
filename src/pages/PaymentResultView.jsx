@@ -112,7 +112,8 @@ export function PaymentResultView({ onComplete }) {
                             <Icons.CheckCircle className="w-10 h-10 text-green-600" />
                         </div>
                         <h2 className="text-xl font-bold text-dark mb-2">결제 완료</h2>
-                        <p className="text-gray-600 mb-6">{message}</p>
+                        <p className="text-gray-700 font-medium mb-2">{message}</p>
+                        <p className="text-sm text-gray-500 mb-6">프로그램 신청이 정상적으로 완료되었습니다. 마이페이지에서 신청 내역을 확인할 수 있습니다.</p>
                     </>
                 )}
                 {(status === 'fail' || status === 'expired') && (
