@@ -428,28 +428,27 @@ export const ProgramManagement = () => {
     }
   };
 
-  /** 관리자가 모집을 중단 (사용자 화면에서는 '종료'로 표시, 신청 불가) */
+  /** 관리자가 모집 중단/재개 토글 (중단 시 사용자 화면에서는 '종료', 신청 불가) */
   const handleCloseRecruitment = async (program) => {
-    if (program.recruitmentClosedByAdmin) {
-      alert('이미 모집이 중단된 프로그램입니다.');
-      return;
-    }
     const todayStart = getTodayStart();
     if (parseDateForSort(program.date) < todayStart) {
       alert('이미 지난 프로그램입니다. "지난 프로그램 일괄 종료"를 사용하세요.');
       return;
     }
-    if (!window.confirm(`"${program.title || '이 프로그램'}" 모집을 중단하시겠습니까?\n중단 후에는 사용자가 신청할 수 없습니다.`)) {
-      return;
-    }
+    const isCurrentlyClosed = !!program.recruitmentClosedByAdmin;
+    const action = isCurrentlyClosed ? '재개' : '중단';
+    const confirmMsg = isCurrentlyClosed
+      ? `"${program.title || '이 프로그램'}" 모집을 재개하시겠습니까?\n재개 후 사용자가 다시 신청할 수 있습니다.`
+      : `"${program.title || '이 프로그램'}" 모집을 중단하시겠습니까?\n중단 후에는 사용자가 신청할 수 없습니다.`;
+    if (!window.confirm(confirmMsg)) return;
     setClosingRecruitmentId(program.id);
     try {
-      await firebaseService.updateSeminar(program.id, { recruitmentClosedByAdmin: true });
-      alert('모집이 중단되었습니다.');
+      await firebaseService.updateSeminar(program.id, { recruitmentClosedByAdmin: !isCurrentlyClosed });
+      alert(isCurrentlyClosed ? '모집이 재개되었습니다.' : '모집이 중단되었습니다.');
       await loadPrograms();
     } catch (err) {
-      console.error('모집 중단 처리 실패:', err);
-      alert('모집 중단에 실패했습니다.');
+      console.error(`모집 ${action} 처리 실패:`, err);
+      alert(`모집 ${action}에 실패했습니다.`);
     } finally {
       setClosingRecruitmentId(null);
     }
@@ -591,8 +590,9 @@ export const ProgramManagement = () => {
           displayPrograms.map((program) => {
             const thumb = normalizeImageItem(program.images?.[0]) || program.imageUrls?.[0] || program.imageUrl;
             const displayStatus = program.recruitmentClosedByAdmin ? '모집중단' : (program.status || calculateStatus(program.date || ''));
-            const canCloseRecruitment = !program.recruitmentClosedByAdmin && parseDateForSort(program.date) >= getTodayStart();
+            const canToggleRecruitment = parseDateForSort(program.date) >= getTodayStart();
             const isClosingThis = closingRecruitmentId === program.id;
+            const isRecruitmentClosed = !!program.recruitmentClosedByAdmin;
             const statusClass = displayStatus === '모집중단' ? 'bg-amber-100 text-amber-800' : displayStatus === '종료' ? 'bg-gray-100 text-gray-600' : displayStatus === '마감임박' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700';
             return (
               <div key={program.id} className="relative bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
@@ -649,20 +649,22 @@ export const ProgramManagement = () => {
                     <Icons.Users size={16} />
                     신청자명단
                   </button>
-                  {canCloseRecruitment && (
+                  {canToggleRecruitment && (
                     <button
                       type="button"
                       onClick={() => handleCloseRecruitment(program)}
                       disabled={isClosingThis}
-                      className="flex-none whitespace-nowrap px-3 py-2 bg-amber-50 text-amber-700 rounded-xl font-bold hover:bg-amber-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                      title="모집 중단 후 사용자는 신청할 수 없습니다"
+                      className={`flex-none whitespace-nowrap px-3 py-2 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 ${isRecruitmentClosed ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+                      title={isRecruitmentClosed ? '모집 재개 후 사용자가 다시 신청할 수 있습니다' : '모집 중단 후 사용자는 신청할 수 없습니다'}
                     >
                       {isClosingThis ? (
-                        <span className="inline-block w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                        <span className={`inline-block w-4 h-4 border-2 border-t-transparent rounded-full animate-spin ${isRecruitmentClosed ? 'border-emerald-600' : 'border-amber-600'}`} />
+                      ) : isRecruitmentClosed ? (
+                        <Icons.RefreshCw size={16} />
                       ) : (
                         <Icons.X size={16} />
                       )}
-                      모집중단
+                      {isRecruitmentClosed ? '모집 재개' : '모집중단'}
                     </button>
                   )}
                 </div>
