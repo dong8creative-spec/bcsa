@@ -1,0 +1,12 @@
+# Cursor 인덱싱/분석 제외 (크래시 5 완화)
+node_modules/
+functions/node_modules/
+dist/
+build/
+.git/
+.firebase/
+coverage/
+*.log
+*.lock
+package-lock.json
+.vite/
