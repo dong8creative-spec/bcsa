@@ -1958,11 +1958,13 @@ const App = () => {
             return;
         }
         
-        // 참여자인지 확인
+        // 참여자인지 확인 (로컬 + Firebase 신청 목록)
         const applications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
-        const hasApplied = applications.some(app => 
+        const fromStorage = applications.some(app =>
             String(app.seminarId) === String(seminar.id) && String(app.userId) === String(currentUser?.id)
         );
+        const fromFirebase = (myApplications || []).some(app => String(app.seminarId) === String(seminar.id));
+        const hasApplied = fromStorage || fromFirebase;
         
         if (!hasApplied) {
             alert("참여한 프로그램에만 후기를 작성할 수 있습니다.");
@@ -2632,7 +2634,7 @@ END:VCALENDAR`;
                         </div>
                     );
                 }
-                return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myApplications={myApplications} onUpdateApplication={handleUpdateApplication} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} />;
+                return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myApplications={myApplications} onUpdateApplication={handleUpdateApplication} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} onWriteReview={handleWriteReview} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} />;
             }
         if (currentView === 'allMembers' && !currentUser) {
             return (
