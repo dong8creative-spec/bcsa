@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { waitForKakaoMapsApiReady } from '../utils/kakaoMapReady';
+import { waitForKakaoMapsCoreReady, waitForKakaoMapsServicesReady } from '../utils/kakaoMapReady';
 
 /**
  * 카카오맵 SDK 로드 및 초기화 커스텀 훅
@@ -16,7 +16,7 @@ export const useKakaoMap = () => {
       return new Promise((resolve, reject) => {
         /** 스크립트 이후 LatLng 등 생성자까지 준비된 뒤 resolve */
         const resolveWhenReady = () => {
-          waitForKakaoMapsApiReady()
+          waitForKakaoMapsCoreReady()
             .then(() => resolve(window.kakao))
             .catch(reject);
         };
@@ -93,6 +93,7 @@ export const useKakaoMap = () => {
     if (!kakao || !kakao.maps) {
       throw new Error('카카오맵이 로드되지 않았습니다');
     }
+    await waitForKakaoMapsServicesReady();
 
     return new Promise((resolve, reject) => {
       const geocoder = new kakao.maps.services.Geocoder();
@@ -119,6 +120,7 @@ export const useKakaoMap = () => {
     if (!kakao || !kakao.maps) {
       throw new Error('카카오맵이 로드되지 않았습니다');
     }
+    await waitForKakaoMapsServicesReady();
 
     return new Promise((resolve, reject) => {
       const geocoder = new kakao.maps.services.Geocoder();
@@ -143,6 +145,7 @@ export const useKakaoMap = () => {
     if (!kakao || !kakao.maps) {
       throw new Error('카카오맵이 로드되지 않았습니다');
     }
+    await waitForKakaoMapsServicesReady();
 
     return new Promise((resolve, reject) => {
       const places = new kakao.maps.services.Places();

@@ -15,7 +15,7 @@ import {
 } from './utils/authUtils';
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from './constants';
 import { getApiBaseUrl } from './utils/api';
-import { waitForKakaoMapsApiReady } from './utils/kakaoMapReady';
+import { waitForKakaoMapsCoreReady } from './utils/kakaoMapReady';
 import { requestPayment as paymentServiceRequestPayment } from './services/paymentService';
 import { PaymentResultView } from './pages/PaymentResultView';
 import { defaultContent, defaultMenuOrder, defaultMenuNames } from './constants/content';
@@ -389,7 +389,7 @@ const App = () => {
     const waitForKakaoMap = () => {
         return new Promise((resolve, reject) => {
             const resolveReady = () => {
-                waitForKakaoMapsApiReady()
+                waitForKakaoMapsCoreReady()
                     .then(() => resolve(window.kakao))
                     .catch(reject);
             };

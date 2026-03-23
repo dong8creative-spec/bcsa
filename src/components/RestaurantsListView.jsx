@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import PageTitle from './PageTitle';
 import { Icons } from './Icons';
+import { waitForKakaoMapsServicesReady } from '../utils/kakaoMapReady';
 
 /** 주소로 좌표 조회 (카카오 지오코딩) */
 const geocodeAddress = (address) => {
@@ -43,6 +44,8 @@ const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
         (async () => {
             try {
                 await waitForKakaoMap();
+                if (!mounted) return;
+                await waitForKakaoMapsServicesReady();
                 if (!mounted) return;
                 const coords = await geocodeAddress(address);
                 if (mounted && coords) setResolvedCoords(coords);

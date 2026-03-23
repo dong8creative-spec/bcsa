@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useKakaoMap } from '../../../hooks/useKakaoMap';
+import { waitForKakaoMapsServicesReady } from '../../../utils/kakaoMapReady';
 import { Icons } from '../../../components/Icons';
 import ModalPortal from '../../../components/ModalPortal';
 
@@ -41,91 +42,102 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
 
   useEffect(() => {
     if (!isLoaded || !kakao || !mapContainerRef.current) return;
-    // SDK는 kakao.maps만 먼저 생기고 LatLng 생성자는 한 박자 늦게 붙는 경우가 있음 (훅에서 대기하지만 이중 방어)
     if (typeof kakao.maps?.LatLng !== 'function' || typeof kakao.maps?.Map !== 'function') return;
 
     const container = mapContainerRef.current;
+    const K = kakao;
+    let cancelled = false;
 
-    // 지도 초기화 (같은 컨테이너에 지도 중복 생성 방지: 이전 인스턴스 정리)
-    const center = initialLat != null && initialLng != null
-      ? new kakao.maps.LatLng(initialLat, initialLng)
-      : new kakao.maps.LatLng(35.1796, 129.0756); // 부산 중심
+    (async () => {
+      try {
+        await waitForKakaoMapsServicesReady();
+      } catch (err) {
+        console.error('카카오맵 services 로드 실패:', err);
+        if (!cancelled) {
+          alert(err?.message || '주소 검색 기능을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.');
+        }
+        return;
+      }
+      if (cancelled || !mapContainerRef.current) return;
 
-    const mapOption = {
-      center,
-      level: 3
-    };
+      const center = initialLat != null && initialLng != null
+        ? new K.maps.LatLng(initialLat, initialLng)
+        : new K.maps.LatLng(35.1796, 129.0756);
 
-    mapRef.current = new kakao.maps.Map(container, mapOption);
-    geocoderRef.current = new kakao.maps.services.Geocoder();
+      const mapOption = { center, level: 3 };
 
-    // 지도 컨트롤 추가
-    const zoomControl = new kakao.maps.ZoomControl();
-    mapRef.current.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+      mapRef.current = new K.maps.Map(mapContainerRef.current, mapOption);
+      geocoderRef.current = new K.maps.services.Geocoder();
 
-    // 초기 위치에 마커 표시
-    if (initialLat != null && initialLng != null) {
-      markerRef.current = new kakao.maps.Marker({
-        position: center,
-        map: mapRef.current
-      });
-      setSelectedPlace({
-        name: initialName,
-        address: initialAddr,
-        lat: initialLat,
-        lng: initialLng
-      });
-    }
+      const zoomControl = new K.maps.ZoomControl();
+      mapRef.current.addControl(zoomControl, K.maps.ControlPosition.RIGHT);
 
-    // 지도 클릭 이벤트
-    kakao.maps.event.addListener(mapRef.current, 'click', (mouseEvent) => {
-      const latlng = mouseEvent.latLng;
-
-      if (markerRef.current) {
-        markerRef.current.setMap(null);
+      if (initialLat != null && initialLng != null) {
+        markerRef.current = new K.maps.Marker({
+          position: center,
+          map: mapRef.current
+        });
+        setSelectedPlace({
+          name: initialName,
+          address: initialAddr,
+          lat: initialLat,
+          lng: initialLng
+        });
       }
 
-      markerRef.current = new kakao.maps.Marker({
-        position: latlng,
-        map: mapRef.current
-      });
+      K.maps.event.addListener(mapRef.current, 'click', (mouseEvent) => {
+        const latlng = mouseEvent.latLng;
 
-      geocoderRef.current.coord2Address(latlng.getLng(), latlng.getLat(), (result, status) => {
-        if (status === kakao.maps.services.Status.OK && result?.[0]) {
-          const first = result[0];
-          const roadAddr = first.road_address;
-          const jibunAddr = first.address;
-
-          const addrText = (roadAddr ? roadAddr.address_name : jibunAddr?.address_name) || '';
-          setSelectedPlace({
-            name: '',
-            address: addrText || `위도: ${latlng.getLat().toFixed(6)}, 경도: ${latlng.getLng().toFixed(6)}`,
-            lat: latlng.getLat(),
-            lng: latlng.getLng()
-          });
-        } else {
-          setSelectedPlace({
-            name: '',
-            address: `위도: ${latlng.getLat().toFixed(6)}, 경도: ${latlng.getLng().toFixed(6)}`,
-            lat: latlng.getLat(),
-            lng: latlng.getLng()
-          });
+        if (markerRef.current) {
+          markerRef.current.setMap(null);
         }
-      });
-    });
 
-    setMapLoaded(true);
+        markerRef.current = new K.maps.Marker({
+          position: latlng,
+          map: mapRef.current
+        });
+
+        geocoderRef.current.coord2Address(latlng.getLng(), latlng.getLat(), (result, status) => {
+          if (status === K.maps.services.Status.OK && result?.[0]) {
+            const first = result[0];
+            const roadAddr = first.road_address;
+            const jibunAddr = first.address;
+
+            const addrText = (roadAddr ? roadAddr.address_name : jibunAddr?.address_name) || '';
+            setSelectedPlace({
+              name: '',
+              address: addrText || `위도: ${latlng.getLat().toFixed(6)}, 경도: ${latlng.getLng().toFixed(6)}`,
+              lat: latlng.getLat(),
+              lng: latlng.getLng()
+            });
+          } else {
+            setSelectedPlace({
+              name: '',
+              address: `위도: ${latlng.getLat().toFixed(6)}, 경도: ${latlng.getLng().toFixed(6)}`,
+              lat: latlng.getLat(),
+              lng: latlng.getLng()
+            });
+          }
+        });
+      });
+
+      if (!cancelled) {
+        setMapLoaded(true);
+      }
+    })();
 
     return () => {
+      cancelled = true;
       if (markerRef.current) {
         markerRef.current.setMap(null);
         markerRef.current = null;
       }
       if (mapRef.current) {
-        kakao.maps.event.clearInstanceListeners(mapRef.current);
+        K.maps.event.clearInstanceListeners(mapRef.current);
         mapRef.current = null;
       }
       geocoderRef.current = null;
+      setMapLoaded(false);
       if (container) {
         container.innerHTML = '';
       }
