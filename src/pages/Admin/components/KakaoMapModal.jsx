@@ -41,6 +41,8 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
 
   useEffect(() => {
     if (!isLoaded || !kakao || !mapContainerRef.current) return;
+    // SDK는 kakao.maps만 먼저 생기고 LatLng 생성자는 한 박자 늦게 붙는 경우가 있음 (훅에서 대기하지만 이중 방어)
+    if (typeof kakao.maps?.LatLng !== 'function' || typeof kakao.maps?.Map !== 'function') return;
 
     const container = mapContainerRef.current;
 
@@ -178,7 +180,7 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
 
   // 검색 결과 선택
   const handleSelectResult = (result) => {
-    if (!mapRef.current || !kakao) return;
+    if (!mapRef.current || !kakao || typeof kakao.maps?.LatLng !== 'function') return;
 
     const latlng = new kakao.maps.LatLng(result.lat, result.lng);
 

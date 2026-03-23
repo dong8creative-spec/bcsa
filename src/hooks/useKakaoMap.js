@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { waitForKakaoMapsApiReady } from '../utils/kakaoMapReady';
 
 /**
  * 카카오맵 SDK 로드 및 초기화 커스텀 훅
@@ -13,25 +14,30 @@ export const useKakaoMap = () => {
   useEffect(() => {
     const loadKakaoMapScript = () => {
       return new Promise((resolve, reject) => {
-        // 이미 로드되어 있는 경우
+        /** 스크립트 이후 LatLng 등 생성자까지 준비된 뒤 resolve */
+        const resolveWhenReady = () => {
+          waitForKakaoMapsApiReady()
+            .then(() => resolve(window.kakao))
+            .catch(reject);
+        };
+
+        // 이미 로드되어 있는 경우 (생성자 준비까지 별도 대기)
         if (window.kakao && window.kakao.maps) {
-          resolve(window.kakao);
+          resolveWhenReady();
           return;
         }
 
         // 스크립트가 이미 존재하는지 확인
         const existingScript = document.querySelector('script[src*="dapi.kakao.com"]');
-        
+
         if (existingScript) {
-          // 스크립트가 있으면 로드 완료 대기
           const checkInterval = setInterval(() => {
             if (window.kakao && window.kakao.maps) {
               clearInterval(checkInterval);
-              resolve(window.kakao);
+              resolveWhenReady();
             }
           }, 100);
 
-          // 5초 타임아웃
           setTimeout(() => {
             clearInterval(checkInterval);
             if (!window.kakao || !window.kakao.maps) {
@@ -49,7 +55,7 @@ export const useKakaoMap = () => {
 
         script.onload = () => {
           if (window.kakao && window.kakao.maps) {
-            resolve(window.kakao);
+            resolveWhenReady();
           } else {
             reject(new Error('카카오맵 객체를 찾을 수 없습니다'));
           }
