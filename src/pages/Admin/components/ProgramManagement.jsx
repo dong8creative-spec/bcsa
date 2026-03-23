@@ -252,6 +252,18 @@ export const ProgramManagement = () => {
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedPrograms.length / PAGE_SIZE));
 
+  /** 카카오맵 모달 초기 좌표 — 매 렌더마다 새 객체를 만들면 지도가 중복 초기화될 수 있음 */
+  const mapInitialLocation = useMemo(() => {
+    if (formData.locationLat != null && formData.locationLng != null) {
+      return {
+        lat: formData.locationLat,
+        lng: formData.locationLng,
+        address: formData.location || '',
+      };
+    }
+    return null;
+  }, [formData.locationLat, formData.locationLng, formData.location]);
+
   const goToPage = (page) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
@@ -1137,11 +1149,7 @@ export const ProgramManagement = () => {
         <KakaoMapModal
           onClose={() => setShowMapModal(false)}
           onSelectLocation={handleLocationSelect}
-          initialLocation={formData.locationLat && formData.locationLng ? {
-            lat: formData.locationLat,
-            lng: formData.locationLng,
-            address: formData.location
-          } : null}
+          initialLocation={mapInitialLocation}
         />
       )}
     </div>
