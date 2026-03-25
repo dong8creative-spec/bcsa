@@ -18,13 +18,27 @@ const geocodeAddress = (address) => {
     });
 };
 
-/** 카드 하단 카카오맵 미리보기 — 고정 높이로 레이아웃 점프 방지, 주소만 있을 때는 낮은 로딩 영역만 표시 */
-const MAP_PREVIEW_H = 'h-36'; /* 9rem — 카드 비중 과다 방지 */
+/** 말풍선 DOM 생성 (업체명) — textContent로 XSS 방지 */
+const buildNameBubbleContent = (title) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'relative flex flex-col items-center pointer-events-none';
+    const bubble = document.createElement('div');
+    bubble.className =
+        'max-w-[min(200px,85vw)] px-2.5 py-1.5 rounded-lg bg-white text-gray-900 text-xs font-bold shadow-md border border-gray-200 text-center leading-tight line-clamp-2';
+    bubble.textContent = title || '이름 없음';
+    const tail = document.createElement('div');
+    tail.className =
+        'w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-white drop-shadow-sm';
+    tail.style.marginTop = '-1px';
+    wrap.appendChild(bubble);
+    wrap.appendChild(tail);
+    return wrap;
+};
 
 const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null);
-    const markerRef = useRef(null);
+    const overlayRef = useRef(null);
     const hasCoords = restaurant?.location?.lat != null && restaurant?.location?.lng != null;
     const address = restaurant?.location?.address?.trim();
 
@@ -61,7 +75,7 @@ const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
         return () => { mounted = false; };
     }, [hasCoords, restaurant?.location?.lat, restaurant?.location?.lng, address, waitForKakaoMap]);
 
-    // 확정된 좌표로 지도 렌더
+    // 확정된 좌표로 지도 렌더 + 업체명 말풍선(CustomOverlay)
     useEffect(() => {
         if (!resolvedCoords || !mapContainerRef.current || !waitForKakaoMap) return;
         let mounted = true;
@@ -75,23 +89,44 @@ const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
                     center: position,
                     level: 4
                 });
-                markerRef.current = new kakao.maps.Marker({ position, map: mapRef.current });
+                const content = buildNameBubbleContent(restaurant?.title);
+                const overlay = new kakao.maps.CustomOverlay({
+                    position,
+                    content,
+                    yAnchor: 1,
+                    xAnchor: 0.5,
+                    zIndex: 2
+                });
+                overlay.setMap(mapRef.current);
+                overlayRef.current = overlay;
             } catch (e) {
                 console.error('맵 미리보기 초기화 실패:', e);
             }
         };
         init();
-        return () => { mounted = false; };
-    }, [resolvedCoords, waitForKakaoMap]);
+        return () => {
+            mounted = false;
+            if (overlayRef.current) {
+                overlayRef.current.setMap(null);
+                overlayRef.current = null;
+            }
+            if (mapRef.current) {
+                mapRef.current = null;
+            }
+            if (mapContainerRef.current) {
+                mapContainerRef.current.innerHTML = '';
+            }
+        };
+    }, [resolvedCoords, waitForKakaoMap, restaurant?.title]);
 
     if (!address && !hasCoords) return null;
     if (geocodeFailed && !resolvedCoords) return null;
 
-    /* 주소만 있는 경우 지오코딩/SDK 대기 중 — 전체 너비 4:3 박스는 과도하게 높아지므로 낮은 플레이스홀더만 */
+    /* 주소만 있는 경우 지오코딩/SDK 대기 — 카드와 동일 4:3 비율로 스켈레톤 */
     if (!resolvedCoords && !geocodeFailed) {
         return (
             <div
-                className={`w-full ${MAP_PREVIEW_H} rounded-lg bg-gray-100 border border-gray-200/80 flex items-center justify-center gap-2 text-xs text-gray-500`}
+                className="w-full aspect-[4/3] bg-gray-100 flex items-center justify-center gap-2 text-xs text-gray-500"
                 aria-hidden
             >
                 <span className="inline-block w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin shrink-0" />
@@ -103,11 +138,11 @@ const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
     return (
         <div className="w-full min-h-0">
             <div
-                className={`w-full ${MAP_PREVIEW_H} rounded-lg overflow-hidden bg-gray-100 border border-gray-200/80`}
+                className="w-full aspect-[4/3] overflow-hidden bg-gray-100"
                 ref={mapContainerRef}
             />
             {resolvedCoords && (
-                <p className="text-[10px] text-gray-400 mt-1 font-mono text-center" title="위도, 경도">
+                <p className="text-[10px] text-gray-400 mt-1 px-4 font-mono text-center" title="위도, 경도">
                     좌표 {Number(resolvedCoords.lat).toFixed(5)}, {Number(resolvedCoords.lng).toFixed(5)}
                 </p>
             )}
@@ -263,7 +298,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                         </div>
                                         {/* 오른쪽 업장 정보 */}
                                         <div className="w-1/2 flex flex-col justify-center p-4 min-w-0">
-                                            <h3 className="text-base font-bold text-dark mb-1.5 line-clamp-2 hover:text-brand transition-colors">
+                                            <h3 className="text-[1.2rem] font-bold text-dark mb-1.5 line-clamp-2 hover:text-brand transition-colors leading-snug">
                                                 {restaurant.title || '제목 없음'}
                                             </h3>
                                             {restaurant.menuItems && restaurant.menuItems.length > 0 && (
@@ -284,24 +319,26 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                             )}
                                         </div>
                                     </div>
-                                    {/* 아래: 4:3 카카오맵 바로 렌더 (좌표 있으면 즉시, 주소만 있으면 지오코딩 후 렌더) */}
-                                    <div className="p-2 pt-0">
+                                    {/* 아래: 4:3 카카오맵 풀너비, 링크만 좌우 여백 */}
+                                    <div className="w-full">
                                         {canShowMap && waitForKakaoMap ? (
                                             <div onClick={(e) => e.stopPropagation()}>
                                                 <RestaurantMapPreview restaurant={restaurant} waitForKakaoMap={waitForKakaoMap} />
                                             </div>
                                         ) : null}
                                         {mapLink && (
-                                            <a 
-                                                href={mapLink} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer" 
-                                                className="inline-flex items-center justify-center gap-1.5 mt-2 w-full text-xs font-bold text-brand hover:underline"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
-                                                <Icons.MapPin size={12} />
-                                                카카오맵에서 크게 보기
-                                            </a>
+                                            <div className="px-4 pb-3 pt-2">
+                                                <a 
+                                                    href={mapLink} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer" 
+                                                    className="inline-flex items-center justify-center gap-1.5 w-full text-xs font-bold text-brand hover:underline"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <Icons.MapPin size={12} />
+                                                    카카오맵에서 크게 보기
+                                                </a>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
