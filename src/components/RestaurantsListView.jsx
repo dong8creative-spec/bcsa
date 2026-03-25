@@ -18,16 +18,20 @@ const geocodeAddress = (address) => {
     });
 };
 
-/** 카드 하단 4:3 카카오맵 미리보기 — 좌표 있으면 바로 렌더, 주소만 있으면 지오코딩 후 렌더 */
+/** 카드 하단 카카오맵 미리보기 — 고정 높이로 레이아웃 점프 방지, 주소만 있을 때는 낮은 로딩 영역만 표시 */
+const MAP_PREVIEW_H = 'h-36'; /* 9rem — 카드 비중 과다 방지 */
+
 const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null);
     const markerRef = useRef(null);
-    const [resolvedCoords, setResolvedCoords] = useState(null);
-    const [geocodeFailed, setGeocodeFailed] = useState(false);
-
     const hasCoords = restaurant?.location?.lat != null && restaurant?.location?.lng != null;
     const address = restaurant?.location?.address?.trim();
+
+    const [resolvedCoords, setResolvedCoords] = useState(() =>
+        hasCoords ? { lat: restaurant.location.lat, lng: restaurant.location.lng } : null
+    );
+    const [geocodeFailed, setGeocodeFailed] = useState(false);
 
     // 초기 좌표 또는 주소 → 좌표 확정
     useEffect(() => {
@@ -83,9 +87,25 @@ const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
     if (!address && !hasCoords) return null;
     if (geocodeFailed && !resolvedCoords) return null;
 
+    /* 주소만 있는 경우 지오코딩/SDK 대기 중 — 전체 너비 4:3 박스는 과도하게 높아지므로 낮은 플레이스홀더만 */
+    if (!resolvedCoords && !geocodeFailed) {
+        return (
+            <div
+                className={`w-full ${MAP_PREVIEW_H} rounded-lg bg-gray-100 border border-gray-200/80 flex items-center justify-center gap-2 text-xs text-gray-500`}
+                aria-hidden
+            >
+                <span className="inline-block w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin shrink-0" />
+                지도 불러오는 중…
+            </div>
+        );
+    }
+
     return (
-        <div className="w-full">
-            <div className="w-full rounded-lg overflow-hidden bg-gray-100" style={{ aspectRatio: '4/3' }} ref={mapContainerRef} />
+        <div className="w-full min-h-0">
+            <div
+                className={`w-full ${MAP_PREVIEW_H} rounded-lg overflow-hidden bg-gray-100 border border-gray-200/80`}
+                ref={mapContainerRef}
+            />
             {resolvedCoords && (
                 <p className="text-[10px] text-gray-400 mt-1 font-mono text-center" title="위도, 경도">
                     좌표 {Number(resolvedCoords.lat).toFixed(5)}, {Number(resolvedCoords.lng).toFixed(5)}
@@ -212,7 +232,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                     </div>
                 </div>
 
-                {/* 맛집 리스트: 한 줄 3곳, 윗줄 1:1 사진+업장정보, 아래 4:3 카카오맵 */}
+                {/* 맛집 리스트: 한 줄 3곳, 윗줄 1:1 사진+업장정보, 아래 고정 높이 지도 미리보기 */}
                 {filteredRestaurants.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredRestaurants.map((restaurant) => {
