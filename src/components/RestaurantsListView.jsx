@@ -26,12 +26,20 @@ const buildNameBubbleContent = (title) => {
     bubble.className =
         'max-w-[min(200px,85vw)] px-2.5 py-1.5 rounded-lg bg-white text-gray-900 text-xs font-bold shadow-md border border-brand text-center leading-tight line-clamp-2';
     bubble.textContent = title || '이름 없음';
-    const tail = document.createElement('div');
-    tail.className =
-        'w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-white drop-shadow-sm';
-    tail.style.marginTop = '-1px';
+    /* 꼬리: 바깥 삼각(brand) + 안쪽 삼각(white) 겹침 → 본체와 동일한 파란 1px 테두리 */
+    const tailWrap = document.createElement('div');
+    tailWrap.className = 'relative flex justify-center shrink-0 pointer-events-none';
+    tailWrap.style.marginTop = '-1px';
+    const tailOuter = document.createElement('div');
+    tailOuter.className =
+        'w-0 h-0 border-l-[7px] border-r-[7px] border-t-[9px] border-l-transparent border-r-transparent border-t-brand';
+    const tailInner = document.createElement('div');
+    tailInner.className =
+        'absolute left-1/2 top-px -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-white';
+    tailWrap.appendChild(tailOuter);
+    tailWrap.appendChild(tailInner);
     wrap.appendChild(bubble);
-    wrap.appendChild(tail);
+    wrap.appendChild(tailWrap);
     return wrap;
 };
 
