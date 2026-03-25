@@ -26,10 +26,11 @@ const buildNameBubbleContent = (title) => {
     const wrap = document.createElement('div');
     wrap.className = 'relative flex flex-col items-center pointer-events-none';
     const bubble = document.createElement('div');
+    /* 하단 테두리 없음 → 꼬리와 겹치는 가로선 제거, 좌·상·우만 1px (rounded-lg로 하단 모서리는 본체 배경으로 유지) */
     bubble.className =
-        'max-w-[min(200px,85vw)] px-2.5 py-1.5 rounded-lg bg-white text-gray-900 text-xs font-bold shadow-md border border-brand text-center leading-tight line-clamp-2';
+        'max-w-[min(200px,85vw)] px-2.5 py-1.5 rounded-lg bg-white text-gray-900 text-xs font-bold shadow-md border border-brand border-b-0 text-center leading-tight line-clamp-2';
     bubble.textContent = title || '이름 없음';
-    /* 아래쪽 삼각 꼬리: polygon stroke 1px = 본체 border와 동일, overflow에 잘리지 않게 블록 크기 명시 */
+    /* 꼬리: 채움 polygon + 양쪽 경사선만 polyline(상단 가로선 스트로크 없음 → 본체와 이음새 끊김 방지) */
     const tailSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     tailSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     tailSvg.setAttribute('width', '16');
@@ -38,13 +39,19 @@ const buildNameBubbleContent = (title) => {
     tailSvg.style.display = 'block';
     tailSvg.style.flexShrink = '0';
     tailSvg.style.marginTop = '-1px';
-    const tailPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    tailPoly.setAttribute('points', '0,0 16,0 8,10');
-    tailPoly.setAttribute('fill', '#ffffff');
-    tailPoly.setAttribute('stroke', BUBBLE_BORDER);
-    tailPoly.setAttribute('stroke-width', '1');
-    tailPoly.setAttribute('stroke-linejoin', 'miter');
-    tailSvg.appendChild(tailPoly);
+    const tailFill = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    tailFill.setAttribute('points', '0,0 16,0 8,10');
+    tailFill.setAttribute('fill', '#ffffff');
+    tailFill.setAttribute('stroke', 'none');
+    const tailEdge = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    tailEdge.setAttribute('points', '0,0 8,10 16,0');
+    tailEdge.setAttribute('fill', 'none');
+    tailEdge.setAttribute('stroke', BUBBLE_BORDER);
+    tailEdge.setAttribute('stroke-width', '1');
+    tailEdge.setAttribute('stroke-linecap', 'butt');
+    tailEdge.setAttribute('stroke-linejoin', 'miter');
+    tailSvg.appendChild(tailFill);
+    tailSvg.appendChild(tailEdge);
     wrap.appendChild(bubble);
     wrap.appendChild(tailSvg);
     return wrap;
