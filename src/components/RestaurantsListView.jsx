@@ -24,7 +24,7 @@ const buildNameBubbleContent = (title) => {
     wrap.className = 'relative flex flex-col items-center pointer-events-none';
     const bubble = document.createElement('div');
     bubble.className =
-        'max-w-[min(200px,85vw)] px-2.5 py-1.5 rounded-lg bg-white text-gray-900 text-xs font-bold shadow-md border border-gray-200 text-center leading-tight line-clamp-2';
+        'max-w-[min(200px,85vw)] px-2.5 py-1.5 rounded-lg bg-white text-gray-900 text-xs font-bold shadow-md border border-brand text-center leading-tight line-clamp-2';
     bubble.textContent = title || '이름 없음';
     const tail = document.createElement('div');
     tail.className =
@@ -141,11 +141,6 @@ const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
                 className="w-full aspect-[4/3] overflow-hidden bg-gray-100"
                 ref={mapContainerRef}
             />
-            {resolvedCoords && (
-                <p className="text-[10px] text-gray-400 mt-1 px-4 font-mono text-center" title="위도, 경도">
-                    좌표 {Number(resolvedCoords.lat).toFixed(5)}, {Number(resolvedCoords.lng).toFixed(5)}
-                </p>
-            )}
         </div>
     );
 };
@@ -336,7 +331,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <Icons.MapPin size={12} />
-                                                    카카오맵에서 크게 보기
+                                                    카카오맵에서 길찾기
                                                 </a>
                                             </div>
                                         )}
