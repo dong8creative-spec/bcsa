@@ -18,7 +18,10 @@ const geocodeAddress = (address) => {
     });
 };
 
-/** 말풍선 DOM 생성 (업체명) — textContent로 XSS 방지 */
+/** 말풍선 테두리색 (tailwind brand와 동일 — SVG·인라인 스타일용) */
+const BUBBLE_BORDER = '#0045a5';
+
+/** 말풍선 DOM 생성 (업체명) — textContent로 XSS 방지, 꼬리는 SVG로 고정(클리핑·Tailwind 누락 방지) */
 const buildNameBubbleContent = (title) => {
     const wrap = document.createElement('div');
     wrap.className = 'relative flex flex-col items-center pointer-events-none';
@@ -26,20 +29,24 @@ const buildNameBubbleContent = (title) => {
     bubble.className =
         'max-w-[min(200px,85vw)] px-2.5 py-1.5 rounded-lg bg-white text-gray-900 text-xs font-bold shadow-md border border-brand text-center leading-tight line-clamp-2';
     bubble.textContent = title || '이름 없음';
-    /* 꼬리: 바깥 삼각(brand) + 안쪽 삼각(white) 겹침 → 본체와 동일한 파란 1px 테두리 */
-    const tailWrap = document.createElement('div');
-    tailWrap.className = 'relative flex justify-center shrink-0 pointer-events-none';
-    tailWrap.style.marginTop = '-1px';
-    const tailOuter = document.createElement('div');
-    tailOuter.className =
-        'w-0 h-0 border-l-[7px] border-r-[7px] border-t-[9px] border-l-transparent border-r-transparent border-t-brand';
-    const tailInner = document.createElement('div');
-    tailInner.className =
-        'absolute left-1/2 top-px -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-white';
-    tailWrap.appendChild(tailOuter);
-    tailWrap.appendChild(tailInner);
+    /* 아래쪽 삼각 꼬리: polygon stroke 1px = 본체 border와 동일, overflow에 잘리지 않게 블록 크기 명시 */
+    const tailSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    tailSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    tailSvg.setAttribute('width', '16');
+    tailSvg.setAttribute('height', '10');
+    tailSvg.setAttribute('viewBox', '0 0 16 10');
+    tailSvg.style.display = 'block';
+    tailSvg.style.flexShrink = '0';
+    tailSvg.style.marginTop = '-1px';
+    const tailPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    tailPoly.setAttribute('points', '0,0 16,0 8,10');
+    tailPoly.setAttribute('fill', '#ffffff');
+    tailPoly.setAttribute('stroke', BUBBLE_BORDER);
+    tailPoly.setAttribute('stroke-width', '1');
+    tailPoly.setAttribute('stroke-linejoin', 'miter');
+    tailSvg.appendChild(tailPoly);
     wrap.appendChild(bubble);
-    wrap.appendChild(tailWrap);
+    wrap.appendChild(tailSvg);
     return wrap;
 };
 
@@ -146,7 +153,7 @@ const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
     return (
         <div className="w-full min-h-0">
             <div
-                className="w-full aspect-[4/3] overflow-hidden bg-gray-100"
+                className="w-full aspect-[4/3] overflow-visible bg-gray-100"
                 ref={mapContainerRef}
             />
         </div>
@@ -279,11 +286,11 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                             return (
                                 <div 
                                     key={restaurant.id} 
-                                    className="bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md transition-all hover:border-brand/20 overflow-hidden flex flex-col cursor-pointer" 
+                                    className="bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md transition-all hover:border-brand/20 overflow-visible flex flex-col cursor-pointer" 
                                     onClick={() => onRestaurantClick(restaurant)}
                                 >
-                                    {/* 윗줄: 1:1 주요사진 | 오른쪽 업장 정보 */}
-                                    <div className="flex flex-row gap-0 min-h-0">
+                                    {/* 윗줄: 1:1 주요사진 | 오른쪽 업장 정보 — 여기만 overflow로 모서리 클립 (지도 말풍선은 아래에서 overflow-visible) */}
+                                    <div className="flex flex-row gap-0 min-h-0 rounded-t-2xl overflow-hidden">
                                         {/* 1:1 주요사진 */}
                                         <div className="w-1/2 flex-shrink-0" style={{ aspectRatio: '1/1' }}>
                                             {restaurant.images && restaurant.images.length > 0 ? (
@@ -322,8 +329,8 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                             )}
                                         </div>
                                     </div>
-                                    {/* 아래: 4:3 카카오맵 풀너비, 링크만 좌우 여백 */}
-                                    <div className="w-full">
+                                    {/* 아래: 4:3 카카오맵 풀너비, 링크만 좌우 여백 — 말풍선 꼬리가 잘리지 않도록 overflow-visible */}
+                                    <div className="w-full rounded-b-2xl overflow-visible">
                                         {canShowMap && waitForKakaoMap ? (
                                             <div onClick={(e) => e.stopPropagation()}>
                                                 <RestaurantMapPreview restaurant={restaurant} waitForKakaoMap={waitForKakaoMap} />
