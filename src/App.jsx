@@ -15,7 +15,7 @@ import {
 } from './utils/authUtils';
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from './constants';
 import { getApiBaseUrl } from './utils/api';
-import { waitForKakaoMapsCoreReady } from './utils/kakaoMapReady';
+import { waitForKakaoMapsCoreReady, invokeKakaoMapsLoad, KAKAO_MAP_SDK_URL } from './utils/kakaoMapReady';
 import { requestPayment as paymentServiceRequestPayment } from './services/paymentService';
 import { PaymentResultView } from './pages/PaymentResultView';
 import { defaultContent, defaultMenuOrder, defaultMenuNames } from './constants/content';
@@ -389,7 +389,8 @@ const App = () => {
     const waitForKakaoMap = () => {
         return new Promise((resolve, reject) => {
             const resolveReady = () => {
-                waitForKakaoMapsCoreReady()
+                invokeKakaoMapsLoad()
+                    .then(() => waitForKakaoMapsCoreReady())
                     .then(() => resolve(window.kakao))
                     .catch(reject);
             };
@@ -455,7 +456,13 @@ const App = () => {
                 resolve();
                 return;
             }
-            
+            if (!window.kakao?.maps) {
+                const legacy = document.querySelector('script[src*="dapi.kakao.com"]');
+                if (legacy && !legacy.getAttribute('src')?.includes('autoload=false')) {
+                    legacy.remove();
+                }
+            }
+
             const existingScript = document.querySelector('script[src*="dapi.kakao.com"]');
             if (existingScript) {
                 if (existingScript.readyState === 'complete' || existingScript.readyState === 'loaded' || (window.kakao && window.kakao.maps)) {
@@ -470,7 +477,7 @@ const App = () => {
             // 스크립트 동적 생성 및 로드 (async=false: SDK 내부 document.write 호환)
             const script = document.createElement('script');
             script.type = 'text/javascript';
-            script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=f35b8c9735d77cced1235c5775c7c3b1&libraries=services';
+            script.src = KAKAO_MAP_SDK_URL;
             script.async = false;
             script.onload = resolve;
             script.onerror = reject;

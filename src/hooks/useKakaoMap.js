@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { waitForKakaoMapsCoreReady, waitForKakaoMapsServicesReady } from '../utils/kakaoMapReady';
+import {
+  KAKAO_MAP_SDK_URL,
+  invokeKakaoMapsLoad,
+  waitForKakaoMapsCoreReady,
+  waitForKakaoMapsServicesReady,
+} from '../utils/kakaoMapReady';
 
 /**
  * 카카오맵 SDK 로드 및 초기화 커스텀 훅
@@ -14,12 +19,21 @@ export const useKakaoMap = () => {
   useEffect(() => {
     const loadKakaoMapScript = () => {
       return new Promise((resolve, reject) => {
-        /** 스크립트 이후 LatLng 등 생성자까지 준비된 뒤 resolve */
+        /** autoload=false 시 maps.load() 후 코어 API 준비까지 대기 */
         const resolveWhenReady = () => {
-          waitForKakaoMapsCoreReady()
+          invokeKakaoMapsLoad()
+            .then(() => waitForKakaoMapsCoreReady())
             .then(() => resolve(window.kakao))
             .catch(reject);
         };
+
+        // SDK가 아직 없을 때만: 구버전 URL(autoload 미지정) 태그는 document.write 문제를 일으킬 수 있어 제거
+        if (!window.kakao?.maps) {
+          const legacy = document.querySelector('script[src*="dapi.kakao.com"]');
+          if (legacy && !legacy.getAttribute('src')?.includes('autoload=false')) {
+            legacy.remove();
+          }
+        }
 
         // 이미 로드되어 있는 경우 (생성자 준비까지 별도 대기)
         if (window.kakao && window.kakao.maps) {
@@ -50,7 +64,7 @@ export const useKakaoMap = () => {
         // 스크립트 동적 생성 (async=false: SDK 내부 document.write 호환, index.html에 없을 때만 사용)
         const script = document.createElement('script');
         script.type = 'text/javascript';
-        script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=f35b8c9735d77cced1235c5775c7c3b1&libraries=services';
+        script.src = KAKAO_MAP_SDK_URL;
         script.async = false;
 
         script.onload = () => {
