@@ -28,25 +28,8 @@ export const BUSAN_DISTRICTS = [
   '기장군',
 ];
 
-/** 협력기관 로고 경로 (partner1~6 순) */
-export const PARTNER_LOGOS = [
-  '/assets/images/partners/partner1.png',
-  '/assets/images/partners/partner2.png',
-  '/assets/images/partners/partner3.png',
-  '/assets/images/partners/partner4.png',
-  '/assets/images/partners/partner5.png',
-  '/assets/images/partners/partner6.png',
-];
-
-/** 협력기관 이름 (PARTNER_LOGOS와 순서 대응) */
-export const PARTNER_NAMES = [
-  '중소벤처기업부',
-  '15분도시',
-  '나라장터',
-  'KOTRA',
-  '부산경제진흥원',
-  '부산광역시',
-];
+export { PARTNER_LOGOS } from './partnerLogos';
+export { PARTNER_NAMES } from './partnerNames';
 
 /** 로그인 필요 메뉴 (비로그인 시 비활성 표시) */
 export const MEMBERS_ONLY_MENUS = ['부청사 회원', '커뮤니티'];

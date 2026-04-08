@@ -3056,11 +3056,18 @@ END:VCALENDAR`;
                 <section className="py-12 md:py-20 px-6 bg-soft">
                     <div className="container mx-auto max-w-6xl">
                         <h2 className="text-2xl md:text-3xl font-bold text-dark mb-[4.5rem] text-center">협력기관</h2>
-                        <div className="md:scale-[0.9] md:origin-center">
-                            <div className="grid grid-cols-2 gap-y-12 gap-x-1 sm:grid-cols-3 sm:gap-12 md:gap-16">
+                        <div className="flex justify-center">
+                            <div className="flex flex-wrap justify-center items-center gap-y-12 gap-x-4 sm:gap-x-12 md:gap-16 max-w-full">
                             {PARTNER_LOGOS.map((src, i) => (
-                                <div key={i} className={`w-full flex items-center justify-center ${i === 0 ? 'overflow-visible' : ''}`}>
-                                    <img src={src} alt={PARTNER_NAMES[i] || `협력기관 ${i + 1}`} className={`max-h-16 w-full object-contain ${i === 4 ? 'scale-[0.9]' : `scale-[0.8] ${i === 0 ? 'md:scale-[1.6]' : 'md:scale-100'}`}`} />
+                                <div
+                                    key={i}
+                                    className={`flex shrink-0 items-center justify-center ${i === 6 ? 'w-56 sm:w-[17.6rem] md:w-[19.2rem]' : 'w-36 sm:w-44 md:w-48'}`}
+                                >
+                                    <img
+                                        src={src}
+                                        alt={PARTNER_NAMES[i] || `협력기관 ${i + 1}`}
+                                        className={`w-full object-contain ${i === 6 ? 'max-h-[6.4rem]' : 'max-h-16'}`}
+                                    />
                                 </div>
                             ))}
                             </div>

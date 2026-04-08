@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { publicPartnersPlugin } from './vite-plugins/publicPartners.js';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), publicPartnersPlugin()],
   // Base 경로 동적 설정
   // - 환경 변수 VITE_BASE_PATH가 설정되어 있으면 해당 값 사용 (GitHub Pages 등)
   // - 없으면 기본값 '/' 사용 (Firebase Hosting 등)
