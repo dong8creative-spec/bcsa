@@ -1,4 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import {
+  KAKAO_MAP_SDK_URL,
+  invokeKakaoMapsLoad,
+  waitForKakaoMapsCoreReady,
+  waitForKakaoMapsServicesReady,
+} from '../utils/kakaoMapReady';
 
 /**
  * 카카오맵 SDK 로드 및 초기화 커스텀 훅
@@ -13,25 +19,39 @@ export const useKakaoMap = () => {
   useEffect(() => {
     const loadKakaoMapScript = () => {
       return new Promise((resolve, reject) => {
-        // 이미 로드되어 있는 경우
+        /** autoload=false 시 maps.load() 후 코어 API 준비까지 대기 */
+        const resolveWhenReady = () => {
+          invokeKakaoMapsLoad()
+            .then(() => waitForKakaoMapsCoreReady())
+            .then(() => resolve(window.kakao))
+            .catch(reject);
+        };
+
+        // SDK가 아직 없을 때만: 구버전 URL(autoload 미지정) 태그는 document.write 문제를 일으킬 수 있어 제거
+        if (!window.kakao?.maps) {
+          const legacy = document.querySelector('script[src*="dapi.kakao.com"]');
+          if (legacy && !legacy.getAttribute('src')?.includes('autoload=false')) {
+            legacy.remove();
+          }
+        }
+
+        // 이미 로드되어 있는 경우 (생성자 준비까지 별도 대기)
         if (window.kakao && window.kakao.maps) {
-          resolve(window.kakao);
+          resolveWhenReady();
           return;
         }
 
         // 스크립트가 이미 존재하는지 확인
         const existingScript = document.querySelector('script[src*="dapi.kakao.com"]');
-        
+
         if (existingScript) {
-          // 스크립트가 있으면 로드 완료 대기
           const checkInterval = setInterval(() => {
             if (window.kakao && window.kakao.maps) {
               clearInterval(checkInterval);
-              resolve(window.kakao);
+              resolveWhenReady();
             }
           }, 100);
 
-          // 5초 타임아웃
           setTimeout(() => {
             clearInterval(checkInterval);
             if (!window.kakao || !window.kakao.maps) {
@@ -44,12 +64,12 @@ export const useKakaoMap = () => {
         // 스크립트 동적 생성 (async=false: SDK 내부 document.write 호환, index.html에 없을 때만 사용)
         const script = document.createElement('script');
         script.type = 'text/javascript';
-        script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=f35b8c9735d77cced1235c5775c7c3b1&libraries=services';
+        script.src = KAKAO_MAP_SDK_URL;
         script.async = false;
 
         script.onload = () => {
           if (window.kakao && window.kakao.maps) {
-            resolve(window.kakao);
+            resolveWhenReady();
           } else {
             reject(new Error('카카오맵 객체를 찾을 수 없습니다'));
           }
@@ -87,6 +107,7 @@ export const useKakaoMap = () => {
     if (!kakao || !kakao.maps) {
       throw new Error('카카오맵이 로드되지 않았습니다');
     }
+    await waitForKakaoMapsServicesReady();
 
     return new Promise((resolve, reject) => {
       const geocoder = new kakao.maps.services.Geocoder();
@@ -113,6 +134,7 @@ export const useKakaoMap = () => {
     if (!kakao || !kakao.maps) {
       throw new Error('카카오맵이 로드되지 않았습니다');
     }
+    await waitForKakaoMapsServicesReady();
 
     return new Promise((resolve, reject) => {
       const geocoder = new kakao.maps.services.Geocoder();
@@ -137,6 +159,7 @@ export const useKakaoMap = () => {
     if (!kakao || !kakao.maps) {
       throw new Error('카카오맵이 로드되지 않았습니다');
     }
+    await waitForKakaoMapsServicesReady();
 
     return new Promise((resolve, reject) => {
       const places = new kakao.maps.services.Places();

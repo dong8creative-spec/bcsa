@@ -109,7 +109,6 @@ export const ProgramManagement = () => {
   const [promotePendingLoading, setPromotePendingLoading] = useState(false);
   const [isClosingPast, setIsClosingPast] = useState(false);
   const [closingRecruitmentId, setClosingRecruitmentId] = useState(null);
-  const [closingRecruitmentId, setClosingRecruitmentId] = useState(null);
 
   /** 신청자 명단용 회원·신청 목록 최신 조회 (결제 완료된 applications만 사용, 결제대기 제외) */
   const loadApplicantModalData = useCallback(async () => {
@@ -252,6 +251,18 @@ export const ProgramManagement = () => {
   }, [filteredAndSortedPrograms, currentPage]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedPrograms.length / PAGE_SIZE));
+
+  /** 카카오맵 모달 초기 좌표 — 매 렌더마다 새 객체를 만들면 지도가 중복 초기화될 수 있음 */
+  const mapInitialLocation = useMemo(() => {
+    if (formData.locationLat != null && formData.locationLng != null) {
+      return {
+        lat: formData.locationLat,
+        lng: formData.locationLng,
+        address: formData.location || '',
+      };
+    }
+    return null;
+  }, [formData.locationLat, formData.locationLng, formData.location]);
 
   const goToPage = (page) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
@@ -416,30 +427,6 @@ export const ProgramManagement = () => {
     setShowModal(true);
   };
 
-  /** 관리자가 모집을 중단 (신청 불가 처리, 사용자 화면에는 '종료'로 표시) */
-  const handleCloseRecruitment = async (program) => {
-    if (program.recruitmentClosedByAdmin) return;
-    const todayStart = getTodayStart();
-    if (parseDateForSort(program.date) < todayStart) {
-      alert('이미 지난 프로그램입니다. "지난 프로그램 일괄 종료"를 사용하세요.');
-      return;
-    }
-    if (!window.confirm(`"${program.title || '이 프로그램'}"의 모집을 중단하시겠습니까?\n중단 후에는 사용자가 신청할 수 없습니다.`)) {
-      return;
-    }
-    setClosingRecruitmentId(program.id);
-    try {
-      await firebaseService.updateSeminar(program.id, { recruitmentClosedByAdmin: true });
-      alert('모집이 중단되었습니다.');
-      await loadPrograms();
-    } catch (err) {
-      console.error('모집 중단 처리 실패:', program.id, err);
-      alert('모집 중단에 실패했습니다. 다시 시도해 주세요.');
-    } finally {
-      setClosingRecruitmentId(null);
-    }
-  };
-
   const handleDelete = async (programId) => {
     if (!confirm('정말 이 프로그램을 삭제하시겠습니까?')) return;
 
@@ -453,28 +440,27 @@ export const ProgramManagement = () => {
     }
   };
 
-  /** 관리자가 모집을 중단 (사용자 화면에서는 '종료'로 표시, 신청 불가) */
+  /** 관리자가 모집 중단/재개 토글 (중단 시 사용자 화면에서는 '종료', 신청 불가) */
   const handleCloseRecruitment = async (program) => {
-    if (program.recruitmentClosedByAdmin) {
-      alert('이미 모집이 중단된 프로그램입니다.');
-      return;
-    }
     const todayStart = getTodayStart();
     if (parseDateForSort(program.date) < todayStart) {
       alert('이미 지난 프로그램입니다. "지난 프로그램 일괄 종료"를 사용하세요.');
       return;
     }
-    if (!window.confirm(`"${program.title || '이 프로그램'}" 모집을 중단하시겠습니까?\n중단 후에는 사용자가 신청할 수 없습니다.`)) {
-      return;
-    }
+    const isCurrentlyClosed = !!program.recruitmentClosedByAdmin;
+    const action = isCurrentlyClosed ? '재개' : '중단';
+    const confirmMsg = isCurrentlyClosed
+      ? `"${program.title || '이 프로그램'}" 모집을 재개하시겠습니까?\n재개 후 사용자가 다시 신청할 수 있습니다.`
+      : `"${program.title || '이 프로그램'}" 모집을 중단하시겠습니까?\n중단 후에는 사용자가 신청할 수 없습니다.`;
+    if (!window.confirm(confirmMsg)) return;
     setClosingRecruitmentId(program.id);
     try {
-      await firebaseService.updateSeminar(program.id, { recruitmentClosedByAdmin: true });
-      alert('모집이 중단되었습니다.');
+      await firebaseService.updateSeminar(program.id, { recruitmentClosedByAdmin: !isCurrentlyClosed });
+      alert(isCurrentlyClosed ? '모집이 재개되었습니다.' : '모집이 중단되었습니다.');
       await loadPrograms();
     } catch (err) {
-      console.error('모집 중단 처리 실패:', err);
-      alert('모집 중단에 실패했습니다.');
+      console.error(`모집 ${action} 처리 실패:`, err);
+      alert(`모집 ${action}에 실패했습니다.`);
     } finally {
       setClosingRecruitmentId(null);
     }
@@ -616,8 +602,9 @@ export const ProgramManagement = () => {
           displayPrograms.map((program) => {
             const thumb = normalizeImageItem(program.images?.[0]) || program.imageUrls?.[0] || program.imageUrl;
             const displayStatus = program.recruitmentClosedByAdmin ? '모집중단' : (program.status || calculateStatus(program.date || ''));
-            const canCloseRecruitment = !program.recruitmentClosedByAdmin && parseDateForSort(program.date) >= getTodayStart();
+            const canToggleRecruitment = parseDateForSort(program.date) >= getTodayStart();
             const isClosingThis = closingRecruitmentId === program.id;
+            const isRecruitmentClosed = !!program.recruitmentClosedByAdmin;
             const statusClass = displayStatus === '모집중단' ? 'bg-amber-100 text-amber-800' : displayStatus === '종료' ? 'bg-gray-100 text-gray-600' : displayStatus === '마감임박' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700';
             return (
               <div key={program.id} className="relative bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
@@ -674,21 +661,37 @@ export const ProgramManagement = () => {
                     <Icons.Users size={16} />
                     신청자명단
                   </button>
-                  {canCloseRecruitment && (
-                    <button
-                      type="button"
-                      onClick={() => handleCloseRecruitment(program)}
-                      disabled={isClosingThis}
-                      className="flex-none whitespace-nowrap px-3 py-2 bg-amber-50 text-amber-700 rounded-xl font-bold hover:bg-amber-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                      title="모집 중단 후 사용자는 신청할 수 없습니다"
-                    >
-                      {isClosingThis ? (
-                        <span className="inline-block w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Icons.X size={16} />
-                      )}
-                      모집중단
-                    </button>
+                  {canToggleRecruitment && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleCloseRecruitment(program)}
+                        disabled={isClosingThis || isRecruitmentClosed}
+                        title={isRecruitmentClosed ? '이미 모집이 중단된 상태입니다' : '모집 중단 후 사용자는 신청할 수 없습니다'}
+                        className="flex-none whitespace-nowrap px-3 py-2 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:bg-gray-100 disabled:text-gray-400"
+                      >
+                        {isClosingThis && !isRecruitmentClosed ? (
+                          <span className="inline-block w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Icons.X size={16} />
+                        )}
+                        모집 중단
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCloseRecruitment(program)}
+                        disabled={isClosingThis || !isRecruitmentClosed}
+                        title={!isRecruitmentClosed ? '모집 중인 상태입니다. 중단 후 재개할 수 있습니다' : '모집 재개 후 사용자가 다시 신청할 수 있습니다'}
+                        className="flex-none whitespace-nowrap px-3 py-2 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:bg-gray-100 disabled:text-gray-400"
+                      >
+                        {isClosingThis && isRecruitmentClosed ? (
+                          <span className="inline-block w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Icons.RefreshCw size={16} />
+                        )}
+                        모집 재개
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -1146,11 +1149,7 @@ export const ProgramManagement = () => {
         <KakaoMapModal
           onClose={() => setShowMapModal(false)}
           onSelectLocation={handleLocationSelect}
-          initialLocation={formData.locationLat && formData.locationLng ? {
-            lat: formData.locationLat,
-            lng: formData.locationLng,
-            address: formData.location
-          } : null}
+          initialLocation={mapInitialLocation}
         />
       )}
     </div>

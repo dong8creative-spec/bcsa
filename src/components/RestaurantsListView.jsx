@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import PageTitle from './PageTitle';
 import { Icons } from './Icons';
+import { waitForKakaoMapsServicesReady } from '../utils/kakaoMapReady';
 
 /** 주소로 좌표 조회 (카카오 지오코딩) */
 const geocodeAddress = (address) => {
@@ -17,16 +18,56 @@ const geocodeAddress = (address) => {
     });
 };
 
-/** 카드 하단 4:3 카카오맵 미리보기 — 좌표 있으면 바로 렌더, 주소만 있으면 지오코딩 후 렌더 */
+/** 말풍선 테두리색 (tailwind brand와 동일 — SVG·인라인 스타일용) */
+const BUBBLE_BORDER = '#0045a5';
+
+/** 말풍선 DOM 생성 (업체명) — textContent로 XSS 방지, 꼬리는 SVG로 고정(클리핑·Tailwind 누락 방지) */
+const buildNameBubbleContent = (title) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'relative flex flex-col items-center pointer-events-none';
+    const bubble = document.createElement('div');
+    /* 하단 테두리 없음 → 꼬리와 겹치는 가로선 제거, 좌·상·우만 1px (rounded-lg로 하단 모서리는 본체 배경으로 유지) */
+    bubble.className =
+        'max-w-[min(200px,85vw)] px-2.5 py-1.5 rounded-lg bg-white text-gray-900 text-xs font-bold shadow-md border border-brand border-b-0 text-center leading-tight line-clamp-2';
+    bubble.textContent = title || '이름 없음';
+    /* 꼬리: 채움 polygon + 양쪽 경사선만 polyline(상단 가로선 스트로크 없음 → 본체와 이음새 끊김 방지) */
+    const tailSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    tailSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    tailSvg.setAttribute('width', '16');
+    tailSvg.setAttribute('height', '10');
+    tailSvg.setAttribute('viewBox', '0 0 16 10');
+    tailSvg.style.display = 'block';
+    tailSvg.style.flexShrink = '0';
+    tailSvg.style.marginTop = '-1px';
+    const tailFill = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    tailFill.setAttribute('points', '0,0 16,0 8,10');
+    tailFill.setAttribute('fill', '#ffffff');
+    tailFill.setAttribute('stroke', 'none');
+    const tailEdge = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    tailEdge.setAttribute('points', '0,0 8,10 16,0');
+    tailEdge.setAttribute('fill', 'none');
+    tailEdge.setAttribute('stroke', BUBBLE_BORDER);
+    tailEdge.setAttribute('stroke-width', '1');
+    tailEdge.setAttribute('stroke-linecap', 'butt');
+    tailEdge.setAttribute('stroke-linejoin', 'miter');
+    tailSvg.appendChild(tailFill);
+    tailSvg.appendChild(tailEdge);
+    wrap.appendChild(bubble);
+    wrap.appendChild(tailSvg);
+    return wrap;
+};
+
 const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
     const mapContainerRef = useRef(null);
     const mapRef = useRef(null);
-    const markerRef = useRef(null);
-    const [resolvedCoords, setResolvedCoords] = useState(null);
-    const [geocodeFailed, setGeocodeFailed] = useState(false);
-
+    const overlayRef = useRef(null);
     const hasCoords = restaurant?.location?.lat != null && restaurant?.location?.lng != null;
     const address = restaurant?.location?.address?.trim();
+
+    const [resolvedCoords, setResolvedCoords] = useState(() =>
+        hasCoords ? { lat: restaurant.location.lat, lng: restaurant.location.lng } : null
+    );
+    const [geocodeFailed, setGeocodeFailed] = useState(false);
 
     // 초기 좌표 또는 주소 → 좌표 확정
     useEffect(() => {
@@ -44,6 +85,8 @@ const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
             try {
                 await waitForKakaoMap();
                 if (!mounted) return;
+                await waitForKakaoMapsServicesReady();
+                if (!mounted) return;
                 const coords = await geocodeAddress(address);
                 if (mounted && coords) setResolvedCoords(coords);
                 else if (mounted) setGeocodeFailed(true);
@@ -54,7 +97,7 @@ const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
         return () => { mounted = false; };
     }, [hasCoords, restaurant?.location?.lat, restaurant?.location?.lng, address, waitForKakaoMap]);
 
-    // 확정된 좌표로 지도 렌더
+    // 확정된 좌표로 지도 렌더 + 업체명 말풍선(CustomOverlay)
     useEffect(() => {
         if (!resolvedCoords || !mapContainerRef.current || !waitForKakaoMap) return;
         let mounted = true;
@@ -68,26 +111,58 @@ const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
                     center: position,
                     level: 4
                 });
-                markerRef.current = new kakao.maps.Marker({ position, map: mapRef.current });
+                const content = buildNameBubbleContent(restaurant?.title);
+                const overlay = new kakao.maps.CustomOverlay({
+                    position,
+                    content,
+                    yAnchor: 1,
+                    xAnchor: 0.5,
+                    zIndex: 2
+                });
+                overlay.setMap(mapRef.current);
+                overlayRef.current = overlay;
             } catch (e) {
                 console.error('맵 미리보기 초기화 실패:', e);
             }
         };
         init();
-        return () => { mounted = false; };
-    }, [resolvedCoords, waitForKakaoMap]);
+        return () => {
+            mounted = false;
+            if (overlayRef.current) {
+                overlayRef.current.setMap(null);
+                overlayRef.current = null;
+            }
+            if (mapRef.current) {
+                mapRef.current = null;
+            }
+            if (mapContainerRef.current) {
+                mapContainerRef.current.innerHTML = '';
+            }
+        };
+    }, [resolvedCoords, waitForKakaoMap, restaurant?.title]);
 
     if (!address && !hasCoords) return null;
     if (geocodeFailed && !resolvedCoords) return null;
 
+    /* 주소만 있는 경우 지오코딩/SDK 대기 — 카드와 동일 4:3 비율로 스켈레톤 */
+    if (!resolvedCoords && !geocodeFailed) {
+        return (
+            <div
+                className="w-full aspect-[4/3] bg-gray-100 flex items-center justify-center gap-2 text-xs text-gray-500"
+                aria-hidden
+            >
+                <span className="inline-block w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin shrink-0" />
+                지도 불러오는 중…
+            </div>
+        );
+    }
+
     return (
-        <div className="w-full">
-            <div className="w-full rounded-lg overflow-hidden bg-gray-100" style={{ aspectRatio: '4/3' }} ref={mapContainerRef} />
-            {resolvedCoords && (
-                <p className="text-[10px] text-gray-400 mt-1 font-mono text-center" title="위도, 경도">
-                    좌표 {Number(resolvedCoords.lat).toFixed(5)}, {Number(resolvedCoords.lng).toFixed(5)}
-                </p>
-            )}
+        <div className="w-full min-h-0">
+            <div
+                className="w-full aspect-[4/3] overflow-visible bg-gray-100"
+                ref={mapContainerRef}
+            />
         </div>
     );
 };
@@ -209,7 +284,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                     </div>
                 </div>
 
-                {/* 맛집 리스트: 한 줄 3곳, 윗줄 1:1 사진+업장정보, 아래 4:3 카카오맵 */}
+                {/* 맛집 리스트: 한 줄 3곳, 윗줄 1:1 사진+업장정보, 아래 고정 높이 지도 미리보기 */}
                 {filteredRestaurants.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredRestaurants.map((restaurant) => {
@@ -218,11 +293,11 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                             return (
                                 <div 
                                     key={restaurant.id} 
-                                    className="bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md transition-all hover:border-brand/20 overflow-hidden flex flex-col cursor-pointer" 
+                                    className="bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md transition-all hover:border-brand/20 overflow-visible flex flex-col cursor-pointer" 
                                     onClick={() => onRestaurantClick(restaurant)}
                                 >
-                                    {/* 윗줄: 1:1 주요사진 | 오른쪽 업장 정보 */}
-                                    <div className="flex flex-row gap-0 min-h-0">
+                                    {/* 윗줄: 1:1 주요사진 | 오른쪽 업장 정보 — 여기만 overflow로 모서리 클립 (지도 말풍선은 아래에서 overflow-visible) */}
+                                    <div className="flex flex-row gap-0 min-h-0 rounded-t-2xl overflow-hidden">
                                         {/* 1:1 주요사진 */}
                                         <div className="w-1/2 flex-shrink-0" style={{ aspectRatio: '1/1' }}>
                                             {restaurant.images && restaurant.images.length > 0 ? (
@@ -240,7 +315,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                         </div>
                                         {/* 오른쪽 업장 정보 */}
                                         <div className="w-1/2 flex flex-col justify-center p-4 min-w-0">
-                                            <h3 className="text-base font-bold text-dark mb-1.5 line-clamp-2 hover:text-brand transition-colors">
+                                            <h3 className="text-[1.2rem] font-bold text-dark mb-1.5 line-clamp-2 hover:text-brand transition-colors leading-snug">
                                                 {restaurant.title || '제목 없음'}
                                             </h3>
                                             {restaurant.menuItems && restaurant.menuItems.length > 0 && (
@@ -261,24 +336,26 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                             )}
                                         </div>
                                     </div>
-                                    {/* 아래: 4:3 카카오맵 바로 렌더 (좌표 있으면 즉시, 주소만 있으면 지오코딩 후 렌더) */}
-                                    <div className="p-2 pt-0">
+                                    {/* 아래: 4:3 카카오맵 풀너비, 링크만 좌우 여백 — 말풍선 꼬리가 잘리지 않도록 overflow-visible */}
+                                    <div className="w-full rounded-b-2xl overflow-visible">
                                         {canShowMap && waitForKakaoMap ? (
                                             <div onClick={(e) => e.stopPropagation()}>
                                                 <RestaurantMapPreview restaurant={restaurant} waitForKakaoMap={waitForKakaoMap} />
                                             </div>
                                         ) : null}
                                         {mapLink && (
-                                            <a 
-                                                href={mapLink} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer" 
-                                                className="inline-flex items-center justify-center gap-1.5 mt-2 w-full text-xs font-bold text-brand hover:underline"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
-                                                <Icons.MapPin size={12} />
-                                                카카오맵에서 크게 보기
-                                            </a>
+                                            <div className="px-4 pb-3 pt-2">
+                                                <a 
+                                                    href={mapLink} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer" 
+                                                    className="inline-flex items-center justify-center gap-1.5 w-full text-xs font-bold text-brand hover:underline"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <Icons.MapPin size={12} />
+                                                    카카오맵에서 길찾기
+                                                </a>
+                                            </div>
                                         )}
                                     </div>
                                 </div>

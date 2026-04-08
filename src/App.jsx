@@ -15,6 +15,7 @@ import {
 } from './utils/authUtils';
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from './constants';
 import { getApiBaseUrl } from './utils/api';
+import { waitForKakaoMapsCoreReady, invokeKakaoMapsLoad, KAKAO_MAP_SDK_URL } from './utils/kakaoMapReady';
 import { requestPayment as paymentServiceRequestPayment } from './services/paymentService';
 import { PaymentResultView } from './pages/PaymentResultView';
 import { defaultContent, defaultMenuOrder, defaultMenuNames } from './constants/content';
@@ -387,15 +388,22 @@ const App = () => {
     // 카카오맵 SDK 로드 완료를 기다리는 헬퍼 함수
     const waitForKakaoMap = () => {
         return new Promise((resolve, reject) => {
-            // 이미 로드된 경우
+            const resolveReady = () => {
+                invokeKakaoMapsLoad()
+                    .then(() => waitForKakaoMapsCoreReady())
+                    .then(() => resolve(window.kakao))
+                    .catch(reject);
+            };
+
+            // 이미 로드된 경우 (LatLng 등 생성자 준비까지 별도 대기)
             if (window.kakao && window.kakao.maps) {
-                resolve(window.kakao);
+                resolveReady();
                 return;
             }
-            
+
             // 스크립트가 로드 중인지 확인
             const existingScript = document.querySelector('script[src*="dapi.kakao.com"]');
-            
+
             // 스크립트가 있으면 이미 로드됐을 수 있으므로 폴링으로 대기 (load 이벤트는 이미 끝났을 수 있음)
             if (existingScript) {
                 let attempts = 0;
@@ -404,7 +412,7 @@ const App = () => {
                     attempts++;
                     if (window.kakao && window.kakao.maps) {
                         clearInterval(pollInterval);
-                        resolve(window.kakao);
+                        resolveReady();
                     } else if (attempts >= maxAttempts) {
                         clearInterval(pollInterval);
                         reject(new Error('카카오맵 SDK를 로드할 수 없습니다.'));
@@ -416,19 +424,18 @@ const App = () => {
                 }, { once: true });
                 return;
             }
-            
+
             // 스크립트가 없으면 동적으로 로드
             (async () => {
                 try {
                     await loadKakaoMapScript();
-                    // 로드 후 kakao 객체 초기화까지 대기
                     let attempts = 0;
                     const maxAttempts = 50; // 5초 대기
                     const checkInterval = setInterval(() => {
                         attempts++;
                         if (window.kakao && window.kakao.maps) {
                             clearInterval(checkInterval);
-                            resolve(window.kakao);
+                            resolveReady();
                         } else if (attempts >= maxAttempts) {
                             clearInterval(checkInterval);
                             reject(new Error('카카오맵 SDK를 로드할 수 없습니다.'));
@@ -449,7 +456,13 @@ const App = () => {
                 resolve();
                 return;
             }
-            
+            if (!window.kakao?.maps) {
+                const legacy = document.querySelector('script[src*="dapi.kakao.com"]');
+                if (legacy && !legacy.getAttribute('src')?.includes('autoload=false')) {
+                    legacy.remove();
+                }
+            }
+
             const existingScript = document.querySelector('script[src*="dapi.kakao.com"]');
             if (existingScript) {
                 if (existingScript.readyState === 'complete' || existingScript.readyState === 'loaded' || (window.kakao && window.kakao.maps)) {
@@ -464,7 +477,7 @@ const App = () => {
             // 스크립트 동적 생성 및 로드 (async=false: SDK 내부 document.write 호환)
             const script = document.createElement('script');
             script.type = 'text/javascript';
-            script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=f35b8c9735d77cced1235c5775c7c3b1&libraries=services';
+            script.src = KAKAO_MAP_SDK_URL;
             script.async = false;
             script.onload = resolve;
             script.onerror = reject;
@@ -1958,11 +1971,13 @@ const App = () => {
             return;
         }
         
-        // 참여자인지 확인
+        // 참여자인지 확인 (로컬 + Firebase 신청 목록)
         const applications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
-        const hasApplied = applications.some(app => 
+        const fromStorage = applications.some(app =>
             String(app.seminarId) === String(seminar.id) && String(app.userId) === String(currentUser?.id)
         );
+        const fromFirebase = (myApplications || []).some(app => String(app.seminarId) === String(seminar.id));
+        const hasApplied = fromStorage || fromFirebase;
         
         if (!hasApplied) {
             alert("참여한 프로그램에만 후기를 작성할 수 있습니다.");
@@ -2632,7 +2647,7 @@ END:VCALENDAR`;
                         </div>
                     );
                 }
-                return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myApplications={myApplications} onUpdateApplication={handleUpdateApplication} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} />;
+                return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myApplications={myApplications} onUpdateApplication={handleUpdateApplication} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} onWriteReview={handleWriteReview} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} />;
             }
         if (currentView === 'allMembers' && !currentUser) {
             return (

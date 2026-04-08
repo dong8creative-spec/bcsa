@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { firebaseService } from '../services/firebaseService';
 import { Icons } from './Icons';
 import { DateTimePicker } from '../pages/Admin/components/DateTimePicker';
@@ -117,6 +117,14 @@ export const ProgramAddModal = ({ onClose, onSuccess }) => {
       locationLng: location.lng,
     }));
   };
+
+  /** 지도 모달에 넘길 초기 좌표 — 매 렌더마다 새 객체를 만들면 지도 effect가 중복 실행될 수 있음 */
+  const mapInitialLocation = useMemo(() => {
+    if (formData.locationLat != null && formData.locationLng != null) {
+      return { lat: formData.locationLat, lng: formData.locationLng };
+    }
+    return null;
+  }, [formData.locationLat, formData.locationLng]);
 
   return (
     <>
@@ -316,7 +324,7 @@ export const ProgramAddModal = ({ onClose, onSuccess }) => {
             });
             setShowMapModal(false);
           }}
-          initialLocation={formData.locationLat != null && formData.locationLng != null ? { lat: formData.locationLat, lng: formData.locationLng } : null}
+          initialLocation={mapInitialLocation}
         />
       )}
     </>

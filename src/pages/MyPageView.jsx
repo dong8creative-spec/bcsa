@@ -85,7 +85,29 @@ function getInitialEditForm(user) {
     };
 }
 
-const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApplication, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, pageTitles, onUpdatePost }) => {
+/** 세미나 날짜 문자열을 날짜(자정) 타임스탬프로 변환 */
+const parseSeminarDate = (dateStr) => {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    const trimmed = String(dateStr).trim().split(/[\sT]/)[0].replace(/-/g, '.').replace(/\//g, '.');
+    const parts = trimmed.split('.');
+    if (parts.length >= 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(d)) {
+            const date = new Date(y, m, d);
+            return date.getTime();
+        }
+    }
+    return null;
+};
+const getTodayStart = () => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t.getTime();
+};
+
+const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApplication, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, onWriteReview, pageTitles, onUpdatePost }) => {
     const [activeTab, setActiveTab] = useState('seminars');
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -562,15 +584,20 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                             { key: '', label: '기타' }
                         ];
                         const appForSeminar = (seminar) => (myApplications || []).find((a) => String(a.seminarId) === String(seminar.id));
+                        const isSeminarEnded = (seminar) => {
+                            const ts = parseSeminarDate(seminar?.date);
+                            return ts != null && ts < getTodayStart();
+                        };
                         const renderItem = (s, idx) => {
                             const app = appForSeminar(s);
+                            const ended = isSeminarEnded(s);
                             return (
                                 <li key={s.id || idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:bg-gray-50 transition-all">
                                     <div>
                                         <div className="font-medium text-gray-900 text-base mb-1">{s.title}</div>
                                         <div className="text-xs text-gray-500">{s.date} · {s.location}</div>
                                     </div>
-                                    <div className="flex gap-3 items-center">
+                                    <div className="flex gap-3 items-center flex-wrap justify-end">
                                         <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1 font-medium">신청완료</span>
                                         {app?.id && onUpdateApplication ? (
                                             <button
@@ -581,11 +608,28 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                 신청 내용 정정
                                             </button>
                                         ) : null}
-                                        <button type="button" onClick={() => {
-                                            if (confirm("세미나 신청을 취소하시겠습니까?")) {
-                                                if (onCancelSeminar) onCancelSeminar(s.id);
-                                            }
-                                        }} className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1 border border-blue-300 hover:bg-gray-50 transition-colors">취소</button>
+                                        {ended && onWriteReview ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => onWriteReview(s)}
+                                                className="text-xs text-emerald-700 hover:text-emerald-800 px-3 py-1 border border-emerald-400 hover:bg-emerald-50 transition-colors font-medium"
+                                            >
+                                                후기 작성
+                                            </button>
+                                        ) : null}
+                                        {!ended && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (confirm("세미나 신청을 취소하시겠습니까?")) {
+                                                        if (onCancelSeminar) onCancelSeminar(s.id);
+                                                    }
+                                                }}
+                                                className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1 border border-blue-300 hover:bg-gray-50 transition-colors"
+                                            >
+                                                취소
+                                            </button>
+                                        )}
                                     </div>
                                 </li>
                             );
