@@ -17,6 +17,16 @@ const MEMBER_GRADE_OPTIONS = [
 ];
 const GRADE_PRIORITY = { 마스터: 0, 운영진: 1, 파트너사: 2, 사업자: 3, 예창: 4, 대기자: 5 };
 
+const VALID_MEMBER_GRADES = new Set(MEMBER_GRADE_OPTIONS.map((o) => o.value).filter(Boolean));
+
+/** 통계·정렬: 화면상 '등급 없음'(빈 값 등)과 옵션에 없는 값은 '대기자'와 동일하게 취급 */
+function gradeBucketForStats(memberGrade) {
+  const t = String(memberGrade ?? '').trim();
+  if (!t || t === '등급 없음' || t === '등급없음') return '대기자';
+  if (VALID_MEMBER_GRADES.has(t)) return t;
+  return '대기자';
+}
+
 /** 등급별 통계 카드 배경/텍스트 색상 (한눈에 구분) */
 const GRADE_STYLES = {
   '': 'bg-gray-100 text-gray-700 border-gray-200',
@@ -314,8 +324,8 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
         return 0;
       }
       if (k === 'memberGrade') {
-        const g = (u.memberGrade || '').toString().trim();
-        return GRADE_PRIORITY[g] ?? 99;
+        const b = gradeBucketForStats(u.memberGrade);
+        return GRADE_PRIORITY[b] ?? 5;
       }
       return (u[k] || '').toString().trim().toLowerCase();
     };
@@ -339,18 +349,12 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
     return sortedUsers.slice(start, start + PAGE_SIZE);
   }, [sortedUsers, currentPage]);
 
-  /** 등급별 인원 수 (memberGrade 기준, role 사용 안 함) */
+  /** 등급별 인원 수 (memberGrade 기준, role 사용 안 함). '등급 없음'·미지정·알 수 없는 값 → 대기자에 합산 */
   const gradeCounts = React.useMemo(() => {
-    const counts = { 마스터: 0, 운영진: 0, 파트너사: 0, 사업자: 0, 예창: 0, 대기자: 0, '등급 없음': 0 };
+    const counts = { 마스터: 0, 운영진: 0, 파트너사: 0, 사업자: 0, 예창: 0, 대기자: 0 };
     users.forEach((u) => {
-      const g = String(u.memberGrade ?? '').trim();
-      if (g === '') {
-        counts['등급 없음'] += 1;
-      } else if (counts[g] !== undefined) {
-        counts[g] += 1;
-      } else {
-        counts['등급 없음'] += 1;
-      }
+      const b = gradeBucketForStats(u.memberGrade);
+      counts[b] += 1;
     });
     return counts;
   }, [users]);
