@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { getApiBaseUrl } from '../../../utils/api';
+import {
+  ADMIN_HIDDEN_APPLICATIONS_KEY,
+  ADMIN_HIDDEN_APPLICATIONS_CHANGED,
+  readAdminHiddenEntries,
+  writeAdminHiddenEntries,
+  notifyAdminHiddenApplicationsChanged,
+  collectProgramSeminarKeys,
+} from '../../../utils/adminHiddenApplications';
 import { calculateStatus } from '../../../utils';
 import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
@@ -73,27 +81,6 @@ const applicantDocTime = (app) => {
   return 0;
 };
 
-/**
- * 프로그램 문서의 식별자 후보.
- * - 집계 기준은 항상 Firestore 문서 ID(seminarDocumentId / id) 우선.
- * - 본문에 남은 seminarId·programId 등은 과거 신청 건과의 호환용(수정으로 필드가 바뀌어도 문서 ID로 맞춤).
- */
-const collectProgramSeminarKeys = (program) => {
-  const keys = new Set();
-  const add = (v) => {
-    const s = toSeminarId(v);
-    if (s) keys.add(s);
-  };
-  if (!program) return keys;
-  add(program.seminarDocumentId);
-  add(program.id);
-  add(program.seminarId);
-  add(program.programId);
-  add(program.seminar_id);
-  add(program.program_id);
-  return keys;
-};
-
 const applicationMatchesProgram = (program, app) => {
   const keys = collectProgramSeminarKeys(program);
   if (keys.size === 0) return false;
@@ -140,9 +127,27 @@ export const ProgramManagement = () => {
   const [applicantModalDataLoading, setApplicantModalDataLoading] = useState(false);
   const [recoverMerchantUid, setRecoverMerchantUid] = useState('');
   const [recoverLoading, setRecoverLoading] = useState(false);
-  const [adminDeletingApplicationId, setAdminDeletingApplicationId] = useState(null);
+  const [hiddenEntriesState, setHiddenEntriesState] = useState(() => readAdminHiddenEntries());
   const [isClosingPast, setIsClosingPast] = useState(false);
   const [closingRecruitmentId, setClosingRecruitmentId] = useState(null);
+
+  const hiddenApplicationIdSet = useMemo(
+    () => new Set(hiddenEntriesState.map((e) => e.applicationId)),
+    [hiddenEntriesState]
+  );
+
+  useEffect(() => {
+    const sync = () => setHiddenEntriesState(readAdminHiddenEntries());
+    window.addEventListener(ADMIN_HIDDEN_APPLICATIONS_CHANGED, sync);
+    const onStorage = (e) => {
+      if (e.key === ADMIN_HIDDEN_APPLICATIONS_KEY) sync();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(ADMIN_HIDDEN_APPLICATIONS_CHANGED, sync);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
 
   /** 신청자 명단용 회원·applications 갱신 (결제대기 pendingPayments는 관리 화면에 노출하지 않음) */
   const loadApplicantModalData = useCallback(async () => {
@@ -240,61 +245,49 @@ export const ProgramManagement = () => {
     }
   };
 
-  /** 관리자: 신청 1건을 명단에서 삭제 (Functions Admin API, 정원 집계 1 감소) */
-  const handleAdminRemoveApplicant = useCallback(
-    async (applicationId, displayName) => {
-      if (!applicationId) return;
-      const base = (getApiBaseUrl() || '').replace(/\/$/, '');
-      if (!base) {
-        alert('API URL이 설정되지 않았습니다. .env의 VITE_API_URL을 확인하세요.');
-        return;
-      }
-      const nameHint = (displayName || '').trim() || '해당 신청';
-      if (
-        !window.confirm(
-          `「${nameHint}」을(를) 명단에서 삭제합니다.\n\n• Firestore 신청 문서가 삭제되고, 이 프로그램의 참가 집계(currentParticipants)가 1 줄어듭니다.\n• 결제 환불은 자동으로 되지 않습니다.\n\n계속할까요?`
-        )
-      ) {
-        return;
-      }
-      setAdminDeletingApplicationId(applicationId);
-      try {
-        const res = await fetch(`${base}/api/admin/delete-application`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ application_id: applicationId })
-        });
-        const data = await res.json().catch(() => ({}));
-        if (res.ok && data.success) {
-          await loadPrograms();
-          await loadApplicantModalData();
-          alert('명단에서 제거되었습니다.');
-        } else {
-          alert(
-            data.error === 'application_not_found'
-              ? '이미 삭제되었거나 찾을 수 없는 신청입니다.'
-              : data.error || '삭제에 실패했습니다. Functions 배포를 확인하세요.'
-          );
-        }
-      } catch (e) {
-        alert('요청 실패: ' + (e.message || '네트워크 오류'));
-      } finally {
-        setAdminDeletingApplicationId(null);
-      }
-    },
-    [loadApplicantModalData, loadPrograms]
-  );
+  /** 관리자: 이 브라우저의 명단·CSV·인원·홈 집계에서만 숨김 (DB·환불 불변) */
+  const handleAdminRemoveApplicant = useCallback((applicationId, displayName, program) => {
+    if (!applicationId) return;
+    const nameHint = (displayName || '').trim() || '해당 신청';
+    if (
+      !window.confirm(
+        `「${nameHint}」을(를) 이 관리 화면에서만 숨깁니다.\n\n• Firestore 신청 데이터는 바뀌지 않습니다.\n• 홈·프로그램 목록의 신청 인원 표시는 이 브라우저에서만 줄어 보입니다.\n• CSV·붙여넣기에도 나오지 않습니다.\n\n계속할까요?`
+      )
+    ) {
+      return;
+    }
+    const idStr = String(applicationId);
+    const programKeys = [...collectProgramSeminarKeys(program)];
+    setHiddenEntriesState((prev) => {
+      if (prev.some((e) => e.applicationId === idStr)) return prev;
+      const next = [...prev, { applicationId: idStr, programKeys }];
+      writeAdminHiddenEntries(next);
+      notifyAdminHiddenApplicationsChanged();
+      return next;
+    });
+  }, []);
 
-  /** 프로그램별 신청 건수 — Firestore applications만 (결제대기는 UI·집계에서 제외) */
+  const clearAllHiddenApplicants = useCallback(() => {
+    if (!window.confirm('이 브라우저에서 숨긴 신청을 모두 다시 보이게 할까요?')) return;
+    setHiddenEntriesState([]);
+    writeAdminHiddenEntries([]);
+    notifyAdminHiddenApplicationsChanged();
+  }, []);
+
+  /** 프로그램별 신청 건수 — Firestore applications만 (결제대기·관리자 숨김 제외) */
   const applicationCountByProgramId = useMemo(() => {
     const map = {};
     (programs || []).forEach((p) => {
       if (p.id == null) return;
       const pid = String(p.id);
-      map[pid] = (applications || []).filter((app) => applicationMatchesProgram(p, app)).length;
+      map[pid] = (applications || []).filter(
+        (app) =>
+          applicationMatchesProgram(p, app) &&
+          !(app.id != null && hiddenApplicationIdSet.has(String(app.id)))
+      ).length;
     });
     return map;
-  }, [applications, programs]);
+  }, [applications, programs, hiddenApplicationIdSet]);
 
   /** 검색어로 필터 + 정렬된 목록 */
   const filteredAndSortedPrograms = useMemo(() => {
@@ -1030,6 +1023,7 @@ export const ProgramManagement = () => {
         const programIdNorm = toSeminarId(applicantModalProgram.id);
         const list = (applications || [])
           .filter((app) => applicationMatchesProgram(applicantModalProgram, app))
+          .filter((app) => !(app.id != null && hiddenApplicationIdSet.has(String(app.id))))
           .sort((a, b) => applicantDocTime(b) - applicantDocTime(a));
         const userMap = {};
         const userMapByEmail = {};
@@ -1186,8 +1180,15 @@ export const ProgramManagement = () => {
                     반영
                   </button>
                   <span className="hidden lg:inline-block w-px h-8 bg-gray-200 shrink-0 mx-1" aria-hidden="true" />
-                  <span className="text-xs text-gray-500 shrink-0 max-w-[12rem] lg:max-w-none leading-snug">
-                    행의 「명단에서 제거」로 신청 삭제·정원 반영 (환불은 별도)
+                  <button
+                    type="button"
+                    onClick={clearAllHiddenApplicants}
+                    className="px-3 py-2 text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 shrink-0"
+                  >
+                    숨김 전체 해제
+                  </button>
+                  <span className="text-xs text-gray-500 shrink-0 max-w-[14rem] lg:max-w-none leading-snug">
+                    「명단에서 제거」는 이 브라우저만 반영 (홈·목록 인원 표시 포함, DB 미삭제)
                   </span>
                 </div>
                 <div className="flex-1 min-h-0 overflow-auto p-4">
@@ -1244,11 +1245,11 @@ export const ProgramManagement = () => {
                                 <td className="px-2 py-2 align-top sticky right-0 bg-white z-[1] border-l border-blue-100 shadow-[-6px_0_10px_-6px_rgba(0,0,0,0.12)]">
                                   <button
                                     type="button"
-                                    disabled={!app.id || adminDeletingApplicationId === app.id}
-                                    onClick={() => handleAdminRemoveApplicant(app.id, rowLabel)}
+                                    disabled={!app.id}
+                                    onClick={() => handleAdminRemoveApplicant(app.id, rowLabel, applicantModalProgram)}
                                     className="text-xs font-bold text-red-600 hover:text-red-800 px-2 py-1.5 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 whitespace-nowrap"
                                   >
-                                    {adminDeletingApplicationId === app.id ? '처리 중…' : '명단에서 제거'}
+                                    명단에서 제거
                                   </button>
                                   {app.id ? (
                                     <div className="text-[10px] text-gray-400 mt-1 font-mono break-all max-w-[8.5rem]" title={app.id}>

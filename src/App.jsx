@@ -45,6 +45,12 @@ import ModalPortal from './components/ModalPortal';
 import { KakaoMapModal } from './pages/Admin/components/KakaoMapModal';
 import { DONATION_FEATURE_DISABLED, POPUP_AS_NEW_WINDOW, BUSAN_DISTRICTS, PARTNER_LOGOS, PARTNER_NAMES } from './constants/appConstants';
 import { filterApprovedMembers, getCategoryColor, isDeadlineSoon } from './appHelpers';
+import {
+    ADMIN_HIDDEN_APPLICATIONS_KEY,
+    ADMIN_HIDDEN_APPLICATIONS_CHANGED,
+    readAdminHiddenEntries,
+    applyAdminHiddenToSeminarsList,
+} from './utils/adminHiddenApplications';
 import { LoginModal } from './components/LoginModal';
 import { MobileMenu } from './components/MobileMenu';
 
@@ -315,6 +321,58 @@ const App = () => {
     const programDragRef = useRef({ active: false, startX: 0, startOffset: 0, hasMoved: false });
     const lastUnknownViewLoggedRef = useRef(null);
 
+    const [adminHiddenRevision, setAdminHiddenRevision] = useState(0);
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+        const bump = () => setAdminHiddenRevision((n) => n + 1);
+        const onStorage = (e) => {
+            if (e.key === ADMIN_HIDDEN_APPLICATIONS_KEY) bump();
+        };
+        window.addEventListener('storage', onStorage);
+        window.addEventListener(ADMIN_HIDDEN_APPLICATIONS_CHANGED, bump);
+        return () => {
+            window.removeEventListener('storage', onStorage);
+            window.removeEventListener(ADMIN_HIDDEN_APPLICATIONS_CHANGED, bump);
+        };
+    }, []);
+
+    const adminHiddenEntries = useMemo(() => readAdminHiddenEntries(), [adminHiddenRevision]);
+
+    const needsHiddenAppBackfill = useMemo(
+        () => adminHiddenEntries.some((e) => !e.programKeys?.length),
+        [adminHiddenEntries]
+    );
+
+    const [applicationsMapForHidden, setApplicationsMapForHidden] = useState({});
+    useEffect(() => {
+        if (!needsHiddenAppBackfill) {
+            setApplicationsMapForHidden({});
+            return undefined;
+        }
+        let cancelled = false;
+        (async () => {
+            try {
+                const apps = await firebaseService.getApplications();
+                if (cancelled) return;
+                const m = {};
+                for (const a of apps || []) {
+                    if (a?.id != null) m[String(a.id)] = a;
+                }
+                setApplicationsMapForHidden(m);
+            } catch {
+                if (!cancelled) setApplicationsMapForHidden({});
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [needsHiddenAppBackfill, adminHiddenRevision]);
+
+    const seminarsDataPublic = useMemo(
+        () => applyAdminHiddenToSeminarsList(seminarsData, adminHiddenEntries, applicationsMapForHidden),
+        [seminarsData, adminHiddenEntries, applicationsMapForHidden]
+    );
+
     // 프로그램 자동 흐름 애니메이션 (250초 주기) + 드래그 시 일시 정지
     useEffect(() => {
         programScrollOffsetRef.current = programScrollOffset;
@@ -502,10 +560,10 @@ const App = () => {
     
     // 홈 + 세미나 데이터 있을 때 팝업 후보 이미지 미리 preload (팝업 표시 전에 캐시 적재)
     useEffect(() => {
-        if (currentView !== 'home' || !seminarsData?.length) return;
+        if (currentView !== 'home' || !seminarsDataPublic?.length) return;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const upcoming = seminarsData
+        const upcoming = seminarsDataPublic
             .filter(s => s.status !== '종료')
             .map(s => {
                 const matches = s.date ? s.date.match(/(\d{4})[\.-](\d{2})[\.-](\d{2})/) : null;
@@ -529,7 +587,7 @@ const App = () => {
                 img.src = p.img;
             }
         });
-    }, [currentView, seminarsData]);
+    }, [currentView, seminarsDataPublic]);
 
     // 메인페이지 진입 시 다가오는 프로그램 팝업 표시 (최대 3개). 신청 여부와 관계없이 표시, 재진입/일정시간 후 다시 표시.
     useEffect(() => {
@@ -547,7 +605,7 @@ const App = () => {
         } catch (error) {
         }
 
-        if (currentView === 'home' && seminarsData.length > 0) {
+        if (currentView === 'home' && seminarsDataPublic.length > 0) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             // date가 문자열 또는 Timestamp/Date 객체 모두 처리
@@ -564,7 +622,7 @@ const App = () => {
                 const d = new Date(year, month, day);
                 return isNaN(d.getTime()) ? null : d;
             };
-            const upcomingSeminars = seminarsData
+            const upcomingSeminars = seminarsDataPublic
                 .filter(s => s.status !== '종료')
                 .map(s => {
                     const seminarDate = toDateObj(s.date);
@@ -613,7 +671,7 @@ const App = () => {
                 setPopupPrograms([]);
             }
         }
-    }, [currentView, seminarsData, mySeminars]);
+    }, [currentView, seminarsDataPublic, mySeminars]);
     
     // Load members from Firebase (우선 사용 - 애드민과 동기화)
     useEffect(() => {
@@ -1921,8 +1979,10 @@ const App = () => {
             if (firebaseService?.incrementSeminarParticipants) {
                 await firebaseService.incrementSeminarParticipants(seminar.id, 1);
             } else if (firebaseService?.updateSeminar) {
+                const raw = (seminarsData || []).find((s) => String(s.id) === String(seminar.id));
+                const base = Number((raw ?? seminar).currentParticipants) || 0;
                 await firebaseService.updateSeminar(seminar.id, {
-                    currentParticipants: (seminar.currentParticipants || 0) + 1
+                    currentParticipants: base + 1
                 });
             }
         } catch (error) {
@@ -2388,11 +2448,11 @@ END:VCALENDAR`;
 
     const handleSearch = () => {
         if (!searchKeyword && !searchStatus && !searchCategory && (!searchDistrict || searchDistrict === '전체')) {
-            setSearchResults(seminarsData);
+            setSearchResults(seminarsDataPublic);
             setIsSearchExpanded(true);
             return;
         }
-        const results = seminarsData.filter(seminar => {
+        const results = seminarsDataPublic.filter(seminar => {
             const text = (seminar.title + seminar.desc).toLowerCase();
             const matchKeyword = !searchKeyword || text.includes(searchKeyword.toLowerCase());
             const matchStatus = !searchStatus || seminar.status === searchStatus;
@@ -2616,7 +2676,7 @@ END:VCALENDAR`;
             const programApplyMatch = location.pathname.match(/^\/program\/apply\/([^/]+)/);
             if (programApplyMatch) {
                 const programId = programApplyMatch[1];
-                const safeSeminars = Array.isArray(seminarsData) ? seminarsData : [];
+                const safeSeminars = Array.isArray(seminarsDataPublic) ? seminarsDataPublic : [];
                 const isTestRoute = programId === 'test';
                 const program = isTestRoute
                     ? {
@@ -2746,8 +2806,8 @@ END:VCALENDAR`;
         }
         if (currentView === 'allSeminars') {
             try {
-                // seminarsData가 undefined나 null인 경우 빈 배열로 처리
-                const safeSeminarsData = Array.isArray(seminarsData) ? seminarsData : [];
+                // seminarsDataPublic: 관리자 숨김 반영된 신청 인원으로 목록 표시
+                const safeSeminarsData = Array.isArray(seminarsDataPublic) ? seminarsDataPublic : [];
                 
                 return <AllSeminarsView 
                     key="programList"
@@ -2843,7 +2903,7 @@ END:VCALENDAR`;
                 onDelete={handleCommunityDelete} 
                 currentUser={currentUser} 
                 onNotifyAdmin={handleNotifyAdmin} 
-                seminars={seminarsData} 
+                seminars={seminarsDataPublic} 
                 setShowLoginModal={setShowLoginModal} 
                 pageTitles={pageTitles} 
                 menuNames={menuNames} 
@@ -3138,7 +3198,7 @@ END:VCALENDAR`;
                 {/* ============================================
                     📍 프로그램 (자동 흐름 + 드래그 스크롤, 클릭 시 신청 페이지 이동)
                     ============================================ */}
-                {menuEnabled['프로그램'] && Array.isArray(seminarsData) && seminarsData.length > 0 ? (
+                {menuEnabled['프로그램'] && Array.isArray(seminarsDataPublic) && seminarsDataPublic.length > 0 ? (
                 <section className="py-12 md:py-20 px-6 overflow-hidden">
                     <div className="container mx-auto max-w-7xl">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 md:mb-10 gap-4">
@@ -3161,7 +3221,7 @@ END:VCALENDAR`;
                                 className="flex gap-6 w-max"
                                 style={{ transform: `translateX(${programScrollOffset}px)` }}
                             >
-                                {[...seminarsData, ...seminarsData].map((seminar, idx) => {
+                                {[...seminarsDataPublic, ...seminarsDataPublic].map((seminar, idx) => {
                                     const img = (seminar.images && seminar.images[0]) || (seminar.imageUrls && seminar.imageUrls[0]) || seminar.imageUrl || seminar.img;
                                     const fee = seminar.applicationFee != null ? Number(seminar.applicationFee) : 0;
                                     const price = seminar.price != null ? Number(seminar.price) : 0;
@@ -3320,7 +3380,7 @@ END:VCALENDAR`;
     if (location.pathname === '/program-popup') {
         return (
             <ProgramPopupWindowView
-                seminarsData={seminarsData}
+                seminarsData={seminarsDataPublic}
                 appliedProgramIds={new Set((mySeminars || []).map(m => String(m.id)).filter(Boolean))}
             />
         );
