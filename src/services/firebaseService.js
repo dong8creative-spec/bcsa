@@ -14,7 +14,8 @@ import {
   writeBatch,
   setDoc,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  increment
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import app, { db } from '../firebase';
@@ -269,7 +270,8 @@ export const firebaseService = {
   async getSeminars() {
     try {
       const snapshot = await getDocs(collection(db, 'seminars'));
-      const seminars = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // 문서 필드에 id가 있으면 ...data()가 덮어써서 신청(seminarId)과 불일치 → id는 항상 문서 ID
+      const seminars = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
       console.log('📖 Firebase getSeminars 성공:', {
         count: seminars.length,
         sample: seminars.length > 0 ? {
@@ -292,7 +294,7 @@ export const firebaseService = {
       const docRef = doc(db, 'seminars', seminarId);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() };
+        return { ...docSnap.data(), id: docSnap.id };
       }
       return null;
     } catch (error) {
@@ -312,9 +314,10 @@ export const firebaseService = {
         }
       });
       
-      // Firestore에 저장할 데이터 준비
+      // Firestore에 저장할 데이터 준비 (id는 문서 ID로만 쓰고 필드로 저장하지 않음)
+      const { id: _omitSeminarId, ...seminarFields } = seminarData || {};
       const dataToSave = {
-        ...seminarData,
+        ...seminarFields,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
@@ -359,9 +362,9 @@ export const firebaseService = {
         }
       });
       
-      // Firestore에 저장할 데이터 준비
+      const { id: _omitSeminarId, ...seminarFields } = seminarData || {};
       const dataToSave = {
-        ...seminarData,
+        ...seminarFields,
         updatedAt: serverTimestamp()
       };
       
@@ -394,6 +397,23 @@ export const firebaseService = {
     }
   },
 
+  /** 신청 1건 반영 시 currentParticipants를 원자적으로 증가 (클라이언트에 낡은 currentParticipants가 있어도 누락 방지) */
+  async incrementSeminarParticipants(seminarId, delta = 1) {
+    if (seminarId == null || seminarId === '') return;
+    const n = Number(delta);
+    if (!Number.isFinite(n) || n === 0) return;
+    try {
+      const docRef = doc(db, 'seminars', String(seminarId));
+      await updateDoc(docRef, {
+        currentParticipants: increment(n),
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('incrementSeminarParticipants failed:', error);
+      throw error;
+    }
+  },
+
   async deleteSeminar(seminarId) {
     try {
       await deleteDoc(doc(db, 'seminars', seminarId));
@@ -405,7 +425,7 @@ export const firebaseService = {
 
   subscribeSeminars(callback) {
     return onSnapshot(collection(db, 'seminars'), (snapshot) => {
-      const seminars = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const seminars = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
       callback(seminars);
     });
   },
@@ -497,28 +517,21 @@ export const firebaseService = {
   // Applications Collection
   // ==========================================
   async getApplications() {
+    // orderBy('createdAt')는 해당 필드가 없는 문서를 쿼리 결과에서 빼므로 사용하지 않음(누락 방지).
     try {
-      const q = query(collection(db, 'applications'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+      const snapshot = await getDocs(collection(db, 'applications'));
+      const list = snapshot.docs.map((d) => ({ ...d.data(), id: d.id }));
+      const toMs = (v) => {
+        if (!v) return 0;
+        if (v.toMillis && typeof v.toMillis === 'function') return v.toMillis();
+        if (v.seconds != null) return v.seconds * 1000;
+        return new Date(v).getTime() || 0;
+      };
+      list.sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt));
+      return list;
     } catch (error) {
-      // orderBy 인덱스 미설정 시 폴백: 인덱스 없이 전체 조회 후 메모리에서 정렬
-      console.warn('getApplications orderBy 실패, 전체 조회 후 정렬:', error?.message);
-      try {
-        const snapshot = await getDocs(collection(db, 'applications'));
-        const list = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
-        const toMs = (v) => {
-          if (!v) return 0;
-          if (v.toMillis && typeof v.toMillis === 'function') return v.toMillis();
-          if (v.seconds != null) return v.seconds * 1000;
-          return new Date(v).getTime() || 0;
-        };
-        list.sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt));
-        return list;
-      } catch (fallbackError) {
-        console.error('Error getting applications (fallback):', fallbackError);
-        throw fallbackError;
-      }
+      console.error('Error getting applications:', error);
+      throw error;
     }
   },
 
@@ -710,10 +723,16 @@ export const firebaseService = {
   },
 
   subscribeApplications(callback) {
-    const q = query(collection(db, 'applications'), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snapshot) => {
-      const applications = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
-      callback(applications);
+    const toMs = (v) => {
+      if (!v) return 0;
+      if (v.toMillis && typeof v.toMillis === 'function') return v.toMillis();
+      if (v.seconds != null) return v.seconds * 1000;
+      return new Date(v).getTime() || 0;
+    };
+    return onSnapshot(collection(db, 'applications'), (snapshot) => {
+      const list = snapshot.docs.map((d) => ({ ...d.data(), id: d.id }));
+      list.sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt));
+      callback(list);
     });
   },
 

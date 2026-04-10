@@ -66,11 +66,39 @@ const toSeminarId = (v) => {
   return String(v).trim();
 };
 
-/** 두 id가 같은 프로그램을 가리키는지 비교 */
-const seminarIdsMatch = (programIdNorm, app) => {
-  const s1 = toSeminarId(app.seminarId);
-  const s2 = toSeminarId(app.programId);
-  return s1 === programIdNorm || s2 === programIdNorm;
+const applicantDocTime = (app) => {
+  const c = app?.createdAt;
+  if (c && typeof c.toMillis === 'function') return c.toMillis();
+  if (c?.seconds != null) return c.seconds * 1000;
+  return 0;
+};
+
+/**
+ * 프로그램 문서의 식별자 후보 (항상 Firestore 문서 id + 본문에 남아 있을 수 있는 seminarId/programId).
+ * 예전에 본문 `id` 필드가 문서 id를 덮어쓴 경우에도 신청(seminarId)과 맞출 수 있음.
+ */
+const collectProgramSeminarKeys = (program) => {
+  const keys = new Set();
+  const add = (v) => {
+    const s = toSeminarId(v);
+    if (s) keys.add(s);
+  };
+  if (!program) return keys;
+  add(program.id);
+  add(program.seminarId);
+  add(program.programId);
+  return keys;
+};
+
+const applicationMatchesProgram = (program, app) => {
+  const keys = collectProgramSeminarKeys(program);
+  if (keys.size === 0) return false;
+  const cand = [
+    toSeminarId(app.seminarId),
+    toSeminarId(app.programId),
+    toSeminarId(app.seminar_id),
+  ].filter(Boolean);
+  return cand.some((c) => keys.has(c));
 };
 
 /**
@@ -105,12 +133,12 @@ export const ProgramManagement = () => {
   const [applicantModalProgram, setApplicantModalProgram] = useState(null);
   const [applicantModalUsers, setApplicantModalUsers] = useState([]);
   const [applicantModalDataLoading, setApplicantModalDataLoading] = useState(false);
-  const [promotePendingId, setPromotePendingId] = useState('');
-  const [promotePendingLoading, setPromotePendingLoading] = useState(false);
+  const [recoverMerchantUid, setRecoverMerchantUid] = useState('');
+  const [recoverLoading, setRecoverLoading] = useState(false);
   const [isClosingPast, setIsClosingPast] = useState(false);
   const [closingRecruitmentId, setClosingRecruitmentId] = useState(null);
 
-  /** 신청자 명단용 회원·신청 목록 최신 조회 (결제 완료된 applications만 사용, 결제대기 제외) */
+  /** 신청자 명단용 회원·applications 갱신 (결제대기 pendingPayments는 관리 화면에 노출하지 않음) */
   const loadApplicantModalData = useCallback(async () => {
     setApplicantModalDataLoading(true);
     try {
@@ -121,25 +149,35 @@ export const ProgramManagement = () => {
       setApplicantModalUsers(Array.isArray(users) ? users : []);
       setApplications(Array.isArray(apps) ? apps : []);
     } catch (e) {
+      console.error('신청자 명단 보조 데이터 로드 오류:', e);
       setApplicantModalUsers([]);
+      try {
+        const appsOnly = await (firebaseService.getApplications?.() ?? Promise.resolve([]));
+        setApplications(Array.isArray(appsOnly) ? appsOnly : []);
+      } catch (_) {
+        /* 유지 */
+      }
     } finally {
       setApplicantModalDataLoading(false);
     }
   }, []);
 
-  /** 결제대기(pendingPayments) 문서를 신청(applications)으로 편입 */
-  const handlePromotePendingToApplication = useCallback(async () => {
+  /**
+   * PG에서는 승인됐는데 웹훅 등으로 applications에 안 올라간 경우:
+   * Firestore pendingPayments에 남아 있으면 해당 주문번호로 신청 문서 생성(기존 API).
+   */
+  const handleRecoverPaidApplication = useCallback(async () => {
     const base = (getApiBaseUrl() || '').replace(/\/$/, '');
     if (!base) {
       alert('API URL이 설정되지 않았습니다. .env의 VITE_API_URL을 확인하세요.');
       return;
     }
-    const merchantUid = (promotePendingId || '').trim();
+    const merchantUid = (recoverMerchantUid || '').trim();
     if (!merchantUid) {
-      alert('결제대기 문서 ID(merchant_uid)를 입력하세요.');
+      alert('PG 주문번호(merchant_uid, 예: p_mnr9llde_ayoufi)를 입력하세요.');
       return;
     }
-    setPromotePendingLoading(true);
+    setRecoverLoading(true);
     try {
       const res = await fetch(`${base}/api/admin/application-from-pending`, {
         method: 'POST',
@@ -148,17 +186,23 @@ export const ProgramManagement = () => {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
-        alert('편입되었습니다. 목록을 새로고침합니다.');
+        alert('신청으로 반영되었습니다.');
+        setRecoverMerchantUid('');
+        await loadPrograms();
         await loadApplicantModalData();
       } else {
-        alert(data.error || '편입에 실패했습니다.');
+        alert(
+          data.error === 'pending_not_found'
+            ? '해당 주문의 결제대기 데이터가 없습니다. 이미 반영됐거나 결제 전 단계에서 저장되지 않은 경우일 수 있습니다.'
+            : (data.error || '반영에 실패했습니다.')
+        );
       }
     } catch (e) {
       alert('요청 실패: ' + (e.message || '네트워크 오류'));
     } finally {
-      setPromotePendingLoading(false);
+      setRecoverLoading(false);
     }
-  }, [promotePendingId, loadApplicantModalData]);
+  }, [recoverMerchantUid, loadApplicantModalData]);
 
   useEffect(() => {
     loadPrograms();
@@ -190,19 +234,16 @@ export const ProgramManagement = () => {
     }
   };
 
-  /** 프로그램별 신청 수 (seminarId / programId 둘 다 반영, 동일 id는 한 번만 카운트) */
-  const applicationCountBySeminarId = useMemo(() => {
+  /** 프로그램별 신청 건수 — Firestore applications만 (결제대기는 UI·집계에서 제외) */
+  const applicationCountByProgramId = useMemo(() => {
     const map = {};
-    (applications || []).forEach((app) => {
-      const s1 = toSeminarId(app.seminarId);
-      const s2 = toSeminarId(app.programId);
-      const ids = new Set();
-      if (s1) ids.add(s1);
-      if (s2) ids.add(s2);
-      ids.forEach((sid) => { map[sid] = (map[sid] || 0) + 1; });
+    (programs || []).forEach((p) => {
+      if (p.id == null) return;
+      const pid = String(p.id);
+      map[pid] = (applications || []).filter((app) => applicationMatchesProgram(p, app)).length;
     });
     return map;
-  }, [applications]);
+  }, [applications, programs]);
 
   /** 검색어로 필터 + 정렬된 목록 */
   const filteredAndSortedPrograms = useMemo(() => {
@@ -218,7 +259,7 @@ export const ProgramManagement = () => {
         return title.includes(q) || desc.includes(q) || category.includes(q) || location.includes(q) || date.includes(q);
       });
     }
-    const countMap = applicationCountBySeminarId;
+    const countMap = applicationCountByProgramId;
     const sorted = [...list].sort((a, b) => {
       const aId = a.id != null ? String(a.id) : '';
       const bId = b.id != null ? String(b.id) : '';
@@ -236,7 +277,7 @@ export const ProgramManagement = () => {
       }
     });
     return sorted;
-  }, [programs, searchQuery, sortBy, applicationCountBySeminarId]);
+  }, [programs, searchQuery, sortBy, applicationCountByProgramId]);
 
   /** 지난 프로그램 (행사 일자가 오늘 이전인 프로그램) */
   const pastPrograms = useMemo(() => {
@@ -546,7 +587,7 @@ export const ProgramManagement = () => {
           <Icons.Calendar size={24} className="sm:w-7 sm:h-7 flex-shrink-0" />
           <span className="truncate">프로그램 관리</span>
         </h2>
-        <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
+        <div className="flex flex-wrap items-center gap-2 flex-shrink-0 min-w-0 justify-end">
           <button
             onClick={loadPrograms}
             className="px-3 py-2 sm:px-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base whitespace-nowrap"
@@ -600,6 +641,7 @@ export const ProgramManagement = () => {
           </div>
         ) : (
           displayPrograms.map((program) => {
+            const appCount = applicationCountByProgramId[String(program.id)] ?? 0;
             const thumb = normalizeImageItem(program.images?.[0]) || program.imageUrls?.[0] || program.imageUrl;
             const displayStatus = program.recruitmentClosedByAdmin ? '모집중단' : (program.status || calculateStatus(program.date || ''));
             const canToggleRecruitment = parseDateForSort(program.date) >= getTodayStart();
@@ -637,9 +679,13 @@ export const ProgramManagement = () => {
                   {program.capacity && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Icons.Users size={16} />
-                      <span>{program.capacity}명</span>
+                      <span>정원 {program.capacity}명</span>
                     </div>
                   )}
+                  <div className="flex items-center gap-2 text-sm font-bold text-green-700">
+                    <Icons.Users size={16} />
+                    <span>신청 건수 {appCount}건</span>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2 w-full">
                   <button
@@ -931,7 +977,9 @@ export const ProgramManagement = () => {
       {/* 신청자명단 모달 */}
       {showApplicantModal && applicantModalProgram && (() => {
         const programIdNorm = toSeminarId(applicantModalProgram.id);
-        const list = (applications || []).filter((app) => seminarIdsMatch(programIdNorm, app));
+        const list = (applications || [])
+          .filter((app) => applicationMatchesProgram(applicantModalProgram, app))
+          .sort((a, b) => applicantDocTime(b) - applicantDocTime(a));
         const userMap = {};
         const userMapByEmail = {};
         const userMapByPhone = {};
@@ -963,7 +1011,6 @@ export const ProgramManagement = () => {
           return String(v);
         };
         const getCell = (val) => (val == null || val === undefined ? '' : String(val).replace(/\n/g, ' ').replace(/"/g, '""'));
-        // 기본 정보(가입 정보) + 세미나 신청 시 항목 (결제 완료된 신청만 표시)
         const headers = [
           '번호', '이름', '닉네임(부청사활동)', '성별', '생년월일', '연락처', '이메일',
           '업종/업태', '협업 업종', '핵심 고객',
@@ -1022,9 +1069,12 @@ export const ProgramManagement = () => {
             <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
               <div className="bg-white rounded-2xl max-w-[78.4rem] w-full max-h-[90vh] flex flex-col shadow-xl">
                 <div className="flex items-center justify-between p-4 border-b border-blue-200">
-                  <h3 className="text-xl font-bold text-dark">
-                    신청자명단: {applicantModalProgram.title || '(제목 없음)'}
-                  </h3>
+                  <div>
+                    <h3 className="text-xl font-bold text-dark">
+                      신청자명단: {applicantModalProgram.title || '(제목 없음)'}
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">신청 {list.length}명</p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => { setShowApplicantModal(false); setApplicantModalProgram(null); }}
@@ -1034,12 +1084,12 @@ export const ProgramManagement = () => {
                     <Icons.X size={24} />
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-2 p-4 border-b border-blue-100">
+                <div className="flex flex-wrap items-center gap-2 p-4 border-b border-blue-100 bg-gray-50/50">
                   <button
                     type="button"
                     onClick={loadApplicantModalData}
                     disabled={applicantModalDataLoading}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2 disabled:opacity-50"
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2 disabled:opacity-50 shrink-0"
                   >
                     {applicantModalDataLoading ? (
                       <span className="inline-block w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
@@ -1049,7 +1099,7 @@ export const ProgramManagement = () => {
                   <button
                     type="button"
                     onClick={handleCsvDownload}
-                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl font-bold hover:bg-blue-200 transition-colors flex items-center gap-2"
+                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl font-bold hover:bg-blue-200 transition-colors flex items-center gap-2 shrink-0"
                   >
                     <Icons.FileText size={18} />
                     CSV 다운로드
@@ -1057,30 +1107,32 @@ export const ProgramManagement = () => {
                   <button
                     type="button"
                     onClick={handleCopyForSheets}
-                    className="px-4 py-2 bg-green-100 text-green-700 rounded-xl font-bold hover:bg-green-200 transition-colors flex items-center gap-2"
+                    className="px-4 py-2 bg-green-100 text-green-700 rounded-xl font-bold hover:bg-green-200 transition-colors flex items-center gap-2 shrink-0"
                   >
                     스프레드시트에 붙여넣기
                   </button>
-                </div>
-                <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-b flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-gray-600">결제대기 → 신청자 편입:</span>
+                  <span className="hidden sm:inline-block w-px h-8 bg-gray-200 shrink-0 mx-1" aria-hidden="true" />
+                  <span className="text-xs text-gray-500 max-w-[14rem] sm:max-w-none leading-snug shrink-0">
+                    PG 승인인데 명단에 없을 때만: 주문번호로 반영
+                  </span>
                   <input
                     type="text"
-                    value={promotePendingId}
-                    onChange={(e) => setPromotePendingId(e.target.value)}
-                    placeholder="merchant_uid (예: p_mmana36j_h0bzdo)"
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm min-w-[200px]"
+                    value={recoverMerchantUid}
+                    onChange={(e) => setRecoverMerchantUid(e.target.value)}
+                    placeholder="주문번호 p_…"
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm min-w-[160px] flex-1 sm:flex-none sm:min-w-[220px] max-w-md"
+                    aria-label="PG 주문번호 merchant_uid"
                   />
                   <button
                     type="button"
-                    onClick={handlePromotePendingToApplication}
-                    disabled={promotePendingLoading}
-                    className="px-4 py-2 bg-amber-100 text-amber-800 rounded-xl font-bold hover:bg-amber-200 transition-colors disabled:opacity-50 flex items-center gap-2"
+                    onClick={handleRecoverPaidApplication}
+                    disabled={recoverLoading}
+                    className="px-4 py-2 bg-slate-100 text-slate-800 rounded-xl font-bold hover:bg-slate-200 transition-colors disabled:opacity-50 flex items-center gap-2 shrink-0"
                   >
-                    {promotePendingLoading ? (
-                      <span className="inline-block w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                    {recoverLoading ? (
+                      <span className="inline-block w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
                     ) : null}
-                    편입 실행
+                    반영
                   </button>
                 </div>
                 <div className="flex-1 min-h-0 overflow-auto p-4">
@@ -1113,7 +1165,7 @@ export const ProgramManagement = () => {
                           {list.map((app, i) => {
                             const user = resolveUser(app);
                             return (
-                              <tr key={app.id || i} className="border-b border-blue-100">
+                              <tr key={app.id ? `${app.id}-${i}` : `row-${i}`} className="border-b border-blue-100">
                                 <td className="px-2 py-2 text-gray-600">{i + 1}</td>
                                 <td className="px-2 py-2">{(user?.name || app.userName || '').trim() || '-'}</td>
                                 <td className="px-2 py-2 text-gray-600">{user?.nickname || '-'}</td>

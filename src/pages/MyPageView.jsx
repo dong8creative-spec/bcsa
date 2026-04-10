@@ -107,7 +107,7 @@ const getTodayStart = () => {
     return t.getTime();
 };
 
-const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApplication, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, onWriteReview, pageTitles, onUpdatePost }) => {
+const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApplication, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, onWithdrawApplicationRecord, onWriteReview, pageTitles, onUpdatePost }) => {
     const [activeTab, setActiveTab] = useState('seminars');
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -617,17 +617,27 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                 후기 작성
                                             </button>
                                         ) : null}
-                                        {!ended && (
+                                        {!ended && onCancelSeminar && (
                                             <button
                                                 type="button"
                                                 onClick={() => {
-                                                    if (confirm("세미나 신청을 취소하시겠습니까?")) {
-                                                        if (onCancelSeminar) onCancelSeminar(s.id);
+                                                    if (window.confirm('신청을 취소합니다.\n유료 프로그램은 결제 취소(환불)를 함께 요청합니다.\n이미 결제만 취소하신 경우에는 옆의 「신청 기록 삭제」를 이용해 주세요.')) {
+                                                        onCancelSeminar(s.id);
                                                     }
                                                 }}
                                                 className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1 border border-blue-300 hover:bg-gray-50 transition-colors"
                                             >
-                                                취소
+                                                신청 취소
+                                            </button>
+                                        )}
+                                        {!ended && onWithdrawApplicationRecord && (
+                                            <button
+                                                type="button"
+                                                title="포트원·카드사에서 결제 취소를 이미 마친 뒤, 사이트에 남은 신청만 지울 때 사용"
+                                                onClick={() => onWithdrawApplicationRecord(s.id)}
+                                                className="text-xs text-amber-800 hover:text-amber-900 px-3 py-1 border border-amber-300 bg-amber-50/80 hover:bg-amber-100 transition-colors font-medium"
+                                            >
+                                                신청 기록 삭제
                                             </button>
                                         )}
                                     </div>

@@ -331,35 +331,101 @@ app.post('/api/admin/application-from-pending', async (req, res) => {
   }
 });
 
-// 결제 취소(환불) API: 신청 취소 시 PortOne 전액 취소 후 application 삭제, 세미나 인원 감소
+// 결제대기(pendingPayments) 전체 삭제 — 클라이언트 Firestore 규칙상 쓰기 불가이므로 Admin SDK로만 처리
+// body: { confirm: 'DELETE_ALL_PENDING' }
+app.post('/api/admin/pending-payments-delete-all', async (req, res) => {
+  try {
+    const confirm = (req.body && req.body.confirm) || '';
+    if (confirm !== 'DELETE_ALL_PENDING') {
+      res.status(400).json({ success: false, error: 'confirmation_required' });
+      return;
+    }
+    const snap = await db.collection('pendingPayments').get();
+    if (snap.empty) {
+      res.status(200).json({ success: true, deleted: 0 });
+      return;
+    }
+    const docs = snap.docs;
+    const maxBatch = 500;
+    let deleted = 0;
+    for (let i = 0; i < docs.length; i += maxBatch) {
+      const batch = db.batch();
+      const chunk = docs.slice(i, i + maxBatch);
+      chunk.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+      deleted += chunk.length;
+    }
+    console.log('[admin] pending-payments-delete-all deleted', deleted);
+    res.status(200).json({ success: true, deleted });
+  } catch (err) {
+    console.error('[pending-payments-delete-all] error', err);
+    res.status(500).json({ success: false, error: err.message || 'server_error' });
+  }
+});
+
+/** 신청 문서 삭제 + 세미나 currentParticipants 감소 (matched: { id, ...data }[]) */
+const removeMatchedApplicationsAndDecrementSeminar = async (matched, seminarIdStr) => {
+  for (const row of matched) {
+    await db.collection('applications').doc(row.id).delete();
+  }
+  const seminarRef = db.collection('seminars').doc(String(seminarIdStr));
+  const seminarSnap = await seminarRef.get();
+  if (seminarSnap.exists) {
+    const prev = Math.max(0, Number(seminarSnap.data()?.currentParticipants) || 0);
+    const next = Math.max(0, prev - matched.length);
+    await seminarRef.update({ currentParticipants: next });
+  }
+};
+
+// 결제 취소(환불) API: 유료는 PortOne 취소 후 삭제. 무료·withdraw_only는 DB만 정리.
+// body.withdraw_only === true 이면 PG 호출 없이 본인 신청 문서만 삭제 (이미 PG에서 취소한 경우 등)
 app.post('/api/payment/cancel', async (req, res) => {
   try {
     const body = req.body || {};
     const userId = body.user_id || body.userId;
     const seminarId = body.seminar_id || body.seminarId;
+    const withdrawOnly = body.withdraw_only === true || body.withdrawOnly === true;
     if (!userId || !seminarId) {
       res.status(400).json({ cancelled: false, error: 'user_id and seminar_id required' });
       return;
     }
 
+    const sid = String(seminarId);
     const appSnap = await db.collection('applications').where('userId', '==', userId).get();
+    const seminarMatches = (data) => {
+      const s1 = data.seminarId != null ? String(data.seminarId) : '';
+      const s2 = data.programId != null ? String(data.programId) : '';
+      const s3 = data.seminar_id != null ? String(data.seminar_id) : '';
+      return s1 === sid || s2 === sid || s3 === sid;
+    };
     const matched = appSnap.docs
-      .filter(d => String(d.data().seminarId) === String(seminarId))
-      .map(d => ({ id: d.id, ...d.data() }));
+      .filter((d) => seminarMatches(d.data()))
+      .map((d) => ({ id: d.id, ...d.data() }));
     const byCreated = (a, b) => {
       const at = a.createdAt?.toMillis?.() ?? a.createdAt?.seconds * 1000 ?? 0;
       const bt = b.createdAt?.toMillis?.() ?? b.createdAt?.seconds * 1000 ?? 0;
       return bt - at;
     };
     matched.sort(byCreated);
-    const application = matched[0];
-    if (!application) {
+    if (matched.length === 0) {
       res.status(404).json({ cancelled: false, error: 'application_not_found' });
-        return;
-      }
-    const merchantUid = application.merchant_uid;
+      return;
+    }
+
+    if (withdrawOnly) {
+      await removeMatchedApplicationsAndDecrementSeminar(matched, sid);
+      console.log('[Payment Cancel] withdraw_only (DB only)', matched.map((m) => m.id).join(','));
+      res.status(200).json({ cancelled: true, withdraw_only: true });
+      return;
+    }
+
+    const applicationWithMerchant = matched.find((a) => a.merchant_uid || a.merchantUid);
+    const merchantUid = applicationWithMerchant?.merchant_uid || applicationWithMerchant?.merchantUid;
+
     if (!merchantUid) {
-      res.status(400).json({ cancelled: false, error: 'no_merchant_uid' });
+      await removeMatchedApplicationsAndDecrementSeminar(matched, sid);
+      console.log('[Payment Cancel] free / no merchant_uid', matched.map((m) => m.id).join(','));
+      res.status(200).json({ cancelled: true, free: true });
       return;
     }
 
@@ -403,26 +469,26 @@ app.post('/api/payment/cancel', async (req, res) => {
       res.status(400).json({
         cancelled: false,
         error: 'cancel_failed',
-        message: cancelBody?.message || '결제 취소 실패'
+        message: cancelBody?.message || '결제 취소 실패',
+        allow_withdraw_only: true
       });
       return;
     }
 
-    await db.collection('applications').doc(application.id).delete();
-    const seminarRef = db.collection('seminars').doc(String(seminarId));
-    const seminarSnap = await seminarRef.get();
-    if (seminarSnap.exists) {
-      const current = Math.max(0, (seminarSnap.data()?.currentParticipants || 0) - 1);
-      await seminarRef.update({ currentParticipants: current });
-    }
-    console.log('[Payment Cancel] application cancelled', application.id, merchantUid);
+    await removeMatchedApplicationsAndDecrementSeminar(matched, sid);
+    console.log('[Payment Cancel] applications cancelled', matched.map((m) => m.id).join(','), merchantUid);
     res.status(200).json({ cancelled: true, merchant_uid: merchantUid });
   } catch (err) {
     console.error('[Payment Cancel] error', err);
     const status = err.response?.status;
     const data = err.response?.data;
     if (status === 404 || data?.code === -1) {
-      res.status(404).json({ cancelled: false, error: 'payment_not_found', message: data?.message || err.message });
+      res.status(404).json({
+        cancelled: false,
+        error: 'payment_not_found',
+        message: data?.message || err.message,
+        allow_withdraw_only: true
+      });
       return;
     }
     res.status(500).json({ cancelled: false, error: 'server_error', message: err.message });

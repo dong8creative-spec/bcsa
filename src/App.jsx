@@ -1844,7 +1844,7 @@ const App = () => {
         });
     };
 
-    const handleSeminarApply = async (seminar, applicationData = null) => {
+    const handleSeminarApply = async (seminar, applicationData = null, paymentMeta = null) => {
         if (!currentUser) { alert("로그인이 필요한 서비스입니다."); return false; }
         if (mySeminars.find(s => s.id === seminar.id)) { alert("이미 신청한 세미나입니다."); return false; }
         if (seminar.status === '종료') { alert("종료된 프로그램입니다."); return false; }
@@ -1880,35 +1880,19 @@ const App = () => {
             questions: [applicationData?.preQuestions].filter(Boolean),
             appliedAt: new Date().toISOString()
         };
-        
-        // Google Sheets에 저장
-        if (typeof addSeminarApplicationToSheet === 'function') {
-            try {
-                const result = await addSeminarApplicationToSheet(application);
-                if (!result.success) {
-                    const msg = (result.error || '').toString().trim();
-                    alert(msg || '신청 저장에 실패했습니다. 다시 시도해주세요.');
-                    return false;
-                }
-            } catch (error) {
-                
-                // 오류 발생 시에도 localStorage에 저장 (폴백)
-            }
+
+        const feeNum = Number(seminar?.applicationFee) || 0;
+        const pay = {};
+        if (feeNum > 0 && paymentMeta?.merchantUid) {
+            pay.merchant_uid = paymentMeta.merchantUid;
         }
-        
-        // localStorage에도 저장 (폴백용)
-        try {
-            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                const storageKey = 'busan_ycc_seminar_applications';
-                const existingApplications = JSON.parse(localStorage.getItem(storageKey) || '[]');
-                existingApplications.push(application);
-                localStorage.setItem(storageKey, JSON.stringify(existingApplications));
-            }
-        } catch (error) {
-            
+        const pr = paymentMeta?.response;
+        if (pr && (pr.imp_uid || pr.impUid)) {
+            pay.imp_uid = pr.imp_uid || pr.impUid;
         }
-        
-        // Firestore에 신청 정보 저장
+
+        /** 스프레드시트가 먼저 실패하면 return false로 끊기면 Firestore에 신청이 안 남아 관리자 집계가 0으로 보일 수 있음 → Firestore를 먼저 기록 */
+        let firestoreApplicationOk = false;
         try {
             if (firebaseService && firebaseService.createApplication) {
                 await firebaseService.createApplication({
@@ -1924,35 +1908,85 @@ const App = () => {
                     privacyAgreed: applicationData?.privacyAgreed === true,
                     reason: [applicationData?.participationPath, applicationData?.applyReason].filter(Boolean).join(' / ') || '',
                     questions: [applicationData?.preQuestions].filter(Boolean),
-                    appliedAt: new Date().toISOString()
+                    appliedAt: new Date().toISOString(),
+                    ...pay
                 });
+                firestoreApplicationOk = true;
             }
         } catch (error) {
             console.error('Firestore 신청 저장 실패:', error);
-            // 실패해도 다른 저장소에 저장은 완료된 것으로 처리
         }
-        
-        // Firestore의 seminar 문서 업데이트 (currentParticipants 증가)
+
         try {
-            if (firebaseService && firebaseService.updateSeminar) {
+            if (firebaseService?.incrementSeminarParticipants) {
+                await firebaseService.incrementSeminarParticipants(seminar.id, 1);
+            } else if (firebaseService?.updateSeminar) {
                 await firebaseService.updateSeminar(seminar.id, {
                     currentParticipants: (seminar.currentParticipants || 0) + 1
                 });
             }
         } catch (error) {
             console.error('참가자 수 업데이트 실패:', error);
-            // 실패해도 신청은 완료된 것으로 처리
         }
-        
+
+        try {
+            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
+                const storageKey = 'busan_ycc_seminar_applications';
+                const existingApplications = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                existingApplications.push(application);
+                localStorage.setItem(storageKey, JSON.stringify(existingApplications));
+            }
+        } catch (error) {
+            /* ignore */
+        }
+
+        const hasSheetFn = typeof addSeminarApplicationToSheet === 'function';
+        let sheetOk = false;
+        if (hasSheetFn) {
+            try {
+                const result = await addSeminarApplicationToSheet(application);
+                if (result.success) {
+                    sheetOk = true;
+                } else {
+                    const msg = (result.error || '').toString().trim();
+                    if (firestoreApplicationOk) {
+                        alert(
+                            `신청은 시스템에 저장되었습니다.\n스프레드시트에는 반영되지 않았습니다.${msg ? `\n사유: ${msg}` : ''}`
+                        );
+                    } else {
+                        alert(msg || '신청 저장에 실패했습니다. 다시 시도해주세요.');
+                    }
+                }
+            } catch (error) {
+                if (firestoreApplicationOk) {
+                    alert('신청은 시스템에 저장되었습니다. 스프레드시트 연동 중 오류가 있었습니다.');
+                } else {
+                    alert('스프레드시트 연동 중 오류가 발생했습니다. 다시 시도해 주세요.');
+                }
+            }
+        }
+
+        const coreOk = firestoreApplicationOk || sheetOk;
+        if (!coreOk) {
+            if (!firestoreApplicationOk && !hasSheetFn) {
+                alert('신청 저장에 실패했습니다. 네트워크를 확인 후 다시 시도해 주세요.');
+            }
+            return false;
+        }
+
         const updatedMySeminars = [...mySeminars, seminar];
         setMySeminars(updatedMySeminars);
-        
-        // 신청 후 알람 체크
+
         if (currentUser && currentUser.id) {
             checkProgramAlerts(updatedMySeminars, currentUser.id);
         }
-        
-        alert("신청이 완료되었습니다.");
+
+        if (firestoreApplicationOk && sheetOk) {
+            alert('신청이 완료되었습니다.');
+        } else if (!firestoreApplicationOk && sheetOk) {
+            alert('신청이 완료되었습니다.');
+        }
+        /* firestoreApplicationOk && !sheetOk → 스프레드시트 실패 안내는 위에서 이미 표시 */
         return true;
     };
 
@@ -2088,8 +2122,8 @@ const App = () => {
         const fee = applySeminarFromPopup?.applicationFee != null ? Number(applySeminarFromPopup.applicationFee) : 0;
         const isPaid = fee > 0;
         if (isPaid) {
-            requestPortOnePayment(applySeminarFromPopup, popupApplicationData, async () => {
-                const success = await handleSeminarApply(applySeminarFromPopup, popupApplicationData);
+            requestPortOnePayment(applySeminarFromPopup, popupApplicationData, async (paymentMeta) => {
+                const success = await handleSeminarApply(applySeminarFromPopup, popupApplicationData, paymentMeta);
                 if (success) {
                     generateAndDownloadCalendar(applySeminarFromPopup);
                     setIsPopupApplyModalOpen(false);
@@ -2230,7 +2264,7 @@ END:VCALENDAR`;
         alert('캘린더 파일이 다운로드되었습니다. 파일을 열어 캘린더에 추가해주세요.');
     };
 
-    const handleSeminarCancel = async (seminarId) => {
+    const handleSeminarCancel = async (seminarId, { withdrawOnly = false } = {}) => {
         if (!currentUser) {
             alert('로그인이 필요합니다.');
             return;
@@ -2246,26 +2280,52 @@ END:VCALENDAR`;
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: currentUser.id || currentUser.uid,
-                    seminarId
+                    seminarId,
+                    withdraw_only: withdrawOnly
                 })
             });
             const data = await res.json().catch(() => ({}));
+            if (data.cancelled) {
+                setMySeminars(prev => prev.filter(s => String(s.id) !== String(seminarId)));
+                setMyApplications(prev => prev.filter(a => String(a.seminarId) !== String(seminarId)));
+                if (data.withdraw_only) {
+                    alert('신청 기록이 삭제되었습니다. 마이페이지 목록에서 제거되었습니다.');
+                } else if (data.free) {
+                    alert('신청이 취소되었습니다.');
+                } else {
+                    alert('세미나 신청이 취소되었습니다. 환불은 영업일 기준 3~5일 내 처리됩니다.');
+                }
+                return;
+            }
+            if (!withdrawOnly && data.allow_withdraw_only) {
+                const hint = (data.message && String(data.message).trim()) ? `\n\n사유: ${data.message}` : '';
+                if (window.confirm(`결제 환불을 시스템에서 처리하지 못했습니다. (이미 카드사·포트원에서 취소하신 경우 등)${hint}\n\n신청 기록만 삭제하고 내 목록에서 제거할까요?`)) {
+                    return handleSeminarCancel(seminarId, { withdrawOnly: true });
+                }
+                return;
+            }
             if (!res.ok) {
                 const msg = data?.message || data?.error || '취소 처리에 실패했습니다.';
                 alert(msg === 'application_not_found' ? '해당 신청 내역을 찾을 수 없습니다.' : `취소 실패: ${msg}. 이메일로 문의해 주세요.`);
                 return;
             }
-            if (data.cancelled) {
-                setMySeminars(prev => prev.filter(s => String(s.id) !== String(seminarId)));
-                setMyApplications(prev => prev.filter(a => String(a.seminarId) !== String(seminarId)));
-                alert('세미나 신청이 취소되었습니다. 환불은 영업일 기준 3~5일 내 처리됩니다.');
-            } else {
-                alert('취소 처리에 실패했습니다. 이메일로 문의해 주세요.');
-            }
+            alert('취소 처리에 실패했습니다. 이메일로 문의해 주세요.');
         } catch (err) {
             console.error('Seminar cancel error', err);
             alert('취소 처리 중 오류가 발생했습니다. 이메일로 문의해 주세요.');
         }
+    };
+
+    /** PG에서 이미 결제 취소한 뒤, 사이트 신청 기록만 삭제 */
+    const handleWithdrawApplicationRecord = async (seminarId) => {
+        if (!currentUser) {
+            alert('로그인이 필요합니다.');
+            return;
+        }
+        if (!window.confirm('결제 취소를 이미 완료한 경우에만 사용하세요.\n\n웹사이트의 신청 기록만 삭제되며, 환불은 진행되지 않습니다. 계속할까요?')) {
+            return;
+        }
+        return handleSeminarCancel(seminarId, { withdrawOnly: true });
     };
 
     const handleUpdateApplication = async (applicationId, payload) => {
@@ -2605,8 +2665,8 @@ END:VCALENDAR`;
                                     const fee = seminar?.applicationFee != null ? Number(seminar.applicationFee) : 0;
                                     if (fee > 0) {
                                         return await new Promise((resolve) => {
-                                            requestPortOnePayment(seminar, applicationData, async () => {
-                                                const ok = await handleSeminarApply(seminar, applicationData);
+                                            requestPortOnePayment(seminar, applicationData, async (paymentMeta) => {
+                                                const ok = await handleSeminarApply(seminar, applicationData, paymentMeta);
                                                 if (ok) generateAndDownloadCalendar(seminar);
                                                 resolve(ok);
                                             }, () => resolve(false));
@@ -2647,7 +2707,7 @@ END:VCALENDAR`;
                         </div>
                     );
                 }
-                return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myApplications={myApplications} onUpdateApplication={handleUpdateApplication} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} onWriteReview={handleWriteReview} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} />;
+                return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myApplications={myApplications} onUpdateApplication={handleUpdateApplication} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} onWithdrawApplicationRecord={handleWithdrawApplicationRecord} onWriteReview={handleWriteReview} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} />;
             }
         if (currentView === 'allMembers' && !currentUser) {
             return (
@@ -2703,8 +2763,8 @@ END:VCALENDAR`;
                             let success = false;
                             if (fee > 0) {
                                 success = await new Promise((resolve) => {
-                                    requestPortOnePayment(seminar, applicationData, async () => {
-                                        const ok = await handleSeminarApply(seminar, applicationData);
+                                    requestPortOnePayment(seminar, applicationData, async (paymentMeta) => {
+                                        const ok = await handleSeminarApply(seminar, applicationData, paymentMeta);
                                         resolve(ok);
                                     }, () => resolve(false));
                                 });

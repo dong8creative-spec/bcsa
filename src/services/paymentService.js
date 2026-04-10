@@ -62,7 +62,7 @@ export function getPaymentResultRedirectUrl() {
  * @param {Object} params.customer - { fullName, phoneNumber, email }
  * @param {string} [params.apiBaseUrl] - API 기본 URL (리다이렉트 결제 시 pending 저장용)
  * @param {string} [params.userId] - 로그인 사용자 id (리다이렉트 결제 시 pending 저장용)
- * @param {Function} params.onSuccess - 표준 결제 시 성공 콜백 (리다이렉트 시에는 /payment/result에서 처리)
+ * @param {Function} params.onSuccess - 표준 결제 시 ({ merchantUid, response }) 전달 (리다이렉트 시에는 /payment/result에서 처리)
  * @param {Function} params.onFail - 표준 결제 시 실패 콜백
  */
 export async function requestPayment({ seminar, applicationData, customer, apiBaseUrl, userId, onSuccess, onFail }) {
@@ -174,7 +174,7 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
             if (onFail) onFail();
             return;
         }
-        if (onSuccess) onSuccess(response);
+        if (onSuccess) onSuccess({ merchantUid, response });
     } catch (e) {
         const msg = e?.message || e?.errorMessage || '결제 요청 중 오류가 발생했습니다.';
         const isPgError = /등록된\s*PG|PG\s*설정\s*정보가\s*없습니다/i.test(msg);
