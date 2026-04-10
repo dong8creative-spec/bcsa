@@ -15,7 +15,8 @@ import {
   setDoc,
   serverTimestamp,
   Timestamp,
-  increment
+  increment,
+  deleteField
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import app, { db } from '../firebase';
@@ -267,11 +268,34 @@ export const firebaseService = {
   // ==========================================
   // Seminars Collection
   // ==========================================
+
+  /**
+   * 세미나 스냅샷 → 클라이언트 객체.
+   * 본문에 id/seminarId 등이 있어도 id·seminarDocumentId는 항상 Firestore 문서 ID (신청 집계·매칭 기준).
+   */
+  _mapSeminarDoc(docSnap) {
+    const data = docSnap.data();
+    const docId = docSnap.id;
+    return {
+      ...data,
+      id: docId,
+      seminarDocumentId: docId
+    };
+  },
+
+  /** seminars 문서에 저장하면 신청(seminarId)과 어긋날 수 있는 필드 — 수정/생성 시 제거 */
+  _omitSeminarIdentityFields(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    const out = { ...obj };
+    const keys = ['id', 'seminarId', 'programId', 'seminar_id', 'program_id', 'seminarDocumentId'];
+    for (const k of keys) delete out[k];
+    return out;
+  },
+
   async getSeminars() {
     try {
       const snapshot = await getDocs(collection(db, 'seminars'));
-      // 문서 필드에 id가 있으면 ...data()가 덮어써서 신청(seminarId)과 불일치 → id는 항상 문서 ID
-      const seminars = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+      const seminars = snapshot.docs.map((d) => this._mapSeminarDoc(d));
       console.log('📖 Firebase getSeminars 성공:', {
         count: seminars.length,
         sample: seminars.length > 0 ? {
@@ -294,7 +318,7 @@ export const firebaseService = {
       const docRef = doc(db, 'seminars', seminarId);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        return { ...docSnap.data(), id: docSnap.id };
+        return this._mapSeminarDoc(docSnap);
       }
       return null;
     } catch (error) {
@@ -314,10 +338,10 @@ export const firebaseService = {
         }
       });
       
-      // Firestore에 저장할 데이터 준비 (id는 문서 ID로만 쓰고 필드로 저장하지 않음)
+      // Firestore에 저장할 데이터 준비 (id·seminarId 등 본문 식별자는 저장하지 않음 → 수정 후에도 신청 집계와 문서 ID 일치)
       const { id: _omitSeminarId, ...seminarFields } = seminarData || {};
       const dataToSave = {
-        ...seminarFields,
+        ...this._omitSeminarIdentityFields(seminarFields),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
@@ -364,7 +388,7 @@ export const firebaseService = {
       
       const { id: _omitSeminarId, ...seminarFields } = seminarData || {};
       const dataToSave = {
-        ...seminarFields,
+        ...this._omitSeminarIdentityFields(seminarFields),
         updatedAt: serverTimestamp()
       };
       
@@ -372,6 +396,12 @@ export const firebaseService = {
       if (dataToSave.images && !Array.isArray(dataToSave.images)) {
         console.warn('⚠️ images가 배열이 아닙니다. 배열로 변환합니다:', dataToSave.images);
         dataToSave.images = Array.isArray(dataToSave.images) ? dataToSave.images : [dataToSave.images].filter(Boolean);
+      }
+
+      // 본문에 남아 있던 id/seminarId 등 제거 — 신청(seminarId)은 항상 문서 ID 기준이므로 수정 후 집계 어긋남 방지
+      const stripDocIdentity = ['seminarId', 'programId', 'seminar_id', 'program_id', 'id'];
+      for (const k of stripDocIdentity) {
+        dataToSave[k] = deleteField();
       }
       
       console.log('💾 Firestore에 저장할 최종 데이터 (인덱스):', {
@@ -425,7 +455,7 @@ export const firebaseService = {
 
   subscribeSeminars(callback) {
     return onSnapshot(collection(db, 'seminars'), (snapshot) => {
-      const seminars = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+      const seminars = snapshot.docs.map((d) => this._mapSeminarDoc(d));
       callback(seminars);
     });
   },

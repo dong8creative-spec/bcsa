@@ -363,6 +363,49 @@ app.post('/api/admin/pending-payments-delete-all', async (req, res) => {
   }
 });
 
+// 관리자: 신청(applications) 1건 삭제 + 해당 프로그램 currentParticipants 1 감소 (클라이언트 규칙과 무관하게 Admin SDK)
+// body: { application_id: '...' } 또는 applicationId
+app.post('/api/admin/delete-application', async (req, res) => {
+  try {
+    const applicationId = (req.body && (req.body.application_id || req.body.applicationId)) || '';
+    if (!applicationId) {
+      res.status(400).json({ success: false, error: 'application_id required' });
+      return;
+    }
+    const appRef = db.collection('applications').doc(String(applicationId));
+    const docSnap = await appRef.get();
+    if (!docSnap.exists) {
+      res.status(404).json({ success: false, error: 'application_not_found' });
+      return;
+    }
+    const row = docSnap.data();
+    const pickSeminarId = (v) => {
+      if (v == null || v === '') return '';
+      if (typeof v === 'object' && v.path && typeof v.path === 'string') {
+        const parts = v.path.split('/');
+        return (parts[parts.length - 1] || '').trim();
+      }
+      return String(v).trim();
+    };
+    const seminarId =
+      pickSeminarId(row.seminarId) || pickSeminarId(row.programId) || pickSeminarId(row.seminar_id);
+    await appRef.delete();
+    if (seminarId) {
+      const seminarRef = db.collection('seminars').doc(seminarId);
+      const seminarSnap = await seminarRef.get();
+      if (seminarSnap.exists) {
+        const prev = Math.max(0, Number(seminarSnap.data()?.currentParticipants) || 0);
+        await seminarRef.update({ currentParticipants: Math.max(0, prev - 1) });
+      }
+    }
+    console.log('[admin] delete-application', applicationId, seminarId || '(no seminar id)');
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('[delete-application] error', err);
+    res.status(500).json({ success: false, error: err.message || 'server_error' });
+  }
+});
+
 /** 신청 문서 삭제 + 세미나 currentParticipants 감소 (matched: { id, ...data }[]) */
 const removeMatchedApplicationsAndDecrementSeminar = async (matched, seminarIdStr) => {
   for (const row of matched) {

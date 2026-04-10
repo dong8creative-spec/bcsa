@@ -74,8 +74,9 @@ const applicantDocTime = (app) => {
 };
 
 /**
- * 프로그램 문서의 식별자 후보 (항상 Firestore 문서 id + 본문에 남아 있을 수 있는 seminarId/programId).
- * 예전에 본문 `id` 필드가 문서 id를 덮어쓴 경우에도 신청(seminarId)과 맞출 수 있음.
+ * 프로그램 문서의 식별자 후보.
+ * - 집계 기준은 항상 Firestore 문서 ID(seminarDocumentId / id) 우선.
+ * - 본문에 남은 seminarId·programId 등은 과거 신청 건과의 호환용(수정으로 필드가 바뀌어도 문서 ID로 맞춤).
  */
 const collectProgramSeminarKeys = (program) => {
   const keys = new Set();
@@ -84,9 +85,12 @@ const collectProgramSeminarKeys = (program) => {
     if (s) keys.add(s);
   };
   if (!program) return keys;
+  add(program.seminarDocumentId);
   add(program.id);
   add(program.seminarId);
   add(program.programId);
+  add(program.seminar_id);
+  add(program.program_id);
   return keys;
 };
 
@@ -97,6 +101,7 @@ const applicationMatchesProgram = (program, app) => {
     toSeminarId(app.seminarId),
     toSeminarId(app.programId),
     toSeminarId(app.seminar_id),
+    toSeminarId(app.program_id),
   ].filter(Boolean);
   return cand.some((c) => keys.has(c));
 };
@@ -135,6 +140,7 @@ export const ProgramManagement = () => {
   const [applicantModalDataLoading, setApplicantModalDataLoading] = useState(false);
   const [recoverMerchantUid, setRecoverMerchantUid] = useState('');
   const [recoverLoading, setRecoverLoading] = useState(false);
+  const [adminDeletingApplicationId, setAdminDeletingApplicationId] = useState(null);
   const [isClosingPast, setIsClosingPast] = useState(false);
   const [closingRecruitmentId, setClosingRecruitmentId] = useState(null);
 
@@ -233,6 +239,51 @@ export const ProgramManagement = () => {
       setIsLoading(false);
     }
   };
+
+  /** 관리자: 신청 1건을 명단에서 삭제 (Functions Admin API, 정원 집계 1 감소) */
+  const handleAdminRemoveApplicant = useCallback(
+    async (applicationId, displayName) => {
+      if (!applicationId) return;
+      const base = (getApiBaseUrl() || '').replace(/\/$/, '');
+      if (!base) {
+        alert('API URL이 설정되지 않았습니다. .env의 VITE_API_URL을 확인하세요.');
+        return;
+      }
+      const nameHint = (displayName || '').trim() || '해당 신청';
+      if (
+        !window.confirm(
+          `「${nameHint}」을(를) 명단에서 삭제합니다.\n\n• Firestore 신청 문서가 삭제되고, 이 프로그램의 참가 집계(currentParticipants)가 1 줄어듭니다.\n• 결제 환불은 자동으로 되지 않습니다.\n\n계속할까요?`
+        )
+      ) {
+        return;
+      }
+      setAdminDeletingApplicationId(applicationId);
+      try {
+        const res = await fetch(`${base}/api/admin/delete-application`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ application_id: applicationId })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+          await loadPrograms();
+          await loadApplicantModalData();
+          alert('명단에서 제거되었습니다.');
+        } else {
+          alert(
+            data.error === 'application_not_found'
+              ? '이미 삭제되었거나 찾을 수 없는 신청입니다.'
+              : data.error || '삭제에 실패했습니다. Functions 배포를 확인하세요.'
+          );
+        }
+      } catch (e) {
+        alert('요청 실패: ' + (e.message || '네트워크 오류'));
+      } finally {
+        setAdminDeletingApplicationId(null);
+      }
+    },
+    [loadApplicantModalData, loadPrograms]
+  );
 
   /** 프로그램별 신청 건수 — Firestore applications만 (결제대기는 UI·집계에서 제외) */
   const applicationCountByProgramId = useMemo(() => {
@@ -1134,13 +1185,17 @@ export const ProgramManagement = () => {
                     ) : null}
                     반영
                   </button>
+                  <span className="hidden lg:inline-block w-px h-8 bg-gray-200 shrink-0 mx-1" aria-hidden="true" />
+                  <span className="text-xs text-gray-500 shrink-0 max-w-[12rem] lg:max-w-none leading-snug">
+                    행의 「명단에서 제거」로 신청 삭제·정원 반영 (환불은 별도)
+                  </span>
                 </div>
                 <div className="flex-1 min-h-0 overflow-auto p-4">
                   {list.length === 0 ? (
                     <p className="text-gray-500 text-center py-8">신청자가 없습니다.</p>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm min-w-[900px]">
+                      <table className="w-full text-sm min-w-[1020px]">
                         <thead>
                           <tr className="border-b border-blue-200">
                             <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">번호</th>
@@ -1159,11 +1214,15 @@ export const ProgramManagement = () => {
                             <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">식사 여부</th>
                             <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">개인정보 동의</th>
                             <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">신청일</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap sticky right-0 bg-white z-[1] border-l border-blue-100 shadow-[-6px_0_10px_-6px_rgba(0,0,0,0.12)]">
+                              관리
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {list.map((app, i) => {
                             const user = resolveUser(app);
+                            const rowLabel = (user?.name || app.userName || '').trim() || app.userEmail || `신청 ${i + 1}`;
                             return (
                               <tr key={app.id ? `${app.id}-${i}` : `row-${i}`} className="border-b border-blue-100">
                                 <td className="px-2 py-2 text-gray-600">{i + 1}</td>
@@ -1182,6 +1241,21 @@ export const ProgramManagement = () => {
                                 <td className="px-2 py-2">{app.mealAfter || '-'}</td>
                                 <td className="px-2 py-2">{app.privacyAgreed === true ? '동의' : '-'}</td>
                                 <td className="px-2 py-2 text-gray-600">{formatDate(app.createdAt || app.appliedAt)}</td>
+                                <td className="px-2 py-2 align-top sticky right-0 bg-white z-[1] border-l border-blue-100 shadow-[-6px_0_10px_-6px_rgba(0,0,0,0.12)]">
+                                  <button
+                                    type="button"
+                                    disabled={!app.id || adminDeletingApplicationId === app.id}
+                                    onClick={() => handleAdminRemoveApplicant(app.id, rowLabel)}
+                                    className="text-xs font-bold text-red-600 hover:text-red-800 px-2 py-1.5 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 whitespace-nowrap"
+                                  >
+                                    {adminDeletingApplicationId === app.id ? '처리 중…' : '명단에서 제거'}
+                                  </button>
+                                  {app.id ? (
+                                    <div className="text-[10px] text-gray-400 mt-1 font-mono break-all max-w-[8.5rem]" title={app.id}>
+                                      {app.id}
+                                    </div>
+                                  ) : null}
+                                </td>
                               </tr>
                             );
                           })}
