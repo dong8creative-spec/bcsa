@@ -175,41 +175,46 @@ const AppLayout = (props) => {
                                             <Icons.X size={20} />
                                         </button>
                                         {program.img ? (
-                                            <img
-                                                src={program.img}
-                                                alt={program.title}
-                                                className="w-full h-full object-cover object-center"
-                                                loading="eager"
-                                                fetchPriority="high"
-                                                decoding="async"
-                                            />
+                                            program.isExternalPoster && program.externalLink ? (
+                                                <a
+                                                    href={program.externalLink}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="absolute inset-0 z-0 block cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset"
+                                                    aria-label={`${program.title || '외부 행사'} 페이지로 이동`}
+                                                >
+                                                    <img
+                                                        src={program.img}
+                                                        alt={program.title}
+                                                        className="w-full h-full object-cover object-center pointer-events-none"
+                                                        loading="eager"
+                                                        fetchPriority="high"
+                                                        decoding="async"
+                                                    />
+                                                </a>
+                                            ) : (
+                                                <img
+                                                    src={program.img}
+                                                    alt={program.title}
+                                                    className="w-full h-full object-cover object-center"
+                                                    loading="eager"
+                                                    fetchPriority="high"
+                                                    decoding="async"
+                                                />
+                                            )
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
                                                 <Icons.Calendar size={48} />
                                             </div>
                                         )}
                                     </div>
-                                    {/* 프로그램 신청하기 / 신청해주셔서 감사합니다 */}
+                                    {/* 프로그램 신청하기 / 신청해주셔서 감사합니다 — 외부+링크는 이미지가 링크 */}
                                     <div className="p-4 pt-3">
-                                        {program.isExternalPoster ? (
-                                            program.externalLink ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onNavigateToProgramApply && onNavigateToProgramApply(program)}
-                                                    className="w-full py-3.5 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm"
-                                                >
-                                                    행사 페이지 열기
-                                                </button>
-                                            ) : (
-                                                <div className="w-full py-3.5 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm text-center cursor-default">
-                                                    외부 행사 안내
-                                                </div>
-                                            )
-                                        ) : (appliedProgramIds && appliedProgramIds.has(String(program.id))) ? (
+                                        {!program.isExternalPoster && (appliedProgramIds && appliedProgramIds.has(String(program.id))) ? (
                                             <div className="w-full py-3.5 bg-gray-200 text-gray-700 font-bold rounded-xl text-sm text-center cursor-default">
                                                 신청해주셔서 감사합니다
                                             </div>
-                                        ) : (
+                                        ) : !program.isExternalPoster ? (
                                             <button
                                                 type="button"
                                                 onClick={() => onNavigateToProgramApply && onNavigateToProgramApply(program)}
@@ -217,7 +222,7 @@ const AppLayout = (props) => {
                                             >
                                                 프로그램 신청하기
                                             </button>
-                                        )}
+                                        ) : null}
                                         {/* 24시간 동안 팝업 보이지 않기 */}
                                         <label className="mt-4 flex items-center gap-2 cursor-pointer group">
                                             <input
