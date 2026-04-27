@@ -6,6 +6,7 @@ import { parseStringPromise } from 'xml2js';
 import admin from 'firebase-admin';
 import http from 'http';
 import https from 'https';
+import sharp from 'sharp';
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
@@ -62,8 +63,9 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // URL 인코딩 파라미터 처리
+// 이미지 base64(encode-webp)용 큰 JSON 허용
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' })); // URL 인코딩 파라미터 처리
 
 // 요청 로깅 미들웨어 (디버깅용)
 app.use((req, res, next) => {
@@ -123,6 +125,71 @@ const parseApiResponse = async (rawData, contentType) => {
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'API Proxy is running' });
+});
+
+/** WebP 품질: 본 사이트와 동일(클라 0~1 비율 또는 1~100) */
+const DEFAULT_SERVER_WEBP_QUALITY = 85;
+const MAX_IMAGE_INPUT_BYTES = 18 * 1024 * 1024;
+
+const normalizeWebpQualityInput = (q) => {
+  const n = Number(q);
+  if (!Number.isFinite(n)) return DEFAULT_SERVER_WEBP_QUALITY;
+  if (n > 0 && n <= 1) {
+    return Math.min(100, Math.max(1, Math.round(n * 100)));
+  }
+  if (n >= 1 && n <= 100) return Math.round(n);
+  return DEFAULT_SERVER_WEBP_QUALITY;
+};
+
+const parseImageToBuffer = (imageField) => {
+  if (!imageField || typeof imageField !== 'string') return null;
+  const s = imageField.trim();
+  if (!s) return null;
+  try {
+    if (s.startsWith('data:')) {
+      const comma = s.indexOf(',');
+      if (comma === -1) return null;
+      return Buffer.from(s.slice(comma + 1), 'base64');
+    }
+    return Buffer.from(s, 'base64');
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * 클라이언트 업로드용: 원본의 1/2 픽셀 + WebP(기본 85%)
+ * (sharp로 항상 WebP 인코딩, 브라우저 toBlob WebP 미지원 이슈 없음)
+ */
+app.post('/api/images/encode-webp', async (req, res) => {
+  try {
+    const buf = parseImageToBuffer(req.body?.image);
+    if (!buf || buf.length === 0) {
+      res.status(400).json({ error: 'image is required (data URL or base64 string)' });
+      return;
+    }
+    if (buf.length > MAX_IMAGE_INPUT_BYTES) {
+      res.status(413).json({ error: 'image too large' });
+      return;
+    }
+    const webpQ = normalizeWebpQualityInput(req.body?.quality);
+    const meta = await sharp(buf).metadata();
+    const w = Math.max(1, Math.floor((meta.width || 1) / 2));
+    const h = Math.max(1, Math.floor((meta.height || 1) / 2));
+    const out = await sharp(buf)
+      .rotate()
+      .resize(w, h, { fit: 'fill' })
+      .webp({ quality: webpQ })
+      .toBuffer();
+    const b64 = out.toString('base64');
+    res.status(200).json({
+      dataUrl: `data:image/webp;base64,${b64}`,
+      mime: 'image/webp',
+    });
+  } catch (err) {
+    console.error('[encode-webp]', err);
+    res.status(400).json({ error: err?.message || 'encode failed' });
+  }
 });
 
 // 결제 전 대기 저장 (리다이렉트 결제 직전 클라이언트 호출)
@@ -728,9 +795,10 @@ export const deleteAuthUser = onCall(
 // Express 앱을 Firebase Functions로 내보내기
 // asia-northeast3 (서울) 지역 사용
 // 1,000명 동시 접속 대비: memory 256MiB 설정으로 과금 방지
-export const apiBid = onRequest({ 
+export const apiBid = onRequest({
   region: 'asia-northeast3',
   invoker: 'public',  // 공개 접근 허용, cors는 Express에서 처리
-  memory: '256MiB'    // 동시 접속 대비 최소 메모리 설정
+  memory: '512MiB',   // sharp 이미지 디코딩/리사이즈
+  timeoutSeconds: 120,
 }, app);
 

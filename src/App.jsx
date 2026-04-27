@@ -4,7 +4,7 @@ import { firebaseService } from './services/firebaseService';
 import { authService } from './services/authService';
 import { CONFIG } from './config';
 import { calculateStatus, fetchSheetData } from './utils';
-import { uploadImageToImgBB, uploadLogoOrFaviconToGitHub, resizeImage, fileToBase64, normalizeImagesList } from './utils/imageUtils';
+import { uploadImageToImgBB, uploadLogoOrFaviconToGitHub, fileToBase64, normalizeImagesList } from './utils/imageUtils';
 import { translateFirebaseError } from './utils/errorUtils';
 import { 
   loadUsersFromStorage, 
@@ -3013,8 +3013,6 @@ END:VCALENDAR`;
                     }}
                     waitForKakaoMap={waitForKakaoMap}
                     openKakaoPlacesSearch={openKakaoPlacesSearch}
-                    resizeImage={resizeImage}
-                    uploadImageToImgBB={uploadImageToImgBB}
                 />
             );
         }

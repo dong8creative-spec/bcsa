@@ -5,6 +5,7 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import { CONFIG } from '../config';
+import { getApiBaseUrl } from './api';
 
 const IMAGE_TYPES = ['program', 'content', 'community', 'company'];
 
@@ -50,16 +51,82 @@ export const uploadImageToStorage = async (file, type = 'program') => {
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
 
 const FIREBASE_UPLOAD_TIMEOUT_MS = 4 * 1000; // 4초 내 응답 없으면 ImgBB 폴백
-const PROGRAM_RESIZE_THRESHOLD_BYTES = 200 * 1024; // 200KB 이상이면 이미지 리사이즈 (업로드 용량 감소)
-const PROGRAM_MAX_SIZE = 1600; // 프로그램 이미지 최대 긴 변 1600px
 
 /**
  * 사이트에 등록·업로드되는 이미지 공통: WebP 인코딩 품질 (0~1, 약 85%)
- * uploadImage, uploadImageForAdmin, convertToWebP, 리사이즈 WebP 경로에 사용
  */
 export const UPLOAD_WEBP_QUALITY = 0.85;
 
 const PROGRAM_QUALITY = UPLOAD_WEBP_QUALITY;
+
+/**
+ * 사이트 이미지 업로드 공통: Cloud Functions(sharp)만 사용 — 원본 1/2 + WebP(기본 85%).
+ * VITE_API_URL 미설정·API 실패 시 에러(브라우저 캔버스/JPEG 폴백 없음).
+ */
+async function encodeHalfWebpViaServer(imageDataUrl, quality) {
+  const base = (getApiBaseUrl() || '').trim();
+  if (!base) {
+    throw new Error(
+      '이미지는 WebP로만 저장됩니다. 빌드 환경에 VITE_API_URL(apiBid 루트 URL)을 설정해주세요.'
+    );
+  }
+  if (!imageDataUrl || typeof imageDataUrl !== 'string') {
+    throw new Error('이미지 데이터가 없습니다.');
+  }
+  const url = `${base.replace(/\/$/, '')}/api/images/encode-webp`;
+  let res;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imageDataUrl, quality }),
+    });
+  } catch (e) {
+    throw new Error(
+      `이미지 WebP 변환 API에 연결할 수 없습니다. 네트워크와 VITE_API_URL을 확인해주세요. (${e?.message || 'network'})`
+    );
+  }
+  if (!res.ok) {
+    let detail = '';
+    try {
+      const errJson = await res.json();
+      detail = typeof errJson?.error === 'string' ? errJson.error : '';
+    } catch {
+      try {
+        detail = (await res.text()).slice(0, 200);
+      } catch {
+        /* no-op */
+      }
+    }
+    throw new Error(detail || `이미지 WebP 변환 실패 (HTTP ${res.status})`);
+  }
+  const j = await res.json();
+  const dataUrl = j?.dataUrl;
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/webp')) {
+    throw new Error('이미지 변환 응답이 올바른 WebP가 아닙니다.');
+  }
+  return dataUrl;
+}
+
+/**
+ * File → data URL(원본의 1/2 크기, WebP만 — sharp API)
+ */
+export async function encodeImageHalfWebpDataUrl(file, quality = UPLOAD_WEBP_QUALITY) {
+  if (typeof window === 'undefined' || !file) {
+    return Promise.reject(new Error('encodeImageHalfWebpDataUrl: File이 필요합니다.'));
+  }
+  return encodeHalfWebpViaServer(await fileToBase64(file), quality);
+}
+
+/**
+ * data: URL(또는 base64) → data URL(원본의 1/2 크기, WebP만 — sharp API)
+ */
+export async function encodeImageHalfWebpFromDataUrl(dataUrl, quality = UPLOAD_WEBP_QUALITY) {
+  if (!dataUrl || typeof dataUrl !== 'string') {
+    return Promise.reject(new Error('data URL이 필요합니다.'));
+  }
+  return encodeHalfWebpViaServer(dataUrl, quality);
+}
 
 /**
  * Base64 데이터 URL → File 변환 (리사이즈 후 업로드용)
@@ -73,12 +140,16 @@ const dataURLToFile = (dataUrl, fileName, mimeType = 'image/jpeg') => {
 /** 업로드용 파일명을 .webp 확장자로 변환 */
 const toWebpFileName = (name) => (name || 'image.jpg').replace(/\.[^.]+$/i, '.webp');
 
+export async function fileToHalfWebpFile(file, quality = UPLOAD_WEBP_QUALITY) {
+  const dataUrl = await encodeImageHalfWebpDataUrl(file, quality);
+  return dataURLToFile(dataUrl, toWebpFileName(file.name), 'image/webp');
+}
+
 /**
  * Admin 전용 이미지 업로드: ImgBB만 사용 (Firebase 미사용)
- * 프로그램/후기/콘텐츠 등 관리자 업로드는 모두 이 함수 사용
- * 용량이 크면 리사이즈 후 업로드
+ * (원본의 1/2 픽셀 + WebP 품질 기본 UPLOAD_WEBP_QUALITY)
  * @param {File} file - 업로드할 이미지 파일
- * @param {Object} options - { maxSize?: number, quality?: number } (기본 1600, UPLOAD_WEBP_QUALITY)
+ * @param {Object} options - { quality?: number } (maxSize는 더 이상 사용하지 않음, 호환만 유지)
  * @returns {Promise<string>} 업로드된 이미지의 URL
  */
 /**
@@ -86,28 +157,10 @@ const toWebpFileName = (name) => (name || 'image.jpg').replace(/\.[^.]+$/i, '.we
  * @returns {Promise<{ url: string, deleteUrl: string | null }>}
  */
 export const uploadImageForAdminWithMeta = async (file, options = {}) => {
-  // #region agent log
-  const __prep0 = Date.now();
-  // #endregion
-  const maxSize = options.maxSize ?? PROGRAM_MAX_SIZE;
   const quality = options.quality ?? PROGRAM_QUALITY;
-  let base64;
   const outName = toWebpFileName(file.name || 'image.jpg');
-  if (file.size > PROGRAM_RESIZE_THRESHOLD_BYTES) {
-    try {
-      const dataUrl = await fileToBase64(file);
-      base64 = await resizeImage(dataUrl, maxSize, maxSize, quality, { outputMimeType: 'image/webp' });
-    } catch (_) {
-      const webpFile = await convertToWebP(file, quality);
-      base64 = await fileToBase64(webpFile);
-    }
-  } else {
-    const webpFile = await convertToWebP(file, quality);
-    base64 = await fileToBase64(webpFile);
-  }
-  // #region agent log
-  fetch('http://127.0.0.1:7639/ingest/72157b14-4914-4475-b029-d2a102db65f8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'119938'},body:JSON.stringify({sessionId:'119938',runId:'pre-fix',hypothesisId:'H2',location:'imageUtils.js:uploadImageForAdminWithMeta:prep',message:'after webp+base64, before imgbb',data:{prepMs:Date.now()-__prep0,fileSize:file?.size||0,base64Len:typeof base64==='string'?base64.length:0,usedResize:file.size>PROGRAM_RESIZE_THRESHOLD_BYTES},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
+  const webpFile = await fileToHalfWebpFile(file, quality);
+  const base64 = await fileToBase64(webpFile);
   const result = await uploadImageToImgBB(base64, outName);
   const url = result?.url ?? (typeof result === 'string' ? result : null);
   if (url) {
@@ -137,18 +190,7 @@ const isLocalOrigin = () => {
  * @returns {Promise<{ firebase: string | null, imgbb: string | null }>}
  */
 export const uploadImageDual = async (file, type = 'program') => {
-  let fileToUse = file;
-  if (file.size > PROGRAM_RESIZE_THRESHOLD_BYTES) {
-    try {
-      const base64 = await fileToBase64(file);
-      const resized = await resizeImage(base64, PROGRAM_MAX_SIZE, PROGRAM_MAX_SIZE, PROGRAM_QUALITY, { outputMimeType: 'image/webp' });
-      fileToUse = await dataURLToFile(resized, toWebpFileName(file.name || 'image.jpg'), 'image/webp');
-    } catch (_) {
-      fileToUse = await convertToWebP(file);
-    }
-  } else {
-    fileToUse = await convertToWebP(file);
-  }
+  const fileToUse = await fileToHalfWebpFile(file, PROGRAM_QUALITY);
 
   if (isLocalOrigin()) {
     try {
@@ -203,18 +245,7 @@ export const normalizeImagesList = (images) => {
  * @returns {Promise<{ url: string, deleteUrl: string | null, storage: 'firebase' | 'imgbb' }>}
  */
 export const uploadImageWithMeta = async (file, type = 'program') => {
-  let fileToUse = file;
-  if (file.size > PROGRAM_RESIZE_THRESHOLD_BYTES) {
-    try {
-      const base64 = await fileToBase64(file);
-      const resized = await resizeImage(base64, PROGRAM_MAX_SIZE, PROGRAM_MAX_SIZE, PROGRAM_QUALITY, { outputMimeType: 'image/webp' });
-      fileToUse = await dataURLToFile(resized, toWebpFileName(file.name || 'image.jpg'), 'image/webp');
-    } catch (_) {
-      fileToUse = await convertToWebP(file);
-    }
-  } else {
-    fileToUse = await convertToWebP(file);
-  }
+  const fileToUse = await fileToHalfWebpFile(file, PROGRAM_QUALITY);
 
   try {
     const url = await Promise.race([
@@ -302,26 +333,27 @@ export async function deleteHostedImagesForPayload(data) {
   await Promise.allSettled(urls.map((d) => requestImgbbImageDeletion(d)));
 }
 
-const IMGBB_FETCH_TIMEOUT_MS = 25 * 1000; // 25초 내 응답 없으면 중단 (업로드 중 무한 대기 방지)
+/** ImgBB POST: base64 본문이 클수록 업로드에 더 오래 걸릴 수 있어 하한~상한(120초) 둔다. */
+const IMGBB_UPLOAD_TIMEOUT_MIN_MS = 45 * 1000;
+const IMGBB_UPLOAD_TIMEOUT_MAX_MS = 120 * 1000;
+function getImgbbUploadTimeoutMs(base64DataLength) {
+  const n = Math.floor((base64DataLength || 0) / 500000);
+  return Math.min(IMGBB_UPLOAD_TIMEOUT_MAX_MS, IMGBB_UPLOAD_TIMEOUT_MIN_MS + n * 15 * 1000);
+}
 
 /**
  * 이미지를 ImgBB에 업로드 (타임아웃 적용)
  */
 export const uploadImageToImgBB = async (base64Image, fileName) => {
-    // #region agent log
-    const __tFetch0 = Date.now();
-    // #endregion
+    const base64Data = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
+    const timeoutMs = getImgbbUploadTimeoutMs(base64Data.length);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), IMGBB_FETCH_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-        const base64Data = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
         const formData = new FormData();
         formData.append('key', IMGBB_API_KEY);
         formData.append('image', base64Data);
-        // #region agent log
-        fetch('http://127.0.0.1:7639/ingest/72157b14-4914-4475-b029-d2a102db65f8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'119938'},body:JSON.stringify({sessionId:'119938',runId:'pre-fix',hypothesisId:'H1',location:'imageUtils.js:uploadImageToImgBB:fetchStart',message:'imgbb fetch start',data:{base64DataLen:base64Data.length,fileName:fileName||'',timeoutMs:IMGBB_FETCH_TIMEOUT_MS},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
 
         const response = await fetch('https://api.imgbb.com/1/upload', {
             method: 'POST',
@@ -329,9 +361,6 @@ export const uploadImageToImgBB = async (base64Image, fileName) => {
             signal: controller.signal
         });
         clearTimeout(timeoutId);
-        // #region agent log
-        fetch('http://127.0.0.1:7639/ingest/72157b14-4914-4475-b029-d2a102db65f8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'119938'},body:JSON.stringify({sessionId:'119938',runId:'pre-fix',hypothesisId:'H1',location:'imageUtils.js:uploadImageToImgBB:fetchOk',message:'imgbb response received',data:{ok:response.ok,status:response.status,elapsedMs:Date.now()-__tFetch0},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -367,9 +396,6 @@ export const uploadImageToImgBB = async (base64Image, fileName) => {
         throw new Error(errorMessage);
     } catch (error) {
         clearTimeout(timeoutId);
-        // #region agent log
-        fetch('http://127.0.0.1:7639/ingest/72157b14-4914-4475-b029-d2a102db65f8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'119938'},body:JSON.stringify({sessionId:'119938',runId:'pre-fix',hypothesisId:'H1',location:'imageUtils.js:uploadImageToImgBB:catch',message:'imgbb fetch failed',data:{errorName:error?.name,errorMessage:String(error?.message||''),isAbort:error?.name==='AbortError',elapsedMs:Date.now()-__tFetch0},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         console.error('이미지 업로드 오류:', error);
         if (error.name === 'AbortError') {
             throw new Error('업로드 시간이 초과되었습니다. 네트워크를 확인한 뒤 다시 시도해주세요.');
@@ -459,37 +485,10 @@ export const resizeImage = (input, maxWidth, maxHeight = null, quality = 0.9, op
 };
 
 /**
- * 이미지를 WebP로 변환 (용량 절감, 업로드 전 사용)
- * @param {File} file - 원본 이미지 파일
- * @param {number} quality - 0~1 (기본 UPLOAD_WEBP_QUALITY, 약 85%)
- * @returns {Promise<File>} WebP File (미지원 브라우저는 원본 반환)
+ * 이미지를 WebP File로 변환 (원본의 1/2 픽셀 + WebP, sharp API만)
  */
-export const convertToWebP = (file, quality = UPLOAD_WEBP_QUALITY) => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(new File([blob], toWebpFileName(file.name), { type: 'image/webp' }));
-        } else {
-          resolve(file);
-        }
-      }, 'image/webp', quality);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(file);
-    };
-    img.src = url;
-  });
-};
+export const convertToWebP = (file, quality = UPLOAD_WEBP_QUALITY) =>
+  fileToHalfWebpFile(file, quality);
 
 /**
  * 로고 또는 파비콘을 GitHub에 업로드하기 위해 다운로드
@@ -497,9 +496,8 @@ export const convertToWebP = (file, quality = UPLOAD_WEBP_QUALITY) => {
 export const uploadLogoOrFaviconToGitHub = async (file, type, options = {}) => {
     try {
         let base64Image;
-        
-        if (type === 'logo' && options.maxWidth && options.maxHeight) {
-            base64Image = await resizeImage(file, options.maxWidth, options.maxHeight, options.quality ?? UPLOAD_WEBP_QUALITY, { outputMimeType: 'image/webp' });
+        if (type === 'logo') {
+            base64Image = await encodeImageHalfWebpDataUrl(file, options.quality ?? UPLOAD_WEBP_QUALITY);
         } else {
             base64Image = await fileToBase64(file);
         }
