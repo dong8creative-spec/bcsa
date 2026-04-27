@@ -97,6 +97,15 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
     const phone = (user?.phone || user?.phoneNumber || '').toString().trim();
 
     try {
+      if (firebaseService.purgeUserRelatedData) {
+        await firebaseService.purgeUserRelatedData({
+          id: userId,
+          uid: uid || userId,
+          name: user.name,
+          email: user.email,
+          phone: user.phone || user.phoneNumber,
+        });
+      }
       if (firebaseService.addBlockedRegistration && uid) {
         await firebaseService.addBlockedRegistration(uid, email, phone);
       }
@@ -288,6 +297,15 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
         const uid = user.uid || user.id;
         const email = (user.email || '').toString().trim();
         const phone = (user.phone || user.phoneNumber || '').toString().trim();
+        if (firebaseService.purgeUserRelatedData) {
+          await firebaseService.purgeUserRelatedData({
+            id: user.id,
+            uid: uid || user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone || user.phoneNumber,
+          });
+        }
         if (firebaseService.addBlockedRegistration && uid) {
           await firebaseService.addBlockedRegistration(uid, email, phone);
         }

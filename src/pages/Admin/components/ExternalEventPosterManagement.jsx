@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { Timestamp } from 'firebase/firestore';
-import { uploadImageForAdmin } from '../../../utils/imageUtils';
+import { uploadImageForAdminWithMeta } from '../../../utils/imageUtils';
 import { Icons } from '../../../components/Icons';
 import { firestoreLikeToMillis } from '../../../appHelpers';
 
 const emptyForm = () => ({
   title: '',
   posterUrl: '',
+  posterDeleteUrl: '',
   linkUrl: '',
   displayStartLocal: '',
   displayEndLocal: '',
@@ -57,6 +58,7 @@ export const ExternalEventPosterManagement = () => {
     setForm({
       title: row.title || '',
       posterUrl: row.posterUrl || '',
+      posterDeleteUrl: row.posterDeleteUrl || '',
       linkUrl: row.linkUrl || '',
       displayStartLocal: toDatetimeLocalInput(firestoreLikeToMillis(row.displayStartAt)),
       displayEndLocal: toDatetimeLocalInput(firestoreLikeToMillis(row.displayEndAt)),
@@ -71,8 +73,8 @@ export const ExternalEventPosterManagement = () => {
     if (!file) return;
     try {
       setUploading(true);
-      const url = await uploadImageForAdmin(file);
-      if (url) setForm((f) => ({ ...f, posterUrl: url }));
+      const { url, deleteUrl } = await uploadImageForAdminWithMeta(file);
+      if (url) setForm((f) => ({ ...f, posterUrl: url, posterDeleteUrl: deleteUrl || '' }));
       else alert('이미지 URL을 받지 못했습니다.');
     } catch (err) {
       console.error(err);
@@ -107,6 +109,7 @@ export const ExternalEventPosterManagement = () => {
     const payload = {
       title: (form.title || '').trim() || '외부 행사',
       posterUrl: form.posterUrl.trim(),
+      posterDeleteUrl: (form.posterDeleteUrl || '').trim() || null,
       linkUrl: (form.linkUrl || '').trim(),
       displayStartAt: Timestamp.fromDate(start),
       displayEndAt: Timestamp.fromDate(end),

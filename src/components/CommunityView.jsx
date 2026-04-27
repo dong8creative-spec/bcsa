@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Fragment } from 'react';
 import { firebaseService } from '../services/firebaseService';
 import { Icons } from './Icons';
-import { uploadImage } from '../utils/imageUtils';
+import { uploadImageWithMeta, getDisplayImageUrl } from '../utils/imageUtils';
 import ModalPortal from './ModalPortal';
 
 const CommunityView = ({ 
@@ -174,13 +174,15 @@ const CommunityView = ({
             const uploadPromises = Array.from(files).map(async (file) => {
                 try {
                     if (!file.type.startsWith('image/')) return null;
-                    return await uploadImage(file, 'community');
+                    const meta = await uploadImageWithMeta(file, 'community');
+                    if (meta.deleteUrl) return { url: meta.url, deleteUrl: meta.deleteUrl };
+                    return meta.url;
                 } catch (error) {
                     alert(`${file.name} 업로드에 실패했습니다.`);
                     return null;
                 }
             });
-            const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+            const uploadedUrls = (await Promise.all(uploadPromises)).filter((u) => u !== null);
             if (imageType === 'store') {
                 setFormData({...formData, storeImages: [...currentImages, ...uploadedUrls]});
             } else if (imageType === 'review') {
@@ -671,7 +673,7 @@ const CommunityView = ({
                                                 <div className="flex gap-4 flex-wrap">
                                                     {formData.storeImages.map((img, idx) => (
                                                         <div key={idx} className="relative">
-                                                            <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
+                                                            <img src={getDisplayImageUrl(img)} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
                                                             <button type="button" onClick={() => setFormData({...formData, storeImages: formData.storeImages.filter((_, i) => i !== idx)})} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
                                                 </div>
                                                     ))}
@@ -790,7 +792,7 @@ const CommunityView = ({
                                                 <div className="flex gap-4 flex-wrap">
                                                     {formData.itemImages.map((img, idx) => (
                                                     <div key={idx} className="relative">
-                                                            <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
+                                                            <img src={getDisplayImageUrl(img)} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
                                                             <button type="button" onClick={() => setFormData({...formData, itemImages: formData.itemImages.filter((_, i) => i !== idx)})} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
                                                 </div>
                                             ))}
@@ -900,7 +902,7 @@ const CommunityView = ({
                                                 <div className="flex gap-4 flex-wrap">
                                                     {formData.reviewImages.map((img, idx) => (
                                                         <div key={idx} className="relative">
-                                                            <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
+                                                            <img src={getDisplayImageUrl(img)} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
                                                             <button type="button" onClick={() => setFormData({...formData, reviewImages: formData.reviewImages.filter((_, i) => i !== idx)})} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
                                                 </div>
                                             ))}
@@ -986,7 +988,7 @@ const CommunityView = ({
                                         <div className="flex gap-4 flex-wrap">
                                             {(editingPost.storeImages || []).map((img, idx) => (
                                                 <div key={idx} className="relative">
-                                                    <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
+                                                    <img src={getDisplayImageUrl(img)} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
                                                     <button 
                                                         type="button" 
                                                         onClick={() => {
@@ -1034,13 +1036,15 @@ if (files.length + (editingPost.storeImages || []).length > MAX_IMAGES) {
                                                                 const uploadPromises = files.map(async (file) => {
                                                                     try {
                                                                         if (!file.type.startsWith('image/')) return null;
-                                                                        return await uploadImage(file, 'community');
+                                                                        const meta = await uploadImageWithMeta(file, 'community');
+                                                                        if (meta.deleteUrl) return { url: meta.url, deleteUrl: meta.deleteUrl };
+                                                                        return meta.url;
                                                                     } catch (error) {
                                                                         alert(`${file.name} 업로드에 실패했습니다.`);
                                                                         return null;
                                                                     }
                                                                 });
-                                                                const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                                const uploadedUrls = (await Promise.all(uploadPromises)).filter((u) => u !== null);
                                                                 setEditingPost({...editingPost, storeImages: [...currentImages, ...uploadedUrls]});
                                                             } finally {
                                                                 setUploadingImages(false);
@@ -1060,7 +1064,7 @@ if (files.length + (editingPost.storeImages || []).length > MAX_IMAGES) {
                                         <div className="flex gap-4 flex-wrap">
                                             {(editingPost.itemImages || []).map((img, idx) => (
                                                 <div key={idx} className="relative">
-                                                    <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
+                                                    <img src={getDisplayImageUrl(img)} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
                                                     <button 
                                                         type="button" 
                                                         onClick={() => {
@@ -1108,13 +1112,15 @@ if (files.length + (editingPost.itemImages || []).length > MAX_IMAGES) {
                                                                 const uploadPromises = files.map(async (file) => {
                                                                     try {
                                                                         if (!file.type.startsWith('image/')) return null;
-                                                                        return await uploadImage(file, 'community');
+                                                                        const meta = await uploadImageWithMeta(file, 'community');
+                                                                        if (meta.deleteUrl) return { url: meta.url, deleteUrl: meta.deleteUrl };
+                                                                        return meta.url;
                                                                     } catch (error) {
                                                                         alert(`${file.name} 업로드에 실패했습니다.`);
                                                                         return null;
                                                                     }
                                                                 });
-                                                                const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                                const uploadedUrls = (await Promise.all(uploadPromises)).filter((u) => u !== null);
                                                                 setEditingPost({...editingPost, itemImages: [...currentImages, ...uploadedUrls]});
                                                             } finally {
                                                                 setUploadingImages(false);
@@ -1134,7 +1140,7 @@ if (files.length + (editingPost.itemImages || []).length > MAX_IMAGES) {
                                         <div className="flex gap-4 flex-wrap">
                                             {(editingPost.reviewImages || editingPost.images || []).map((img, idx) => (
                                                 <div key={idx} className="relative">
-                                                    <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
+                                                    <img src={getDisplayImageUrl(img)} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
                                                     <button 
                                                         type="button" 
                                                         onClick={() => {
@@ -1183,13 +1189,15 @@ if (files.length + ((editingPost.reviewImages || editingPost.images || []).lengt
                                                                 const uploadPromises = files.map(async (file) => {
                                                                     try {
                                                                         if (!file.type.startsWith('image/')) return null;
-                                                                        return await uploadImage(file, 'community');
+                                                                        const meta = await uploadImageWithMeta(file, 'community');
+                                                                        if (meta.deleteUrl) return { url: meta.url, deleteUrl: meta.deleteUrl };
+                                                                        return meta.url;
                                                                     } catch (error) {
                                                                         alert(`${file.name} 업로드에 실패했습니다.`);
                                                                         return null;
                                                                     }
                                                                 });
-                                                                const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                                const uploadedUrls = (await Promise.all(uploadPromises)).filter((u) => u !== null);
                                                                 setEditingPost({...editingPost, reviewImages: [...currentImages, ...uploadedUrls], images: [...currentImages, ...uploadedUrls]});
                                                             } finally {
                                                                 setUploadingImages(false);
@@ -1303,7 +1311,7 @@ if (files.length + ((editingPost.reviewImages || editingPost.images || []).lengt
                                                 <div className="grid grid-cols-3 gap-4">
                                                     {selectedPost.storeImages.map((img, idx) => (
                                                         <div key={idx} className="relative aspect-square rounded-xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setSelectedImage(img)}>
-                                                            <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                                                            <img src={getDisplayImageUrl(img)} alt={`매장 사진 ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                                                         </div>
                                                     ))}
                                     </div>
@@ -1365,7 +1373,7 @@ if (files.length + ((editingPost.reviewImages || editingPost.images || []).lengt
                                                 <div className="grid grid-cols-3 gap-4">
                                                     {selectedPost.itemImages.map((img, idx) => (
                                                         <div key={idx} className="relative aspect-square rounded-xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setSelectedImage(img)}>
-                                                            <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                                                            <img src={getDisplayImageUrl(img)} alt={`제품 사진 ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                                                         </div>
                                                     ))}
                                     </div>
@@ -1402,7 +1410,7 @@ if (files.length + ((editingPost.reviewImages || editingPost.images || []).lengt
                                                 <div className="grid grid-cols-3 gap-4">
                                                     {(selectedPost.images || selectedPost.reviewImages).map((img, idx) => (
                                                         <div key={idx} className="relative aspect-square rounded-xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setSelectedImage(img)}>
-                                                            <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                                                            <img src={getDisplayImageUrl(img)} alt={`후기 사진 ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1438,7 +1446,7 @@ if (files.length + ((editingPost.reviewImages || editingPost.images || []).lengt
                     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setSelectedImage(null); }}>
                         <div className="flex flex-col max-w-[90vw] max-h-[90vh] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
                             <div className="flex-1 flex items-center justify-center mb-4">
-                                <img src={selectedImage} alt="확대 이미지" className="max-w-full max-h-[85vh] object-contain rounded-lg" loading="lazy" decoding="async" />
+                                <img src={getDisplayImageUrl(selectedImage)} alt="확대 이미지" className="max-w-full max-h-[85vh] object-contain rounded-lg" loading="lazy" decoding="async" />
                             </div>
                             <div className="flex justify-end">
                                 <button type="button" onClick={() => setSelectedImage(null)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">

@@ -127,6 +127,15 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
 
         if (firebaseService && firebaseService.deleteUser) {
             try {
+                if (firebaseService.purgeUserRelatedData) {
+                    await firebaseService.purgeUserRelatedData({
+                        id: memberId,
+                        uid: uid || memberId,
+                        name: member.name,
+                        email: member.email,
+                        phone: member.phone || member.phoneNumber,
+                    });
+                }
                 if (firebaseService.addBlockedRegistration && uid) {
                     await firebaseService.addBlockedRegistration(uid, email, phone);
                 }

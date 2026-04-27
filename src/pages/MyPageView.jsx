@@ -1,7 +1,7 @@
 import React, { useState, Fragment, useEffect, useCallback, useRef } from 'react';
 import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
-import { uploadImage } from '../utils/imageUtils';
+import { uploadImage, uploadImageWithMeta, getDisplayImageUrl } from '../utils/imageUtils';
 import { firebaseService } from '../services/firebaseService';
 import ModalPortal from '../components/ModalPortal';
 import { openDaumPostcode } from '../utils/daumPostcode';
@@ -869,7 +869,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.storeImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={img} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover border border-blue-200" loading="lazy" decoding="async" />
+                                                <img src={getDisplayImageUrl(img)} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover border border-blue-200" loading="lazy" decoding="async" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -913,13 +913,15 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                             const uploadPromises = files.map(async (file) => {
                                                                 try {
                                                                     if (!file.type.startsWith('image/')) return null;
-                                                                    return await uploadImage(file, 'community');
+                                                                    const meta = await uploadImageWithMeta(file, 'community');
+                                                                    if (meta.deleteUrl) return { url: meta.url, deleteUrl: meta.deleteUrl };
+                                                                    return meta.url;
                                                                 } catch (error) {
                                                                     alert(`${file.name} 업로드에 실패했습니다.`);
                                                                     return null;
                                                                 }
                                                             });
-                                                            const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                            const uploadedUrls = (await Promise.all(uploadPromises)).filter((u) => u !== null);
                                                             setEditingPost({...editingPost, storeImages: [...currentImages, ...uploadedUrls]});
                                                         } finally {
                                                             setUploadingImages(false);
@@ -939,7 +941,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.itemImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={img} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
+                                                <img src={getDisplayImageUrl(img)} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -987,13 +989,15 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                             const uploadPromises = files.map(async (file) => {
                                                                 try {
                                                                     if (!file.type.startsWith('image/')) return null;
-                                                                    return await uploadImage(file, 'community');
+                                                                    const meta = await uploadImageWithMeta(file, 'community');
+                                                                    if (meta.deleteUrl) return { url: meta.url, deleteUrl: meta.deleteUrl };
+                                                                    return meta.url;
                                                                 } catch (error) {
                                                                     alert(`${file.name} 업로드에 실패했습니다.`);
                                                                     return null;
                                                                 }
                                                             });
-                                                            const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                            const uploadedUrls = (await Promise.all(uploadPromises)).filter((u) => u !== null);
                                                             setEditingPost({...editingPost, itemImages: [...currentImages, ...uploadedUrls]});
                                                         } finally {
                                                             setUploadingImages(false);
@@ -1013,7 +1017,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.reviewImages || editingPost.images || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={img} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
+                                                <img src={getDisplayImageUrl(img)} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -1062,13 +1066,15 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                             const uploadPromises = files.map(async (file) => {
                                                                 try {
                                                                     if (!file.type.startsWith('image/')) return null;
-                                                                    return await uploadImage(file, 'community');
+                                                                    const meta = await uploadImageWithMeta(file, 'community');
+                                                                    if (meta.deleteUrl) return { url: meta.url, deleteUrl: meta.deleteUrl };
+                                                                    return meta.url;
                                                                 } catch (error) {
                                                                     alert(`${file.name} 업로드에 실패했습니다.`);
                                                                     return null;
                                                                 }
                                                             });
-                                                            const uploadedUrls = (await Promise.all(uploadPromises)).filter(url => url !== null);
+                                                            const uploadedUrls = (await Promise.all(uploadPromises)).filter((u) => u !== null);
                                                             setEditingPost({...editingPost, reviewImages: [...currentImages, ...uploadedUrls], images: [...currentImages, ...uploadedUrls]});
                                                         } finally {
                                                             setUploadingImages(false);

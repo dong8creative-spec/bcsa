@@ -20,6 +20,7 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import app, { db } from '../firebase';
+import { deleteHostedImagesForPayload } from '../utils/imageUtils';
 
 // Firebase Data Service Layer
 export const firebaseService = {
@@ -528,10 +529,149 @@ export const firebaseService = {
 
   async deletePost(postId) {
     try {
-      await deleteDoc(doc(db, 'posts', postId));
+      const id = String(postId || '').trim();
+      if (!id) return;
+      const ref = doc(db, 'posts', id);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data() || {};
+        await deleteHostedImagesForPayload({ id, ...data });
+      }
+      await deleteDoc(ref);
     } catch (error) {
       console.error('Error deleting post:', error);
       throw error;
+    }
+  },
+
+  /**
+   * 회원 탈퇴용: 해당 회원이 작성한 posts 문서 목록(authorId·구버전 author 일치)
+   */
+  async getPostsByUserForPurge(userProfile) {
+    const rawIds = [userProfile?.id, userProfile?.uid].filter(Boolean).map(String);
+    const idSet = new Set(rawIds);
+    const byId = new Map();
+    for (const uid of idSet) {
+      if (!uid) continue;
+      try {
+        const q = query(collection(db, 'posts'), where('authorId', '==', uid));
+        const snap = await getDocs(q);
+        snap.forEach((d) => {
+          byId.set(d.id, { id: d.id, ...d.data() });
+        });
+      } catch (e) {
+        console.warn('getPostsByUserForPurge authorId', uid, e);
+      }
+    }
+    const name = (userProfile?.name || '').toString().trim();
+    if (name) {
+      try {
+        const q2 = query(collection(db, 'posts'), where('author', '==', name));
+        const snap2 = await getDocs(q2);
+        snap2.forEach((d) => {
+          const data = d.data() || {};
+          const aid = data.authorId != null && data.authorId !== '' ? String(data.authorId) : '';
+          if (aid) {
+            if (idSet.has(aid)) byId.set(d.id, { id: d.id, ...data });
+            return;
+          }
+          byId.set(d.id, { id: d.id, ...data });
+        });
+      } catch (e) {
+        console.warn('getPostsByUserForPurge author name', e);
+      }
+    }
+    return [...byId.values()];
+  },
+
+  /**
+   * 회원 탈퇴·강제 탈퇴: 신청·게시글(이미지 호스팅 포함)·본인 맛집·알림·결제대기 문서 정리
+   * 이후 deleteUser / deleteAuthUser 호출
+   */
+  async purgeUserRelatedData(userProfile) {
+    if (!userProfile) return;
+    const uidA = String(userProfile.id || userProfile.uid || '').trim();
+    const uidB = String(userProfile.uid || userProfile.id || '').trim();
+    const idSet = new Set([uidA, uidB].filter(Boolean));
+    if (idSet.size === 0) return;
+
+    const uForApps = { ...userProfile, id: uidA || uidB, uid: uidB || uidA };
+    const apps = await this.getApplicationsForUser(uForApps);
+    for (const a of apps) {
+      if (a.id) {
+        try {
+          await deleteDoc(doc(db, 'applications', a.id));
+        } catch (e) {
+          console.warn('purge application', a.id, e);
+        }
+      }
+    }
+
+    const posts = await this.getPostsByUserForPurge(userProfile);
+    for (const p of posts) {
+      if (!p.id) continue;
+      try {
+        await deleteHostedImagesForPayload(p);
+        await deleteDoc(doc(db, 'posts', p.id));
+      } catch (e) {
+        console.warn('purge post', p.id, e);
+      }
+    }
+
+    for (const idUser of idSet) {
+      try {
+        const rq = query(collection(db, 'restaurants'), where('ownerId', '==', idUser));
+        const rs = await getDocs(rq);
+        for (const d of rs.docs) {
+          const r = { id: d.id, ...d.data() };
+          try {
+            await deleteHostedImagesForPayload(r);
+            await deleteDoc(d.ref);
+          } catch (e) {
+            console.warn('purge restaurant', d.id, e);
+          }
+        }
+      } catch (e) {
+        console.warn('purge restaurants query', e);
+      }
+    }
+
+    for (const idUser of idSet) {
+      try {
+        const nref = collection(db, 'users', idUser, 'notifications');
+        const ns = await getDocs(nref);
+        let batch = writeBatch(db);
+        let c = 0;
+        for (const nd of ns.docs) {
+          batch.delete(nd.ref);
+          c++;
+          if (c >= 400) {
+            await batch.commit();
+            batch = writeBatch(db);
+            c = 0;
+          }
+        }
+        if (c > 0) await batch.commit();
+      } catch (e) {
+        console.warn('purge notifications', idUser, e);
+      }
+    }
+
+    try {
+      const pps = await getDocs(collection(db, 'pendingPayments'));
+      for (const d of pps.docs) {
+        const x = d.data() || {};
+        const pu = String(x.user_id ?? x.userId ?? '').trim();
+        if (pu && idSet.has(pu)) {
+          try {
+            await deleteDoc(d.ref);
+          } catch (e) {
+            console.warn('purge pending', d.id, e);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('purge pendingPayments', e);
     }
   },
 
@@ -1050,7 +1190,15 @@ export const firebaseService = {
 
   async deleteRestaurant(restaurantId) {
     try {
-      await deleteDoc(doc(db, 'restaurants', restaurantId));
+      const id = String(restaurantId || '').trim();
+      if (!id) return;
+      const ref = doc(db, 'restaurants', id);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data() || {};
+        await deleteHostedImagesForPayload({ id, ...data });
+      }
+      await deleteDoc(ref);
     } catch (error) {
       console.error('Error deleting restaurant:', error);
       throw error;
@@ -1166,7 +1314,18 @@ export const firebaseService = {
   async deleteExternalEventPoster(posterId) {
     const id = String(posterId || '').trim();
     if (!id) return;
-    await deleteDoc(doc(db, 'externalEventPosters', id));
+    try {
+      const ref = doc(db, 'externalEventPosters', id);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data() || {};
+        await deleteHostedImagesForPayload({ id, ...data });
+      }
+      await deleteDoc(ref);
+    } catch (e) {
+      console.error('deleteExternalEventPoster', e);
+      throw e;
+    }
   },
 };
 

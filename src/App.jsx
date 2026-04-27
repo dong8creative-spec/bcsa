@@ -1772,6 +1772,23 @@ const App = () => {
          const authUid = authService?.getCurrentUser?.()?.uid;
          const docIdToDelete = authUid || userId;
 
+         // 0) 게시글·신청·맛집·알림·호스팅 이미지(ImgBB delete_url) 등 연관 데이터 정리
+         if (firebaseService?.purgeUserRelatedData) {
+             try {
+                 await firebaseService.purgeUserRelatedData({
+                     id: docIdToDelete,
+                     uid: authUid || currentUser.uid || docIdToDelete,
+                     name: currentUser.name,
+                     email: currentUser.email,
+                     phone: currentUser.phone || currentUser.phoneNumber,
+                 });
+             } catch (err) {
+                 console.error('연관 데이터 삭제 오류:', err);
+                 alert('회원 데이터 정리에 실패했습니다. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요.');
+                 return;
+             }
+         }
+
          // 1) 로그인 상태에서 먼저 Firestore 사용자 문서 삭제 (Auth 삭제 후에는 request.auth가 null이 되어 삭제 불가)
          if (firebaseService?.deleteUser && docIdToDelete) {
              try {
@@ -1802,8 +1819,12 @@ const App = () => {
                  setMyApplications([]);
                  setMyFoods([]);
                  setMyPosts([]);
-                 const updatedPosts = communityPosts.filter(p => p.author !== currentUser.name || p.category === '프로그램 후기');
-                 setCommunityPosts(updatedPosts);
+                 setCommunityPosts((prev) => prev.filter((p) => {
+                     const aid = p.authorId != null && p.authorId !== '' ? String(p.authorId) : '';
+                     if (aid && (aid === String(currentUser.id || currentUser.uid) || aid === String(authUid || ''))) return false;
+                     if (!aid && (p.author || '') === (currentUser.name || '')) return false;
+                     return true;
+                 }));
                  const updatedUsers = users.filter(u => u.id !== currentUser.id && u.uid !== currentUser.uid);
                  setUsers(updatedUsers);
                  saveUsersToStorage(updatedUsers);
@@ -1813,12 +1834,12 @@ const App = () => {
              }
          }
 
-         // 3) 로컬 상태 정리: 세미나 후기와 사진은 유지, 나머지 게시글만 정리
-         const updatedPosts = communityPosts.filter(p => {
-             if (p.category === '프로그램 후기' && p.author === currentUser.name) return true;
-             return p.author !== currentUser.name;
-         });
-         setCommunityPosts(updatedPosts);
+         // 3) 로컬 상태 정리 (구독이 곧 Firestore와 동기화)
+         setCommunityPosts((prev) => prev.filter((p) => {
+             const aid = p.authorId != null ? String(p.authorId) : '';
+             if (aid && (aid === String(docIdToDelete) || aid === String(authUid || ''))) return false;
+             return (p.author || '') !== (currentUser.name || '');
+         }));
 
          const updatedUsers = users.filter(u => u.id !== currentUser.id && u.uid !== currentUser.uid);
          setUsers(updatedUsers);
@@ -1826,9 +1847,13 @@ const App = () => {
 
          const updatedMembers = membersData.filter(m => m.name !== currentUser.name);
          setMembersData(updatedMembers);
+         setMySeminars([]);
+         setMyApplications([]);
+         setMyFoods([]);
+         setMyPosts([]);
 
          handleLogout();
-         alert("회원 탈퇴가 완료되었습니다.\n세미나 후기와 사진은 유지됩니다.");
+         alert('회원 탈퇴가 완료되었습니다. 작성 글·신청·등록 맛집 등 연관 데이터가 함께 삭제되었습니다.');
     };
 
     /** 결제 요청 (Payment Service: 모바일/CEP·UXP는 리다이렉트, PC는 표준 결제) */
