@@ -52,7 +52,14 @@ const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d
 const FIREBASE_UPLOAD_TIMEOUT_MS = 4 * 1000; // 4초 내 응답 없으면 ImgBB 폴백
 const PROGRAM_RESIZE_THRESHOLD_BYTES = 200 * 1024; // 200KB 이상이면 이미지 리사이즈 (업로드 용량 감소)
 const PROGRAM_MAX_SIZE = 1600; // 프로그램 이미지 최대 긴 변 1600px
-const PROGRAM_QUALITY = 0.82;
+
+/**
+ * 사이트에 등록·업로드되는 이미지 공통: WebP 인코딩 품질 (0~1, 약 85%)
+ * uploadImage, uploadImageForAdmin, convertToWebP, 리사이즈 WebP 경로에 사용
+ */
+export const UPLOAD_WEBP_QUALITY = 0.85;
+
+const PROGRAM_QUALITY = UPLOAD_WEBP_QUALITY;
 
 /**
  * Base64 데이터 URL → File 변환 (리사이즈 후 업로드용)
@@ -71,7 +78,7 @@ const toWebpFileName = (name) => (name || 'image.jpg').replace(/\.[^.]+$/i, '.we
  * 프로그램/후기/콘텐츠 등 관리자 업로드는 모두 이 함수 사용
  * 용량이 크면 리사이즈 후 업로드
  * @param {File} file - 업로드할 이미지 파일
- * @param {Object} options - { maxSize?: number, quality?: number } (기본 1600, 0.82)
+ * @param {Object} options - { maxSize?: number, quality?: number } (기본 1600, UPLOAD_WEBP_QUALITY)
  * @returns {Promise<string>} 업로드된 이미지의 URL
  */
 export const uploadImageForAdmin = async (file, options = {}) => {
@@ -362,10 +369,10 @@ export const resizeImage = (input, maxWidth, maxHeight = null, quality = 0.9, op
 /**
  * 이미지를 WebP로 변환 (용량 절감, 업로드 전 사용)
  * @param {File} file - 원본 이미지 파일
- * @param {number} quality - 0~1 (기본 0.82)
+ * @param {number} quality - 0~1 (기본 UPLOAD_WEBP_QUALITY, 약 85%)
  * @returns {Promise<File>} WebP File (미지원 브라우저는 원본 반환)
  */
-export const convertToWebP = (file, quality = PROGRAM_QUALITY) => {
+export const convertToWebP = (file, quality = UPLOAD_WEBP_QUALITY) => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -400,7 +407,7 @@ export const uploadLogoOrFaviconToGitHub = async (file, type, options = {}) => {
         let base64Image;
         
         if (type === 'logo' && options.maxWidth && options.maxHeight) {
-            base64Image = await resizeImage(file, options.maxWidth, options.maxHeight, options.quality || 0.9);
+            base64Image = await resizeImage(file, options.maxWidth, options.maxHeight, options.quality ?? UPLOAD_WEBP_QUALITY, { outputMimeType: 'image/webp' });
         } else {
             base64Image = await fileToBase64(file);
         }

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { firebaseService } from '../services/firebaseService';
 import { authService } from '../services/authService';
 import { hashPassword, loadUsersFromStorage } from '../utils/authUtils';
-import { uploadImageToImgBB, resizeImage } from '../utils/imageUtils';
+import { uploadImageToImgBB, resizeImage, UPLOAD_WEBP_QUALITY } from '../utils/imageUtils';
 import { openDaumPostcode } from '../utils/daumPostcode';
 import { Icons } from './Icons';
 import ModalPortal from './ModalPortal';
@@ -11,7 +11,7 @@ import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from '../constants';
 async function uploadProfileImageToUrl(dataUrl, defaultAvatarUrl) {
     if (!dataUrl || !dataUrl.startsWith('data:')) return defaultAvatarUrl;
     try {
-        const resized = await resizeImage(dataUrl, 600, 600, 0.8, { outputMimeType: 'image/webp' });
+        const resized = await resizeImage(dataUrl, 600, 600, UPLOAD_WEBP_QUALITY, { outputMimeType: 'image/webp' });
         const result = await uploadImageToImgBB(resized, 'profile.webp');
         const url = result?.url ?? (typeof result === 'string' ? result : null);
         return url || defaultAvatarUrl;

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Cropper from 'react-easy-crop';
 import { Icons } from './Icons';
-import { uploadImageToImgBB, fileToBase64, resizeImage } from '../utils/imageUtils';
+import { uploadImageToImgBB, fileToBase64, resizeImage, UPLOAD_WEBP_QUALITY } from '../utils/imageUtils';
 import ModalPortal from './ModalPortal';
 
 /**
@@ -197,8 +197,8 @@ export const ImageCropModal = ({
       // 크롭된 이미지 생성
       const croppedImageBase64 = await createCroppedImage();
 
-      // 이미지 리사이징 (최대 1600px, 품질 0.82 — LCP/전송 시간 단축)
-      const resizedImage = await resizeImage(croppedImageBase64, 1600, null, 0.82, { outputMimeType: 'image/webp' });
+      // 이미지 리사이징 (최대 1600px, WebP 품질 약 85% — LCP/전송 시간 단축)
+      const resizedImage = await resizeImage(croppedImageBase64, 1600, null, UPLOAD_WEBP_QUALITY, { outputMimeType: 'image/webp' });
 
       // ImgBB에 업로드
       const result = await uploadImageToImgBB(resizedImage, `cropped_${Date.now()}.webp`);

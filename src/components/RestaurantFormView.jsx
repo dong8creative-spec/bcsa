@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from './Icons';
-import { resizeImage, uploadImageToImgBB } from '../utils/imageUtils';
+import { resizeImage, uploadImageToImgBB, UPLOAD_WEBP_QUALITY } from '../utils/imageUtils';
 
 const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openKakaoPlacesSearch, resizeImage, uploadImageToImgBB }) => {
     // 초기 데이터 설정 (이미지 배열을 최소 3개 슬롯으로 확장)
@@ -50,7 +50,7 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
         setUploadingImages(true);
         try {
             // 3:2 비율로 리사이징
-            const resizedImage = await resizeImage(file, 1200, 800, 0.9, { outputMimeType: 'image/webp' });
+            const resizedImage = await resizeImage(file, 1200, 800, UPLOAD_WEBP_QUALITY, { outputMimeType: 'image/webp' });
             const result = await uploadImageToImgBB(resizedImage, `restaurant_${Date.now()}_${index}.webp`);
             
             if (result.success) {
