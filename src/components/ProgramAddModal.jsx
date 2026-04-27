@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { firebaseService } from '../services/firebaseService';
+import { SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD } from '../constants/appConstants';
 import { Icons } from './Icons';
 import { DateTimePicker } from '../pages/Admin/components/DateTimePicker';
 import { KakaoMapModal } from '../pages/Admin/components/KakaoMapModal';
@@ -57,6 +58,7 @@ export const ProgramAddModal = ({ onClose, onSuccess }) => {
       images: imageUrls,
       imageUrls,
       currentParticipants: 0,
+      [SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD]: true,
     };
     try {
       if (firebaseService.createSeminar) {

@@ -8,8 +8,9 @@ import { PostManagement } from './components/PostManagement';
 import { ContentManagement } from './components/ContentManagement';
 import { MenuManagement } from './components/MenuManagement';
 import { MemberDetailView } from './components/MemberDetailView';
+import { ExternalEventPosterManagement } from './components/ExternalEventPosterManagement';
 
-const VALID_TABS = ['users', 'memberDetail', 'programs', 'posts', 'content', 'menu'];
+const VALID_TABS = ['users', 'memberDetail', 'programs', 'externalPosters', 'posts', 'content', 'menu'];
 
 /**
  * 관리자 대시보드 메인 컴포넌트
@@ -60,6 +61,8 @@ export const AdminDashboard = () => {
         return <MemberDetailView currentUser={currentUser} />;
       case 'programs':
         return <ProgramManagement />;
+      case 'externalPosters':
+        return <ExternalEventPosterManagement />;
       case 'posts':
         return <PostManagement />;
       case 'content':

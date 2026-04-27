@@ -5,58 +5,16 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icons } from '../components/Icons';
+import { buildProgramPopupItems } from '../appHelpers';
 
 const POPUP_HIDE_UNTIL_KEY = 'busan_ycc_popup_hide_until';
 
-function isDeadlineSoon(seminar) {
-    if (!seminar?.date) return false;
-    const dateStr = String(seminar.date).trim();
-    const match = dateStr.match(/(\d{4})[\.\-/](\d{1,2})[\.\-/](\d{1,2})/);
-    if (!match) return false;
-    const d = new Date(parseInt(match[1], 10), parseInt(match[2], 10) - 1, parseInt(match[3], 10));
-    const now = new Date();
-    const diffDays = Math.ceil((d - now) / (24 * 60 * 60 * 1000));
-    return diffDays >= 0 && diffDays <= 3;
-}
-
-function getUpcomingPrograms(seminarsData) {
-    if (!Array.isArray(seminarsData) || seminarsData.length === 0) return [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const toDateObj = (dateVal) => {
-        if (dateVal == null) return null;
-        if (typeof dateVal.toDate === 'function') return dateVal.toDate();
-        if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
-        const str = String(dateVal).trim();
-        const matches = str ? str.match(/(\d{4})[\.\-/](\d{1,2})[\.\-/](\d{1,2})/) : null;
-        if (!matches) return null;
-        const d = new Date(parseInt(matches[1], 10), parseInt(matches[2], 10) - 1, parseInt(matches[3], 10));
-        return isNaN(d.getTime()) ? null : d;
-    };
-    return seminarsData
-        .filter(s => s.status !== '종료')
-        .map(s => {
-            const seminarDate = toDateObj(s.date);
-            if (!seminarDate) return null;
-            seminarDate.setHours(0, 0, 0, 0);
-            if (seminarDate >= today) return { ...s, dateObj: seminarDate };
-            return null;
-        })
-        .filter(Boolean)
-        .filter(s => !!s.img)
-        .filter(s => {
-            const is정모 = (s.title || '').includes('정모');
-            const isFull = (s.currentParticipants || 0) >= (s.maxParticipants || 999);
-            return is정모 || !isFull;
-        })
-        .sort((a, b) => a.dateObj - b.dateObj)
-        .slice(0, 3)
-        .map(s => ({ ...s, isDeadlineSoon: isDeadlineSoon(s) }));
-}
-
-export default function ProgramPopupWindowView({ seminarsData = [], appliedProgramIds = new Set() }) {
+export default function ProgramPopupWindowView({ seminarsData = [], externalEventPosters = [], appliedProgramIds = new Set() }) {
     const navigate = useNavigate();
-    const upcomingPrograms = useMemo(() => getUpcomingPrograms(seminarsData), [seminarsData]);
+    const upcomingPrograms = useMemo(
+        () => buildProgramPopupItems(seminarsData, externalEventPosters),
+        [seminarsData, externalEventPosters]
+    );
 
     const handleClose = () => {
         try {
@@ -76,6 +34,14 @@ export default function ProgramPopupWindowView({ seminarsData = [], appliedProgr
     };
 
     const handleApply = (program) => {
+        if (program?.isExternalPoster) {
+            if (program.externalLink) {
+                try {
+                    window.open(program.externalLink, '_blank', 'noopener,noreferrer');
+                } catch (e) {}
+            }
+            return;
+        }
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
         const url = `${origin}/program/apply/${program.id}`;
         if (window.opener && !window.opener.closed) {
@@ -93,17 +59,6 @@ export default function ProgramPopupWindowView({ seminarsData = [], appliedProgr
 
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     const programsToShow = isMobile ? upcomingPrograms.slice(0, 1) : upcomingPrograms;
-
-    if (!Array.isArray(seminarsData) || seminarsData.length === 0) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-                <div className="text-center text-gray-500">
-                    <Icons.Calendar className="w-12 h-12 mx-auto mb-3 animate-pulse" />
-                    <p>로딩 중...</p>
-                </div>
-            </div>
-        );
-    }
 
     if (programsToShow.length === 0) {
         return (
@@ -158,7 +113,22 @@ export default function ProgramPopupWindowView({ seminarsData = [], appliedProgr
                             )}
                         </div>
                         <div className="p-4 pt-3">
-                            {(appliedProgramIds && appliedProgramIds.has(String(program.id))) ? (
+                            {program.isExternalPoster ? (
+                                program.externalLink ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleApply(program)}
+                                        className="w-full py-3.5 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm inline-flex items-center justify-center gap-2"
+                                    >
+                                        <Icons.ExternalLink size={18} />
+                                        행사 페이지 열기
+                                    </button>
+                                ) : (
+                                    <p className="w-full py-3.5 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm text-center">
+                                        외부 행사 안내
+                                    </p>
+                                )
+                            ) : (appliedProgramIds && appliedProgramIds.has(String(program.id))) ? (
                                 <div className="w-full py-3.5 bg-gray-200 text-gray-700 font-bold rounded-xl text-sm text-center cursor-default">
                                     신청해주셔서 감사합니다
                                 </div>

@@ -44,13 +44,15 @@ import AppLayout from './components/AppLayout';
 import ModalPortal from './components/ModalPortal';
 import { KakaoMapModal } from './pages/Admin/components/KakaoMapModal';
 import { DONATION_FEATURE_DISABLED, POPUP_AS_NEW_WINDOW, BUSAN_DISTRICTS, PARTNER_LOGOS, PARTNER_NAMES } from './constants/appConstants';
-import { filterApprovedMembers, getCategoryColor, isDeadlineSoon } from './appHelpers';
+import { filterApprovedMembers, getCategoryColor, buildProgramPopupItems } from './appHelpers';
 import {
     ADMIN_HIDDEN_APPLICATIONS_KEY,
     ADMIN_HIDDEN_APPLICATIONS_CHANGED,
     readAdminHiddenEntries,
-    applyAdminHiddenToSeminarsList,
+    applyPublicSeminarParticipantDisplay,
+    seminarUsesApplicationsParticipantCount,
 } from './utils/adminHiddenApplications';
+import { getSeminarCapacity } from './utils/seminarDisplay';
 import { LoginModal } from './components/LoginModal';
 import { MobileMenu } from './components/MobileMenu';
 
@@ -294,6 +296,7 @@ const App = () => {
     const [searchResults, setSearchResults] = useState([]);
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const [popupPrograms, setPopupPrograms] = useState([]); // 최대 3개 프로그램 팝업
+    const [externalEventPosters, setExternalEventPosters] = useState([]);
     const [applySeminarFromPopup, setApplySeminarFromPopup] = useState(null);
     const [isPopupApplyModalOpen, setIsPopupApplyModalOpen] = useState(false);
     const [popupApplicationData, setPopupApplicationData] = useState({ 
@@ -338,39 +341,49 @@ const App = () => {
 
     const adminHiddenEntries = useMemo(() => readAdminHiddenEntries(), [adminHiddenRevision]);
 
-    const needsHiddenAppBackfill = useMemo(
-        () => adminHiddenEntries.some((e) => !e.programKeys?.length),
-        [adminHiddenEntries]
-    );
+    const [publicApplicationsList, setPublicApplicationsList] = useState([]);
 
-    const [applicationsMapForHidden, setApplicationsMapForHidden] = useState({});
     useEffect(() => {
-        if (!needsHiddenAppBackfill) {
-            setApplicationsMapForHidden({});
-            return undefined;
+        if (firebaseService?.subscribeApplications) {
+            const unsub = firebaseService.subscribeApplications((list) => {
+                setPublicApplicationsList(Array.isArray(list) ? list : []);
+            });
+            return () => unsub();
         }
-        let cancelled = false;
-        (async () => {
-            try {
-                const apps = await firebaseService.getApplications();
-                if (cancelled) return;
-                const m = {};
-                for (const a of apps || []) {
-                    if (a?.id != null) m[String(a.id)] = a;
+        if (firebaseService?.getApplications) {
+            let cancelled = false;
+            (async () => {
+                try {
+                    const apps = await firebaseService.getApplications();
+                    if (!cancelled) setPublicApplicationsList(Array.isArray(apps) ? apps : []);
+                } catch {
+                    if (!cancelled) setPublicApplicationsList([]);
                 }
-                setApplicationsMapForHidden(m);
-            } catch {
-                if (!cancelled) setApplicationsMapForHidden({});
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, [needsHiddenAppBackfill, adminHiddenRevision]);
+            })();
+            return () => {
+                cancelled = true;
+            };
+        }
+        return undefined;
+    }, []);
+
+    const applicationsByIdForDisplay = useMemo(() => {
+        const m = {};
+        for (const a of publicApplicationsList) {
+            if (a?.id != null) m[String(a.id)] = a;
+        }
+        return m;
+    }, [publicApplicationsList]);
 
     const seminarsDataPublic = useMemo(
-        () => applyAdminHiddenToSeminarsList(seminarsData, adminHiddenEntries, applicationsMapForHidden),
-        [seminarsData, adminHiddenEntries, applicationsMapForHidden]
+        () =>
+            applyPublicSeminarParticipantDisplay(
+                seminarsData,
+                publicApplicationsList,
+                adminHiddenEntries,
+                applicationsByIdForDisplay
+            ),
+        [seminarsData, publicApplicationsList, adminHiddenEntries, applicationsByIdForDisplay]
     );
 
     // 프로그램 자동 흐름 애니메이션 (250초 주기) + 드래그 시 일시 정지
@@ -558,36 +571,18 @@ const App = () => {
         
     }, [showLoginModal]);
     
-    // 홈 + 세미나 데이터 있을 때 팝업 후보 이미지 미리 preload (팝업 표시 전에 캐시 적재)
+    // 홈에서 팝업 후보 이미지 미리 preload (외부 포스터 + 프로그램)
     useEffect(() => {
-        if (currentView !== 'home' || !seminarsDataPublic?.length) return;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const upcoming = seminarsDataPublic
-            .filter(s => s.status !== '종료')
-            .map(s => {
-                const matches = s.date ? s.date.match(/(\d{4})[\.-](\d{2})[\.-](\d{2})/) : null;
-                if (!matches) return null;
-                const year = parseInt(matches[1]);
-                const month = parseInt(matches[2]) - 1;
-                const day = parseInt(matches[3]);
-                const seminarDate = new Date(year, month, day);
-                seminarDate.setHours(0, 0, 0, 0);
-                if (seminarDate >= today) return { ...s, dateObj: seminarDate };
-                return null;
-            })
-            .filter(s => s !== null)
-            .filter(s => !!s.img)
-            .filter(s => (s.currentParticipants || 0) < (s.maxParticipants || 999))
-            .sort((a, b) => a.dateObj - b.dateObj)
-            .slice(0, 3);
-        upcoming.forEach((p) => {
+        if (currentView !== 'home') return;
+        const toShow = buildProgramPopupItems(seminarsDataPublic, externalEventPosters);
+        if (toShow.length === 0) return;
+        toShow.forEach((p) => {
             if (p.img && typeof p.img === 'string') {
                 const img = new Image();
                 img.src = p.img;
             }
         });
-    }, [currentView, seminarsDataPublic]);
+    }, [currentView, seminarsDataPublic, externalEventPosters]);
 
     // 메인페이지 진입 시 다가오는 프로그램 팝업 표시 (최대 3개). 신청 여부와 관계없이 표시, 재진입/일정시간 후 다시 표시.
     useEffect(() => {
@@ -605,51 +600,10 @@ const App = () => {
         } catch (error) {
         }
 
-        if (currentView === 'home' && seminarsDataPublic.length > 0) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            // date가 문자열 또는 Timestamp/Date 객체 모두 처리
-            const toDateObj = (dateVal) => {
-                if (dateVal == null) return null;
-                if (typeof dateVal.toDate === 'function') return dateVal.toDate();
-                if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
-                const str = String(dateVal).trim();
-                const matches = str ? str.match(/(\d{4})[\.\-/](\d{1,2})[\.\-/](\d{1,2})/) : null;
-                if (!matches) return null;
-                const year = parseInt(matches[1], 10);
-                const month = parseInt(matches[2], 10) - 1;
-                const day = parseInt(matches[3], 10);
-                const d = new Date(year, month, day);
-                return isNaN(d.getTime()) ? null : d;
-            };
-            const upcomingSeminars = seminarsDataPublic
-                .filter(s => s.status !== '종료')
-                .map(s => {
-                    const seminarDate = toDateObj(s.date);
-                    if (!seminarDate) return null;
-                    seminarDate.setHours(0, 0, 0, 0);
-                    if (seminarDate >= today) {
-                        return { ...s, dateObj: seminarDate };
-                    }
-                    return null;
-                })
-                .filter(s => s !== null)
-                .filter(s => !!s.img)
-                .filter(s => {
-                    const is정모 = (s.title || '').includes('정모');
-                    const isFull = (s.currentParticipants || 0) >= (s.maxParticipants || 999);
-                    return is정모 || !isFull;
-                })
-                .sort((a, b) => a.dateObj - b.dateObj)
-                .slice(0, 3);
-            
-                if (Array.isArray(upcomingSeminars) && upcomingSeminars.length > 0) {
-                const seminarsWithDeadline = upcomingSeminars.map(s => ({
-                    ...s,
-                    isDeadlineSoon: isDeadlineSoon(s)
-                }));
-                const toShow = seminarsWithDeadline;
-                toShow.slice(0, 3).forEach((p) => {
+        if (currentView === 'home') {
+            const toShow = buildProgramPopupItems(seminarsDataPublic, externalEventPosters);
+            if (toShow.length > 0) {
+                toShow.forEach((p) => {
                     if (p.img && typeof p.img === 'string') {
                         const img = new Image();
                         img.src = p.img;
@@ -665,13 +619,13 @@ const App = () => {
                         setPopupPrograms(toShow);
                     }
                 } else {
-                    setPopupPrograms(toShow.length > 0 ? toShow : []);
+                    setPopupPrograms(toShow);
                 }
             } else {
                 setPopupPrograms([]);
             }
         }
-    }, [currentView, seminarsDataPublic, mySeminars]);
+    }, [currentView, seminarsDataPublic, externalEventPosters, mySeminars]);
     
     // Load members from Firebase (우선 사용 - 애드민과 동기화)
     useEffect(() => {
@@ -988,6 +942,12 @@ const App = () => {
                 })();
             }
         }
+    }, []);
+
+    useEffect(() => {
+        if (!firebaseService?.subscribeExternalEventPosters) return;
+        const unsub = firebaseService.subscribeExternalEventPosters(setExternalEventPosters);
+        return () => unsub();
     }, []);
     
     // Load posts from Firebase
@@ -1907,7 +1867,7 @@ const App = () => {
         if (mySeminars.find(s => s.id === seminar.id)) { alert("이미 신청한 세미나입니다."); return false; }
         if (seminar.status === '종료') { alert("종료된 프로그램입니다."); return false; }
         const is정모 = (seminar.title || '').includes('정모');
-        const max = Number(seminar.maxParticipants ?? seminar.capacity) || 0;
+        const max = getSeminarCapacity(seminar);
         const current = Number(seminar.currentParticipants) || 0;
         if (!is정모 && max > 0 && current >= max) {
             alert("정원이 마감되었습니다.");
@@ -1976,14 +1936,16 @@ const App = () => {
         }
 
         try {
-            if (firebaseService?.incrementSeminarParticipants) {
-                await firebaseService.incrementSeminarParticipants(seminar.id, 1);
-            } else if (firebaseService?.updateSeminar) {
-                const raw = (seminarsData || []).find((s) => String(s.id) === String(seminar.id));
-                const base = Number((raw ?? seminar).currentParticipants) || 0;
-                await firebaseService.updateSeminar(seminar.id, {
-                    currentParticipants: base + 1
-                });
+            if (!seminarUsesApplicationsParticipantCount(seminar)) {
+                if (firebaseService?.incrementSeminarParticipants) {
+                    await firebaseService.incrementSeminarParticipants(seminar.id, 1);
+                } else if (firebaseService?.updateSeminar) {
+                    const raw = (seminarsData || []).find((s) => String(s.id) === String(seminar.id));
+                    const base = Number((raw ?? seminar).currentParticipants) || 0;
+                    await firebaseService.updateSeminar(seminar.id, {
+                        currentParticipants: base + 1
+                    });
+                }
             }
         } catch (error) {
             console.error('참가자 수 업데이트 실패:', error);
@@ -2112,6 +2074,15 @@ const App = () => {
     
     // 팝업에서 신청하기 버튼 클릭 핸들러
     const handlePopupApply = async (program) => {
+        if (program?.isExternalPoster) {
+            closePopupAndMarkAsShown();
+            if (program.externalLink) {
+                try {
+                    window.open(program.externalLink, '_blank', 'noopener,noreferrer');
+                } catch (e) {}
+            }
+            return;
+        }
         if (!currentUser) {
             setShowLoginModal(true);
             closePopupAndMarkAsShown();
@@ -3242,8 +3213,8 @@ END:VCALENDAR`;
                                             <div className="w-full flex-shrink-0 aspect-[3/4] bg-gray-100 overflow-hidden relative">
                                                 {img ? <img src={img} alt={seminar.title} className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><Icons.Calendar size={48} /></div>}
                                                 {(() => {
-                                                    const max = Number(seminar.maxParticipants ?? seminar.capacity) || 0;
-                                                    const current = seminar.status === '종료' ? max : (Number(seminar.currentParticipants) || 0);
+                                                    const max = getSeminarCapacity(seminar);
+                                                    const current = seminar.status === '종료' && max > 0 ? max : (Number(seminar.currentParticipants) || 0);
                                                     const isPopular = (seminar.title || '').includes('정모') || (max > 0 && current / max >= 0.8);
                                                     return isPopular ? (
                                                         <div className="absolute top-2 left-2" style={{ transform: 'scale(0.667)', transformOrigin: 'top left' }}>
@@ -3381,6 +3352,7 @@ END:VCALENDAR`;
         return (
             <ProgramPopupWindowView
                 seminarsData={seminarsDataPublic}
+                externalEventPosters={externalEventPosters}
                 appliedProgramIds={new Set((mySeminars || []).map(m => String(m.id)).filter(Boolean))}
             />
         );
@@ -3421,7 +3393,18 @@ END:VCALENDAR`;
             setPopupApplicationData={setPopupApplicationData}
             handlePopupApplySubmit={handlePopupApplySubmit}
             handlePopupApply={handlePopupApply}
-            onNavigateToProgramApply={(program) => { closePopupAndMarkAsShown(); navigate(`/program/apply/${program.id}`); }}
+            onNavigateToProgramApply={(program) => {
+                closePopupAndMarkAsShown();
+                if (program?.isExternalPoster) {
+                    if (program.externalLink) {
+                        try {
+                            window.open(program.externalLink, '_blank', 'noopener,noreferrer');
+                        } catch (e) {}
+                    }
+                    return;
+                }
+                navigate(`/program/apply/${program.id}`);
+            }}
             getCategoryColor={getCategoryColor}
             scrolled={scrolled}
             menuOrder={menuOrder}

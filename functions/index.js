@@ -21,6 +21,29 @@ axios.defaults.httpsAgent = new https.Agent({ keepAlive: true });
 const app = express();
 const db = admin.firestore();
 
+/** seminars 문서 필드: true면 참가 인원은 applications 건수만 쓰고 currentParticipants는 갱신하지 않음 (클라이언트와 동일 상수명) */
+const USE_APPLICATIONS_PARTICIPANT_COUNT = 'useApplicationsParticipantCount';
+
+async function incrementSeminarParticipantsIfLegacy(seminarRef) {
+  const seminarSnap = await seminarRef.get();
+  if (!seminarSnap.exists) return;
+  const data = seminarSnap.data() || {};
+  if (data[USE_APPLICATIONS_PARTICIPANT_COUNT] === true) return;
+  const current = (Number(data.currentParticipants) || 0) + 1;
+  await seminarRef.update({ currentParticipants: current });
+}
+
+async function decrementSeminarParticipantsIfLegacy(seminarRef, delta = 1) {
+  const seminarSnap = await seminarRef.get();
+  if (!seminarSnap.exists) return;
+  const data = seminarSnap.data() || {};
+  if (data[USE_APPLICATIONS_PARTICIPANT_COUNT] === true) return;
+  const prev = Math.max(0, Number(data.currentParticipants) || 0);
+  const d = Math.max(0, Math.floor(Number(delta) || 0));
+  if (d === 0) return;
+  await seminarRef.update({ currentParticipants: Math.max(0, prev - d) });
+}
+
 // CORS 허용 오리진 (bcsa.co.kr 프로덕션 + 로컬 개발)
 const ALLOWED_ORIGINS = [
   'https://bcsa.co.kr',
@@ -185,11 +208,7 @@ app.get('/api/payment/status', async (req, res) => {
         });
 
         const seminarRef = db.collection('seminars').doc(seminarId);
-        const seminarSnap = await seminarRef.get();
-        if (seminarSnap.exists) {
-          const current = (seminarSnap.data()?.currentParticipants || 0) + 1;
-          await seminarRef.update({ currentParticipants: current });
-        }
+        await incrementSeminarParticipantsIfLegacy(seminarRef);
 
         await db.collection('paymentWebhookEvents').doc(merchantUid).set({ completed: true }, { merge: true });
         await db.collection('pendingPayments').doc(merchantUid).delete();
@@ -259,11 +278,7 @@ app.post('/api/payment/webhook', async (req, res) => {
         });
 
         const seminarRef = db.collection('seminars').doc(seminarId);
-        const seminarSnap = await seminarRef.get();
-        if (seminarSnap.exists) {
-          const current = (seminarSnap.data()?.currentParticipants || 0) + 1;
-          await seminarRef.update({ currentParticipants: current });
-        }
+        await incrementSeminarParticipantsIfLegacy(seminarRef);
 
         await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set({ completed: true }, { merge: true });
         await db.collection('pendingPayments').doc(String(merchantUid)).delete();
@@ -317,11 +332,7 @@ app.post('/api/admin/application-from-pending', async (req, res) => {
     });
 
     const seminarRef = db.collection('seminars').doc(seminarId);
-    const seminarSnap = await seminarRef.get();
-    if (seminarSnap.exists) {
-      const current = (seminarSnap.data()?.currentParticipants || 0) + 1;
-      await seminarRef.update({ currentParticipants: current });
-    }
+    await incrementSeminarParticipantsIfLegacy(seminarRef);
 
     await db.collection('pendingPayments').doc(String(merchantUid)).delete();
     res.status(200).json({ success: true, applicationId: appRef.id });
@@ -392,11 +403,7 @@ app.post('/api/admin/delete-application', async (req, res) => {
     await appRef.delete();
     if (seminarId) {
       const seminarRef = db.collection('seminars').doc(seminarId);
-      const seminarSnap = await seminarRef.get();
-      if (seminarSnap.exists) {
-        const prev = Math.max(0, Number(seminarSnap.data()?.currentParticipants) || 0);
-        await seminarRef.update({ currentParticipants: Math.max(0, prev - 1) });
-      }
+      await decrementSeminarParticipantsIfLegacy(seminarRef, 1);
     }
     console.log('[admin] delete-application', applicationId, seminarId || '(no seminar id)');
     res.status(200).json({ success: true });
@@ -412,12 +419,7 @@ const removeMatchedApplicationsAndDecrementSeminar = async (matched, seminarIdSt
     await db.collection('applications').doc(row.id).delete();
   }
   const seminarRef = db.collection('seminars').doc(String(seminarIdStr));
-  const seminarSnap = await seminarRef.get();
-  if (seminarSnap.exists) {
-    const prev = Math.max(0, Number(seminarSnap.data()?.currentParticipants) || 0);
-    const next = Math.max(0, prev - matched.length);
-    await seminarRef.update({ currentParticipants: next });
-  }
+  await decrementSeminarParticipantsIfLegacy(seminarRef, matched.length);
 };
 
 // 결제 취소(환불) API: 유료는 PortOne 취소 후 삭제. 무료·withdraw_only는 DB만 정리.

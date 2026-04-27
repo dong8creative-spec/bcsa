@@ -4,7 +4,6 @@ import SignUpModal from './SignUpModal';
 import InquiryModal from './InquiryModal';
 import ModalPortal from './ModalPortal';
 import { useMediaQuery, MOBILE_QUERY } from '../hooks/useMediaQuery';
-import { getDisplayedOverflow, is정모 } from '../utils/seminarDisplay';
 import { defaultContent } from '../constants/content';
 
 const FAB_GAP_PX = 16;
@@ -190,7 +189,22 @@ const AppLayout = (props) => {
                                     </div>
                                     {/* 프로그램 신청하기 / 신청해주셔서 감사합니다 */}
                                     <div className="p-4 pt-3">
-                                        {(appliedProgramIds && appliedProgramIds.has(String(program.id))) ? (
+                                        {program.isExternalPoster ? (
+                                            program.externalLink ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onNavigateToProgramApply && onNavigateToProgramApply(program)}
+                                                    className="w-full py-3.5 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm inline-flex items-center justify-center gap-2"
+                                                >
+                                                    <Icons.ExternalLink size={18} />
+                                                    행사 페이지 열기
+                                                </button>
+                                            ) : (
+                                                <p className="w-full py-3.5 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm text-center">
+                                                    외부 행사 안내
+                                                </p>
+                                            )
+                                        ) : (appliedProgramIds && appliedProgramIds.has(String(program.id))) ? (
                                             <div className="w-full py-3.5 bg-gray-200 text-gray-700 font-bold rounded-xl text-sm text-center cursor-default">
                                                 신청해주셔서 감사합니다
                                             </div>

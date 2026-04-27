@@ -5,7 +5,7 @@ import CalendarSection from '../components/CalendarSection';
 import ModalPortal from '../components/ModalPortal';
 import { ProgramAddModal } from '../components/ProgramAddModal';
 import { useMediaQuery, MOBILE_QUERY } from '../hooks/useMediaQuery';
-import { getDisplayedOverflow, is정모 } from '../utils/seminarDisplay';
+import { getParticipantCountDisplay, getSeminarCapacity, is정모 } from '../utils/seminarDisplay';
 
 const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [], communityPosts = [], onProgramAdded, currentPage: currentPageProp, onPageChange }) => {
     /** 운영진 또는 관리자 권한: 프로그램 등록 가능 (admin 채널 없이 바로 등록) */
@@ -246,7 +246,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                 className: 'bg-gray-300 text-gray-500 cursor-not-allowed'
             };
         }
-        const max = Number(seminar.maxParticipants ?? seminar.capacity) || 0;
+        const max = getSeminarCapacity(seminar);
         const current = Number(seminar.currentParticipants) || 0;
         const isFull = max > 0 && current >= max;
         if (isFull && !is정모(seminar)) {
@@ -370,8 +370,8 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                         <>
                                             <img src={displayImage} alt={seminar.title} className="w-full h-full object-cover object-center" loading="lazy" decoding="async" />
                                             {(() => {
-                                                const max = Number(seminar.maxParticipants ?? seminar.capacity) || 0;
-                                                const current = seminar.status === '종료' ? max : (Number(seminar.currentParticipants) || 0);
+                                                const max = getSeminarCapacity(seminar);
+                                                const current = seminar.status === '종료' && max > 0 ? max : (Number(seminar.currentParticipants) || 0);
                                                 const isPopular = (seminar.title || '').includes('정모') || (max > 0 && current / max >= 0.8);
                                                 return isPopular ? (
                                                     <div className="absolute top-2 left-2" style={{ transform: 'scale(0.667)', transformOrigin: 'top left' }}>
@@ -420,13 +420,11 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                         <span className="text-sm font-semibold text-dark flex items-center gap-1">
                                         <Icons.Users size={14} className="text-brand" /> 신청:{' '}
                                         {(() => {
-                                            const max = Number(seminar.maxParticipants ?? seminar.capacity) || 0;
-                                            const overflow = getDisplayedOverflow(seminar);
-                                            if (overflow > 0) {
-                                                const displayTotal = max + overflow;
-                                                return (<><span className="text-red-600 font-bold">{displayTotal}</span> / {max}명</>);
+                                            const d = getParticipantCountDisplay(seminar);
+                                            if (d.mode === 'noCapacity') {
+                                                return (<><span className="font-bold text-dark">{d.current}</span>명</>);
                                             }
-                                            return (<>{seminar.status === '종료' ? max : (seminar.currentParticipants || 0)} / {max}명</>);
+                                            return (<>{d.current} / {d.max}명</>);
                                         })()}
                                     </span>
                                         {currentUser && (() => {
@@ -647,10 +645,9 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                 </div>
                                 {/* 하단 3등분: 신청 비율에 따른 색상(파랑→초록→빨강), 버튼 위치·패딩 조정 */}
                                 {(() => {
-                                    const max = Number(selectedSeminar.maxParticipants || selectedSeminar.capacity) || 0;
+                                    const max = getSeminarCapacity(selectedSeminar);
                                     const rawCurrent = Number(selectedSeminar.currentParticipants) || 0;
-                                    const current = selectedSeminar.status === '종료' ? max : rawCurrent;
-                                    const overflow = getDisplayedOverflow(selectedSeminar);
+                                    const current = selectedSeminar.status === '종료' && max > 0 ? max : rawCurrent;
                                     const left = max - current;
                                     const ratio = max > 0 ? current / max : 0;
                                     const isApplyState = selectedSeminar.status !== '종료' && selectedSeminar.status !== '후기작성가능';
@@ -668,10 +665,12 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                             barHover = 'hover:bg-blue-700';
                                         }
                                     }
-                                    const displayTotal = overflow > 0 ? max + overflow : max;
-                                    const participantLabel = overflow > 0
-                                        ? <>신청인원 <span className="text-red-200 font-bold drop-shadow-md">{displayTotal}</span>/{max}</>
-                                        : <>신청인원 {selectedSeminar.status === '종료' ? max : (selectedSeminar.currentParticipants || 0)}/{max}</>;
+                                    const participantLabel =
+                                        max <= 0 ? (
+                                            <>신청 <span className="font-bold">{rawCurrent}</span>명</>
+                                        ) : (
+                                            <>신청인원 {current}/{max}</>
+                                        );
                                     return (
                                         <div className={`shrink-0 border-t border-gray-200 grid grid-cols-3 divide-x divide-white/20 ${barBg}`}>
                                             <div className="flex items-center justify-center py-4 px-3 min-h-[76px]">

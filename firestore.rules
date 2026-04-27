@@ -19,6 +19,12 @@ service cloud.firestore {
       allow create, update, delete: if request.auth != null;
     }
 
+    // 외부행사 팝업 포스터(기간·이미지·선택 링크): 읽기 공개, 쓰기는 로그인 사용자만
+    match /externalEventPosters/{posterId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
     // 게시글(커뮤니티·후기): 읽기 공개, 쓰기는 로그인 사용자만
     match /posts/{postId} {
       allow read: if true;

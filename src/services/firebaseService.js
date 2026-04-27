@@ -1125,7 +1125,49 @@ export const firebaseService = {
         callback({});
       }
     });
-  }
+  },
+
+  // ==========================================
+  // External event posters (기간제 홈 팝업)
+  // ==========================================
+  subscribeExternalEventPosters(callback) {
+    return onSnapshot(
+      collection(db, 'externalEventPosters'),
+      (snapshot) => {
+        const rows = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        rows.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+        callback(rows);
+      },
+      (error) => {
+        console.error('subscribeExternalEventPosters error:', error);
+        callback([]);
+      }
+    );
+  },
+
+  async createExternalEventPoster(data) {
+    const docRef = await addDoc(collection(db, 'externalEventPosters'), {
+      ...data,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return docRef.id;
+  },
+
+  async updateExternalEventPoster(posterId, data) {
+    const id = String(posterId || '').trim();
+    if (!id) throw new Error('updateExternalEventPoster: posterId가 비어 있습니다.');
+    await updateDoc(doc(db, 'externalEventPosters', id), {
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
+  },
+
+  async deleteExternalEventPoster(posterId) {
+    const id = String(posterId || '').trim();
+    if (!id) return;
+    await deleteDoc(doc(db, 'externalEventPosters', id));
+  },
 };
 
 export default firebaseService;

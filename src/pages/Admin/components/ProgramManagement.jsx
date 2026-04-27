@@ -9,6 +9,7 @@ import {
   notifyAdminHiddenApplicationsChanged,
   collectProgramSeminarKeys,
 } from '../../../utils/adminHiddenApplications';
+import { SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD } from '../../../constants/appConstants';
 import { calculateStatus } from '../../../utils';
 import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
@@ -376,6 +377,7 @@ export const ProgramManagement = () => {
         applicationFee: 50000,
         imageUrls: [],
         images: [],
+        [SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD]: true,
       });
       await firebaseService.createSeminar(baseData(
         '테스트 프로그램 1 - 비즈니스 세미나',
@@ -452,6 +454,7 @@ export const ProgramManagement = () => {
     };
     if (!editingProgram) {
       payload.currentParticipants = 0;
+      payload[SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD] = true;
     } else if (editingProgram.currentParticipants != null) {
       payload.currentParticipants = editingProgram.currentParticipants;
     }
@@ -728,7 +731,7 @@ export const ProgramManagement = () => {
                   )}
                   <div className="flex items-center gap-2 text-sm font-bold text-green-700">
                     <Icons.Users size={16} />
-                    <span>신청 건수 {appCount}건</span>
+                    <span>명단 문서 {appCount}건</span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 w-full">
@@ -904,7 +907,7 @@ export const ProgramManagement = () => {
                   placeholder="0"
                   className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                 />
-                <p className="text-xs text-gray-500 mt-1">정모 등 참여가 정원을 초과한 경우 입력 (표시 시 5~8명이 임의 추가됩니다)</p>
+                <p className="text-xs text-gray-500 mt-1">내부 기록용입니다. 홈·프로그램 목록의 신청 인원 숫자에는 반영되지 않습니다.</p>
               </div>
 
               <div>

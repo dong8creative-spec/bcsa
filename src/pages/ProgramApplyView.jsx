@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Icons } from '../components/Icons';
 import { normalizeImagesList } from '../utils/imageUtils';
-import { getDisplayedOverflow, is정모 } from '../utils/seminarDisplay';
+import { getParticipantCountDisplay, getSeminarCapacity, is정모 } from '../utils/seminarDisplay';
 
 const getStatusColor = (status) => {
     switch (status) {
@@ -119,7 +119,7 @@ const ProgramApplyView = ({
 
     const isPaid = program.applicationFee != null && Number(program.applicationFee) > 0;
     const isEnded = program.status === '종료';
-    const maxCap = Number(program.maxParticipants ?? program.capacity) || 0;
+    const maxCap = getSeminarCapacity(program);
     const currentCap = Number(program.currentParticipants) || 0;
     const isFull = maxCap > 0 && currentCap >= maxCap;
     const allowOverflow = is정모(program);
@@ -248,10 +248,11 @@ const ProgramApplyView = ({
                                     <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-0.5">정원</div>
                                     <div className="text-sm font-semibold text-dark">
                                         {(() => {
-                                        const max = program.maxParticipants ?? program.capacity ?? 0;
-                                        const overflow = getDisplayedOverflow(program);
-                                        if (overflow > 0) return (<><span className="text-red-600 font-bold">{Number(max) + overflow}</span> / {max}명</>);
-                                        return (<>{program.status === '종료' ? max : (program.currentParticipants ?? 0)} / {max}명</>);
+                                        const d = getParticipantCountDisplay(program);
+                                        if (d.mode === 'noCapacity') {
+                                            return (<>{d.current}명</>);
+                                        }
+                                        return (<>{d.current} / {d.max}명</>);
                                     })()}
                                     </div>
                                 </div>

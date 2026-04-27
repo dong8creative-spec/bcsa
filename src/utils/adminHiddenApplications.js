@@ -3,6 +3,8 @@
  * 홈·목록 등 공개 UI의 currentParticipants 집계에 반영.
  */
 
+import { SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD } from '../constants/appConstants';
+
 export const ADMIN_HIDDEN_APPLICATIONS_KEY = 'bcsa_admin_hidden_application_ids';
 
 export const ADMIN_HIDDEN_APPLICATIONS_CHANGED = 'bcsa-admin-hidden-applications-changed';
@@ -122,15 +124,48 @@ export function countHiddenApplicationsForSeminar(seminar, entries, appById = {}
   return n;
 }
 
+/** 신규 프로그램: 신청 인원을 applications 건수로만 표시 */
+export function seminarUsesApplicationsParticipantCount(seminar) {
+  return seminar?.[SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD] === true;
+}
+
 /**
- * 공개 UI용: 세미나 목록에 숨김 반영한 currentParticipants
+ * 세미나에 연결된 applications 문서 수 (ProgramManagement와 동일한 seminar/program 키 매칭)
  */
-export function applyAdminHiddenToSeminarsList(seminars, entries, appById = {}) {
+export function countApplicationsMatchingSeminar(seminar, applications) {
+  const keys = collectProgramSeminarKeys(seminar);
+  if (keys.size === 0) return 0;
+  let n = 0;
+  for (const app of applications || []) {
+    const cand = [
+      toSeminarId(app.seminarId),
+      toSeminarId(app.programId),
+      toSeminarId(app.seminar_id),
+      toSeminarId(app.program_id),
+    ].filter(Boolean);
+    if (cand.some((c) => keys.has(c))) n += 1;
+  }
+  return n;
+}
+
+/**
+ * 공개 UI용:
+ * - useApplicationsParticipantCount: applications 매칭 건수(−숨김)만 사용.
+ * - 그 외(레거시): Firestore currentParticipants와 applications 매칭 건수 중 큰 값을 쓴 뒤 숨김을 뺌.
+ *   (신청은 applications에만 쌓이고 카운터 증가가 실패한 경우에도 명단과 맞게 보이게 함)
+ */
+export function applyPublicSeminarParticipantDisplay(seminars, applications, entries, appById = {}) {
   const list = Array.isArray(seminars) ? seminars : [];
+  const apps = Array.isArray(applications) ? applications : [];
   return list.map((s) => {
     const sub = countHiddenApplicationsForSeminar(s, entries, appById);
-    if (!sub) return s;
-    const base = Number(s.currentParticipants) || 0;
-    return { ...s, currentParticipants: Math.max(0, base - sub) };
+    const matched = countApplicationsMatchingSeminar(s, apps);
+    const fromField = Number(s.currentParticipants) || 0;
+    const base = seminarUsesApplicationsParticipantCount(s)
+      ? matched
+      : Math.max(fromField, matched);
+    const next = Math.max(0, base - sub);
+    if (next === fromField && sub === 0) return s;
+    return { ...s, currentParticipants: next };
   });
 }

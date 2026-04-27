@@ -33,3 +33,10 @@ export { PARTNER_NAMES } from './partnerNames';
 
 /** 로그인 필요 메뉴 (비로그인 시 비활성 표시) */
 export const MEMBERS_ONLY_MENUS = ['부청사 회원', '커뮤니티'];
+
+/**
+ * Firestore seminars 문서 필드명.
+ * true인 프로그램만 공개 화면에서 신청 인원을 `applications` 건수로 표시한다.
+ * 미설정·false인 기존 프로그램은 기존처럼 `currentParticipants` 필드를 쓴다.
+ */
+export const SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD = 'useApplicationsParticipantCount';
