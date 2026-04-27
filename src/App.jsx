@@ -40,21 +40,17 @@ import PrivacyPolicyView from './pages/PrivacyPolicyView';
 import TermsOfServiceView from './pages/TermsOfServiceView';
 import RefundPolicyView from './pages/RefundPolicyView';
 import ProgramPopupWindowView from './pages/ProgramPopupWindowView';
-import ExternalPosterPopupView from './pages/ExternalPosterPopupView';
 import AppLayout from './components/AppLayout';
 import ModalPortal from './components/ModalPortal';
 import { KakaoMapModal } from './pages/Admin/components/KakaoMapModal';
 import {
     DONATION_FEATURE_DISABLED,
     POPUP_AS_NEW_WINDOW,
-    EXTERNAL_POSTER_POPUP_WIDTH,
-    EXTERNAL_POSTER_POPUP_HEIGHT,
-    EXTERNAL_POSTER_POPUP_WINDOW_NAME,
     BUSAN_DISTRICTS,
     PARTNER_LOGOS,
     PARTNER_NAMES
 } from './constants/appConstants';
-import { filterApprovedMembers, getCategoryColor, buildProgramPopupItems, buildActiveExternalPosterItems } from './appHelpers';
+import { filterApprovedMembers, getCategoryColor, buildProgramPopupItems } from './appHelpers';
 import {
     ADMIN_HIDDEN_APPLICATIONS_KEY,
     ADMIN_HIDDEN_APPLICATIONS_CHANGED,
@@ -67,7 +63,6 @@ import { LoginModal } from './components/LoginModal';
 import { MobileMenu } from './components/MobileMenu';
 
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
-const EXTERNAL_POSTER_HIDE_UNTIL_KEY = 'busan_ycc_external_poster_popup_hide_until';
 
 const App = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -321,7 +316,6 @@ const App = () => {
     const [googleSignupExtraEmail, setGoogleSignupExtraEmail] = useState('');
     const kakaoMapCallbackRef = useRef(null);
     const popupShownRef = useRef(false); // 팝업 설정 중복 실행 방지용 ref
-    const externalPopupShownRef = useRef(false);
     const programTrackRef = useRef(null);
     const programScrollOffsetRef = useRef(0);
     const [programScrollOffset, setProgramScrollOffset] = useState(0);
@@ -578,10 +572,7 @@ const App = () => {
     // 홈에서 팝업 후보 이미지 미리 preload (프로그램 + 외부행사)
     useEffect(() => {
         if (currentView !== 'home') return;
-        const toShow = [
-            ...buildProgramPopupItems(seminarsDataPublic),
-            ...buildActiveExternalPosterItems(externalEventPosters),
-        ];
+        const toShow = buildProgramPopupItems(seminarsDataPublic, externalEventPosters);
         if (toShow.length === 0) return;
         toShow.forEach((p) => {
             if (p.img && typeof p.img === 'string') {
@@ -590,49 +581,6 @@ const App = () => {
             }
         });
     }, [currentView, seminarsDataPublic, externalEventPosters]);
-
-    // 외부행사 포스터는 프로그램 팝업과 분리된 전용 창으로 표시
-    useEffect(() => {
-        try {
-            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                const hideUntil = localStorage.getItem(EXTERNAL_POSTER_HIDE_UNTIL_KEY);
-                if (hideUntil && Date.now() < Number(hideUntil)) return;
-                if (externalPopupShownRef.current) return;
-            }
-        } catch (error) {
-        }
-
-        if (location.pathname === '/external-poster-popup' || location.pathname === '/program-popup') return;
-        if (currentView !== 'home') return;
-        const postersToShow = buildActiveExternalPosterItems(externalEventPosters);
-        if (postersToShow.length === 0) return;
-
-        postersToShow.forEach((p) => {
-            if (p.img && typeof p.img === 'string') {
-                const img = new Image();
-                img.src = p.img;
-            }
-        });
-        externalPopupShownRef.current = true;
-
-        try {
-            const origin = typeof window !== 'undefined' ? window.location.origin : '';
-            const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-            const w = window.open(
-                origin + '/external-poster-popup',
-                EXTERNAL_POSTER_POPUP_WINDOW_NAME,
-                `width=${EXTERNAL_POSTER_POPUP_WIDTH},height=${EXTERNAL_POSTER_POPUP_HEIGHT},scrollbars=yes,resizable=yes`
-            );
-            if (isMobile && (!w || w.closed)) {
-                navigate('/external-poster-popup');
-            }
-        } catch (e) {
-            try {
-                navigate('/external-poster-popup');
-            } catch (e2) {
-            }
-        }
-    }, [currentView, externalEventPosters, navigate, location.pathname]);
 
     // 메인페이지 진입 시 다가오는 프로그램 팝업 표시 (최대 3개). 신청 여부와 관계없이 표시, 재진입/일정시간 후 다시 표시.
     useEffect(() => {
@@ -650,11 +598,11 @@ const App = () => {
         } catch (error) {
         }
 
-        if (location.pathname === '/program-popup' || location.pathname === '/external-poster-popup') {
+        if (location.pathname === '/program-popup') {
             return;
         }
         if (currentView === 'home') {
-            const toShow = buildProgramPopupItems(seminarsDataPublic);
+            const toShow = buildProgramPopupItems(seminarsDataPublic, externalEventPosters);
             if (toShow.length > 0) {
                 toShow.forEach((p) => {
                     if (p.img && typeof p.img === 'string') {
@@ -678,7 +626,7 @@ const App = () => {
                 setPopupPrograms([]);
             }
         }
-    }, [currentView, seminarsDataPublic, mySeminars, location.pathname]);
+    }, [currentView, seminarsDataPublic, externalEventPosters, mySeminars, location.pathname]);
     
     // Load members from Firebase (우선 사용 - 애드민과 동기화)
     useEffect(() => {
@@ -2118,7 +2066,6 @@ const App = () => {
             try {
                 localStorage.removeItem('busan_ycc_popup_shown');
                 localStorage.removeItem('busan_ycc_popup_hide_until');
-                localStorage.removeItem(EXTERNAL_POSTER_HIDE_UNTIL_KEY);
                 if (import.meta.env.MODE === 'development') {
                     console.log('[개발] 프로그램 팝업 표시/24시간 숨김 초기화됨. 새로고침 후 홈에서 다시 뜹니다.');
                 }
@@ -2128,6 +2075,15 @@ const App = () => {
     
     // 팝업에서 신청하기 버튼 클릭 핸들러
     const handlePopupApply = async (program) => {
+        if (program?.isExternalPoster) {
+            closePopupAndMarkAsShown();
+            if (program.externalLink) {
+                try {
+                    window.open(program.externalLink, '_blank', 'noopener,noreferrer');
+                } catch (e) {}
+            }
+            return;
+        }
         if (!currentUser) {
             setShowLoginModal(true);
             closePopupAndMarkAsShown();
@@ -3397,15 +3353,8 @@ END:VCALENDAR`;
         return (
             <ProgramPopupWindowView
                 seminarsData={seminarsDataPublic}
-                appliedProgramIds={new Set((mySeminars || []).map(m => String(m.id)).filter(Boolean))}
-            />
-        );
-    }
-
-    if (location.pathname === '/external-poster-popup') {
-        return (
-            <ExternalPosterPopupView
                 externalEventPosters={externalEventPosters}
+                appliedProgramIds={new Set((mySeminars || []).map(m => String(m.id)).filter(Boolean))}
             />
         );
     }
@@ -3447,6 +3396,14 @@ END:VCALENDAR`;
             handlePopupApply={handlePopupApply}
             onNavigateToProgramApply={(program) => {
                 closePopupAndMarkAsShown();
+                if (program?.isExternalPoster) {
+                    if (program.externalLink) {
+                        try {
+                            window.open(program.externalLink, '_blank', 'noopener,noreferrer');
+                        } catch (e) {}
+                    }
+                    return;
+                }
                 navigate(`/program/apply/${program.id}`);
             }}
             getCategoryColor={getCategoryColor}

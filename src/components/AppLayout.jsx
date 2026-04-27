@@ -151,7 +151,9 @@ const AppLayout = (props) => {
                             return programsToShow.map((program, idx) => (
                                 <div
                                     key={program.id || idx}
-                                    className="bg-white rounded-2xl shadow-2xl overflow-hidden flex-shrink-0 w-[85vw] max-w-sm mx-auto md:max-w-[320px] flex flex-col"
+                                    className={`bg-white rounded-2xl shadow-2xl overflow-hidden flex-shrink-0 w-[85vw] max-w-sm mx-auto flex flex-col ${
+                                        program.isExternalPoster ? 'md:max-w-[480px]' : 'md:max-w-[320px]'
+                                    }`}
                                 >
                                     {/* 포스터 + 오른쪽 상단 X */}
                                     <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
@@ -189,7 +191,21 @@ const AppLayout = (props) => {
                                     </div>
                                     {/* 프로그램 신청하기 / 신청해주셔서 감사합니다 */}
                                     <div className="p-4 pt-3">
-                                        {(appliedProgramIds && appliedProgramIds.has(String(program.id))) ? (
+                                        {program.isExternalPoster ? (
+                                            program.externalLink ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onNavigateToProgramApply && onNavigateToProgramApply(program)}
+                                                    className="w-full py-3.5 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm"
+                                                >
+                                                    행사 페이지 열기
+                                                </button>
+                                            ) : (
+                                                <div className="w-full py-3.5 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm text-center cursor-default">
+                                                    외부 행사 안내
+                                                </div>
+                                            )
+                                        ) : (appliedProgramIds && appliedProgramIds.has(String(program.id))) ? (
                                             <div className="w-full py-3.5 bg-gray-200 text-gray-700 font-bold rounded-xl text-sm text-center cursor-default">
                                                 신청해주셔서 감사합니다
                                             </div>
