@@ -9,11 +9,11 @@ import { buildProgramPopupItems } from '../appHelpers';
 
 const POPUP_HIDE_UNTIL_KEY = 'busan_ycc_popup_hide_until';
 
-export default function ProgramPopupWindowView({ seminarsData = [], externalEventPosters = [], appliedProgramIds = new Set() }) {
+export default function ProgramPopupWindowView({ seminarsData = [], appliedProgramIds = new Set() }) {
     const navigate = useNavigate();
     const upcomingPrograms = useMemo(
-        () => buildProgramPopupItems(seminarsData, externalEventPosters),
-        [seminarsData, externalEventPosters]
+        () => buildProgramPopupItems(seminarsData),
+        [seminarsData]
     );
 
     const handleClose = () => {
@@ -34,14 +34,6 @@ export default function ProgramPopupWindowView({ seminarsData = [], externalEven
     };
 
     const handleApply = (program) => {
-        if (program?.isExternalPoster) {
-            if (program.externalLink) {
-                try {
-                    window.open(program.externalLink, '_blank', 'noopener,noreferrer');
-                } catch (e) {}
-            }
-            return;
-        }
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
         const url = `${origin}/program/apply/${program.id}`;
         if (window.opener && !window.opener.closed) {
@@ -113,22 +105,7 @@ export default function ProgramPopupWindowView({ seminarsData = [], externalEven
                             )}
                         </div>
                         <div className="p-4 pt-3">
-                            {program.isExternalPoster ? (
-                                program.externalLink ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleApply(program)}
-                                        className="w-full py-3.5 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm inline-flex items-center justify-center gap-2"
-                                    >
-                                        <Icons.ExternalLink size={18} />
-                                        행사 페이지 열기
-                                    </button>
-                                ) : (
-                                    <p className="w-full py-3.5 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm text-center">
-                                        외부 행사 안내
-                                    </p>
-                                )
-                            ) : (appliedProgramIds && appliedProgramIds.has(String(program.id))) ? (
+                            {(appliedProgramIds && appliedProgramIds.has(String(program.id))) ? (
                                 <div className="w-full py-3.5 bg-gray-200 text-gray-700 font-bold rounded-xl text-sm text-center cursor-default">
                                     신청해주셔서 감사합니다
                                 </div>

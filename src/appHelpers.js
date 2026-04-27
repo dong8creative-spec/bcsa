@@ -103,15 +103,13 @@ export function getUpcomingSeminarPopupCandidates(seminarsData, now = new Date()
 const MAX_POPUP_CARDS = 3;
 
 /**
- * 외부행사 포스터(기간 내·활성) + 다가오는 프로그램을 합쳐 팝업 카드 최대 3개.
- * 외부 포스터는 sortOrder 오름차순, 이후 세미나 날짜순으로 슬롯을 채웁니다.
- * @param {Array} seminarsData
+ * 기간 내 활성화된 외부행사 포스터 후보.
  * @param {Array<{ id: string, posterUrl?: string, linkUrl?: string, title?: string, enabled?: boolean, displayStartAt?: unknown, displayEndAt?: unknown, sortOrder?: number }>} externalPosters
  * @param {Date} [now]
  */
-export function buildProgramPopupItems(seminarsData, externalPosters, now = new Date()) {
+export function buildActiveExternalPosterItems(externalPosters, now = new Date()) {
   const nowMs = now.getTime();
-  const activeExternal = (externalPosters || [])
+  return (externalPosters || [])
     .filter((p) => p.enabled !== false && (p.posterUrl || '').toString().trim())
     .filter((p) => {
       const start = firestoreLikeToMillis(p.displayStartAt);
@@ -128,8 +126,13 @@ export function buildProgramPopupItems(seminarsData, externalPosters, now = new 
       externalLink: (p.linkUrl || '').toString().trim(),
       isDeadlineSoon: false,
     }));
+}
 
-  const seminarSlots = Math.max(0, MAX_POPUP_CARDS - activeExternal.length);
-  const seminars = getUpcomingSeminarPopupCandidates(seminarsData, now, seminarSlots);
-  return [...activeExternal, ...seminars].slice(0, MAX_POPUP_CARDS);
+/**
+ * 다가오는 프로그램 팝업 카드 후보(세미나 전용, 최대 3개).
+ * @param {Array} seminarsData
+ * @param {Date} [now]
+ */
+export function buildProgramPopupItems(seminarsData, now = new Date()) {
+  return getUpcomingSeminarPopupCandidates(seminarsData, now, MAX_POPUP_CARDS);
 }
