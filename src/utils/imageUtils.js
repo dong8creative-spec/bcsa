@@ -86,6 +86,9 @@ const toWebpFileName = (name) => (name || 'image.jpg').replace(/\.[^.]+$/i, '.we
  * @returns {Promise<{ url: string, deleteUrl: string | null }>}
  */
 export const uploadImageForAdminWithMeta = async (file, options = {}) => {
+  // #region agent log
+  const __prep0 = Date.now();
+  // #endregion
   const maxSize = options.maxSize ?? PROGRAM_MAX_SIZE;
   const quality = options.quality ?? PROGRAM_QUALITY;
   let base64;
@@ -102,6 +105,9 @@ export const uploadImageForAdminWithMeta = async (file, options = {}) => {
     const webpFile = await convertToWebP(file, quality);
     base64 = await fileToBase64(webpFile);
   }
+  // #region agent log
+  fetch('http://127.0.0.1:7639/ingest/72157b14-4914-4475-b029-d2a102db65f8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'119938'},body:JSON.stringify({sessionId:'119938',runId:'pre-fix',hypothesisId:'H2',location:'imageUtils.js:uploadImageForAdminWithMeta:prep',message:'after webp+base64, before imgbb',data:{prepMs:Date.now()-__prep0,fileSize:file?.size||0,base64Len:typeof base64==='string'?base64.length:0,usedResize:file.size>PROGRAM_RESIZE_THRESHOLD_BYTES},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   const result = await uploadImageToImgBB(base64, outName);
   const url = result?.url ?? (typeof result === 'string' ? result : null);
   if (url) {
@@ -302,6 +308,9 @@ const IMGBB_FETCH_TIMEOUT_MS = 25 * 1000; // 25초 내 응답 없으면 중단 (
  * 이미지를 ImgBB에 업로드 (타임아웃 적용)
  */
 export const uploadImageToImgBB = async (base64Image, fileName) => {
+    // #region agent log
+    const __tFetch0 = Date.now();
+    // #endregion
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), IMGBB_FETCH_TIMEOUT_MS);
 
@@ -310,6 +319,9 @@ export const uploadImageToImgBB = async (base64Image, fileName) => {
         const formData = new FormData();
         formData.append('key', IMGBB_API_KEY);
         formData.append('image', base64Data);
+        // #region agent log
+        fetch('http://127.0.0.1:7639/ingest/72157b14-4914-4475-b029-d2a102db65f8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'119938'},body:JSON.stringify({sessionId:'119938',runId:'pre-fix',hypothesisId:'H1',location:'imageUtils.js:uploadImageToImgBB:fetchStart',message:'imgbb fetch start',data:{base64DataLen:base64Data.length,fileName:fileName||'',timeoutMs:IMGBB_FETCH_TIMEOUT_MS},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
 
         const response = await fetch('https://api.imgbb.com/1/upload', {
             method: 'POST',
@@ -317,6 +329,9 @@ export const uploadImageToImgBB = async (base64Image, fileName) => {
             signal: controller.signal
         });
         clearTimeout(timeoutId);
+        // #region agent log
+        fetch('http://127.0.0.1:7639/ingest/72157b14-4914-4475-b029-d2a102db65f8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'119938'},body:JSON.stringify({sessionId:'119938',runId:'pre-fix',hypothesisId:'H1',location:'imageUtils.js:uploadImageToImgBB:fetchOk',message:'imgbb response received',data:{ok:response.ok,status:response.status,elapsedMs:Date.now()-__tFetch0},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -352,6 +367,9 @@ export const uploadImageToImgBB = async (base64Image, fileName) => {
         throw new Error(errorMessage);
     } catch (error) {
         clearTimeout(timeoutId);
+        // #region agent log
+        fetch('http://127.0.0.1:7639/ingest/72157b14-4914-4475-b029-d2a102db65f8',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'119938'},body:JSON.stringify({sessionId:'119938',runId:'pre-fix',hypothesisId:'H1',location:'imageUtils.js:uploadImageToImgBB:catch',message:'imgbb fetch failed',data:{errorName:error?.name,errorMessage:String(error?.message||''),isAbort:error?.name==='AbortError',elapsedMs:Date.now()-__tFetch0},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         console.error('이미지 업로드 오류:', error);
         if (error.name === 'AbortError') {
             throw new Error('업로드 시간이 초과되었습니다. 네트워크를 확인한 뒤 다시 시도해주세요.');
