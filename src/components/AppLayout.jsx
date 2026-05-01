@@ -390,7 +390,14 @@ const AppLayout = (props) => {
             )}
 
             <main className="min-h-0 flex-1 overflow-y-auto">
-            <div key={currentView} className="min-h-full animate-fade-in">
+            <div
+                key={currentView}
+                className={
+                    currentView === 'restaurants' || currentView === 'restaurantDetail' || currentView === 'restaurantForm'
+                        ? 'min-h-full'
+                        : 'min-h-full animate-fade-in'
+                }
+            >
             {(() => {
                 try {
                     const viewResult = renderView();

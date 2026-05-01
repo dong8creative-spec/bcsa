@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, memoryLocalCache, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
@@ -15,7 +15,23 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-export const db = getFirestore(app);
+/** 로컬 캐시: 재방문·탭 간 onSnapshot 최초 응답이 훨씬 빨라짐 */
+function createFirestoreDb() {
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    });
+  } catch (error) {
+    console.warn('Persistent Firestore cache unavailable, falling back to memory cache:', error);
+    return initializeFirestore(app, {
+      localCache: memoryLocalCache()
+    });
+  }
+}
+
+export const db = createFirestoreDb();
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 

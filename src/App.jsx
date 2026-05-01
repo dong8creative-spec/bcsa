@@ -64,6 +64,85 @@ import { LoginModal } from './components/LoginModal';
 import { MobileMenu } from './components/MobileMenu';
 
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
+const RESTAURANTS_CACHE_KEY = 'bcsa_restaurants_cache_v1';
+const HIGH_PRIORITY_RESTAURANT_IMAGE_COUNT = 9;
+
+const readRestaurantsCache = () => {
+    try {
+        if (typeof Storage === 'undefined' || typeof localStorage === 'undefined') return [];
+        const raw = localStorage.getItem(RESTAURANTS_CACHE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed?.restaurants) ? parsed.restaurants : [];
+    } catch {
+        return [];
+    }
+};
+
+const writeRestaurantsCache = (restaurants) => {
+    try {
+        if (typeof Storage === 'undefined' || typeof localStorage === 'undefined') return;
+        if (!Array.isArray(restaurants)) return;
+        localStorage.setItem(RESTAURANTS_CACHE_KEY, JSON.stringify({
+            savedAt: Date.now(),
+            restaurants
+        }));
+    } catch {
+        // localStorage 용량/프라이빗 모드에서는 캐시 없이 실시간 데이터만 사용한다.
+    }
+};
+
+const collectRestaurantImageUrls = (restaurants) => {
+    if (!Array.isArray(restaurants)) return [];
+    const urls = [];
+    const seen = new Set();
+    for (const restaurant of restaurants) {
+        const images = Array.isArray(restaurant?.images) ? restaurant.images : [];
+        for (const imageUrl of images) {
+            if (typeof imageUrl !== 'string' || !imageUrl.trim() || seen.has(imageUrl)) continue;
+            seen.add(imageUrl);
+            urls.push(imageUrl);
+        }
+    }
+    return urls;
+};
+
+const preconnectRestaurantImageHosts = (urls) => {
+    if (typeof document === 'undefined') return;
+    const origins = new Set();
+    urls.forEach((url) => {
+        try {
+            const parsed = new URL(url, window.location.origin);
+            if (parsed.origin !== window.location.origin) origins.add(parsed.origin);
+        } catch {
+            // 잘못된 URL은 이미지 preload 단계에서 자연스럽게 무시된다.
+        }
+    });
+    origins.forEach((origin) => {
+        const selector = `link[rel="preconnect"][href="${origin}"]`;
+        if (document.head.querySelector(selector)) return;
+        const link = document.createElement('link');
+        link.rel = 'preconnect';
+        link.href = origin;
+        link.crossOrigin = 'anonymous';
+        document.head.appendChild(link);
+    });
+};
+
+const warmRestaurantImages = (restaurants) => {
+    if (typeof window === 'undefined') return;
+    const urls = collectRestaurantImageUrls(restaurants);
+    preconnectRestaurantImageHosts(urls);
+    urls.forEach((url, index) => {
+        const img = new Image();
+        img.decoding = 'async';
+        img.loading = index < HIGH_PRIORITY_RESTAURANT_IMAGE_COUNT ? 'eager' : 'lazy';
+        if ('fetchPriority' in img) {
+            img.fetchPriority = index < HIGH_PRIORITY_RESTAURANT_IMAGE_COUNT ? 'high' : 'low';
+        }
+        img.src = url;
+    });
+};
 
 const App = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -89,7 +168,7 @@ const App = () => {
     const [membersData, setMembersData] = useState([]);
     const [seminarsData, setSeminarsData] = useState([]);
     const [communityPosts, setCommunityPosts] = useState([]);
-    const [restaurantsData, setRestaurantsData] = useState([]);
+    const [restaurantsData, setRestaurantsData] = useState(() => readRestaurantsCache());
     const [selectedRestaurant, setSelectedRestaurant] = useState(null);
     const [currentView, setCurrentView] = useState('home');
     const [programListPage, setProgramListPage] = useState(1);
@@ -316,6 +395,7 @@ const App = () => {
     const [googleSignupExtraPhone, setGoogleSignupExtraPhone] = useState('');
     const [googleSignupExtraEmail, setGoogleSignupExtraEmail] = useState('');
     const kakaoMapCallbackRef = useRef(null);
+    const kakaoMapReadyPromiseRef = useRef(null);
     const popupShownRef = useRef(false); // 팝업 설정 중복 실행 방지용 ref
     const programTrackRef = useRef(null);
     const programScrollOffsetRef = useRef(0);
@@ -455,29 +535,32 @@ const App = () => {
         document.addEventListener('touchend', onUp);
     };
 
-    // 카카오맵 SDK 로드 완료를 기다리는 헬퍼 함수
+    // 카카오맵 SDK 로드 완료 대기 — 맛집 카드 여러 장에서 동시에 호출되어도 스크립트·Promise는 하나만 진행
     const waitForKakaoMap = () => {
-        return new Promise((resolve, reject) => {
+        if (kakaoMapReadyPromiseRef.current) {
+            return kakaoMapReadyPromiseRef.current;
+        }
+        const p = new Promise((resolve, reject) => {
             const resolveReady = () => {
                 invokeKakaoMapsLoad()
                     .then(() => waitForKakaoMapsCoreReady())
                     .then(() => resolve(window.kakao))
-                    .catch(reject);
+                    .catch((err) => {
+                        kakaoMapReadyPromiseRef.current = null;
+                        reject(err);
+                    });
             };
 
-            // 이미 로드된 경우 (LatLng 등 생성자 준비까지 별도 대기)
             if (window.kakao && window.kakao.maps) {
                 resolveReady();
                 return;
             }
 
-            // 스크립트가 로드 중인지 확인
             const existingScript = document.querySelector('script[src*="dapi.kakao.com"]');
 
-            // 스크립트가 있으면 이미 로드됐을 수 있으므로 폴링으로 대기 (load 이벤트는 이미 끝났을 수 있음)
             if (existingScript) {
                 let attempts = 0;
-                const maxAttempts = 50; // 5초 대기
+                const maxAttempts = 50;
                 const pollInterval = setInterval(() => {
                     attempts++;
                     if (window.kakao && window.kakao.maps) {
@@ -485,22 +568,23 @@ const App = () => {
                         resolveReady();
                     } else if (attempts >= maxAttempts) {
                         clearInterval(pollInterval);
+                        kakaoMapReadyPromiseRef.current = null;
                         reject(new Error('카카오맵 SDK를 로드할 수 없습니다.'));
                     }
                 }, 100);
                 existingScript.addEventListener('error', () => {
                     clearInterval(pollInterval);
+                    kakaoMapReadyPromiseRef.current = null;
                     reject(new Error('카카오맵 SDK 스크립트 로드에 실패했습니다.'));
                 }, { once: true });
                 return;
             }
 
-            // 스크립트가 없으면 동적으로 로드
             (async () => {
                 try {
                     await loadKakaoMapScript();
                     let attempts = 0;
-                    const maxAttempts = 50; // 5초 대기
+                    const maxAttempts = 50;
                     const checkInterval = setInterval(() => {
                         attempts++;
                         if (window.kakao && window.kakao.maps) {
@@ -508,14 +592,18 @@ const App = () => {
                             resolveReady();
                         } else if (attempts >= maxAttempts) {
                             clearInterval(checkInterval);
+                            kakaoMapReadyPromiseRef.current = null;
                             reject(new Error('카카오맵 SDK를 로드할 수 없습니다.'));
                         }
                     }, 100);
                 } catch (err) {
+                    kakaoMapReadyPromiseRef.current = null;
                     reject(err);
                 }
             })();
         });
+        kakaoMapReadyPromiseRef.current = p;
+        return p;
     };
     
     // 카카오맵 SDK 동적 로드 함수
@@ -978,6 +1066,7 @@ const App = () => {
         if (firebaseService && firebaseService.subscribeRestaurants) {
             const unsubscribe = firebaseService.subscribeRestaurants((restaurants) => {
                 setRestaurantsData(restaurants);
+                writeRestaurantsCache(restaurants);
             });
             return () => unsubscribe();
         } else {
@@ -986,6 +1075,7 @@ const App = () => {
                     try {
                         const restaurants = await firebaseService.getRestaurants();
                         setRestaurantsData(restaurants);
+                        writeRestaurantsCache(restaurants);
                     } catch (error) {
                         console.error('맛집 로드 오류:', error);
                     }
@@ -993,6 +1083,11 @@ const App = () => {
             }
         }
     }, []);
+
+    useEffect(() => {
+        if (!restaurantsData.length) return;
+        warmRestaurantImages(restaurantsData);
+    }, [restaurantsData]);
     
     // Firebase real-time listeners handle data synchronization automatically
     

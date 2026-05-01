@@ -18,6 +18,16 @@ const geocodeAddress = (address) => {
     });
 };
 
+/** 본문·카드 레이아웃이 먼저 그려지도록 지도/지오코딩 시작을 다음 idle 프레임으로 미룸 */
+const runAfterIdle = (callback) => {
+    if (typeof requestIdleCallback !== 'undefined') {
+        const id = requestIdleCallback(() => callback(), { timeout: 120 });
+        return () => typeof cancelIdleCallback !== 'undefined' && cancelIdleCallback(id);
+    }
+    const t = window.setTimeout(() => callback(), 32);
+    return () => window.clearTimeout(t);
+};
+
 /** 말풍선 테두리색 (tailwind brand와 동일 — SVG·인라인 스타일용) */
 const BUBBLE_BORDER = '#0045a5';
 
@@ -74,60 +84,70 @@ const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
         if (hasCoords) {
             setResolvedCoords({ lat: restaurant.location.lat, lng: restaurant.location.lng });
             setGeocodeFailed(false);
-            return;
+            return undefined;
         }
         if (!address || !waitForKakaoMap) {
             setResolvedCoords(null);
-            return;
+            return undefined;
         }
         let mounted = true;
-        (async () => {
-            try {
-                await waitForKakaoMap();
-                if (!mounted) return;
-                await waitForKakaoMapsServicesReady();
-                if (!mounted) return;
-                const coords = await geocodeAddress(address);
-                if (mounted && coords) setResolvedCoords(coords);
-                else if (mounted) setGeocodeFailed(true);
-            } catch (e) {
-                if (mounted) setGeocodeFailed(true);
-            }
-        })();
-        return () => { mounted = false; };
+        const cancelIdle = runAfterIdle(() => {
+            if (!mounted) return;
+            (async () => {
+                try {
+                    await waitForKakaoMap();
+                    if (!mounted) return;
+                    await waitForKakaoMapsServicesReady();
+                    if (!mounted) return;
+                    const coords = await geocodeAddress(address);
+                    if (mounted && coords) setResolvedCoords(coords);
+                    else if (mounted) setGeocodeFailed(true);
+                } catch (e) {
+                    if (mounted) setGeocodeFailed(true);
+                }
+            })();
+        });
+        return () => {
+            mounted = false;
+            cancelIdle();
+        };
     }, [hasCoords, restaurant?.location?.lat, restaurant?.location?.lng, address, waitForKakaoMap]);
 
     // 확정된 좌표로 지도 렌더 + 업체명 말풍선(CustomOverlay)
     useEffect(() => {
-        if (!resolvedCoords || !mapContainerRef.current || !waitForKakaoMap) return;
+        if (!resolvedCoords || !mapContainerRef.current || !waitForKakaoMap) return undefined;
         let mounted = true;
-        const init = async () => {
-            try {
-                await waitForKakaoMap();
-                if (!mounted || !mapContainerRef.current || !window.kakao?.maps) return;
-                const kakao = window.kakao;
-                const position = new kakao.maps.LatLng(resolvedCoords.lat, resolvedCoords.lng);
-                mapRef.current = new kakao.maps.Map(mapContainerRef.current, {
-                    center: position,
-                    level: 4
-                });
-                const content = buildNameBubbleContent(restaurant?.title);
-                const overlay = new kakao.maps.CustomOverlay({
-                    position,
-                    content,
-                    yAnchor: 1,
-                    xAnchor: 0.5,
-                    zIndex: 2
-                });
-                overlay.setMap(mapRef.current);
-                overlayRef.current = overlay;
-            } catch (e) {
-                console.error('맵 미리보기 초기화 실패:', e);
-            }
-        };
-        init();
+        const cancelIdle = runAfterIdle(() => {
+            if (!mounted) return;
+            const init = async () => {
+                try {
+                    await waitForKakaoMap();
+                    if (!mounted || !mapContainerRef.current || !window.kakao?.maps) return;
+                    const kakao = window.kakao;
+                    const position = new kakao.maps.LatLng(resolvedCoords.lat, resolvedCoords.lng);
+                    mapRef.current = new kakao.maps.Map(mapContainerRef.current, {
+                        center: position,
+                        level: 4
+                    });
+                    const content = buildNameBubbleContent(restaurant?.title);
+                    const overlay = new kakao.maps.CustomOverlay({
+                        position,
+                        content,
+                        yAnchor: 1,
+                        xAnchor: 0.5,
+                        zIndex: 2
+                    });
+                    overlay.setMap(mapRef.current);
+                    overlayRef.current = overlay;
+                } catch (e) {
+                    console.error('맵 미리보기 초기화 실패:', e);
+                }
+            };
+            void init();
+        });
         return () => {
             mounted = false;
+            cancelIdle();
             if (overlayRef.current) {
                 overlayRef.current.setMap(null);
                 overlayRef.current = null;
@@ -163,6 +183,49 @@ const RestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
                 className="w-full aspect-[4/3] overflow-visible bg-gray-100"
                 ref={mapContainerRef}
             />
+        </div>
+    );
+};
+
+/** 스크롤로 화면에 가까워진 카드만 임베드 지도를 마운트해 초기 진입 부담을 줄임 */
+const LazyRestaurantMapPreview = ({ restaurant, waitForKakaoMap }) => {
+    const wrapRef = useRef(null);
+    const [activate, setActivate] = useState(false);
+
+    useEffect(() => {
+        if (activate) return undefined;
+        const el = wrapRef.current;
+        if (!el) return undefined;
+        if (typeof IntersectionObserver === 'undefined') {
+            setActivate(true);
+            return undefined;
+        }
+        const io = new IntersectionObserver(
+            (entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) {
+                    setActivate(true);
+                    io.disconnect();
+                }
+            },
+            { root: null, rootMargin: '800px 0px', threshold: 0 }
+        );
+        io.observe(el);
+        return () => io.disconnect();
+    }, [activate]);
+
+    return (
+        <div ref={wrapRef} className="w-full min-h-0">
+            {!activate ? (
+                <div
+                    className="w-full aspect-[4/3] bg-gradient-to-b from-gray-50 to-gray-100/90 border-t border-blue-100/80 flex flex-col items-center justify-center gap-1.5 text-[11px] text-gray-400"
+                    aria-hidden
+                >
+                    <Icons.MapPin className="w-7 h-7 text-brand/30 shrink-0" />
+                    <span>지도 미리보기</span>
+                </div>
+            ) : (
+                <RestaurantMapPreview restaurant={restaurant} waitForKakaoMap={waitForKakaoMap} />
+            )}
         </div>
     );
 };
@@ -223,7 +286,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
     }, [baseFiltered, selectedDistrictFilter]);
 
     return (
-        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in overflow-y-auto min-h-0">
+        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft overflow-y-auto min-h-0">
             <div className="container mx-auto max-w-7xl">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
                     <div className="w-full text-center md:text-left">
@@ -287,9 +350,10 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                 {/* 맛집 리스트: 한 줄 3곳, 윗줄 1:1 사진+업장정보, 아래 고정 높이 지도 미리보기 */}
                 {filteredRestaurants.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredRestaurants.map((restaurant) => {
+                        {filteredRestaurants.map((restaurant, index) => {
                             const mapLink = getKakaoMapLink(restaurant);
                             const canShowMap = (restaurant?.location?.lat != null && restaurant?.location?.lng != null) || (restaurant?.location?.address?.trim());
+                            const prioritizeImage = index < 9;
                             return (
                                 <div 
                                     key={restaurant.id} 
@@ -305,7 +369,8 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                                     src={restaurant.images[0]} 
                                                     alt={restaurant.title} 
                                                     className="w-full h-full object-cover" 
-                                                    loading="lazy"
+                                                    loading={prioritizeImage ? 'eager' : 'lazy'}
+                                                    fetchPriority={prioritizeImage ? 'high' : 'low'}
                                                     decoding="async"
                                                     onError={(e) => { e.target.style.display = 'none'; }}
                                                 />
@@ -340,7 +405,7 @@ const RestaurantsListView = ({ onBack, restaurants, currentUser, isFoodBusinessO
                                     <div className="w-full rounded-b-2xl overflow-visible">
                                         {canShowMap && waitForKakaoMap ? (
                                             <div onClick={(e) => e.stopPropagation()}>
-                                                <RestaurantMapPreview restaurant={restaurant} waitForKakaoMap={waitForKakaoMap} />
+                                                <LazyRestaurantMapPreview restaurant={restaurant} waitForKakaoMap={waitForKakaoMap} />
                                             </div>
                                         ) : null}
                                         {mapLink && (
