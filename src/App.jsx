@@ -6,6 +6,7 @@ import { CONFIG } from './config';
 import { calculateStatus, fetchSheetData } from './utils';
 import { uploadImageToImgBB, uploadLogoOrFaviconToGitHub, fileToBase64, normalizeImagesList } from './utils/imageUtils';
 import { translateFirebaseError } from './utils/errorUtils';
+import { canEditRestaurantInfo } from './utils/restaurantPermissions';
 import { 
   loadUsersFromStorage, 
   hashPassword, 
@@ -1706,8 +1707,8 @@ const App = () => {
             return false;
         }
         
-        if (restaurant.ownerId !== (currentUser.id || currentUser.uid)) {
-            alert('본인이 등록한 맛집만 수정할 수 있습니다.');
+        if (!canEditRestaurantInfo(currentUser, restaurant)) {
+            alert('맛집 정보를 수정할 권한이 없습니다.');
             return false;
         }
         

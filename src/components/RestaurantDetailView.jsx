@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icons } from './Icons';
+import { canEditRestaurantInfo, isRestaurantOwner } from '../utils/restaurantPermissions';
 
 const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelete, waitForKakaoMap, openKakaoPlacesSearch }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -7,7 +8,8 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
     const mapRef = useRef(null);
     const markerRef = useRef(null);
     
-    const isOwner = restaurant && currentUser && (restaurant.ownerId === (currentUser.id || currentUser.uid));
+    const canEdit = canEditRestaurantInfo(currentUser, restaurant);
+    const isOwner = isRestaurantOwner(currentUser, restaurant);
     
     // 지도 초기화
     useEffect(() => {
@@ -103,14 +105,18 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                 <div className="bg-white rounded-3xl shadow-card p-6 mb-6">
                     <div className="flex justify-between items-start mb-4">
                         <h2 className="text-3xl font-bold text-dark">{restaurant.title}</h2>
-                        {isOwner ? (
-                            <div className="flex gap-2">
-                                <button onClick={onEdit} className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700">
-                                    수정
-                                </button>
-                                <button onClick={onDelete} className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600">
-                                    삭제
-                                </button>
+                        {canEdit || isOwner ? (
+                            <div className="flex gap-2 flex-wrap justify-end">
+                                {canEdit ? (
+                                    <button type="button" onClick={onEdit} className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700">
+                                        수정
+                                    </button>
+                                ) : null}
+                                {isOwner ? (
+                                    <button type="button" onClick={onDelete} className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600">
+                                        삭제
+                                    </button>
+                                ) : null}
                             </div>
                         ) : null}
                     </div>

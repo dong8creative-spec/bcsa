@@ -87,9 +87,7 @@ export default function ProgramPopupWindowView({
                 {programsToShow.map((program, idx) => (
                     <div
                         key={program.id || idx}
-                        className={`bg-white rounded-2xl shadow-2xl overflow-hidden flex-shrink-0 w-[85vw] max-w-sm mx-auto flex flex-col ${
-                            program.isExternalPoster ? 'md:max-w-[480px]' : 'md:max-w-[320px]'
-                        }`}
+                        className="bg-white rounded-2xl shadow-2xl overflow-hidden flex-shrink-0 w-[85vw] max-w-sm mx-auto flex flex-col md:max-w-[480px]"
                     >
                         <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
                             {program.isDeadlineSoon ? (
