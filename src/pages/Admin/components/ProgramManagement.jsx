@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { deleteField } from 'firebase/firestore';
 import { firebaseService } from '../../../services/firebaseService';
-import { getApiBaseUrl } from '../../../utils/api';
 import {
   ADMIN_HIDDEN_APPLICATIONS_KEY,
   ADMIN_HIDDEN_APPLICATIONS_CHANGED,
@@ -262,8 +261,6 @@ export const ProgramManagement = () => {
   const [applicantModalProgram, setApplicantModalProgram] = useState(null);
   const [applicantModalUsers, setApplicantModalUsers] = useState([]);
   const [applicantModalDataLoading, setApplicantModalDataLoading] = useState(false);
-  const [recoverMerchantUid, setRecoverMerchantUid] = useState('');
-  const [recoverLoading, setRecoverLoading] = useState(false);
   const [participantAddSearch, setParticipantAddSearch] = useState('');
   const [addingParticipantUserId, setAddingParticipantUserId] = useState(null);
   const [hiddenEntriesState, setHiddenEntriesState] = useState(() => readAdminHiddenEntries());
@@ -311,48 +308,6 @@ export const ProgramManagement = () => {
       setApplicantModalDataLoading(false);
     }
   }, []);
-
-  /**
-   * PG에서는 승인됐는데 웹훅 등으로 applications에 안 올라간 경우:
-   * Firestore pendingPayments에 남아 있으면 해당 주문번호로 신청 문서 생성(기존 API).
-   */
-  const handleRecoverPaidApplication = useCallback(async () => {
-    const base = (getApiBaseUrl() || '').replace(/\/$/, '');
-    if (!base) {
-      alert('API URL이 설정되지 않았습니다. .env의 VITE_API_URL을 확인하세요.');
-      return;
-    }
-    const merchantUid = (recoverMerchantUid || '').trim();
-    if (!merchantUid) {
-      alert('PG 주문번호(merchant_uid, 예: p_mnr9llde_ayoufi)를 입력하세요.');
-      return;
-    }
-    setRecoverLoading(true);
-    try {
-      const res = await fetch(`${base}/api/admin/application-from-pending`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ merchant_uid: merchantUid })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        alert('신청으로 반영되었습니다.');
-        setRecoverMerchantUid('');
-        await loadPrograms();
-        await loadApplicantModalData();
-      } else {
-        alert(
-          data.error === 'pending_not_found'
-            ? '해당 주문의 결제대기 데이터가 없습니다. 이미 반영됐거나 결제 전 단계에서 저장되지 않은 경우일 수 있습니다.'
-            : (data.error || '반영에 실패했습니다.')
-        );
-      }
-    } catch (e) {
-      alert('요청 실패: ' + (e.message || '네트워크 오류'));
-    } finally {
-      setRecoverLoading(false);
-    }
-  }, [recoverMerchantUid, loadApplicantModalData]);
 
   useEffect(() => {
     loadPrograms();
@@ -1374,29 +1329,6 @@ export const ProgramManagement = () => {
                     스프레드시트에 붙여넣기
                   </button>
                   <span className="hidden sm:inline-block w-px h-8 bg-gray-200 shrink-0 mx-1" aria-hidden="true" />
-                  <span className="text-xs text-gray-500 max-w-[14rem] sm:max-w-none leading-snug shrink-0">
-                    PG 승인인데 명단에 없을 때만: 주문번호로 반영
-                  </span>
-                  <input
-                    type="text"
-                    value={recoverMerchantUid}
-                    onChange={(e) => setRecoverMerchantUid(e.target.value)}
-                    placeholder="주문번호 p_…"
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm min-w-[160px] flex-1 sm:flex-none sm:min-w-[220px] max-w-md"
-                    aria-label="PG 주문번호 merchant_uid"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleRecoverPaidApplication}
-                    disabled={recoverLoading}
-                    className="px-4 py-2 bg-slate-100 text-slate-800 rounded-xl font-bold hover:bg-slate-200 transition-colors disabled:opacity-50 flex items-center gap-2 shrink-0"
-                  >
-                    {recoverLoading ? (
-                      <span className="inline-block w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
-                    ) : null}
-                    반영
-                  </button>
-                  <span className="hidden lg:inline-block w-px h-8 bg-gray-200 shrink-0 mx-1" aria-hidden="true" />
                   <button
                     type="button"
                     onClick={clearAllHiddenApplicants}
