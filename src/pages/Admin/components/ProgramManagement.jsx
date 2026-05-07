@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { deleteField } from 'firebase/firestore';
 import { firebaseService } from '../../../services/firebaseService';
 import { getApiBaseUrl } from '../../../utils/api';
 import {
@@ -11,6 +12,7 @@ import {
 } from '../../../utils/adminHiddenApplications';
 import { SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD } from '../../../constants/appConstants';
 import { calculateStatus } from '../../../utils';
+import { getSeminarCapacity, isSeminarEligibleForFinalParticipantAdjust } from '../../../utils/seminarDisplay';
 import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
 import { KakaoMapModal } from './KakaoMapModal';
@@ -93,6 +95,107 @@ const applicationMatchesProgram = (program, app) => {
   ].filter(Boolean);
   return cand.some((c) => keys.has(c));
 };
+
+/** 모집 종료 후 공개 UI에 쓰는 최종 인원 — Firestore `finalParticipantCount` */
+function FinalParticipantCountEditor({ program, onUpdated }) {
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const v =
+      program.finalParticipantCount != null && program.finalParticipantCount !== ''
+        ? String(program.finalParticipantCount)
+        : String(program.currentParticipants ?? '');
+    setValue(v);
+  }, [program.id, program.finalParticipantCount, program.currentParticipants]);
+
+  const cap = getSeminarCapacity(program);
+
+  const handleSave = async () => {
+    const t = String(value).trim();
+    if (t === '') {
+      alert('인원 수를 입력하거나, 자동 집계로 되돌리려면 아래 버튼을 누르세요.');
+      return;
+    }
+    const n = parseInt(t, 10);
+    if (Number.isNaN(n) || n < 0) {
+      alert('0 이상의 정수를 입력하세요.');
+      return;
+    }
+    if (cap > 0 && n > cap) {
+      if (!window.confirm(`입력 ${n}명이 정원 ${cap}명을 넘습니다. 저장할까요?`)) return;
+    }
+    setSaving(true);
+    try {
+      await firebaseService.updateSeminar(program.id, { finalParticipantCount: n });
+      alert('최종 모집 인원이 저장되었습니다.');
+      await onUpdated?.();
+    } catch (e) {
+      console.error(e);
+      alert('저장에 실패했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleClear = async () => {
+    if (!window.confirm('확정값을 지우고 자동 집계(신청 건·카운터)를 따르게 할까요?')) return;
+    setSaving(true);
+    try {
+      await firebaseService.updateSeminar(program.id, { finalParticipantCount: deleteField() });
+      alert('자동 집계로 되돌렸습니다.');
+      await onUpdated?.();
+    } catch (e) {
+      console.error(e);
+      alert('처리에 실패했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const hasFinalOverride =
+    program.finalParticipantCount !== undefined && program.finalParticipantCount !== null && program.finalParticipantCount !== '';
+
+  return (
+    <div className="mt-3 pt-3 border-t border-dashed border-blue-200 space-y-2">
+      <p className="text-xs font-bold text-gray-700">모집 종료 후 공개 인원 (최종 확정)</p>
+      <p className="text-[11px] text-gray-500 leading-snug">
+        홈·프로그램 목록에 보이는 신청 인원에 반영됩니다. 명단 건수와 다를 때만 수정하세요.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="number"
+          min={0}
+          inputMode="numeric"
+          className="w-24 px-2 py-1.5 border border-blue-200 rounded-lg text-sm font-bold text-dark"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          disabled={saving}
+          aria-label="최종 모집 인원"
+        />
+        {cap > 0 ? <span className="text-xs text-gray-500">/ 정원 {cap}명</span> : null}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-bold hover:bg-blue-700 disabled:opacity-50"
+        >
+          {saving ? '…' : '저장'}
+        </button>
+        {hasFinalOverride ? (
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={saving}
+            className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-50 disabled:opacity-50"
+          >
+            자동 집계
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 /**
  * 프로그램 관리 컴포넌트
@@ -787,6 +890,9 @@ export const ProgramManagement = () => {
                     </>
                   )}
                 </div>
+                {isSeminarEligibleForFinalParticipantAdjust(program) ? (
+                  <FinalParticipantCountEditor program={program} onUpdated={loadPrograms} />
+                ) : null}
               </div>
             );
           })

@@ -59,7 +59,7 @@ import {
     applyPublicSeminarParticipantDisplay,
     seminarUsesApplicationsParticipantCount,
 } from './utils/adminHiddenApplications';
-import { getSeminarCapacity } from './utils/seminarDisplay';
+import { getSeminarCapacity, getDisplayedParticipantCurrent } from './utils/seminarDisplay';
 import { LoginModal } from './components/LoginModal';
 import { MobileMenu } from './components/MobileMenu';
 
@@ -3334,7 +3334,7 @@ END:VCALENDAR`;
                                                 {img ? <img src={img} alt={seminar.title} className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><Icons.Calendar size={48} /></div>}
                                                 {(() => {
                                                     const max = getSeminarCapacity(seminar);
-                                                    const current = seminar.status === '종료' && max > 0 ? max : (Number(seminar.currentParticipants) || 0);
+                                                    const current = getDisplayedParticipantCurrent(seminar);
                                                     const isPopular = (seminar.title || '').includes('정모') || (max > 0 && current / max >= 0.8);
                                                     return isPopular ? (
                                                         <div className="absolute top-2 left-2" style={{ transform: 'scale(0.667)', transformOrigin: 'top left' }}>

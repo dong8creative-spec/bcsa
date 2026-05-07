@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Icons } from '../components/Icons';
 import { normalizeImagesList } from '../utils/imageUtils';
-import { getParticipantCountDisplay, getSeminarCapacity, is정모 } from '../utils/seminarDisplay';
+import { getParticipantCountDisplay, getSeminarCapacity, getDisplayedParticipantCurrent, is정모 } from '../utils/seminarDisplay';
 
 const getStatusColor = (status) => {
     switch (status) {
@@ -120,7 +120,7 @@ const ProgramApplyView = ({
     const isPaid = program.applicationFee != null && Number(program.applicationFee) > 0;
     const isEnded = program.status === '종료';
     const maxCap = getSeminarCapacity(program);
-    const currentCap = Number(program.currentParticipants) || 0;
+    const currentCap = getDisplayedParticipantCurrent(program);
     const isFull = maxCap > 0 && currentCap >= maxCap;
     const allowOverflow = is정모(program);
     const isDisabledByCapacity = isFull && !allowOverflow;
