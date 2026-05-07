@@ -96,6 +96,39 @@ const applicationMatchesProgram = (program, app) => {
   return cand.some((c) => keys.has(c));
 };
 
+/**
+ * 참여 명단 직접 추가용 회원 검색 — 실명·닉네임 중심(공백 무시 부분 일치), 이메일·전화도 지원
+ */
+const matchesParticipantAddSearch = (user, rawQuery) => {
+  const q = String(rawQuery ?? '').trim();
+  if (!q) return false;
+  const qLower = q.toLowerCase();
+  const qNoSpace = qLower.replace(/\s/g, '');
+
+  const name = String(user?.name || '').toLowerCase();
+  const nick = String(user?.nickname || '').toLowerCase();
+  const email = String(user?.email || '').toLowerCase();
+  const phoneDigits = String(user?.phone || user?.phoneNumber || user?.verifiedPhone || '').replace(/\D/g, '');
+  const qDigits = q.replace(/\D/g, '');
+
+  const nameNoSpace = name.replace(/\s/g, '');
+  const nickNoSpace = nick.replace(/\s/g, '');
+  const hay = `${name} ${nick}`.trim();
+
+  if (email.includes(qLower)) return true;
+  if (qDigits.length >= 2 && phoneDigits.includes(qDigits)) return true;
+
+  if (name.includes(qLower) || nick.includes(qLower)) return true;
+  if (hay.includes(qLower)) return true;
+  if (qNoSpace.length >= 1 && (nameNoSpace.includes(qNoSpace) || nickNoSpace.includes(qNoSpace))) return true;
+
+  const parts = qLower.split(/\s+/).filter(Boolean);
+  if (parts.length > 1) {
+    return parts.every((p) => p && hay.includes(p));
+  }
+  return false;
+};
+
 /** 모집 종료 후 공개 UI에 쓰는 최종 인원 — Firestore `finalParticipantCount` */
 function FinalParticipantCountEditor({ program, onUpdated }) {
   const [value, setValue] = useState('');
@@ -231,6 +264,8 @@ export const ProgramManagement = () => {
   const [applicantModalDataLoading, setApplicantModalDataLoading] = useState(false);
   const [recoverMerchantUid, setRecoverMerchantUid] = useState('');
   const [recoverLoading, setRecoverLoading] = useState(false);
+  const [participantAddSearch, setParticipantAddSearch] = useState('');
+  const [addingParticipantUserId, setAddingParticipantUserId] = useState(null);
   const [hiddenEntriesState, setHiddenEntriesState] = useState(() => readAdminHiddenEntries());
   const [isClosingPast, setIsClosingPast] = useState(false);
   const [closingRecruitmentId, setClosingRecruitmentId] = useState(null);
@@ -323,6 +358,14 @@ export const ProgramManagement = () => {
     loadPrograms();
   }, []);
 
+  /** 신청자 명단 모달이 닫히면 검색·추가 UI 상태 초기화 */
+  useEffect(() => {
+    if (!showApplicantModal) {
+      setParticipantAddSearch('');
+      setAddingParticipantUserId(null);
+    }
+  }, [showApplicantModal]);
+
   /** 신청자 명단 모달 열릴 때 회원·신청 목록 최신화 */
   useEffect(() => {
     if (!showApplicantModal || !applicantModalProgram) {
@@ -348,6 +391,71 @@ export const ProgramManagement = () => {
       setIsLoading(false);
     }
   };
+
+  /** 관리자: Firestore에 신청 1건 생성 + (레거시) 세미나 인원 카운터 증가 */
+  const handleAdminAddParticipant = useCallback(
+    async (user) => {
+      const program = applicantModalProgram;
+      if (!program || !user) return;
+      const userId = String(user.id || user.uid || '').trim();
+      if (!userId) {
+        alert('회원 문서에 ID가 없어 추가할 수 없습니다.');
+        return;
+      }
+      const userName = (user.name || '').trim();
+      if (!userName) {
+        alert('회원 이름이 없습니다.');
+        return;
+      }
+      const email = (user.email || '').toString().trim();
+      const phoneRaw = (user.phone || user.phoneNumber || user.verifiedPhone || '').toString().trim();
+      const phoneDigits = phoneRaw.replace(/\D/g, '');
+      if (!email && phoneDigits.length < 10) {
+        alert('이메일 또는 연락처(10자리 이상)가 있는 회원만 추가할 수 있습니다.');
+        return;
+      }
+      const pid = String(program.id);
+      const dup = (applications || []).some(
+        (app) => applicationMatchesProgram(program, app) && String(app.userId || '') === userId
+      );
+      if (dup) {
+        alert('이 회원은 이미 이 프로그램(정모) 신청 명단에 있습니다.');
+        return;
+      }
+      setAddingParticipantUserId(userId);
+      try {
+        await firebaseService.createApplication({
+          seminarId: pid,
+          programId: pid,
+          userId,
+          userName,
+          userEmail: email,
+          userPhone: phoneRaw,
+          participationPath: '관리자 등록',
+          applyReason: '관리자가 참여 명단에 직접 추가함',
+          preQuestions: '',
+          mealAfter: '',
+          privacyAgreed: true,
+          reason: '관리자 직접 등록',
+          questions: [],
+          adminAddedParticipant: true,
+          appliedAt: new Date().toISOString(),
+        });
+        if (program[SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD] !== true && firebaseService.incrementSeminarParticipants) {
+          await firebaseService.incrementSeminarParticipants(pid, 1);
+        }
+        alert('명단에 추가했습니다.');
+        await loadApplicantModalData();
+        await loadPrograms();
+      } catch (e) {
+        console.error('관리자 명단 추가 오류:', e);
+        alert(e?.message || '추가에 실패했습니다.');
+      } finally {
+        setAddingParticipantUserId(null);
+      }
+    },
+    [applicantModalProgram, applications, loadApplicantModalData, loadPrograms]
+  );
 
   /** 관리자: 이 브라우저의 명단·CSV·인원·홈 집계에서만 숨김 (DB·환불 불변) */
   const handleAdminRemoveApplicant = useCallback((applicationId, displayName, program) => {
@@ -1301,6 +1409,70 @@ export const ProgramManagement = () => {
                   </span>
                 </div>
                 <div className="flex-1 min-h-0 overflow-auto p-4">
+                  {(() => {
+                    const addQuery = participantAddSearch.trim().toLowerCase();
+                    const usersForManualAdd =
+                      addQuery.length >= 1
+                        ? (applicantModalUsers || [])
+                            .filter((u) => matchesParticipantAddSearch(u, participantAddSearch))
+                            .slice(0, 25)
+                        : [];
+                    return (
+                      <div className="mb-6 p-4 rounded-xl border-2 border-brand/25 bg-gradient-to-br from-blue-50/90 to-white">
+                        <h4 className="text-sm font-bold text-dark mb-1 flex items-center gap-2">
+                          <Icons.User size={18} className="text-brand shrink-0" />
+                          <Icons.Plus size={16} className="text-brand shrink-0" />
+                          회원을 참여 명단에 직접 추가
+                        </h4>
+                        <p className="text-xs text-gray-600 mb-3 leading-relaxed">
+                          <span className="font-bold text-dark">회원 실명·닉네임</span>으로 검색해 명단에 넣을 수 있습니다. Firestore에 신청 1건이 생기며, 구버전 프로그램은 정원 카운터도 증가합니다.
+                        </p>
+                        <label className="block text-xs font-bold text-gray-600 mb-1.5" htmlFor="participant-add-search">
+                          이름·닉네임으로 검색 (이메일·연락처도 가능)
+                        </label>
+                        <input
+                          id="participant-add-search"
+                          type="search"
+                          value={participantAddSearch}
+                          onChange={(e) => setParticipantAddSearch(e.target.value)}
+                          placeholder="예: 홍길동, 또는 성/이름 일부"
+                          className="w-full px-3 py-2.5 border-2 border-blue-200 rounded-xl text-sm focus:border-brand focus:outline-none mb-3"
+                          aria-label="회원 검색"
+                        />
+                        {addQuery.length >= 1 && usersForManualAdd.length === 0 ? (
+                          <p className="text-xs text-gray-500 py-2">검색 결과가 없습니다.</p>
+                        ) : null}
+                        {usersForManualAdd.length > 0 ? (
+                          <ul className="space-y-2 max-h-52 overflow-y-auto rounded-lg border border-blue-100 bg-white/80 p-2">
+                            {usersForManualAdd.map((u) => {
+                              const uid = String(u.id || u.uid || '');
+                              const onList = list.some((app) => String(app.userId || '') === uid);
+                              const busy = addingParticipantUserId === uid;
+                              return (
+                                <li
+                                  key={uid || `${u.email}-${u.name}`}
+                                  className="flex flex-wrap items-center justify-between gap-2 py-2 px-2 rounded-lg border border-transparent hover:border-blue-100 hover:bg-blue-50/50"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-bold text-dark text-sm truncate">{(u.name || '').trim() || '(이름 없음)'}</div>
+                                    <div className="text-xs text-gray-600 truncate">{u.email || '-'} · {u.phone || u.phoneNumber || u.verifiedPhone || '-'}</div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    disabled={onList || busy || !uid}
+                                    onClick={() => handleAdminAddParticipant(u)}
+                                    className="shrink-0 px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {busy ? '추가 중…' : onList ? '이미 명단' : '명단에 추가'}
+                                  </button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
                   {list.length === 0 ? (
                     <p className="text-gray-500 text-center py-8">신청자가 없습니다.</p>
                   ) : (
