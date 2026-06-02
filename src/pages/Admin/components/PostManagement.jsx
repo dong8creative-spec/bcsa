@@ -29,6 +29,7 @@ export const PostManagement = () => {
     reviewImages: []
   });
   const [reviewImageUploading, setReviewImageUploading] = useState(false);
+  const [savingReview, setSavingReview] = useState(false);
 
   // 상세 보기 모달
   const [selectedPost, setSelectedPost] = useState(null);
@@ -112,6 +113,11 @@ export const PostManagement = () => {
 
   // 후기 저장
   const handleSaveReview = async () => {
+    if (savingReview) return;
+    if (reviewImageUploading) {
+      alert('이미지 업로드가 끝난 뒤 저장해주세요.');
+      return;
+    }
     if (!reviewForm.seminarId) {
       alert('프로그램을 선택해주세요.');
       return;
@@ -126,6 +132,7 @@ export const PostManagement = () => {
     }
 
     try {
+      setSavingReview(true);
       const reviewData = {
         category: '프로그램 후기',
         seminarId: reviewForm.seminarId,
@@ -155,6 +162,8 @@ export const PostManagement = () => {
     } catch (error) {
       console.error('후기 저장 오류:', error);
       alert('후기 저장에 실패했습니다.');
+    } finally {
+      setSavingReview(false);
     }
   };
 
@@ -540,10 +549,12 @@ export const PostManagement = () => {
               </div>
 
               <button
+                  type="button"
                   onClick={handleSaveReview}
-                  className="w-full px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors mt-6"
+                  disabled={savingReview || reviewImageUploading}
+                  className="w-full px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {editingReview ? '수정' : '작성'}
+                  {savingReview ? '저장 중...' : editingReview ? '수정' : '작성'}
                 </button>
             </div>
             </div>

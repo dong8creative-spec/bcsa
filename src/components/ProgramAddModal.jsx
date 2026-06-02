@@ -174,7 +174,7 @@ export const ProgramAddModal = ({ onClose, onSuccess }) => {
                     <input
                       type="text"
                       value={formData.location}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value, locationLat: null, locationLng: null }))}
                       required
                       className="flex-1 px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
                     />

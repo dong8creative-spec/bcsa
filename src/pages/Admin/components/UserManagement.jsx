@@ -87,9 +87,9 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
   const handleDeleteUser = async (user) => {
     if (!currentUser) {
       alert('탈퇴 처리를 하려면 먼저 로그인해 주세요. 메인 페이지에서 로그인한 뒤 관리자 페이지로 다시 들어와 주세요.');
-      return;
+      return false;
     }
-    if (!confirm('정말 이 회원을 강제 탈퇴 처리하시겠습니까? 강제 탈퇴 시 1년간 재가입이 제한됩니다.')) return;
+    if (!confirm('정말 이 회원을 강제 탈퇴 처리하시겠습니까? 강제 탈퇴 시 1년간 재가입이 제한됩니다.')) return false;
 
     const uid = user?.uid || user?.id;
     const userId = user?.id || user?.uid;
@@ -115,9 +115,11 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
       await firebaseService.deleteUser(userId);
       alert('회원이 강제 탈퇴 처리되었습니다. 해당 회원은 1년간 재가입이 제한됩니다.');
       if (!firebaseService.subscribeUsers) loadUsers();
+      return true;
     } catch (error) {
       console.error('회원 삭제 오류:', error);
       alert(error?.message || '회원 강제 탈퇴에 실패했습니다.');
+      return false;
     }
   };
 
@@ -759,7 +761,16 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
             </div>
             <div className="p-5 border-t border-blue-100 flex gap-2 justify-end">
               {!memberModalEditing && (
-                <button type="button" onClick={() => { handleDeleteUser(memberModalUser); setMemberModalUser(null); }} className="px-4 py-2 text-sm font-bold text-red-600 border border-red-200 rounded-xl hover:bg-red-50">강제 탈퇴</button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const deleted = await handleDeleteUser(memberModalUser);
+                    if (deleted) setMemberModalUser(null);
+                  }}
+                  className="px-4 py-2 text-sm font-bold text-red-600 border border-red-200 rounded-xl hover:bg-red-50"
+                >
+                  강제 탈퇴
+                </button>
               )}
               {memberModalEditing ? (
                 <>
