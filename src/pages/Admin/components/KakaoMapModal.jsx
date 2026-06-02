@@ -17,6 +17,7 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
   const mapRef = useRef(null);
   const markerRef = useRef(null);
   const geocoderRef = useRef(null);
+  const mapClickHandlerRef = useRef(null);
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -85,7 +86,7 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
         });
       }
 
-      K.maps.event.addListener(mapRef.current, 'click', (mouseEvent) => {
+      const handleMapClick = (mouseEvent) => {
         const latlng = mouseEvent.latLng;
 
         if (markerRef.current) {
@@ -119,7 +120,9 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
             });
           }
         });
-      });
+      };
+      mapClickHandlerRef.current = handleMapClick;
+      K.maps.event.addListener(mapRef.current, 'click', handleMapClick);
 
       if (!cancelled) {
         setMapLoaded(true);
@@ -133,7 +136,10 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
         markerRef.current = null;
       }
       if (mapRef.current) {
-        K.maps.event.clearInstanceListeners(mapRef.current);
+        if (mapClickHandlerRef.current && typeof K.maps.event?.removeListener === 'function') {
+          K.maps.event.removeListener(mapRef.current, 'click', mapClickHandlerRef.current);
+        }
+        mapClickHandlerRef.current = null;
         mapRef.current = null;
       }
       geocoderRef.current = null;
