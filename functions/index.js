@@ -7,6 +7,8 @@ import admin from 'firebase-admin';
 import http from 'http';
 import https from 'https';
 import sharp from 'sharp';
+import { buildPasswordResetEmailHtml, buildPasswordResetEmailText } from './email/passwordResetTemplate.js';
+import { isSmtpConfigured, sendMail } from './email/mailer.js';
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
@@ -665,6 +667,51 @@ const BLOCK_YEARS = 1;
 const normalizeEmail = (v) => (typeof v === 'string' ? v.trim().toLowerCase() : '') || '';
 const normalizePhone = (v) => (typeof v === 'string' ? v.replace(/\D/g, '').slice(0, 11) : '') || '';
 
+const PASSWORD_RESET_PAGE_URL = process.env.PASSWORD_RESET_PAGE_URL || 'https://bcsa.co.kr/auth/reset-password';
+const SITE_CONTINUE_URL = process.env.SITE_CONTINUE_URL || 'https://bcsa.co.kr';
+const FIREBASE_WEB_API_KEY = process.env.FIREBASE_WEB_API_KEY || 'AIzaSyA9aeP_SeSCJIgzST45tPj7FFZZcEfEaec';
+
+/** 비밀번호 재설정 링크 생성 (사이트 전용 재설정 페이지로 연결) */
+async function buildCustomResetLink(email) {
+  const firebaseLink = await admin.auth().generatePasswordResetLink(email, {
+    url: SITE_CONTINUE_URL,
+    handleCodeInApp: false,
+  });
+  const parsed = new URL(firebaseLink);
+  const oobCode = parsed.searchParams.get('oobCode');
+  const apiKey = parsed.searchParams.get('apiKey') || '';
+  if (!oobCode) {
+    return firebaseLink.includes('lang=')
+      ? firebaseLink.replace(/lang=[^&]*/, 'lang=ko')
+      : `${firebaseLink}${firebaseLink.includes('?') ? '&' : '?'}lang=ko`;
+  }
+  const params = new URLSearchParams({
+    mode: 'resetPassword',
+    oobCode,
+    apiKey,
+    lang: 'ko',
+  });
+  return `${PASSWORD_RESET_PAGE_URL}?${params.toString()}`;
+}
+
+/** SMTP 미설정 시 Firebase 기본 메일(한국어) 폴백 */
+async function sendFirebaseKoFallback(email) {
+  await axios.post(
+    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_WEB_API_KEY}`,
+    {
+      requestType: 'PASSWORD_RESET',
+      email,
+      continueUrl: SITE_CONTINUE_URL,
+    },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Firebase-Locale': 'ko',
+      },
+    }
+  );
+}
+
 /** 관리자만 호출: 강제 탈퇴한 회원을 1년간 재가입 차단 목록에 등록 */
 export const addBlockedRegistration = onCall(
   { region: 'asia-northeast3' },
@@ -711,7 +758,7 @@ export const addBlockedRegistration = onCall(
 
 /** 회원가입 전 호출: uid/email/phone 기준 1년 차단 여부 조회 (비인증 호출 가능) */
 export const checkBlockedRegistration = onCall(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', invoker: 'public' },
   async (request) => {
     const uid = typeof request.data?.uid === 'string' ? request.data.uid.trim() : null;
     const email = normalizeEmail(request.data?.email || '');
@@ -747,6 +794,107 @@ export const checkBlockedRegistration = onCall(
       }
     }
     return { blocked: false };
+  }
+);
+
+/** 아이디 찾기용 이메일 마스킹: 로컬 파트 첫 글자만 노출 (예: i***@devhounds.com) */
+const maskEmail = (email) => {
+  const [local, domain] = String(email).split('@');
+  if (!local || !domain) return '';
+  const visible = local.slice(0, 1);
+  return `${visible}${'*'.repeat(Math.max(local.length - 1, 2))}@${domain}`;
+};
+
+/**
+ * 아이디(이메일) 찾기: 이름+휴대폰 일치 시 마스킹된 이메일만 반환 (비인증 호출 가능)
+ * 전체 이메일·uid 등 민감 정보는 절대 반환하지 않음
+ */
+export const lookupAccountByIdentity = onCall(
+  { region: 'asia-northeast3', invoker: 'public' },
+  async (request) => {
+    const name = typeof request.data?.name === 'string' ? request.data.name.trim() : '';
+    const phone = normalizePhone(request.data?.phone || '');
+    if (!name || phone.length < 10) {
+      throw new HttpsError('invalid-argument', '이름과 휴대폰 번호를 정확히 입력해 주세요.');
+    }
+
+    // phone 필드 우선, 구버전 phoneNumber 필드 폴백
+    let snap = await db.collection('users').where('phone', '==', phone).limit(5).get();
+    if (snap.empty) {
+      snap = await db.collection('users').where('phoneNumber', '==', phone).limit(5).get();
+    }
+
+    const matched = snap.docs.find((d) => {
+      const u = d.data() || {};
+      return String(u.name || '').trim() === name && String(u.email || '').includes('@');
+    });
+
+    if (!matched) {
+      // 이름 불일치·미가입 모두 동일 응답 (계정 열거 방지)
+      return { found: false };
+    }
+
+    const maskedEmail = maskEmail(matched.data().email);
+    if (!maskedEmail) return { found: false };
+    console.log('[lookupAccountByIdentity] matched doc:', matched.id);
+    return { found: true, maskedEmail };
+  }
+);
+
+/**
+ * 비밀번호 재설정 메일 발송 (비인증 호출 가능)
+ * SMTP 설정 시 한국어 HTML 메일 + 사이트 전용 재설정 페이지 링크
+ * SMTP 미설정 시 Firebase 기본 메일(한국어)로 폴백
+ */
+export const requestPasswordReset = onCall(
+  { region: 'asia-northeast3', invoker: 'public' },
+  async (request) => {
+    const email = normalizeEmail(request.data?.email || '');
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      throw new HttpsError('invalid-argument', '올바른 이메일을 입력해 주세요.');
+    }
+
+    try {
+      let userExists = false;
+      try {
+        await admin.auth().getUserByEmail(email);
+        userExists = true;
+      } catch (err) {
+        if (err.code !== 'auth/user-not-found') throw err;
+      }
+      if (!userExists) {
+        console.log('[requestPasswordReset] auth user not found:', email);
+        return { success: true };
+      }
+
+      let deliveryProvider = 'firebase-fallback';
+      if (isSmtpConfigured()) {
+        const resetLink = await buildCustomResetLink(email);
+        await sendMail({
+          to: email,
+          subject: '[부산청년사업가들] 비밀번호 재설정 안내',
+          html: buildPasswordResetEmailHtml({ resetLink, email }),
+          text: buildPasswordResetEmailText({ resetLink, email }),
+        });
+        deliveryProvider = 'smtp';
+      } else {
+        await sendFirebaseKoFallback(email);
+      }
+      console.log('[requestPasswordReset] sent for', email, 'via', deliveryProvider);
+      return { success: true };
+    } catch (err) {
+      if (err.message === 'SMTP_NOT_CONFIGURED') {
+        try {
+          await sendFirebaseKoFallback(email);
+          console.log('[requestPasswordReset] sent for', email, 'via firebase-fallback-after-smtp-error');
+          return { success: true };
+        } catch (fallbackErr) {
+          console.error('[requestPasswordReset] fallback failed', fallbackErr);
+        }
+      }
+      console.error('[requestPasswordReset]', err);
+      throw new HttpsError('internal', '비밀번호 재설정 메일 발송에 실패했습니다.');
+    }
   }
 );
 

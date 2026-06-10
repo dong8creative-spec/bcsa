@@ -200,6 +200,46 @@ export const firebaseService = {
     }
   },
 
+  /** 비밀번호 재설정 메일 발송 (Cloud Function, 비인증 호출 가능) */
+  async requestPasswordReset(email) {
+    const emailStr = (email ?? '').toString().trim().toLowerCase();
+    if (!emailStr) {
+      throw new Error('이메일을 입력해 주세요.');
+    }
+    try {
+      const functions = getFunctions(app, 'asia-northeast3');
+      const callable = httpsCallable(functions, 'requestPasswordReset');
+      const res = await callable({ email: emailStr });
+      return res?.data?.success === true;
+    } catch (error) {
+      const msg = error?.message || error?.details || '비밀번호 재설정 메일 발송 실패';
+      console.error('Error requesting password reset:', error);
+      throw new Error(typeof msg === 'string' ? msg : '비밀번호 재설정 메일 발송에 실패했습니다.');
+    }
+  },
+
+  /** 아이디(이메일) 찾기: 이름+휴대폰으로 마스킹된 이메일만 조회 (Cloud Function, 비인증 호출 가능) */
+  async lookupAccountByIdentity({ name, phone }) {
+    const nameStr = (name ?? '').toString().trim();
+    const phoneDigits = (phone ?? '').toString().replace(/\D/g, '').slice(0, 11);
+    if (!nameStr || phoneDigits.length < 10) {
+      return { found: false };
+    }
+    try {
+      const functions = getFunctions(app, 'asia-northeast3');
+      const callable = httpsCallable(functions, 'lookupAccountByIdentity');
+      const res = await callable({ name: nameStr, phone: phoneDigits });
+      const data = res?.data;
+      if (data && data.found === true && typeof data.maskedEmail === 'string' && data.maskedEmail) {
+        return { found: true, maskedEmail: data.maskedEmail };
+      }
+      return { found: false };
+    } catch (error) {
+      console.error('Error looking up account by identity:', error);
+      throw new Error('계정 조회 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+    }
+  },
+
   subscribeUsers(callback) {
     return onSnapshot(collection(db, 'users'), (snapshot) => {
       const users = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));

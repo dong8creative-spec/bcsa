@@ -33,6 +33,7 @@ function createFirestoreDb() {
 
 export const db = createFirestoreDb();
 export const auth = getAuth(app);
+auth.languageCode = 'ko';
 export const storage = getStorage(app);
 
 export default app;

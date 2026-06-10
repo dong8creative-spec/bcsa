@@ -84,13 +84,16 @@ export const authService = {
     }
   },
 
-  // Reset password
+  // Reset password (한국어 HTML 메일 또는 Firebase 한국어 폴백 — Cloud Function)
   async resetPassword(email) {
+    const emailStr = (email ?? '').toString().trim();
     try {
-      await sendPasswordResetEmail(auth, email);
+      auth.languageCode = 'ko';
+      await firebaseService.requestPasswordReset(emailStr);
     } catch (error) {
-      console.error('Error sending password reset email:', error);
-      throw error;
+      console.warn('Custom password reset failed, falling back to Firebase email:', error);
+      auth.languageCode = 'ko';
+      await sendPasswordResetEmail(auth, emailStr);
     }
   },
 
