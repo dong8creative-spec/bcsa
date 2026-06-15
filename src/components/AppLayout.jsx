@@ -84,6 +84,7 @@ const AppLayout = (props) => {
         showSignUpModal,
         setShowSignUpModal,
         onSignUpClick,
+        handleKakaoLogin,
         isInquiryModalOpen,
         setIsInquiryModalOpen,
         handleInquirySubmit,
@@ -518,6 +519,7 @@ const AppLayout = (props) => {
                 <LoginModal
                     onClose={() => setShowLoginModal(false)}
                     onLogin={handleLogin}
+                    onKakaoLogin={handleKakaoLogin}
                     onSignUpClick={() => {
                         setShowLoginModal(false);
                         onSignUpClick?.();

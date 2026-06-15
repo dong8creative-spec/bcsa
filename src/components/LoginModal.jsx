@@ -6,11 +6,20 @@ import { firebaseService } from '../services/firebaseService';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+/** 카카오 심볼 아이콘 (로그인 버튼용) */
+const KakaoSymbol = ({ className = 'w-5 h-5' }) => (
+  <span className={`inline-flex shrink-0 ${className}`} aria-hidden="true">
+    <svg width="100%" height="100%" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 3C6.2 3 1.5 6.66 1.5 11.18c0 2.84 1.8 5.36 4.61 6.94-.12.44-.42 1.58-.48 1.83-.08.38.14.37.33.27.15-.08 2.42-1.58 3.4-2.27.57.08 1.17.12 1.79.12 5.8 0 10.5-3.66 10.5-8.18S17.8 3 12 3z" />
+    </svg>
+  </span>
+);
+
 /**
  * 로그인 모달 (App에서 사용)
  * mode: 'login' | 'findId' | 'resetPassword'
  */
-export const LoginModal = ({ onClose, onLogin, onSignUpClick }) => {
+export const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) => {
   const [mode, setMode] = useState('login');
 
   // 로그인
@@ -179,6 +188,16 @@ export const LoginModal = ({ onClose, onLogin, onSignUpClick }) => {
                     로그인
                   </button>
                 </form>
+                {onKakaoLogin ? (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onKakaoLogin(); }}
+                    className="w-full mt-2 py-2.5 bg-[#FEE500] text-[#191919] font-bold rounded-xl hover:bg-[#FDD835] transition-colors text-sm flex items-center justify-center gap-2"
+                  >
+                    <KakaoSymbol className="w-5 h-5" />
+                    <span>카카오로 로그인</span>
+                  </button>
+                ) : null}
                 {onSignUpClick ? (
                   <button
                     type="button"

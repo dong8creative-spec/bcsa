@@ -1714,6 +1714,81 @@ const App = () => {
         }
     }, [communityPosts, pendingView]);
 
+    /** 카카오 로그인 시작 (백엔드 OAuth start로 이동). options.signup=true면 가입 흐름 */
+    const handleKakaoLogin = useCallback((options = {}) => {
+        try {
+            authService.startKakaoLogin(options);
+        } catch (err) {
+            alert(err?.message || '카카오 로그인을 시작할 수 없습니다.');
+        }
+    }, []);
+
+    // 카카오 OAuth 콜백: URL 해시의 auth=kakao&token= 으로 Firebase 로그인, error면 안내
+    useEffect(() => {
+        const hashPart = (location.hash || '').slice(1);
+        const queryPart = (location.search || '').slice(1);
+        const params = new URLSearchParams(hashPart || queryPart);
+        if (params.get('auth') !== 'kakao') return;
+
+        const errorParam = params.get('error');
+        if (errorParam) {
+            const msg = errorParam === 'no_code' ? '카카오 인증 코드가 없습니다.'
+                : errorParam === 'server_config' ? '카카오 로그인 서버 설정을 확인해 주세요.'
+                : errorParam === 'no_token' ? '카카오 토큰을 받지 못했습니다.'
+                : errorParam === 'no_user' ? '카카오 사용자 정보를 가져오지 못했습니다.'
+                : '카카오 로그인 처리 중 오류가 발생했습니다.';
+            alert(msg);
+            window.history.replaceState(null, '', location.pathname || '/');
+            return;
+        }
+        if (!hashPart) return;
+
+        const token = params.get('token');
+        if (!token || !authService?.signInWithKakaoToken) return;
+
+        let profile = null;
+        const pRaw = params.get('p');
+        if (pRaw) {
+            try {
+                const base64 = pRaw.replace(/-/g, '+').replace(/_/g, '/');
+                const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+                profile = JSON.parse(decodeURIComponent(escape(atob(padded))));
+            } catch (_) {}
+        }
+        (async () => {
+            try {
+                const user = await authService.signInWithKakaoToken(token);
+                let userDoc = await authService.getUserData(user.uid);
+
+                if (!userDoc) {
+                    // 신규 카카오 사용자: 프로필을 보관하고 추가정보 입력(회원가입)으로 이동
+                    try {
+                        if (profile) sessionStorage.setItem('kakao_signup_profile', JSON.stringify(profile));
+                    } catch (_) {}
+                    window.history.replaceState(null, '', location.pathname || '/');
+                    navigate('/signup?from=kakao', { replace: true });
+                    return;
+                }
+
+                // 기존 회원: 카카오 연결 정보 보강 (서버 매칭이 이미 kakaoId를 연결했지만 lastLoginProvider 갱신)
+                if (profile?.kakaoId && !userDoc.kakaoId && firebaseService?.updateUser) {
+                    try {
+                        await firebaseService.updateUser(userDoc.id || userDoc.uid, {
+                            kakaoId: String(profile.kakaoId),
+                            lastLoginProvider: 'kakao',
+                        });
+                    } catch (_) {}
+                }
+                window.history.replaceState(null, '', location.pathname || '/');
+                await applySocialLoginResult(user, userDoc);
+            } catch (e) {
+                console.error('카카오 로그인 처리 실패:', e);
+                alert(e?.message || '카카오 로그인 처리에 실패했습니다.');
+                window.history.replaceState(null, '', location.pathname || '/');
+            }
+        })();
+    }, [location.hash, location.search, applySocialLoginResult, navigate]);
+
     const handleLogout = async () => {
         try {
             if (authService && authService.signOut) {
@@ -2135,8 +2210,9 @@ const App = () => {
     };
 
     /** 결제 완료 처리 공통 함수. 리다이렉트 복귀 시 또는 표준 결제 성공 시 사용 */
-    const completePaymentSuccess = async (seminar, applicationData, { afterSuccess } = {}) => {
-        const ok = await handleSeminarApply(seminar, applicationData);
+    const completePaymentSuccess = async (seminar, applicationData, { afterSuccess, merchantUid } = {}) => {
+        const paymentMeta = merchantUid ? { merchantUid } : null;
+        const ok = await handleSeminarApply(seminar, applicationData, paymentMeta);
         if (ok && afterSuccess) afterSuccess();
         return ok;
     };
@@ -3539,6 +3615,7 @@ END:VCALENDAR`;
             showSignUpModal={showSignUpModal}
             setShowSignUpModal={setShowSignUpModal}
             onSignUpClick={() => setShowSignUpChoiceModal(true)}
+            handleKakaoLogin={handleKakaoLogin}
             isInquiryModalOpen={isInquiryModalOpen}
             setIsInquiryModalOpen={setIsInquiryModalOpen}
             handleInquirySubmit={handleInquirySubmit}
@@ -3566,6 +3643,18 @@ END:VCALENDAR`;
                                 className="w-full py-3 px-4 bg-brand text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors"
                             >
                                 이메일로 가입
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setShowSignUpChoiceModal(false); handleKakaoLogin({ signup: true }); }}
+                                className="w-full py-3 px-4 bg-[#FEE500] text-[#191919] font-semibold rounded-xl hover:bg-[#FDD835] transition-colors flex items-center justify-center gap-2"
+                            >
+                                <span className="inline-flex shrink-0 w-5 h-5" aria-hidden="true">
+                                    <svg width="100%" height="100%" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 3C6.2 3 1.5 6.66 1.5 11.18c0 2.84 1.8 5.36 4.61 6.94-.12.44-.42 1.58-.48 1.83-.08.38.14.37.33.27.15-.08 2.42-1.58 3.4-2.27.57.08 1.17.12 1.79.12 5.8 0 10.5-3.66 10.5-8.18S17.8 3 12 3z" />
+                                    </svg>
+                                </span>
+                                카카오로 가입
                             </button>
                         </div>
                         <button type="button" onClick={() => setShowSignUpChoiceModal(false)} className="mt-4 w-full py-2 text-gray-500 text-sm hover:text-gray-700">취소</button>

@@ -101,9 +101,10 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
 
     const pgHint = ' 관리자: PortOne 콘솔(admin.portone.io) → 결제 연동 → 채널 관리에서 해당 채널에 PG가 연결되어 있는지 확인해 주세요.';
 
+    // 서버 측 결제대기 저장: 웹훅 기반 신청 복구가 이 문서에 의존하므로 1회 재시도 후에도 실패하면 결제를 중단한다.
     if (apiBaseUrl && userId) {
-        try {
-            const base = apiBaseUrl.replace(/\/$/, '');
+        const base = apiBaseUrl.replace(/\/$/, '');
+        const savePending = async () => {
             const res = await fetch(`${base}/api/payment/pending`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -118,11 +119,27 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
                 })
             });
             const data = res.ok ? await res.json().catch(() => ({})) : null;
-            if (!res.ok || !data?.saved) {
-                console.warn('paymentService: pending save failed, proceeding with payment window');
-            }
+            return !!(res.ok && data?.saved);
+        };
+
+        let pendingSaved = false;
+        try {
+            pendingSaved = await savePending();
         } catch (e) {
-            console.warn('paymentService: pending save failed', e);
+            console.warn('paymentService: pending save failed (1st)', e);
+        }
+        if (!pendingSaved) {
+            try {
+                await new Promise((r) => setTimeout(r, 1000));
+                pendingSaved = await savePending();
+            } catch (e) {
+                console.warn('paymentService: pending save failed (retry)', e);
+            }
+        }
+        if (!pendingSaved) {
+            alert('결제 준비 중 오류가 발생했습니다. 네트워크를 확인하신 후 다시 시도해 주세요.');
+            if (onFail) onFail();
+            return;
         }
     }
     setPaymentPending(merchantUid, { seminar, applicationData });

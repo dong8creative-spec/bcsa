@@ -47,10 +47,12 @@ async function decrementSeminarParticipantsIfLegacy(seminarRef, delta = 1) {
   await seminarRef.update({ currentParticipants: Math.max(0, prev - d) });
 }
 
-// CORS 허용 오리진 (bcsa.co.kr 프로덕션 + 로컬 개발)
+// CORS 허용 오리진 (bcsa.co.kr 프로덕션 + Firebase Hosting + 로컬 개발)
 const ALLOWED_ORIGINS = [
   'https://bcsa.co.kr',
   'https://www.bcsa.co.kr',
+  'https://bcsa-b190f.web.app',
+  'https://bcsa-b190f.firebaseapp.com',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://localhost:3000',
@@ -124,9 +126,270 @@ const parseApiResponse = async (rawData, contentType) => {
   }
 };
 
+// ==========================================
+// 결제 식별자/상태 정규화 (PortOne V1 imp + V2 paymentId 호환)
+// ==========================================
+
+/**
+ * 웹훅/요청 body에서 내부 결제 식별자(우리 시스템의 merchant_uid == PortOne paymentId)를 추출.
+ * V1: merchant_uid / merchantUid
+ * V2: payment_id / paymentId, 또는 data.paymentId / data.payment_id (Transaction.* 이벤트)
+ */
+const extractPaymentId = (body) => {
+  if (!body || typeof body !== 'object') return '';
+  const data = body.data && typeof body.data === 'object' ? body.data : {};
+  const candidate =
+    body.merchant_uid ||
+    body.merchantUid ||
+    body.payment_id ||
+    body.paymentId ||
+    data.paymentId ||
+    data.payment_id ||
+    '';
+  return String(candidate || '').trim();
+};
+
+/** 웹훅 body가 "결제 승인(paid)"을 의미하는지 판정 (V1 'paid' + V2 'Paid'/'PAID'/'Transaction.Paid') */
+const isPaidWebhook = (body) => {
+  if (!body || typeof body !== 'object') return false;
+  const status = String(body.status || '').toLowerCase();
+  if (status === 'paid') return true;
+  const type = String(body.type || '');
+  if (type === 'Transaction.Paid') return true;
+  return false;
+};
+
+/**
+ * pendingPayments 문서로 applications 신청을 생성. 중복(merchant_uid 동일) 방지 포함.
+ * @returns {Promise<{ created: boolean, applicationId: string|null }>}
+ */
+async function createApplicationFromPending(paymentId, pending) {
+  const id = String(paymentId);
+  // 중복 방지: 이미 같은 merchant_uid로 신청이 있으면 생성하지 않음
+  const existing = await db.collection('applications').where('merchant_uid', '==', id).limit(1).get();
+  if (!existing.empty) {
+    return { created: false, applicationId: existing.docs[0].id };
+  }
+
+  const seminarId = pending.seminar_id || pending.seminarId;
+  const appData = pending.application_data || pending.applicationData || {};
+  const reason = [appData.participationPath, appData.applyReason].filter(Boolean).join(' / ') || '';
+  const questions = Array.isArray(appData.preQuestions)
+    ? appData.preQuestions
+    : (appData.preQuestions ? [appData.preQuestions] : []);
+
+  const appRef = await db.collection('applications').add({
+    seminarId,
+    userId: pending.user_id || pending.userId,
+    userName: pending.user_name || pending.userName || '',
+    userEmail: pending.user_email || pending.userEmail || '',
+    userPhone: pending.user_phone || pending.userPhone || '',
+    participationPath: appData.participationPath || '',
+    applyReason: appData.applyReason || '',
+    preQuestions: appData.preQuestions || '',
+    mealAfter: appData.mealAfter || '',
+    privacyAgreed: appData.privacyAgreed === true,
+    reason,
+    questions,
+    appliedAt: new Date().toISOString(),
+    merchant_uid: id,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  if (seminarId) {
+    const seminarRef = db.collection('seminars').doc(seminarId);
+    await incrementSeminarParticipantsIfLegacy(seminarRef);
+  }
+
+  return { created: true, applicationId: appRef.id };
+}
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'API Proxy is running' });
+});
+
+// ==========================================
+// 카카오 로그인 (OAuth → Firebase Custom Token)
+// ==========================================
+const KAKAO_REST_KEY = process.env.KAKAO_REST_API_KEY || '';
+const KAKAO_CLIENT_SECRET = process.env.KAKAO_CLIENT_SECRET || '';
+const KAKAO_DEFAULT_FRONTEND = process.env.FRONTEND_URL || 'https://bcsa.co.kr';
+
+const base64UrlEncode = (obj) =>
+  Buffer.from(JSON.stringify(obj), 'utf8').toString('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+const base64UrlDecode = (str) => {
+  const base64 = String(str).replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+  return JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+};
+
+/** 카카오 phone_number(+82 10-1234-5678) → 01012345678 정규화 */
+const normalizeKakaoPhone = (raw) => {
+  if (!raw) return '';
+  let digits = String(raw).replace(/\D/g, '');
+  if (digits.startsWith('82')) digits = '0' + digits.slice(2);
+  digits = digits.slice(0, 11);
+  return (digits.length === 10 || digits.length === 11) ? digits : '';
+};
+
+const getKakaoRedirectUri = (req) => {
+  const baseUrl = (process.env.KAKAO_REDIRECT_BASE_URL || process.env.FUNCTION_URL || `https://${req.get('host') || ''}`).replace(/\/$/, '');
+  return `${baseUrl}/api/auth/kakao/callback`;
+};
+
+/**
+ * 카카오 기존 회원 매칭: kakaoId → email(검증된 경우만) → phone 순.
+ * 매칭 시 해당 문서에 kakaoId 연결. 반환: { uid, docId } 또는 null
+ */
+async function matchExistingUserForKakao({ kakaoId, email, phone, isEmailVerified }) {
+  const kakaoIdStr = String(kakaoId);
+
+  let snap = await db.collection('users').where('kakaoId', '==', kakaoIdStr).limit(1).get();
+  if (!snap.empty) {
+    const d = snap.docs[0];
+    return { uid: (d.data().uid || d.id), docId: d.id, alreadyLinked: true };
+  }
+
+  let matched = null;
+  if (email && isEmailVerified !== false) {
+    snap = await db.collection('users').where('email', '==', email).limit(1).get();
+    if (!snap.empty) matched = snap.docs[0];
+  }
+  if (!matched && phone) {
+    snap = await db.collection('users').where('phone', '==', phone).limit(1).get();
+    if (snap.empty) {
+      snap = await db.collection('users').where('phoneNumber', '==', phone).limit(1).get();
+    }
+    if (!snap.empty) matched = snap.docs[0];
+  }
+  if (!matched) return null;
+
+  await matched.ref.update({
+    kakaoId: kakaoIdStr,
+    providers: admin.firestore.FieldValue.arrayUnion('kakao'),
+    lastLoginProvider: 'kakao',
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  console.log('[Kakao Auth] linked kakaoId to existing user doc:', matched.id);
+  return { uid: (matched.data().uid || matched.id), docId: matched.id, alreadyLinked: false };
+}
+
+// 카카오 로그인 시작: 프론트 origin을 state로 보존한 채 카카오 인가 페이지로 이동
+app.get('/api/auth/kakao/start', (req, res) => {
+  if (!KAKAO_REST_KEY) {
+    res.redirect(`${KAKAO_DEFAULT_FRONTEND}/?auth=kakao&error=server_config`);
+    return;
+  }
+  const origin = (req.query.origin || '').toString();
+  const frontendUrl = ALLOWED_ORIGINS.includes(origin) ? origin : KAKAO_DEFAULT_FRONTEND;
+  const signup = req.query.signup === '1' ? '1' : '0';
+  const state = base64UrlEncode({ o: frontendUrl, s: signup });
+  const params = new URLSearchParams({
+    client_id: KAKAO_REST_KEY,
+    redirect_uri: getKakaoRedirectUri(req),
+    response_type: 'code',
+    state,
+  });
+  res.redirect(`https://kauth.kakao.com/oauth/authorize?${params.toString()}`);
+});
+
+// 카카오 콜백: 코드 → 토큰 → 프로필 → 기존 회원 매칭/연결 → Firebase Custom Token → 프론트 리다이렉트
+app.get('/api/auth/kakao/callback', async (req, res) => {
+  let frontendUrl = KAKAO_DEFAULT_FRONTEND;
+  let isSignup = false;
+  try {
+    const parsed = base64UrlDecode(req.query.state || '');
+    if (parsed?.o && ALLOWED_ORIGINS.includes(parsed.o)) frontendUrl = parsed.o;
+    isSignup = parsed?.s === '1';
+  } catch (_) {}
+
+  const code = req.query.code;
+  if (!code) {
+    res.redirect(`${frontendUrl}/?auth=kakao&error=no_code`);
+    return;
+  }
+  if (!KAKAO_REST_KEY) {
+    console.error('[Kakao Auth] KAKAO_REST_API_KEY not set');
+    res.redirect(`${frontendUrl}/?auth=kakao&error=server_config`);
+    return;
+  }
+  try {
+    const tokenParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: KAKAO_REST_KEY,
+      redirect_uri: getKakaoRedirectUri(req),
+      code,
+    });
+    if (KAKAO_CLIENT_SECRET) tokenParams.set('client_secret', KAKAO_CLIENT_SECRET);
+    const tokenRes = await axios.post('https://kauth.kakao.com/oauth/token', tokenParams, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    const accessToken = tokenRes.data?.access_token;
+    if (!accessToken) {
+      res.redirect(`${frontendUrl}/?auth=kakao&error=no_token`);
+      return;
+    }
+
+    const meRes = await axios.get('https://kapi.kakao.com/v2/user/me', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const kakaoId = meRes.data?.id;
+    if (!kakaoId) {
+      res.redirect(`${frontendUrl}/?auth=kakao&error=no_user`);
+      return;
+    }
+    const kakaoAccount = meRes.data?.kakao_account || {};
+    const profile = kakaoAccount.profile || {};
+    const email = (kakaoAccount.email || '').toString().trim().toLowerCase();
+    const isEmailVerified = kakaoAccount.is_email_verified;
+    const nickname = (profile.nickname || meRes.data?.properties?.nickname || '').toString();
+    const legalName = (kakaoAccount.legal_name || kakaoAccount.name || '').toString();
+    const phone = normalizeKakaoPhone(kakaoAccount.phone_number);
+    const name = legalName || nickname || '';
+
+    // 기존 회원 매칭 (kakaoId → email → phone). 매칭되면 기존 uid로 로그인해 계정 동기화
+    const matched = await matchExistingUserForKakao({ kakaoId, email, phone, isEmailVerified });
+    const firebaseUid = matched ? matched.uid : `kakao_${kakaoId}`;
+    const customToken = await admin.auth().createCustomToken(firebaseUid, { provider: 'kakao' });
+
+    const profilePayload = { name, phone, email, kakaoId: String(kakaoId) };
+    const params = new URLSearchParams({
+      auth: 'kakao',
+      token: customToken,
+      p: base64UrlEncode(profilePayload),
+      new: matched ? '0' : '1',
+      signup: isSignup ? '1' : '0',
+    });
+    res.redirect(`${frontendUrl}/#${params.toString()}`);
+  } catch (err) {
+    console.error('[Kakao Auth]', err.response?.data || err.message);
+    res.redirect(`${frontendUrl}/?auth=kakao&error=server_error`);
+  }
+});
+
+// 카카오 계정 상태 변경 웹훅 (OAuth: user-linked 등) — Content-Type: application/secevent+jwt
+app.post('/api/webhook/kakao', express.raw({ type: 'application/secevent+jwt' }), (req, res) => {
+  try {
+    const raw = req.body;
+    const jwtStr = Buffer.isBuffer(raw) ? raw.toString('utf8') : (typeof raw === 'string' ? raw : '');
+    if (jwtStr) {
+      const parts = jwtStr.split('.');
+      if (parts.length >= 2) {
+        const payload = JSON.parse(
+          Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
+        );
+        console.log('[Kakao Webhook]', { sub: payload.sub, eventTypes: Object.keys(payload.events || {}) });
+      }
+    }
+    res.status(200).json({ received: true });
+  } catch (err) {
+    console.error('[Kakao Webhook]', err);
+    res.status(200).json({ received: true });
+  }
 });
 
 /** WebP 품질: 본 사이트와 동일(클라 0~1 비율 또는 1~100) */
@@ -198,7 +461,7 @@ app.post('/api/images/encode-webp', async (req, res) => {
 app.post('/api/payment/pending', async (req, res) => {
   try {
     const body = req.body || {};
-    const merchantUid = body.merchant_uid || body.merchantUid;
+    const merchantUid = extractPaymentId(body);
     const seminarId = body.seminar_id || body.seminarId;
     const userId = body.user_id || body.userId;
     if (!merchantUid || !seminarId || !userId) {
@@ -226,7 +489,10 @@ app.post('/api/payment/pending', async (req, res) => {
 // 결제 결과 페이지에서 웹훅 처리 완료 여부 확인 (입금됐는데 오류 나는 경우 복구)
 app.get('/api/payment/status', async (req, res) => {
   try {
-    const merchantUid = String(req.query.merchant_uid || req.query.merchantUid || '').trim();
+    // V2(paymentId)와 V1(merchant_uid) 쿼리 모두 허용
+    const merchantUid = String(
+      req.query.merchant_uid || req.query.merchantUid || req.query.payment_id || req.query.paymentId || ''
+    ).trim();
     if (!merchantUid) {
       res.status(200).json({ completed: false });
       return;
@@ -248,40 +514,15 @@ app.get('/api/payment/status', async (req, res) => {
     }
 
     // 웹훅에서 paid 수신했는데 신청 처리만 실패한 경우: pendingPayments 기반으로 신청 생성 후 완료 처리
-    if (webhookData.status === 'paid') {
+    // 저장된 webhook 문서가 paid(정규화된 boolean) 또는 V1 'paid' 문자열인 경우 모두 복구
+    const webhookPaid = webhookData.paid === true || isPaidWebhook(webhookData);
+    if (webhookPaid) {
       const pendingSnap = await db.collection('pendingPayments').doc(merchantUid).get();
       if (pendingSnap.exists) {
-        const pending = pendingSnap.data();
-        const seminarId = pending.seminar_id || pending.seminarId;
-        const appData = pending.application_data || pending.applicationData || {};
-        const reason = [appData.participationPath, appData.applyReason].filter(Boolean).join(' / ') || '';
-        const questions = Array.isArray(appData.preQuestions) ? appData.preQuestions : (appData.preQuestions ? [appData.preQuestions] : []);
-
-        await db.collection('applications').add({
-          seminarId,
-          userId: pending.user_id || pending.userId,
-          userName: pending.user_name || pending.userName || '',
-          userEmail: pending.user_email || pending.userEmail || '',
-          userPhone: pending.user_phone || pending.userPhone || '',
-          participationPath: appData.participationPath || '',
-          applyReason: appData.applyReason || '',
-          preQuestions: appData.preQuestions || '',
-          mealAfter: appData.mealAfter || '',
-          privacyAgreed: appData.privacyAgreed === true,
-          reason,
-          questions,
-          appliedAt: new Date().toISOString(),
-          merchant_uid: merchantUid,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-
-        const seminarRef = db.collection('seminars').doc(seminarId);
-        await incrementSeminarParticipantsIfLegacy(seminarRef);
-
+        const { created } = await createApplicationFromPending(merchantUid, pendingSnap.data());
         await db.collection('paymentWebhookEvents').doc(merchantUid).set({ completed: true }, { merge: true });
         await db.collection('pendingPayments').doc(merchantUid).delete();
-        console.log('[Payment Status] recovered application from paid webhook', merchantUid);
+        console.log('[Payment Status] recovered application from paid webhook', merchantUid, 'created:', created);
         res.status(200).json({ completed: true });
         return;
       }
@@ -299,59 +540,43 @@ app.get('/api/payment/status', async (req, res) => {
 app.post('/api/payment/webhook', async (req, res) => {
   try {
     const body = req.body || {};
-    const impUid = body.imp_uid || body.impUid;
-    const merchantUid = body.merchant_uid || body.merchantUid;
-    const status = body.status;
+    const impUid = body.imp_uid || body.impUid || (body.data && (body.data.transactionId || body.data.txId)) || '';
+    // V1(merchant_uid)과 V2(payment_id / data.paymentId)를 동일 내부 식별자로 정규화
+    const merchantUid = extractPaymentId(body);
+    const paid = isPaidWebhook(body);
 
     if (!merchantUid) {
-      console.warn('[Payment Webhook] missing merchant_uid', truncateLog(body));
-      res.status(200).json({ received: true, warning: 'missing merchant_uid' });
+      console.warn('[Payment Webhook] missing payment id', truncateLog(body));
+      res.status(200).json({ received: true, warning: 'missing payment id' });
       return;
     }
 
     const payload = {
       imp_uid: impUid,
       merchant_uid: merchantUid,
-      status,
+      status: body.status || body.type || '',
+      paid,
       received_at: admin.firestore.FieldValue.serverTimestamp(),
       raw: truncateLog(body, 1000)
     };
     await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set(payload, { merge: true });
 
-    if (status === 'paid') {
+    if (paid) {
       const pendingSnap = await db.collection('pendingPayments').doc(String(merchantUid)).get();
       if (pendingSnap.exists) {
-        const pending = pendingSnap.data();
-        const seminarId = pending.seminar_id || pending.seminarId;
-        const appData = pending.application_data || pending.applicationData || {};
-        const reason = [appData.participationPath, appData.applyReason].filter(Boolean).join(' / ') || '';
-        const questions = Array.isArray(appData.preQuestions) ? appData.preQuestions : (appData.preQuestions ? [appData.preQuestions] : []);
-
-        await db.collection('applications').add({
-          seminarId,
-          userId: pending.user_id || pending.userId,
-          userName: pending.user_name || pending.userName || '',
-          userEmail: pending.user_email || pending.userEmail || '',
-          userPhone: pending.user_phone || pending.userPhone || '',
-          participationPath: appData.participationPath || '',
-          applyReason: appData.applyReason || '',
-          preQuestions: appData.preQuestions || '',
-          mealAfter: appData.mealAfter || '',
-          privacyAgreed: appData.privacyAgreed === true,
-          reason,
-          questions,
-          appliedAt: new Date().toISOString(),
-          merchant_uid: merchantUid,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-
-        const seminarRef = db.collection('seminars').doc(seminarId);
-        await incrementSeminarParticipantsIfLegacy(seminarRef);
-
+        const { created, applicationId } = await createApplicationFromPending(merchantUid, pendingSnap.data());
         await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set({ completed: true }, { merge: true });
         await db.collection('pendingPayments').doc(String(merchantUid)).delete();
-        console.log('[Payment Webhook] application completed', merchantUid);
+        console.log('[Payment Webhook] application completed', merchantUid, 'created:', created, 'appId:', applicationId);
+      } else {
+        // pending이 없지만 이미 신청이 있을 수 있음 → completed 보강
+        const existing = await db.collection('applications').where('merchant_uid', '==', merchantUid).limit(1).get();
+        if (!existing.empty) {
+          await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set({ completed: true }, { merge: true });
+          console.log('[Payment Webhook] application already exists, marked completed', merchantUid);
+        } else {
+          console.warn('[Payment Webhook] paid but no pending and no application', merchantUid);
+        }
       }
     }
 
@@ -365,7 +590,7 @@ app.post('/api/payment/webhook', async (req, res) => {
 // 결제대기 → 신청자 편입 (관리자 수동 처리용). body: { merchant_uid: 'p_xxx' }
 app.post('/api/admin/application-from-pending', async (req, res) => {
   try {
-    const merchantUid = (req.body && (req.body.merchant_uid || req.body.merchantUid)) || '';
+    const merchantUid = extractPaymentId(req.body || {});
     if (!merchantUid) {
       res.status(400).json({ success: false, error: 'merchant_uid required' });
       return;
@@ -375,36 +600,11 @@ app.post('/api/admin/application-from-pending', async (req, res) => {
       res.status(404).json({ success: false, error: 'pending_not_found' });
       return;
     }
-    const pending = pendingSnap.data();
-    const seminarId = pending.seminar_id || pending.seminarId;
-    const appData = pending.application_data || pending.applicationData || {};
-    const reason = [appData.participationPath, appData.applyReason].filter(Boolean).join(' / ') || '';
-    const questions = Array.isArray(appData.preQuestions) ? appData.preQuestions : (appData.preQuestions ? [appData.preQuestions] : []);
 
-    const appRef = await db.collection('applications').add({
-      seminarId,
-      userId: pending.user_id || pending.userId,
-      userName: pending.user_name || pending.userName || '',
-      userEmail: pending.user_email || pending.userEmail || '',
-      userPhone: pending.user_phone || pending.userPhone || '',
-      participationPath: appData.participationPath || '',
-      applyReason: appData.applyReason || '',
-      preQuestions: appData.preQuestions || '',
-      mealAfter: appData.mealAfter || '',
-      privacyAgreed: appData.privacyAgreed === true,
-      reason,
-      questions,
-      appliedAt: new Date().toISOString(),
-      merchant_uid: merchantUid,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    const seminarRef = db.collection('seminars').doc(seminarId);
-    await incrementSeminarParticipantsIfLegacy(seminarRef);
-
+    const { created, applicationId } = await createApplicationFromPending(merchantUid, pendingSnap.data());
+    await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set({ completed: true }, { merge: true });
     await db.collection('pendingPayments').doc(String(merchantUid)).delete();
-    res.status(200).json({ success: true, applicationId: appRef.id });
+    res.status(200).json({ success: true, applicationId, created });
   } catch (err) {
     console.error('[application-from-pending] error', err);
     res.status(500).json({ success: false, error: err.message || 'server_error' });

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Icons } from '../components/Icons';
 import { authService } from '../services/authService';
 import { firebaseService } from '../services/firebaseService';
@@ -57,8 +57,13 @@ function parseEmailForForm(email) {
     };
 }
 
+const KAKAO_PROFILE_KEY = 'kakao_signup_profile';
+
 const SignUpPage = ({ onSignUp }) => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const fromKakao = searchParams.get('from') === 'kakao';
+    const [kakaoProfile, setKakaoProfile] = useState(null);
     const [userType, setUserType] = useState('');
     const [form, setForm] = useState({
         name: '',
@@ -92,6 +97,33 @@ const SignUpPage = ({ onSignUp }) => {
         phonePublic: false,
     });
     const [termsModal, setTermsModal] = useState({ open: false, type: '' }); // 'service' | 'privacy' | 'marketing'
+
+    // 카카오 가입: 콜백에서 보관한 프로필(이름/연락처/이메일/kakaoId)로 폼 프리필
+    useEffect(() => {
+        if (!fromKakao || typeof sessionStorage === 'undefined') return;
+        try {
+            const raw = sessionStorage.getItem(KAKAO_PROFILE_KEY);
+            if (!raw) return;
+            const profile = JSON.parse(raw);
+            setKakaoProfile(profile);
+            setForm((prev) => {
+                const next = { ...prev };
+                const name = (profile.name || '').toString().trim();
+                if (name) next.name = name;
+                const phone = (profile.phone || '').toString().replace(/\D/g, '').slice(0, 11);
+                if (phone) next.phone = phone;
+                const email = (profile.email || '').toString().trim();
+                if (email) {
+                    const parsed = parseEmailForForm(email);
+                    next.email = parsed.email;
+                    next.emailId = parsed.emailId;
+                    next.emailDomain = parsed.emailDomain;
+                    next.emailDomainCustom = parsed.emailDomainCustom;
+                }
+                return next;
+            });
+        } catch (_) {}
+    }, [fromKakao]);
     const BUSINESS_DOC_MAX_SIZE = 600 * 1024; // 600KB (base64 시 문서 크기 제한 고려)
     const [showPassword, setShowPassword] = useState(false);
     const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
@@ -155,9 +187,11 @@ const SignUpPage = ({ onSignUp }) => {
         if (!form.gender) return false;
         if (!(form.phone || '').trim() || !validatePhone(form.phone)) return false;
         if (!(form.email || '').trim() || !validateEmail(form.email)) return false;
-        if (!(form.password || '').trim() || !(form.passwordConfirm || '').trim()) return false;
-        if (!validatePassword(form.password).valid) return false;
-        if (form.password !== form.passwordConfirm) return false;
+        if (!fromKakao) {
+            if (!(form.password || '').trim() || !(form.passwordConfirm || '').trim()) return false;
+            if (!validatePassword(form.password).valid) return false;
+            if (form.password !== form.passwordConfirm) return false;
+        }
         if (!form.termsAgreed || !form.privacyAgreed) return false;
         if (!(form.roadAddress || '').trim()) return false;
         if (userType === '사업자') {
@@ -165,7 +199,7 @@ const SignUpPage = ({ onSignUp }) => {
             if (!(form.collaborationIndustry || '').trim() || !(form.keyCustomers || '').trim()) return false;
         }
         return true;
-    }, [userType, form, isBusinessNumberValid]);
+    }, [userType, form, isBusinessNumberValid, fromKakao]);
 
     /** 누락 필수 항목 수집 → "1. 회원 유형을 입력해주십시오.\n2. ..." */
     const getMissingMessages = () => {
@@ -179,10 +213,12 @@ const SignUpPage = ({ onSignUp }) => {
         else if (!validatePhone(form.phone)) missing.push('연락처(숫자 11자리)');
         if (!(form.email || '').trim()) missing.push('이메일');
         else if (!validateEmail(form.email)) missing.push('이메일(올바른 형식)');
-        if (!(form.password || '').trim()) missing.push('비밀번호');
-        else if (!validatePassword(form.password).valid) missing.push('비밀번호(요건 충족)');
-        if (!(form.passwordConfirm || '').trim()) missing.push('비밀번호 확인');
-        else if (form.password !== form.passwordConfirm) missing.push('비밀번호 일치');
+        if (!fromKakao) {
+            if (!(form.password || '').trim()) missing.push('비밀번호');
+            else if (!validatePassword(form.password).valid) missing.push('비밀번호(요건 충족)');
+            if (!(form.passwordConfirm || '').trim()) missing.push('비밀번호 확인');
+            else if (form.password !== form.passwordConfirm) missing.push('비밀번호 일치');
+        }
         if (!form.termsAgreed) missing.push('이용약관 동의');
         if (!form.privacyAgreed) missing.push('개인정보 수집 및 이용 동의');
         if (!(form.roadAddress || '').trim()) missing.push('주소');
@@ -297,11 +333,33 @@ const SignUpPage = ({ onSignUp }) => {
                 setSubmitting(false);
                 return;
             }
-            const user = await authService.signUp(form.email, form.password, userData);
-            const fullUserData = { uid: user.uid, ...userData, createdAt: new Date().toISOString() };
-            if (onSignUp) onSignUp(fullUserData);
-            alert('회원가입이 완료되었습니다.\n관리자 승인 후 서비스를 이용하실 수 있습니다.');
-            navigate('/', { replace: true });
+            if (fromKakao) {
+                // 카카오 가입: 이미 Custom Token으로 Firebase Auth 세션이 있으므로 Firestore 문서만 생성
+                const currentAuthUser = authService?.getCurrentUser?.();
+                if (!currentAuthUser?.uid) {
+                    setError('카카오 로그인 세션이 만료되었습니다. 카카오로 회원가입을 다시 시도해 주세요.');
+                    setSubmitting(false);
+                    return;
+                }
+                const kakaoUserData = {
+                    ...userData,
+                    ...(kakaoProfile?.kakaoId ? { kakaoId: String(kakaoProfile.kakaoId) } : {}),
+                    providers: ['kakao'],
+                    lastLoginProvider: 'kakao',
+                };
+                await firebaseService.createUser({ uid: currentAuthUser.uid, ...kakaoUserData });
+                try { sessionStorage.removeItem(KAKAO_PROFILE_KEY); } catch (_) {}
+                const fullUserData = { uid: currentAuthUser.uid, ...kakaoUserData, createdAt: new Date().toISOString() };
+                if (onSignUp) onSignUp(fullUserData);
+                alert('회원가입이 완료되었습니다.\n관리자 승인 후 서비스를 이용하실 수 있습니다.');
+                navigate('/', { replace: true });
+            } else {
+                const user = await authService.signUp(form.email, form.password, userData);
+                const fullUserData = { uid: user.uid, ...userData, createdAt: new Date().toISOString() };
+                if (onSignUp) onSignUp(fullUserData);
+                alert('회원가입이 완료되었습니다.\n관리자 승인 후 서비스를 이용하실 수 있습니다.');
+                navigate('/', { replace: true });
+            }
         } catch (err) {
             const code = err?.code ?? '없음';
             console.error('SignUp failed', { code, message: err?.message, error: err });
@@ -325,6 +383,12 @@ const SignUpPage = ({ onSignUp }) => {
                     </button>
                     <h1 className="text-2xl md:text-3xl font-bold text-dark">회원가입</h1>
                     <p className="text-sm text-gray-500 mt-1">표시(*)된 항목은 필수 입력입니다.</p>
+                    {fromKakao && (
+                        <p className="text-sm text-green-700 mt-2 flex items-center gap-2">
+                            <span className="inline-flex w-6 h-6 rounded-full bg-[#FEE500] items-center justify-center text-[#191919] text-xs font-bold shrink-0">K</span>
+                            카카오 계정으로 가입 중입니다. 카카오에서 가져온 정보가 미리 채워졌으며, 비밀번호는 입력하지 않아도 됩니다.
+                        </p>
+                    )}
                     <p className="text-xs text-gray-400 mt-1">자진 탈퇴 시 언제든 재가입 가능하며, 강제 탈퇴 시 1년간 재가입이 제한됩니다. (이용약관 제6조의2)</p>
                 </div>
 
@@ -433,6 +497,8 @@ const SignUpPage = ({ onSignUp }) => {
                                             )}
                                         </div>
                                     </div>
+                                    {!fromKakao && (
+                                    <>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                                             <RequiredFieldBadge number={7} isFilled={!!(form.password || '').trim() && validatePassword(form.password).valid} />
@@ -455,6 +521,8 @@ const SignUpPage = ({ onSignUp }) => {
                                         </div>
                                         {form.passwordConfirm && form.password !== form.passwordConfirm && <p className="text-xs text-red-500 mt-1">비밀번호가 일치하지 않습니다.</p>}
                                     </div>
+                                    </>
+                                    )}
                                 </div>
 
                                 <div className="md:col-span-2">

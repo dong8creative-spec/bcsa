@@ -1,6 +1,7 @@
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
+  signInWithCustomToken,
   signOut, 
   sendPasswordResetEmail,
   deleteUser,
@@ -8,6 +9,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { firebaseService } from './firebaseService';
+import { getKakaoCallbackBaseUrl } from '../utils/api';
 
 export const authService = {
   // Sign up with email and password
@@ -39,6 +41,23 @@ export const authService = {
       // 호출부(handleLogin)에서 translateFirebaseError로 사용자 안내
       throw error;
     }
+  },
+
+  /**
+   * 카카오 로그인 시작: 백엔드 /api/auth/kakao/start 로 이동 (프론트 JS 키 불필요)
+   * @param {{ signup?: boolean }} [options] - signup: 가입 흐름 표시 (콜백 후 /signup?from=kakao 이동)
+   */
+  startKakaoLogin(options = {}) {
+    const base = getKakaoCallbackBaseUrl();
+    const params = new URLSearchParams({ origin: window.location.origin });
+    if (options.signup) params.set('signup', '1');
+    window.location.href = `${base}/api/auth/kakao/start?${params.toString()}`;
+  },
+
+  /** 카카오 콜백 후 백엔드가 발급한 Firebase Custom Token으로 로그인 */
+  async signInWithKakaoToken(customToken) {
+    const userCredential = await signInWithCustomToken(auth, customToken);
+    return userCredential.user;
   },
 
   // Sign out
