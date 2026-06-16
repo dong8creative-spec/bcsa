@@ -107,7 +107,7 @@ const getTodayStart = () => {
     return t.getTime();
 };
 
-const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApplication, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, onWithdrawApplicationRecord, onWriteReview, pageTitles, onUpdatePost }) => {
+const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApplication, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, onWithdrawApplicationRecord, onWriteReview, pageTitles, onUpdatePost, onKakaoLink }) => {
     const [activeTab, setActiveTab] = useState('seminars');
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -830,7 +830,46 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                         </div>
                     )}
                 </div>
-                <div className="border-t border-blue-200 pt-10 text-center">
+                {/* 카카오 계정 연동 */}
+                <div className="border-t border-blue-200 pt-8 pb-6">
+                    <h4 className="text-sm font-bold text-gray-700 mb-3">소셜 계정 연동</h4>
+                    {user?.kakaoId ? (
+                        <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                            <span className="inline-flex w-8 h-8 rounded-full bg-[#FEE500] items-center justify-center text-[#191919] shrink-0">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 3C6.2 3 1.5 6.66 1.5 11.18c0 2.84 1.8 5.36 4.61 6.94-.12.44-.42 1.58-.48 1.83-.08.38.14.37.33.27.15-.08 2.42-1.58 3.4-2.27.57.08 1.17.12 1.79.12 5.8 0 10.5-3.66 10.5-8.18S17.8 3 12 3z" />
+                                </svg>
+                            </span>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-gray-800">카카오 연동 완료</p>
+                                <p className="text-xs text-gray-500">카카오로 간편 로그인이 가능합니다</p>
+                            </div>
+                            <span className="text-xs text-green-600 font-bold bg-green-50 px-2 py-1 rounded-lg">연동됨</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                            <span className="inline-flex w-8 h-8 rounded-full bg-gray-200 items-center justify-center text-gray-500 shrink-0">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 3C6.2 3 1.5 6.66 1.5 11.18c0 2.84 1.8 5.36 4.61 6.94-.12.44-.42 1.58-.48 1.83-.08.38.14.37.33.27.15-.08 2.42-1.58 3.4-2.27.57.08 1.17.12 1.79.12 5.8 0 10.5-3.66 10.5-8.18S17.8 3 12 3z" />
+                                </svg>
+                            </span>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-gray-700">카카오 미연동</p>
+                                <p className="text-xs text-gray-500">연동하면 카카오로 간편 로그인 가능</p>
+                            </div>
+                            {onKakaoLink && (
+                                <button
+                                    type="button"
+                                    onClick={onKakaoLink}
+                                    className="text-xs font-bold text-[#191919] bg-[#FEE500] hover:bg-[#FDD835] px-3 py-1.5 rounded-lg transition-colors shrink-0"
+                                >
+                                    연동하기
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+                <div className="border-t border-blue-200 pt-6 text-center">
                     <p className="text-xs text-gray-500 mb-2">자진 탈퇴 시 언제든 재가입할 수 있습니다. (강제 탈퇴 시 1년간 재가입 제한·이용약관 제6조의2)</p>
                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleWithdrawClick(); }} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">회원 탈퇴하기</button>
                 </div>

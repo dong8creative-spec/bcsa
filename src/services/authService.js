@@ -54,10 +54,40 @@ export const authService = {
     window.location.href = `${base}/api/auth/kakao/start?${params.toString()}`;
   },
 
+  /**
+   * 이미 로그인된 사용자의 계정에 카카오를 연결 (마이페이지 → 카카오 연동)
+   * @param {string} uid - 현재 로그인된 Firebase uid
+   */
+  startKakaoLink(uid) {
+    const base = getKakaoCallbackBaseUrl();
+    const params = new URLSearchParams({ origin: window.location.origin, link_uid: uid });
+    window.location.href = `${base}/api/auth/kakao/start?${params.toString()}`;
+  },
+
   /** 카카오 콜백 후 백엔드가 발급한 Firebase Custom Token으로 로그인 */
   async signInWithKakaoToken(customToken) {
     const userCredential = await signInWithCustomToken(auth, customToken);
     return userCredential.user;
+  },
+
+  /**
+   * 카카오 콜백 1회용 code를 Custom Token + 프로필로 교환 (토큰 URL 노출 방지)
+   * @returns {Promise<{ token: string, profile: object|null, isNew: boolean }>}
+   */
+  async exchangeKakaoCode(code) {
+    const base = getKakaoCallbackBaseUrl();
+    const res = await fetch(`${base}/api/auth/kakao/exchange`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok || !data?.token) {
+      const err = new Error(data?.error || 'kakao_exchange_failed');
+      err.code = data?.error || 'kakao_exchange_failed';
+      throw err;
+    }
+    return { token: data.token, profile: data.profile || null, isNew: data.isNew === true };
   },
 
   // Sign out

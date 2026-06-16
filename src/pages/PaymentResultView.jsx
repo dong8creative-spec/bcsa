@@ -6,7 +6,8 @@ import { Icons } from '../components/Icons';
 
 /**
  * 리다이렉트 결제 후 복귀 URL (/payment/result)
- * 웹훅 처리 완료 여부를 먼저 확인하고, 완료됐으면 onComplete 생략(중복 방지). 아니면 sessionStorage 기반 fallback.
+ * 서버 웹훅 완료를 폴링(~8초)해서 확인. 미확인 시 사용자에게 결제 번호와 함께 관리자 문의 안내.
+ * 보안상 sessionStorage 폴백으로 신청을 생성하지 않음 (결제 미검증 신청 방지).
  */
 export function PaymentResultView({ onComplete }) {
     const location = useLocation();
@@ -63,43 +64,23 @@ export function PaymentResultView({ onComplete }) {
                 }
             }
 
-            const pending = getPaymentPending(merchantUid);
-            if (!pending || !pending.seminar) {
-                if (explicitFail) {
-                    setStatus('fail');
-                    setMessage(errorMsg || '결제가 취소되었거나 실패했습니다.');
-                    return;
-                }
-                setMessage('세션이 만료되었거나 결제 정보를 복원할 수 없습니다. 입금이 완료되었는데 이 메시지가 보이면, 아래 결제 번호를 관리자에게 알려주시면 확인해 드립니다.');
-                setStatus('expired');
-                return;
-            }
-            clearPaymentPending(merchantUid);
-
-            // V2 성공: 명시적 실패가 아니면 결제 완료 후보로 보고 신청 처리
-            const success = !explicitFail;
-            if (success && onComplete) {
-                onComplete(pending.seminar, pending.applicationData || null, { merchantUid })
-                    .then((ok) => {
-                        if (ok) {
-                            setStatus('success');
-                            setMessage('결제 및 신청이 완료되었습니다.');
-                        } else {
-                            setStatus('fail');
-                            setMessage('신청 처리 중 오류가 발생했습니다. 입금이 완료되었으면 결제 번호를 관리자에게 알려주세요.');
-                        }
-                    })
-                    .catch(() => {
-                        setStatus('fail');
-                        setMessage('신청 처리 중 오류가 발생했습니다. 입금이 완료되었으면 결제 번호를 관리자에게 알려주세요.');
-                    });
-            } else {
+            // 실패 파라미터가 명시된 경우
+            if (explicitFail) {
+                clearPaymentPending(merchantUid);
                 setStatus('fail');
                 setMessage(errorMsg || '결제가 취소되었거나 실패했습니다.');
+                return;
             }
+
+            // 서버에서 8초 내 완료 확인이 안된 경우:
+            // sessionStorage 폴백으로 결제 미확인 신청을 생성하는 것은 보안상 위험하므로 제거.
+            // 웹훅은 최대 수십 초 지연될 수 있으므로 사용자에게 대기 안내 후 결제 번호를 알려준다.
+            clearPaymentPending(merchantUid);
+            setMessage('결제 처리가 지연되고 있습니다. 잠시 후 마이페이지에서 신청 내역을 확인해 주세요.\n결제는 완료되었으나 신청이 반영되지 않으면 아래 결제 번호를 관리자에게 알려주세요.');
+            setStatus('expired');
         };
         run();
-    }, [location.search, onComplete]);
+    }, [location.search]);
 
     const goHome = () => {
         window.location.href = '/';

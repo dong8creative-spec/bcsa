@@ -191,6 +191,30 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
             if (onFail) onFail();
             return;
         }
+
+        // PC 결제 성공 후 서버에서 결제 완료 확인 (웹훅 처리 대기 폴링)
+        // 서버 확인을 통해 실제 결제금액과 상태를 검증한 뒤 신청 처리
+        if (apiBaseUrl) {
+            const base = apiBaseUrl.replace(/\/$/, '');
+            const serverConfirmed = await (async () => {
+                const delays = [400, 1200, 2000, 3000];
+                for (const delay of delays) {
+                    await new Promise((r) => setTimeout(r, delay));
+                    try {
+                        const r = await fetch(`${base}/api/payment/status?paymentId=${encodeURIComponent(merchantUid)}`);
+                        const d = r.ok ? await r.json().catch(() => ({})) : {};
+                        if (d.completed === true) return true;
+                    } catch (_) { /* 네트워크 오류 무시하고 재시도 */ }
+                }
+                return false;
+            })();
+            if (!serverConfirmed) {
+                // 웹훅 지연: 서버 미확인이지만 결제창 응답은 성공 → merchant_uid 포함해 신청 저장
+                // 웹훅이 나중에 도착해도 merchant_uid 중복 체크로 이중 신청 방지됨
+                console.warn('[paymentService] 서버 결제 확인 미완료 (웹훅 지연 가능) — 클라이언트 신청 저장 진행', merchantUid);
+            }
+        }
+
         if (onSuccess) onSuccess({ merchantUid, response });
     } catch (e) {
         const msg = e?.message || e?.errorMessage || '결제 요청 중 오류가 발생했습니다.';

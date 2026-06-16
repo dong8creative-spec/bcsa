@@ -31,11 +31,17 @@ service cloud.firestore {
       allow create, update, delete: if request.auth != null;
     }
 
-    // 프로그램 신청: 읽기는 전체 허용(관리자 명단 표시용), 쓰기는 로그인 사용자만
-    // 참고: 관리자 페이지가 Firebase Auth 없이 접근될 수 있어 read를 허용함. 민감 정보 포함 시 나중에 규칙 조정 가능.
+    // 프로그램 신청: 읽기는 전체 허용(관리자 명단 표시용).
+    // create: 로그인 사용자 본인 uid와 userId 필드가 일치해야 함 (타인 이름 신청 방지).
+    // update: 본인 신청만 수정 가능.
+    // delete: 로그인 사용자 허용 (관리자 삭제는 Cloud Functions Admin SDK 사용).
     match /applications/{applicationId} {
       allow read: if true;
-      allow create, update, delete: if request.auth != null;
+      allow create: if request.auth != null &&
+        request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null &&
+        resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null;
     }
 
     // 결제 대기: 읽기는 관리자 명단에 결제대기 건 포함 표시용. 쓰기/삭제는 Cloud Functions(Admin)에서만.

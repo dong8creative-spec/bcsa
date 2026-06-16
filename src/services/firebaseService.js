@@ -892,6 +892,21 @@ export const firebaseService = {
 
   async createApplication(applicationData) {
     try {
+      // Firestore 레벨 중복 신청 방지: 동일 (userId, seminarId) 조합 확인
+      const uid = applicationData.userId;
+      const sid = applicationData.seminarId != null ? String(applicationData.seminarId) : '';
+      if (uid && sid) {
+        const dupQ = query(
+          collection(db, 'applications'),
+          where('userId', '==', uid),
+          where('seminarId', '==', sid),
+          limit(1)
+        );
+        const dupSnap = await getDocs(dupQ);
+        if (!dupSnap.empty) {
+          throw new Error('이미 신청한 프로그램입니다.');
+        }
+      }
       const docRef = await addDoc(collection(db, 'applications'), {
         ...applicationData,
         createdAt: serverTimestamp(),

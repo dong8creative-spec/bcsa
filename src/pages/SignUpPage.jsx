@@ -389,6 +389,11 @@ const SignUpPage = ({ onSignUp }) => {
                             카카오 계정으로 가입 중입니다. 카카오에서 가져온 정보가 미리 채워졌으며, 비밀번호는 입력하지 않아도 됩니다.
                         </p>
                     )}
+                    {fromKakao && (!kakaoProfile?.email || !kakaoProfile?.phone) && (
+                        <p className="text-xs text-amber-700 mt-2">
+                            카카오에서 {[!kakaoProfile?.email ? '이메일' : null, !kakaoProfile?.phone ? '연락처' : null].filter(Boolean).join('·')} 정보가 제공되지 않았습니다. 해당 항목은 직접 입력해 주세요.
+                        </p>
+                    )}
                     <p className="text-xs text-gray-400 mt-1">자진 탈퇴 시 언제든 재가입 가능하며, 강제 탈퇴 시 1년간 재가입이 제한됩니다. (이용약관 제6조의2)</p>
                 </div>
 

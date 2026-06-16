@@ -16,6 +16,8 @@ import {
 } from './utils/authUtils';
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from './constants';
 import { getApiBaseUrl } from './utils/api';
+import { getIdToken } from 'firebase/auth';
+import { auth } from './firebase';
 import { waitForKakaoMapsCoreReady, invokeKakaoMapsLoad, KAKAO_MAP_SDK_URL } from './utils/kakaoMapReady';
 import { requestPayment as paymentServiceRequestPayment } from './services/paymentService';
 import { PaymentResultView } from './pages/PaymentResultView';
@@ -61,6 +63,7 @@ import {
 } from './utils/adminHiddenApplications';
 import { getSeminarCapacity, getDisplayedParticipantCurrent } from './utils/seminarDisplay';
 import { LoginModal } from './components/LoginModal';
+import KakaoLinkPromptModal from './components/KakaoLinkPromptModal';
 import { MobileMenu } from './components/MobileMenu';
 
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
@@ -394,6 +397,8 @@ const App = () => {
     const [googleSignupExtraInfoUser, setGoogleSignupExtraInfoUser] = useState(null);
     const [googleSignupExtraPhone, setGoogleSignupExtraPhone] = useState('');
     const [googleSignupExtraEmail, setGoogleSignupExtraEmail] = useState('');
+    // 카카오 연동 안내 팝업 (이메일 로그인 후, 카카오 미연동 회원 대상)
+    const [showKakaoLinkPrompt, setShowKakaoLinkPrompt] = useState(false);
     const kakaoMapCallbackRef = useRef(null);
     const kakaoMapReadyPromiseRef = useRef(null);
     const popupShownRef = useRef(false); // 팝업 설정 중복 실행 방지용 ref
@@ -879,9 +884,15 @@ const App = () => {
                     setMyApplications([]);
                     setProgramAlerts([]);
                     setShowProgramAlertModal(false);
+                    // 카카오 자동 로그인: 세션 만료 후 재방문 시 카카오 OAuth로 자동 로그인 시도
+                    try {
+                        if (localStorage.getItem('bcsa_kakao_auto_login') === '1') {
+                            authService.startKakaoLogin({});
+                        }
+                    } catch (_) {}
                 }
             });
-            
+
             return () => unsubscribe();
         }
     }, [communityPosts, seminarsData]);
@@ -1649,20 +1660,20 @@ const App = () => {
             if (!authService || !authService.signIn) {
                 throw new Error('Firebase Auth가 초기화되지 않았습니다.');
             }
-            
+
             // Sign in with email and password
             const user = await authService.signIn(id, pw);
-            
+
             // Get user data from Firestore
             const userDoc = await authService.getUserData(user.uid);
             if (!userDoc) {
                 throw new Error('사용자 정보를 찾을 수 없습니다.');
             }
-            
+
             setCurrentUser(userDoc);
                 setShowLoginModal(false);
             setMyPosts(communityPosts.filter(p => p.author === userDoc.name));
-                
+
             const approvalStatus = userDoc.approvalStatus || 'pending';
                 if (approvalStatus === 'pending') {
                 alert("로그인 성공!\n\n회원가입 승인 대기 중입니다.");
@@ -1671,16 +1682,21 @@ const App = () => {
                 } else {
                     alert("로그인 성공!");
                 }
-                
+
                 // pendingView가 있으면 해당 뷰로 이동
                 if (pendingView) {
                     setCurrentView(pendingView);
                     setPendingView(null);
                 }
-                
+
+                // 카카오 미연동 + 미거부 사용자에게 연동 안내 팝업 표시
+                if (!userDoc.kakaoId && userDoc.kakaoLinkDismissed !== true) {
+                    setShowKakaoLinkPrompt(true);
+                }
+
                 return true;
         } catch (error) {
-            
+
             const errorMessage = translateFirebaseError(error);
             alert(errorMessage);
                 return false;
@@ -1691,6 +1707,8 @@ const App = () => {
         setCurrentUser(userDoc);
         setShowLoginModal(false);
         setMyPosts(communityPosts.filter(p => p.author === userDoc.name));
+        // 카카오 자동 로그인 플래그 저장: 다음 방문 시 자동으로 카카오 로그인 시도
+        try { localStorage.setItem('bcsa_kakao_auto_login', '1'); } catch (_) {}
         const hasPhone = (userDoc.phone || userDoc.phoneNumber || '').toString().trim();
         const hasEmail = (userDoc.email || '').toString().trim();
         if (!hasPhone || !hasEmail) {
@@ -1734,29 +1752,66 @@ const App = () => {
         if (errorParam) {
             const msg = errorParam === 'no_code' ? '카카오 인증 코드가 없습니다.'
                 : errorParam === 'server_config' ? '카카오 로그인 서버 설정을 확인해 주세요.'
+                : errorParam === 'invalid_state' ? '카카오 로그인 요청이 만료되었거나 유효하지 않습니다. 다시 시도해 주세요.'
+                : errorParam === 'link_conflict' ? '카카오 정보와 일치하는 회원이 여러 명이라 자동 연결할 수 없습니다. 관리자에게 문의해 주세요.'
+                : errorParam === 'kakao_already_linked' ? '이 카카오 계정은 이미 다른 회원에 연결되어 있습니다.'
+                : errorParam === 'user_not_found' ? '연결할 회원 정보를 찾을 수 없습니다.'
                 : errorParam === 'no_token' ? '카카오 토큰을 받지 못했습니다.'
                 : errorParam === 'no_user' ? '카카오 사용자 정보를 가져오지 못했습니다.'
                 : '카카오 로그인 처리 중 오류가 발생했습니다.';
+            // 자동 로그인 플래그 제거 — 오류 시 무한 리다이렉트 루프 방지
+            try { localStorage.removeItem('bcsa_kakao_auto_login'); } catch (_) {}
             alert(msg);
             window.history.replaceState(null, '', location.pathname || '/');
             return;
         }
+
+        // 카카오 계정 연결 완료 (link 모드 콜백)
+        if (params.get('result') === 'linked') {
+            window.history.replaceState(null, '', location.pathname || '/');
+            // 현재 로그인된 사용자 정보 갱신 (kakaoId 반영)
+            (async () => {
+                const authUser = authService?.getCurrentUser?.();
+                if (authUser) {
+                    try {
+                        const updatedDoc = await authService.getUserData(authUser.uid);
+                        if (updatedDoc) setCurrentUser(updatedDoc);
+                    } catch (_) {}
+                }
+                alert('카카오 계정이 연결되었습니다!\n\n다음부터 카카오로 간편하게 로그인할 수 있습니다.');
+            })();
+            return;
+        }
+
         if (!hashPart) return;
 
-        const token = params.get('token');
-        if (!token || !authService?.signInWithKakaoToken) return;
+        // 신규: 1회용 code 교환 방식 / 구버전 호환: token + p 직접 전달
+        const exchangeCode = params.get('code');
+        const legacyToken = params.get('token');
+        if (!exchangeCode && !legacyToken) return;
+        if (!authService?.signInWithKakaoToken) return;
 
-        let profile = null;
-        const pRaw = params.get('p');
-        if (pRaw) {
-            try {
-                const base64 = pRaw.replace(/-/g, '+').replace(/_/g, '/');
-                const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-                profile = JSON.parse(decodeURIComponent(escape(atob(padded))));
-            } catch (_) {}
-        }
         (async () => {
             try {
+                let token = legacyToken;
+                let profile = null;
+                if (exchangeCode && authService?.exchangeKakaoCode) {
+                    const exchanged = await authService.exchangeKakaoCode(exchangeCode);
+                    token = exchanged.token;
+                    profile = exchanged.profile;
+                } else if (legacyToken) {
+                    const pRaw = params.get('p');
+                    if (pRaw) {
+                        try {
+                            const base64 = pRaw.replace(/-/g, '+').replace(/_/g, '/');
+                            const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+                            // TextDecoder로 UTF-8 멀티바이트 안전 디코딩 (escape() deprecated 대체)
+                            const bytes = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+                            profile = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+                        } catch (_) {}
+                    }
+                }
+                if (!token) throw new Error('카카오 토큰을 받지 못했습니다.');
                 const user = await authService.signInWithKakaoToken(token);
                 let userDoc = await authService.getUserData(user.uid);
 
@@ -1794,15 +1849,17 @@ const App = () => {
             if (authService && authService.signOut) {
                 await authService.signOut();
             }
+            // 자동 로그인 플래그 제거 (명시적 로그아웃 시 자동 로그인 해제)
+            try { localStorage.removeItem('bcsa_kakao_auto_login'); } catch (_) {}
         setCurrentUser(null);
         setCurrentView('home');
         setMySeminars([]);
         setMyApplications([]);
         setMyFoods([]);
         setMyPosts([]);
-            alert("Logged out successfully.");
+            alert("로그아웃 되었습니다.");
         } catch (error) {
-            alert('Logout failed');
+            alert('로그아웃에 실패했습니다.');
         }
     };
 
@@ -2078,11 +2135,13 @@ const App = () => {
             alert('프로그램 신청을 위해 마이페이지에서 이름·연락처·이메일을 입력해 주세요.');
             return false;
         }
+        // Firestore rules: userId == request.auth.uid 이어야 하므로 반드시 auth.uid 사용
+        const authUid = auth.currentUser?.uid || currentUser.uid || currentUser.id;
         // 신청 정보 저장
         const application = {
             id: Date.now().toString(),
             seminarId: seminar.id,
-            userId: currentUser.id,
+            userId: authUid,
             userName,
             userEmail,
             userPhone,
@@ -2097,6 +2156,12 @@ const App = () => {
         };
 
         const feeNum = Number(seminar?.applicationFee) || 0;
+        // 유료 프로그램인데 결제 정보가 없으면 신청 차단 (결제 우회 방지)
+        if (feeNum > 0 && !paymentMeta?.merchantUid) {
+            console.error('[handleSeminarApply] 유료 프로그램에 결제 정보 없음 — 신청 차단');
+            alert('결제가 완료된 후 신청이 처리됩니다. 결제를 먼저 진행해 주세요.');
+            return false;
+        }
         const pay = {};
         if (feeNum > 0 && paymentMeta?.merchantUid) {
             pay.merchant_uid = paymentMeta.merchantUid;
@@ -2112,7 +2177,7 @@ const App = () => {
             if (firebaseService && firebaseService.createApplication) {
                 await firebaseService.createApplication({
                     seminarId: seminar.id,
-                    userId: currentUser.id,
+                    userId: authUid,
                     userName,
                     userEmail,
                     userPhone,
@@ -2504,11 +2569,19 @@ END:VCALENDAR`;
             return;
         }
         try {
+            // Firebase ID 토큰 발급 (서버에서 사용자 인증)
+            let idToken = '';
+            try {
+                const fbUser = auth.currentUser;
+                if (fbUser) idToken = await getIdToken(fbUser, false);
+            } catch (_) {}
             const res = await fetch(`${base}/api/payment/cancel`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
+                },
                 body: JSON.stringify({
-                    userId: currentUser.id || currentUser.uid,
                     seminarId,
                     withdraw_only: withdrawOnly
                 })
@@ -2522,8 +2595,13 @@ END:VCALENDAR`;
                 } else if (data.free) {
                     alert('신청이 취소되었습니다.');
                 } else {
-                    alert('세미나 신청이 취소되었습니다. 환불은 영업일 기준 3~5일 내 처리됩니다.');
+                    const refundMsg = data.refund_message ? `\n${data.refund_message}` : '';
+                    alert(`세미나 신청이 취소되었습니다. 환불은 영업일 기준 3~5일 내 처리됩니다.${refundMsg}`);
                 }
+                return;
+            }
+            if (data.error === 'refund_not_allowed') {
+                alert(data.message || '세미나 당일 이후에는 환불이 불가능합니다. 이메일로 문의해 주세요.');
                 return;
             }
             if (!withdrawOnly && data.allow_withdraw_only) {
@@ -2936,7 +3014,7 @@ END:VCALENDAR`;
                         </div>
                     );
                 }
-                return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myApplications={myApplications} onUpdateApplication={handleUpdateApplication} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} onWithdrawApplicationRecord={handleWithdrawApplicationRecord} onWriteReview={handleWriteReview} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} />;
+                return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myApplications={myApplications} onUpdateApplication={handleUpdateApplication} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} onWithdrawApplicationRecord={handleWithdrawApplicationRecord} onWriteReview={handleWriteReview} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} onKakaoLink={() => authService.startKakaoLink(currentUser?.uid || currentUser?.id)} />;
             }
         if (currentView === 'allMembers' && !currentUser) {
             return (
@@ -3681,6 +3759,15 @@ END:VCALENDAR`;
                     setShowKakaoMapModal(false);
                 }}
                 initialLocation={null}
+            />
+        )}
+        {showKakaoLinkPrompt && currentUser && !currentUser.kakaoId && (
+            <KakaoLinkPromptModal
+                onLink={() => {
+                    setShowKakaoLinkPrompt(false);
+                    authService.startKakaoLink(currentUser.uid || currentUser.id);
+                }}
+                onDismiss={() => setShowKakaoLinkPrompt(false)}
             />
         )}
         {showGoogleSignupExtraInfoModal && googleSignupExtraInfoUser && (

@@ -4,6 +4,7 @@ import cors from 'cors';
 import axios from 'axios';
 import { parseStringPromise } from 'xml2js';
 import admin from 'firebase-admin';
+import crypto from 'crypto';
 import http from 'http';
 import https from 'https';
 import sharp from 'sharp';
@@ -59,16 +60,23 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:3000'
 ];
 
-// CORS 설정 - 명시된 오리진만 허용 (Cloud Run에서 안정적 동작)
+// CORS 설정 - 허용 오리진만 통과, 미허용 오리진은 CORS 헤더 없이 차단
 app.use(cors({
   origin: (origin, cb) => {
-    const allow = !origin || ALLOWED_ORIGINS.includes(origin) ? (origin || ALLOWED_ORIGINS[0]) : ALLOWED_ORIGINS[0];
-    cb(null, allow);
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      cb(null, origin || ALLOWED_ORIGINS[0]);
+    } else {
+      cb(null, false);
+    }
   },
   credentials: true
 }));
 // 이미지 base64(encode-webp)용 큰 JSON 허용
-app.use(express.json({ limit: '15mb' }));
+// verify 옵션으로 rawBody 캡처 (웹훅 서명 검증에 사용)
+app.use(express.json({
+  limit: '15mb',
+  verify: (req, _res, buf) => { req.rawBody = buf.toString('utf8'); }
+}));
 app.use(express.urlencoded({ extended: true, limit: '15mb' })); // URL 인코딩 파라미터 처리
 
 // 요청 로깅 미들웨어 (디버깅용)
@@ -123,6 +131,177 @@ const parseApiResponse = async (rawData, contentType) => {
     }
   } catch (parseError) {
     return { parsed: null, rawText, parseError };
+  }
+};
+
+// ==========================================
+// PortOne 결제 보안 상수 (서명 검증 + 실결제 조회)
+// ==========================================
+const PORTONE_WEBHOOK_SECRET = process.env.PORTONE_WEBHOOK_SECRET || '';
+const PORTONE_V2_SECRET = process.env.PORTONE_V2_SECRET || '';
+
+/**
+ * PortOne V2 웹훅 서명 검증
+ * portone-signature 헤더: t=<timestamp>,v1=<hex_hmac>
+ * HMAC-SHA256("<timestamp>.<rawBody>", PORTONE_WEBHOOK_SECRET)
+ */
+const verifyPortOneWebhookSignature = (req) => {
+  if (!PORTONE_WEBHOOK_SECRET) {
+    console.warn('[Payment Webhook] PORTONE_WEBHOOK_SECRET 미설정 — 서명 검증 생략 (보안 위험)');
+    return true;
+  }
+  const sigHeader = (req.headers['portone-signature'] || '').toString();
+  if (!sigHeader) return false;
+  const parts = {};
+  sigHeader.split(',').forEach((pair) => {
+    const idx = pair.indexOf('=');
+    if (idx > 0) parts[pair.slice(0, idx).trim()] = pair.slice(idx + 1).trim();
+  });
+  const timestamp = parts['t'];
+  const receivedSig = parts['v1'];
+  if (!timestamp || !receivedSig) return false;
+  const rawBody = req.rawBody || '';
+  const expected = crypto
+    .createHmac('sha256', PORTONE_WEBHOOK_SECRET)
+    .update(`${timestamp}.${rawBody}`)
+    .digest('hex');
+  try {
+    const a = Buffer.from(receivedSig.toLowerCase(), 'hex');
+    const b = Buffer.from(expected, 'hex');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * PortOne 실결제 조회 및 금액 검증
+ * V2: PORTONE_V2_SECRET 사용 (GET api.portone.io/payments/{paymentId})
+ * V1: PORTONE_API_KEY/SECRET 사용 (GET api.iamport.kr/payments/{imp_uid})
+ */
+const verifyPortOnePayment = async ({ isV2, paymentId, impUid, expectedAmount }) => {
+  if (isV2) {
+    if (!PORTONE_V2_SECRET) {
+      console.warn('[Payment Verify] PORTONE_V2_SECRET 미설정 — 금액 검증 생략');
+      return { verified: true, skipped: true };
+    }
+    const res = await axios.get(
+      `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
+      { headers: { Authorization: `PortOne ${PORTONE_V2_SECRET}` } }
+    );
+    const p = res.data;
+    if (p.status !== 'PAID') {
+      return { verified: false, reason: 'not_paid', status: p.status };
+    }
+    const actualAmount = p.amount?.total ?? p.totalAmount ?? p.amount ?? null;
+    if (expectedAmount != null && actualAmount != null && Number(actualAmount) !== Number(expectedAmount)) {
+      console.error('[Payment Verify] V2 금액 불일치', { expected: expectedAmount, actual: actualAmount, paymentId });
+      return { verified: false, reason: 'amount_mismatch', expected: expectedAmount, actual: actualAmount };
+    }
+    return { verified: true, payment: p };
+  } else {
+    // V1
+    const apiKey = process.env.PORTONE_API_KEY;
+    const apiSecret = process.env.PORTONE_API_SECRET;
+    if (!apiKey || !apiSecret) {
+      console.warn('[Payment Verify] V1 키 미설정 — 금액 검증 생략');
+      return { verified: true, skipped: true };
+    }
+    if (!impUid) return { verified: true, skipped: true };
+    const tokenRes = await axios.post('https://api.iamport.kr/users/getToken', {
+      imp_key: apiKey, imp_secret: apiSecret
+    });
+    const accessToken = tokenRes.data?.response?.access_token;
+    if (!accessToken) return { verified: false, reason: 'token_failed' };
+    const payRes = await axios.get(`https://api.iamport.kr/payments/${impUid}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const p = payRes.data?.response;
+    if (!p || p.status !== 'paid') {
+      return { verified: false, reason: 'not_paid', status: p?.status };
+    }
+    if (expectedAmount != null && p.amount != null && Number(p.amount) !== Number(expectedAmount)) {
+      console.error('[Payment Verify] V1 금액 불일치', { expected: expectedAmount, actual: p.amount, impUid });
+      return { verified: false, reason: 'amount_mismatch', expected: expectedAmount, actual: p.amount };
+    }
+    return { verified: true, payment: p };
+  }
+};
+
+/**
+ * 환불 금액 계산 (소비자분쟁해결기준)
+ * 세미나 3일+ 전: 100%, 2일 전: 90%, 1일 전: 80%, 당일 이후: 0%
+ */
+const calculateRefundAmount = (paidAmount, seminarDateStr) => {
+  const amount = Number(paidAmount) || 0;
+  if (!seminarDateStr) return amount;
+  let s = String(seminarDateStr).trim().split(/[\sT]/)[0];
+  s = s.replace(/-/g, '.').replace(/\//g, '.');
+  const parts = s.split('.');
+  if (parts.length < 3) return amount;
+  const semDate = new Date(
+    parseInt(parts[0], 10),
+    parseInt(parts[1], 10) - 1,
+    parseInt(parts[2], 10)
+  );
+  if (isNaN(semDate.getTime())) return amount;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  semDate.setHours(0, 0, 0, 0);
+  const diffDays = Math.floor((semDate - today) / (1000 * 60 * 60 * 24));
+  if (diffDays >= 3) return amount;
+  if (diffDays === 2) return Math.floor(amount * 0.9);
+  if (diffDays === 1) return Math.floor(amount * 0.8);
+  return 0;
+};
+
+/**
+ * 관리자 전용 API 미들웨어: Firebase ID 토큰 검증 + Firestore role=admin 확인
+ */
+const requireAdminAuth = async (req, res, next) => {
+  const authHeader = (req.headers.authorization || '').toString();
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!idToken) {
+    res.status(401).json({ success: false, error: 'unauthorized' });
+    return;
+  }
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    let callerDoc = await db.collection('users').doc(decoded.uid).get();
+    if (!callerDoc.exists) {
+      const byUid = await db.collection('users').where('uid', '==', decoded.uid).limit(1).get();
+      if (!byUid.empty) callerDoc = byUid.docs[0];
+    }
+    if (!callerDoc || !callerDoc.exists || callerDoc.data()?.role !== 'admin') {
+      res.status(403).json({ success: false, error: 'forbidden' });
+      return;
+    }
+    req.adminUid = decoded.uid;
+    next();
+  } catch (err) {
+    console.error('[Admin Auth] 토큰 검증 실패', err.code || err.message);
+    res.status(401).json({ success: false, error: 'invalid_token' });
+  }
+};
+
+/**
+ * 사용자 인증 미들웨어: Firebase ID 토큰 검증 후 req.authUid 설정
+ */
+const requireUserAuth = async (req, res, next) => {
+  const authHeader = (req.headers.authorization || '').toString();
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!idToken) {
+    res.status(401).json({ success: false, error: 'unauthorized' });
+    return;
+  }
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    req.authUid = decoded.uid;
+    next();
+  } catch (err) {
+    console.error('[User Auth] 토큰 검증 실패', err.code || err.message);
+    res.status(401).json({ success: false, error: 'invalid_token' });
   }
 };
 
@@ -216,6 +395,12 @@ app.get('/health', (req, res) => {
 const KAKAO_REST_KEY = process.env.KAKAO_REST_API_KEY || '';
 const KAKAO_CLIENT_SECRET = process.env.KAKAO_CLIENT_SECRET || '';
 const KAKAO_DEFAULT_FRONTEND = process.env.FRONTEND_URL || 'https://bcsa.co.kr';
+// 카카오에 요청할 동의항목(미동의 시 콜백에서 빈 값 → 가입 폼에서 수동 입력 유도)
+const KAKAO_SCOPE = process.env.KAKAO_SCOPE || 'account_email,phone_number';
+// OAuth state 서명용 비밀키 (전용 키 없으면 client secret → rest key 순으로 폴백)
+const KAKAO_STATE_SECRET = process.env.KAKAO_STATE_SECRET || KAKAO_CLIENT_SECRET || KAKAO_REST_KEY || 'kakao-state';
+const KAKAO_STATE_TTL_MS = 10 * 60 * 1000; // 10분
+const KAKAO_CODE_TTL_MS = 5 * 60 * 1000; // 1회용 교환 코드 5분
 
 const base64UrlEncode = (obj) =>
   Buffer.from(JSON.stringify(obj), 'utf8').toString('base64')
@@ -225,6 +410,32 @@ const base64UrlDecode = (str) => {
   const base64 = String(str).replace(/-/g, '+').replace(/_/g, '/');
   const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
   return JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+};
+
+/** state 서명 생성: payload(base64url).signature(base64url) */
+const signKakaoState = (payloadObj) => {
+  const payload = base64UrlEncode(payloadObj);
+  const sig = crypto.createHmac('sha256', KAKAO_STATE_SECRET).update(payload).digest('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${payload}.${sig}`;
+};
+
+/** state 검증: 서명 일치 + 만료 확인. 유효하면 payload 객체, 아니면 null */
+const verifyKakaoState = (state) => {
+  try {
+    const [payload, sig] = String(state || '').split('.');
+    if (!payload || !sig) return null;
+    const expected = crypto.createHmac('sha256', KAKAO_STATE_SECRET).update(payload).digest('base64')
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+    const obj = base64UrlDecode(payload);
+    if (obj.exp && Date.now() > Number(obj.exp)) return null;
+    return obj;
+  } catch (_) {
+    return null;
+  }
 };
 
 /** 카카오 phone_number(+82 10-1234-5678) → 01012345678 정규화 */
@@ -242,12 +453,14 @@ const getKakaoRedirectUri = (req) => {
 };
 
 /**
- * 카카오 기존 회원 매칭: kakaoId → email(검증된 경우만) → phone 순.
- * 매칭 시 해당 문서에 kakaoId 연결. 반환: { uid, docId } 또는 null
+ * 카카오 기존 회원 매칭: kakaoId → 검증된 email(단일 후보) → phone(단일 후보) 순.
+ * 자동 오연결 방지를 위해 후보가 2명 이상이면 연결하지 않고 conflict로 반환한다.
+ * 반환: { uid, docId, alreadyLinked } | { conflict: true, reason } | null
  */
 async function matchExistingUserForKakao({ kakaoId, email, phone, isEmailVerified }) {
   const kakaoIdStr = String(kakaoId);
 
+  // 1) 이미 연결된 kakaoId가 최우선
   let snap = await db.collection('users').where('kakaoId', '==', kakaoIdStr).limit(1).get();
   if (!snap.empty) {
     const d = snap.docs[0];
@@ -255,27 +468,86 @@ async function matchExistingUserForKakao({ kakaoId, email, phone, isEmailVerifie
   }
 
   let matched = null;
-  if (email && isEmailVerified !== false) {
-    snap = await db.collection('users').where('email', '==', email).limit(1).get();
-    if (!snap.empty) matched = snap.docs[0];
-  }
-  if (!matched && phone) {
-    snap = await db.collection('users').where('phone', '==', phone).limit(1).get();
-    if (snap.empty) {
-      snap = await db.collection('users').where('phoneNumber', '==', phone).limit(1).get();
+
+  // 2) 이메일 매칭: 카카오에서 "검증된" 이메일이고 후보가 정확히 1명일 때만 자동 연결
+  if (email && isEmailVerified === true) {
+    const emailSnap = await db.collection('users').where('email', '==', email).limit(2).get();
+    if (emailSnap.size > 1) {
+      console.warn('[Kakao Auth] email match conflict (multiple users):', email);
+      return { conflict: true, reason: 'email_multiple' };
     }
-    if (!snap.empty) matched = snap.docs[0];
+    if (emailSnap.size === 1) matched = emailSnap.docs[0];
   }
+
+  // 3) 전화번호 매칭: phone / phoneNumber 필드 후보를 합쳐 정확히 1명일 때만 자동 연결
+  if (!matched && phone) {
+    const byPhone = await db.collection('users').where('phone', '==', phone).limit(2).get();
+    const byPhoneNumber = await db.collection('users').where('phoneNumber', '==', phone).limit(2).get();
+    const candidateMap = new Map();
+    byPhone.docs.forEach((d) => candidateMap.set(d.id, d));
+    byPhoneNumber.docs.forEach((d) => candidateMap.set(d.id, d));
+    if (candidateMap.size > 1) {
+      console.warn('[Kakao Auth] phone match conflict (multiple users):', phone);
+      return { conflict: true, reason: 'phone_multiple' };
+    }
+    if (candidateMap.size === 1) matched = Array.from(candidateMap.values())[0];
+  }
+
   if (!matched) return null;
 
   await matched.ref.update({
     kakaoId: kakaoIdStr,
     providers: admin.firestore.FieldValue.arrayUnion('kakao'),
     lastLoginProvider: 'kakao',
+    kakaoLinkedAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
   console.log('[Kakao Auth] linked kakaoId to existing user doc:', matched.id);
   return { uid: (matched.data().uid || matched.id), docId: matched.id, alreadyLinked: false };
+}
+
+/** 카카오 전화번호(01012345678) → E.164(+821012345678) */
+const toE164Kr = (phone) => {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('0')) return `+82${digits.slice(1)}`;
+  if (digits.startsWith('82')) return `+${digits}`;
+  return '';
+};
+
+/**
+ * createCustomToken 전에 Firebase Auth 사용자 레코드를 보장한다.
+ * 이메일/전화 충돌(다른 uid가 선점)은 무시하고 uid 기준 레코드만 보강한다.
+ */
+async function ensureFirebaseAuthUser(uid, { email, displayName, phone } = {}) {
+  try {
+    await admin.auth().getUser(uid);
+    return;
+  } catch (err) {
+    if (err.code !== 'auth/user-not-found') {
+      console.warn('[Kakao Auth] getUser failed (non-fatal):', err.code || err.message);
+      return;
+    }
+  }
+  const e164 = toE164Kr(phone);
+  const baseProps = { uid };
+  if (displayName) baseProps.displayName = displayName;
+  // 1차: email/phone 포함 시도 → 충돌 시 점진적으로 제거하며 재시도
+  const attempts = [
+    { ...baseProps, ...(email ? { email } : {}), ...(e164 ? { phoneNumber: e164 } : {}) },
+    { ...baseProps, ...(email ? { email } : {}) },
+    { ...baseProps },
+  ];
+  for (const props of attempts) {
+    try {
+      await admin.auth().createUser(props);
+      return;
+    } catch (e) {
+      // email-already-exists / phone-number-already-exists 등은 다음 후보로 폴백
+      if (e.code === 'auth/uid-already-exists') return;
+    }
+  }
+  console.warn('[Kakao Auth] ensureFirebaseAuthUser: could not create auth record for', uid);
 }
 
 // 카카오 로그인 시작: 프론트 origin을 state로 보존한 채 카카오 인가 페이지로 이동
@@ -287,13 +559,23 @@ app.get('/api/auth/kakao/start', (req, res) => {
   const origin = (req.query.origin || '').toString();
   const frontendUrl = ALLOWED_ORIGINS.includes(origin) ? origin : KAKAO_DEFAULT_FRONTEND;
   const signup = req.query.signup === '1' ? '1' : '0';
-  const state = base64UrlEncode({ o: frontendUrl, s: signup });
+  // link 모드: 이미 로그인된 uid에 카카오 계정을 연결
+  const linkUid = (req.query.link_uid || '').toString().trim();
+  // CSRF 방지를 위한 서명·만료 포함 state
+  const state = signKakaoState({
+    o: frontendUrl,
+    s: signup,
+    ...(linkUid ? { link_uid: linkUid } : {}),
+    n: crypto.randomBytes(12).toString('hex'),
+    exp: Date.now() + KAKAO_STATE_TTL_MS,
+  });
   const params = new URLSearchParams({
     client_id: KAKAO_REST_KEY,
     redirect_uri: getKakaoRedirectUri(req),
     response_type: 'code',
     state,
   });
+  if (KAKAO_SCOPE) params.set('scope', KAKAO_SCOPE);
   res.redirect(`https://kauth.kakao.com/oauth/authorize?${params.toString()}`);
 });
 
@@ -301,11 +583,18 @@ app.get('/api/auth/kakao/start', (req, res) => {
 app.get('/api/auth/kakao/callback', async (req, res) => {
   let frontendUrl = KAKAO_DEFAULT_FRONTEND;
   let isSignup = false;
-  try {
-    const parsed = base64UrlDecode(req.query.state || '');
-    if (parsed?.o && ALLOWED_ORIGINS.includes(parsed.o)) frontendUrl = parsed.o;
-    isSignup = parsed?.s === '1';
-  } catch (_) {}
+  let linkUid = ''; // link 모드: 이 uid의 계정에 카카오 연결
+  const parsedState = verifyKakaoState(req.query.state || '');
+  if (parsedState) {
+    if (parsedState.o && ALLOWED_ORIGINS.includes(parsedState.o)) frontendUrl = parsedState.o;
+    isSignup = parsedState.s === '1';
+    linkUid = (parsedState.link_uid || '').toString().trim();
+  } else {
+    // 서명/만료 검증 실패 → CSRF 의심으로 차단
+    console.warn('[Kakao Auth] invalid or expired state');
+    res.redirect(`${frontendUrl}/?auth=kakao&error=invalid_state`);
+    return;
+  }
 
   const code = req.query.code;
   if (!code) {
@@ -350,17 +639,69 @@ app.get('/api/auth/kakao/callback', async (req, res) => {
     const legalName = (kakaoAccount.legal_name || kakaoAccount.name || '').toString();
     const phone = normalizeKakaoPhone(kakaoAccount.phone_number);
     const name = legalName || nickname || '';
+    const kakaoIdStr = String(kakaoId);
 
+    // ── link 모드: 이미 로그인된 사용자가 카카오 계정 연결 요청 ──
+    if (linkUid) {
+      // 다른 계정에 이미 연결된 kakaoId인지 확인
+      const alreadySnap = await db.collection('users').where('kakaoId', '==', kakaoIdStr).limit(1).get();
+      if (!alreadySnap.empty && (alreadySnap.docs[0].data().uid || alreadySnap.docs[0].id) !== linkUid) {
+        res.redirect(`${frontendUrl}/?auth=kakao&error=kakao_already_linked`);
+        return;
+      }
+      // linkUid 사용자 문서 조회
+      let userDocRef = null;
+      const directSnap = await db.collection('users').doc(linkUid).get();
+      if (directSnap.exists) {
+        userDocRef = directSnap.ref;
+      } else {
+        const byUid = await db.collection('users').where('uid', '==', linkUid).limit(1).get();
+        if (!byUid.empty) userDocRef = byUid.docs[0].ref;
+      }
+      if (!userDocRef) {
+        res.redirect(`${frontendUrl}/?auth=kakao&error=user_not_found`);
+        return;
+      }
+      await userDocRef.update({
+        kakaoId: kakaoIdStr,
+        providers: admin.firestore.FieldValue.arrayUnion('kakao'),
+        kakaoLinkedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      console.log('[Kakao Link] linked kakaoId', kakaoIdStr, 'to uid', linkUid);
+      const params = new URLSearchParams({ auth: 'kakao', result: 'linked' });
+      res.redirect(`${frontendUrl}/#${params.toString()}`);
+      return;
+    }
+
+    // ── 일반 로그인 모드 ──
     // 기존 회원 매칭 (kakaoId → email → phone). 매칭되면 기존 uid로 로그인해 계정 동기화
     const matched = await matchExistingUserForKakao({ kakaoId, email, phone, isEmailVerified });
-    const firebaseUid = matched ? matched.uid : `kakao_${kakaoId}`;
+    if (matched && matched.conflict) {
+      // 이메일/전화 후보가 여러 명 → 자동 연결 차단, 사용자에게 안내
+      res.redirect(`${frontendUrl}/?auth=kakao&error=link_conflict`);
+      return;
+    }
+    const firebaseUid = matched ? matched.uid : `kakao_${kakaoIdStr}`;
+
+    // Auth 사용자 레코드 보장 후 Custom Token 발급
+    await ensureFirebaseAuthUser(firebaseUid, { email, displayName: name, phone });
     const customToken = await admin.auth().createCustomToken(firebaseUid, { provider: 'kakao' });
 
-    const profilePayload = { name, phone, email, kakaoId: String(kakaoId) };
+    // Custom Token을 URL에 직접 노출하지 않기 위해 1회용 교환 코드 발급
+    const profilePayload = { name, phone, email, kakaoId: kakaoIdStr };
+    const exchangeCode = crypto.randomBytes(24).toString('hex');
+    await db.collection('kakaoOAuthCodes').doc(exchangeCode).set({
+      token: customToken,
+      profile: profilePayload,
+      isNew: !matched,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      exp: Date.now() + KAKAO_CODE_TTL_MS,
+    });
+
     const params = new URLSearchParams({
       auth: 'kakao',
-      token: customToken,
-      p: base64UrlEncode(profilePayload),
+      code: exchangeCode,
       new: matched ? '0' : '1',
       signup: isSignup ? '1' : '0',
     });
@@ -371,8 +712,36 @@ app.get('/api/auth/kakao/callback', async (req, res) => {
   }
 });
 
+// 1회용 코드 → Firebase Custom Token + 프로필 교환 (콜백에서 발급한 code로 호출)
+app.post('/api/auth/kakao/exchange', async (req, res) => {
+  try {
+    const code = (req.body && (req.body.code || req.body.exchange_code)) || '';
+    if (!code) {
+      res.status(400).json({ ok: false, error: 'code required' });
+      return;
+    }
+    const ref = db.collection('kakaoOAuthCodes').doc(String(code));
+    const snap = await ref.get();
+    if (!snap.exists) {
+      res.status(404).json({ ok: false, error: 'code_not_found' });
+      return;
+    }
+    const data = snap.data() || {};
+    // 1회용: 조회 즉시 삭제
+    await ref.delete().catch(() => {});
+    if (data.exp && Date.now() > Number(data.exp)) {
+      res.status(410).json({ ok: false, error: 'code_expired' });
+      return;
+    }
+    res.status(200).json({ ok: true, token: data.token, profile: data.profile || null, isNew: data.isNew === true });
+  } catch (err) {
+    console.error('[Kakao Exchange] error', err);
+    res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
 // 카카오 계정 상태 변경 웹훅 (OAuth: user-linked 등) — Content-Type: application/secevent+jwt
-app.post('/api/webhook/kakao', express.raw({ type: 'application/secevent+jwt' }), (req, res) => {
+app.post('/api/webhook/kakao', express.raw({ type: 'application/secevent+jwt' }), async (req, res) => {
   try {
     const raw = req.body;
     const jwtStr = Buffer.isBuffer(raw) ? raw.toString('utf8') : (typeof raw === 'string' ? raw : '');
@@ -382,7 +751,24 @@ app.post('/api/webhook/kakao', express.raw({ type: 'application/secevent+jwt' })
         const payload = JSON.parse(
           Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
         );
-        console.log('[Kakao Webhook]', { sub: payload.sub, eventTypes: Object.keys(payload.events || {}) });
+        const eventTypes = Object.keys(payload.events || {});
+        console.log('[Kakao Webhook]', { sub: payload.sub, eventTypes });
+
+        // 연결 해제(unlink) 이벤트: 해당 kakaoId 회원의 카카오 연결 정보 정리
+        const isUnlink = eventTypes.some((t) => /unlink|unregister|withdraw/i.test(t));
+        const kakaoId = payload.sub != null ? String(payload.sub) : '';
+        if (isUnlink && kakaoId) {
+          const snap = await db.collection('users').where('kakaoId', '==', kakaoId).get();
+          for (const d of snap.docs) {
+            await d.ref.update({
+              providers: admin.firestore.FieldValue.arrayRemove('kakao'),
+              kakaoId: admin.firestore.FieldValue.delete(),
+              kakaoUnlinkedAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+          console.log('[Kakao Webhook] unlinked kakao for users:', snap.docs.map((d) => d.id).join(',') || '(none)');
+        }
       }
     }
     res.status(200).json({ received: true });
@@ -540,6 +926,15 @@ app.get('/api/payment/status', async (req, res) => {
 app.post('/api/payment/webhook', async (req, res) => {
   try {
     const body = req.body || {};
+
+    // ① 웹훅 서명 검증 (V2: portone-signature 헤더)
+    const isV2Webhook = !!(body.type || (body.data && body.data.paymentId));
+    if (isV2Webhook && !verifyPortOneWebhookSignature(req)) {
+      console.error('[Payment Webhook] 서명 검증 실패 — 요청 무시');
+      res.status(200).json({ received: true, warning: 'signature_invalid' });
+      return;
+    }
+
     const impUid = body.imp_uid || body.impUid || (body.data && (body.data.transactionId || body.data.txId)) || '';
     // V1(merchant_uid)과 V2(payment_id / data.paymentId)를 동일 내부 식별자로 정규화
     const merchantUid = extractPaymentId(body);
@@ -563,8 +958,41 @@ app.post('/api/payment/webhook', async (req, res) => {
 
     if (paid) {
       const pendingSnap = await db.collection('pendingPayments').doc(String(merchantUid)).get();
+
       if (pendingSnap.exists) {
-        const { created, applicationId } = await createApplicationFromPending(merchantUid, pendingSnap.data());
+        // ② PortOne API로 실결제 금액 조회 및 검증
+        const pendingData = pendingSnap.data();
+        const seminarSnap = pendingData.seminar_id
+          ? await db.collection('seminars').doc(String(pendingData.seminar_id)).get()
+          : null;
+        const expectedAmount = seminarSnap?.exists
+          ? Number(seminarSnap.data()?.applicationFee) || null
+          : null;
+
+        let paymentVerified = false;
+        try {
+          const vResult = await verifyPortOnePayment({
+            isV2: isV2Webhook,
+            paymentId: merchantUid,
+            impUid,
+            expectedAmount
+          });
+          paymentVerified = vResult.verified;
+          if (!paymentVerified) {
+            console.error('[Payment Webhook] 실결제 검증 실패', vResult.reason, merchantUid);
+            await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set(
+              { verify_failed: true, verify_reason: vResult.reason }, { merge: true }
+            );
+            res.status(200).json({ received: true, warning: 'payment_verify_failed' });
+            return;
+          }
+        } catch (verifyErr) {
+          console.warn('[Payment Webhook] 실결제 조회 오류 (처리 계속)', verifyErr.message);
+          // API 조회 자체가 실패하면 서버 문제일 수 있으므로 일단 통과 (경고 로그)
+          paymentVerified = true;
+        }
+
+        const { created, applicationId } = await createApplicationFromPending(merchantUid, pendingData);
         await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set({ completed: true }, { merge: true });
         await db.collection('pendingPayments').doc(String(merchantUid)).delete();
         console.log('[Payment Webhook] application completed', merchantUid, 'created:', created, 'appId:', applicationId);
@@ -588,7 +1016,7 @@ app.post('/api/payment/webhook', async (req, res) => {
 });
 
 // 결제대기 → 신청자 편입 (관리자 수동 처리용). body: { merchant_uid: 'p_xxx' }
-app.post('/api/admin/application-from-pending', async (req, res) => {
+app.post('/api/admin/application-from-pending', requireAdminAuth, async (req, res) => {
   try {
     const merchantUid = extractPaymentId(req.body || {});
     if (!merchantUid) {
@@ -613,7 +1041,7 @@ app.post('/api/admin/application-from-pending', async (req, res) => {
 
 // 결제대기(pendingPayments) 전체 삭제 — 클라이언트 Firestore 규칙상 쓰기 불가이므로 Admin SDK로만 처리
 // body: { confirm: 'DELETE_ALL_PENDING' }
-app.post('/api/admin/pending-payments-delete-all', async (req, res) => {
+app.post('/api/admin/pending-payments-delete-all', requireAdminAuth, async (req, res) => {
   try {
     const confirm = (req.body && req.body.confirm) || '';
     if (confirm !== 'DELETE_ALL_PENDING') {
@@ -645,7 +1073,7 @@ app.post('/api/admin/pending-payments-delete-all', async (req, res) => {
 
 // 관리자: 신청(applications) 1건 삭제 + 해당 프로그램 currentParticipants 1 감소 (클라이언트 규칙과 무관하게 Admin SDK)
 // body: { application_id: '...' } 또는 applicationId
-app.post('/api/admin/delete-application', async (req, res) => {
+app.post('/api/admin/delete-application', requireAdminAuth, async (req, res) => {
   try {
     const applicationId = (req.body && (req.body.application_id || req.body.applicationId)) || '';
     if (!applicationId) {
@@ -693,31 +1121,50 @@ const removeMatchedApplicationsAndDecrementSeminar = async (matched, seminarIdSt
 
 // 결제 취소(환불) API: 유료는 PortOne 취소 후 삭제. 무료·withdraw_only는 DB만 정리.
 // body.withdraw_only === true 이면 PG 호출 없이 본인 신청 문서만 삭제 (이미 PG에서 취소한 경우 등)
-app.post('/api/payment/cancel', async (req, res) => {
+app.post('/api/payment/cancel', requireUserAuth, async (req, res) => {
   try {
     const body = req.body || {};
-    const userId = body.user_id || body.userId;
     const seminarId = body.seminar_id || body.seminarId;
     const withdrawOnly = body.withdraw_only === true || body.withdrawOnly === true;
-    if (!userId || !seminarId) {
-      res.status(400).json({ cancelled: false, error: 'user_id and seminar_id required' });
+
+    // 인증된 uid로 userId 고정 (클라이언트 전달값 무시하여 타인 신청 취소 방지)
+    const authUid = req.authUid;
+    // Firestore users 컬렉션에서 authUid에 해당하는 문서 id 조회 (userId 필드 통일)
+    let userId = authUid;
+    const userDocDirect = await db.collection('users').doc(authUid).get();
+    if (!userDocDirect.exists) {
+      const byUid = await db.collection('users').where('uid', '==', authUid).limit(1).get();
+      if (!byUid.empty) userId = byUid.docs[0].id;
+    }
+
+    if (!seminarId) {
+      res.status(400).json({ cancelled: false, error: 'seminar_id required' });
       return;
     }
 
     const sid = String(seminarId);
-    const appSnap = await db.collection('applications').where('userId', '==', userId).get();
+    // userId(doc id) 또는 authUid 둘 다 검색
+    const appSnap1 = await db.collection('applications').where('userId', '==', userId).get();
+    const appSnap2 = userId !== authUid
+      ? await db.collection('applications').where('userId', '==', authUid).get()
+      : { docs: [] };
     const seminarMatches = (data) => {
       const s1 = data.seminarId != null ? String(data.seminarId) : '';
       const s2 = data.programId != null ? String(data.programId) : '';
       const s3 = data.seminar_id != null ? String(data.seminar_id) : '';
       return s1 === sid || s2 === sid || s3 === sid;
     };
-    const matched = appSnap.docs
-      .filter((d) => seminarMatches(d.data()))
+    const seenIds = new Set();
+    const matched = [...appSnap1.docs, ...appSnap2.docs]
+      .filter((d) => {
+        if (seenIds.has(d.id)) return false;
+        seenIds.add(d.id);
+        return seminarMatches(d.data());
+      })
       .map((d) => ({ id: d.id, ...d.data() }));
     const byCreated = (a, b) => {
-      const at = a.createdAt?.toMillis?.() ?? a.createdAt?.seconds * 1000 ?? 0;
-      const bt = b.createdAt?.toMillis?.() ?? b.createdAt?.seconds * 1000 ?? 0;
+      const at = a.createdAt?.toMillis?.() ?? (a.createdAt?.seconds ?? 0) * 1000;
+      const bt = b.createdAt?.toMillis?.() ?? (b.createdAt?.seconds ?? 0) * 1000;
       return bt - at;
     };
     matched.sort(byCreated);
@@ -751,6 +1198,21 @@ app.post('/api/payment/cancel', async (req, res) => {
       return;
     }
 
+    // 환불 금액: 세미나 날짜 기준 소비자분쟁해결기준 적용
+    const seminarSnap = await db.collection('seminars').doc(sid).get();
+    const seminarDate = seminarSnap.exists ? seminarSnap.data()?.date : null;
+    const paidAmount = seminarSnap.exists ? Number(seminarSnap.data()?.applicationFee) || 0 : 0;
+    const refundAmount = calculateRefundAmount(paidAmount, seminarDate);
+
+    if (refundAmount <= 0 && paidAmount > 0) {
+      res.status(400).json({
+        cancelled: false,
+        error: 'refund_not_allowed',
+        message: '세미나 당일 이후에는 환불이 불가능합니다.',
+      });
+      return;
+    }
+
     const tokenRes = await axios({
       url: 'https://api.iamport.kr/users/getToken',
       method: 'post',
@@ -765,6 +1227,16 @@ app.post('/api/payment/cancel', async (req, res) => {
       return;
     }
 
+    const cancelPayload = {
+      merchant_uid: merchantUid,
+      reason: body.reason || '세미나 신청 취소'
+    };
+    // 부분 환불: 위약금 공제된 금액만 환불
+    if (paidAmount > 0 && refundAmount < paidAmount) {
+      cancelPayload.amount = refundAmount;
+      cancelPayload.checksum = paidAmount;
+    }
+
     const cancelRes = await axios({
       url: 'https://api.iamport.kr/payments/cancel',
       method: 'post',
@@ -772,10 +1244,7 @@ app.post('/api/payment/cancel', async (req, res) => {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`
       },
-      data: {
-        merchant_uid: merchantUid,
-        reason: body.reason || '세미나 신청 취소'
-      }
+      data: cancelPayload
     });
     const cancelBody = cancelRes.data;
     if (cancelBody?.code !== 0) {
@@ -790,8 +1259,11 @@ app.post('/api/payment/cancel', async (req, res) => {
     }
 
     await removeMatchedApplicationsAndDecrementSeminar(matched, sid);
-    console.log('[Payment Cancel] applications cancelled', matched.map((m) => m.id).join(','), merchantUid);
-    res.status(200).json({ cancelled: true, merchant_uid: merchantUid });
+    const refundMessage = paidAmount > 0 && refundAmount < paidAmount
+      ? `환불 금액: ${refundAmount.toLocaleString()}원 (위약금 ${paidAmount - refundAmount}원 공제)`
+      : undefined;
+    console.log('[Payment Cancel] applications cancelled', matched.map((m) => m.id).join(','), merchantUid, refundMessage || '');
+    res.status(200).json({ cancelled: true, merchant_uid: merchantUid, refund_amount: refundAmount, refund_message: refundMessage });
   } catch (err) {
     console.error('[Payment Cancel] error', err);
     const status = err.response?.status;
