@@ -129,14 +129,21 @@ export function seminarUsesApplicationsParticipantCount(seminar) {
   return seminar?.[SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD] === true;
 }
 
+/** 운영자가 명단에 직접 추가한 신청 (결제 merchant_uid 없음) */
+export function isAdminAddedApplication(app) {
+  if (app?.adminAddedParticipant === true) return true;
+  return String(app?.participationPath || '').trim() === '관리자 등록';
+}
+
 /**
  * 한 application이 "명단 확정" 상태인지 판단.
- * - 유료(applicationFee > 0): merchant_uid / merchantUid / imp_uid / impUid 중 하나 필요
  * - 무료: 매칭만 되면 확정
+ * - 유료: 결제 증빙(merchant_uid 등) 또는 운영자 직접 등록
  */
 export function isRegisteredApplication(app, applicationFee) {
   const fee = Number(applicationFee) || 0;
   if (fee <= 0) return true;
+  if (isAdminAddedApplication(app)) return true;
   return !!(app?.merchant_uid || app?.merchantUid || app?.imp_uid || app?.impUid);
 }
 
@@ -204,7 +211,7 @@ export function countApplicationsMatchingSeminar(seminar, applications) {
 }
 
 /**
- * 공개 UI용: 명단 확정 건수(유료는 merchant_uid 보유, 관리자 숨김 제외)로 currentParticipants를 갱신.
+ * 공개 UI용: 명단 확정 건수(유료는 결제 증빙 또는 운영자 등록, 관리자 숨김 제외)로 currentParticipants를 갱신.
  * 정원 초과해도 실제 확정 명단 수 그대로 표시 (예: 35/30 가능).
  */
 export function applyPublicSeminarParticipantDisplay(seminars, applications, entries, appById = {}) {

@@ -41,8 +41,20 @@ function getEffectiveCapacityLimit(seminarData) {
   return Math.floor(cap) + CAPACITY_EXTRA_SLOTS;
 }
 
+function isAdminAddedApplicationData(d) {
+  if (d?.adminAddedParticipant === true) return true;
+  return String(d?.participationPath || '').trim() === '관리자 등록';
+}
+
+function isRegisteredApplicationData(d, applicationFee) {
+  const fee = Number(applicationFee) || 0;
+  if (fee <= 0) return true;
+  if (isAdminAddedApplicationData(d)) return true;
+  return !!(d.merchant_uid || d.merchantUid || d.imp_uid || d.impUid);
+}
+
 /**
- * 프로그램의 현재 명단 확정 인원 수 조회 (유료: merchant_uid 보유 문서만).
+ * 프로그램의 현재 명단 확정 인원 수 조회 (유료: 결제 증빙 또는 운영자 직접 등록).
  * @param {string} seminarId
  * @param {number} applicationFee
  * @returns {Promise<number>}
@@ -54,11 +66,7 @@ async function countRegisteredParticipantsForSeminar(seminarId, applicationFee) 
   let n = 0;
   for (const doc of snap.docs) {
     const d = doc.data();
-    if (fee > 0) {
-      if (d.merchant_uid || d.merchantUid || d.imp_uid || d.impUid) n += 1;
-    } else {
-      n += 1;
-    }
+    if (isRegisteredApplicationData(d, fee)) n += 1;
   }
   return n;
 }
