@@ -44,13 +44,25 @@ export const AdminDashboard = () => {
   const handleLogout = async () => {
     if (!confirm('로그아웃하시겠습니까?')) return;
 
+    let signOutError = null;
     try {
-      await authService.signOut();
-      navigate('/');
+      if (authService?.logout) {
+        await authService.logout();
+      } else {
+        await authService.signOut();
+      }
     } catch (error) {
-      console.error('로그아웃 오류:', error);
-      alert('로그아웃에 실패했습니다.');
+      signOutError = error;
+      console.warn('Admin logout signOut error:', error);
     }
+
+    const stillLoggedIn = !!authService?.getCurrentUser?.();
+    if (stillLoggedIn && signOutError) {
+      alert('로그아웃에 실패했습니다.');
+      return;
+    }
+
+    navigate('/');
   };
 
   const renderContent = () => {

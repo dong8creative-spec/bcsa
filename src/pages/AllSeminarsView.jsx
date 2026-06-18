@@ -6,6 +6,7 @@ import ModalPortal from '../components/ModalPortal';
 import { ProgramAddModal } from '../components/ProgramAddModal';
 import { useMediaQuery, MOBILE_QUERY } from '../hooks/useMediaQuery';
 import { getParticipantCountDisplay, getSeminarCapacity, getDisplayedParticipantCurrent, is정모 } from '../utils/seminarDisplay';
+import { getEffectiveCapacityLimit } from '../utils/adminHiddenApplications';
 
 const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [], communityPosts = [], onProgramAdded, currentPage: currentPageProp, onPageChange }) => {
     /** 운영진 또는 관리자 권한: 프로그램 등록 가능 (admin 채널 없이 바로 등록) */
@@ -246,10 +247,9 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                 className: 'bg-gray-300 text-gray-500 cursor-not-allowed'
             };
         }
-        const max = getSeminarCapacity(seminar);
         const current = getDisplayedParticipantCurrent(seminar);
-        const isFull = max > 0 && current >= max;
-        if (isFull && !is정모(seminar)) {
+        const limit = getEffectiveCapacityLimit(seminar);
+        if (Number.isFinite(limit) && current >= limit) {
             return { text: '정원 마감', disabled: true, onClick: null, className: 'bg-gray-300 text-gray-500 cursor-not-allowed' };
         }
         return { 

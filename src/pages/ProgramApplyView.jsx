@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Icons } from '../components/Icons';
 import { normalizeImagesList } from '../utils/imageUtils';
 import { getParticipantCountDisplay, getSeminarCapacity, getDisplayedParticipantCurrent, is정모 } from '../utils/seminarDisplay';
+import { getEffectiveCapacityLimit } from '../utils/adminHiddenApplications';
 
 const getStatusColor = (status) => {
     switch (status) {
@@ -119,11 +120,10 @@ const ProgramApplyView = ({
 
     const isPaid = program.applicationFee != null && Number(program.applicationFee) > 0;
     const isEnded = program.status === '종료';
-    const maxCap = getSeminarCapacity(program);
     const currentCap = getDisplayedParticipantCurrent(program);
-    const isFull = maxCap > 0 && currentCap >= maxCap;
-    const allowOverflow = is정모(program);
-    const isDisabledByCapacity = isFull && !allowOverflow;
+    const effectiveLimit = getEffectiveCapacityLimit(program);
+    const isDisabledByCapacity = Number.isFinite(effectiveLimit) && currentCap >= effectiveLimit;
+    const maxCap = getSeminarCapacity(program);
 
     return (
         <>
@@ -361,7 +361,9 @@ const ProgramApplyView = ({
                                     ? '정원 마감'
                                     : submitting
                                         ? (isPaid ? '결제 진행 중...' : '신청 처리 중...')
-                                        : '참여신청'
+                                        : (maxCap > 0 && currentCap >= maxCap)
+                                            ? '정원 초과 접수 중'
+                                            : '참여신청'
                             }
                         </button>
                     </div>

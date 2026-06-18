@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Icons } from './Icons';
 import ModalPortal from './ModalPortal';
 import { getParticipantCountDisplay, getSeminarCapacity, getDisplayedParticipantCurrent, is정모 } from '../utils/seminarDisplay';
+import { getEffectiveCapacityLimit } from '../utils/adminHiddenApplications';
 
 const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteReview, applications = [] }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -409,10 +410,9 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                             }
                                                             return { text: '참여자만', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
                                                         }
-                                                        const max = getSeminarCapacity(ev);
                                                         const current = getDisplayedParticipantCurrent(ev);
-                                                        const isFull = max > 0 && current >= max;
-                                                        if (isFull && !is정모(ev)) {
+                                                        const limit = getEffectiveCapacityLimit(ev);
+                                                        if (Number.isFinite(limit) && current >= limit) {
                                                             return { text: '정원 마감', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
                                                         }
                                                         return { 

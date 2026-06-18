@@ -2,7 +2,7 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signInWithCustomToken,
-  signOut, 
+  signOut as firebaseSignOut, 
   sendPasswordResetEmail,
   deleteUser,
   onAuthStateChanged as firebaseOnAuthStateChanged
@@ -90,14 +90,19 @@ export const authService = {
     return { token: data.token, profile: data.profile || null, isNew: data.isNew === true };
   },
 
-  // Sign out
-  async signOut() {
+  // Sign out (Firebase Auth 세션 종료)
+  async logout() {
     try {
-      await signOut(auth);
+      await firebaseSignOut(auth);
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;
     }
+  },
+
+  /** @deprecated logout() 사용 */
+  async signOut() {
+    return this.logout();
   },
 
   // Get current user

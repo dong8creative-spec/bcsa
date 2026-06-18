@@ -5,6 +5,7 @@
 
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from '../constants';
 import { useRedirectPayment } from '../utils/paymentEnv';
+import { pollPaymentUntilComplete } from '../utils/paymentPoll';
 
 const PENDING_PREFIX = 'payment_pending_';
 const PENDING_TTL_MS = 30 * 60 * 1000;
@@ -62,10 +63,11 @@ export function getPaymentResultRedirectUrl() {
  * @param {Object} params.customer - { fullName, phoneNumber, email }
  * @param {string} [params.apiBaseUrl] - API 기본 URL (리다이렉트 결제 시 pending 저장용)
  * @param {string} [params.userId] - 로그인 사용자 id (리다이렉트 결제 시 pending 저장용)
- * @param {Function} params.onSuccess - 표준 결제 시 ({ merchantUid, response }) 전달 (리다이렉트 시에는 /payment/result에서 처리)
+ * @param {string} [params.idToken] - Firebase ID 토큰 (pending/complete 인증 헤더)
+ * @param {Function} params.onSuccess - 표준 결제 시 ({ merchantUid, response, serverCompleted }) 전달 (리다이렉트 시에는 /payment/result에서 처리)
  * @param {Function} params.onFail - 표준 결제 시 실패 콜백
  */
-export async function requestPayment({ seminar, applicationData, customer, apiBaseUrl, userId, onSuccess, onFail }) {
+export async function requestPayment({ seminar, applicationData, customer, apiBaseUrl, userId, idToken, onSuccess, onFail }) {
     if (!PORTONE_IMP_CODE || PORTONE_IMP_CODE === 'imp00000000') {
         alert('결제가 설정되지 않았습니다. 관리자에게 문의해주세요.');
         if (onFail) onFail();
@@ -100,41 +102,39 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
     }
 
     const pgHint = ' 관리자: PortOne 콘솔(admin.portone.io) → 결제 연동 → 채널 관리에서 해당 채널에 PG가 연결되어 있는지 확인해 주세요.';
+    const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, '') : '';
 
-    // 서버 측 결제대기 저장: 웹훅 기반 신청 복구가 이 문서에 의존하므로 1회 재시도 후에도 실패하면 결제를 중단한다.
-    if (apiBaseUrl && userId) {
-        const base = apiBaseUrl.replace(/\/$/, '');
+    // 서버 pre-warm: pending 저장 전 /health로 Cloud Run 깨우기 (백그라운드, 실패 무시)
+    if (base) fetch(`${base}/health`).catch(() => {});
+
+    // 서버 측 결제대기 저장 (웹훅 복구용). pre-warm 덕에 빠르게 응답 가능.
+    if (base && userId) {
+        const pendingBody = JSON.stringify({
+            merchant_uid: merchantUid,
+            seminar_id: seminar.id,
+            user_id: userId,
+            user_name: fullName,
+            user_email: email,
+            user_phone: phoneNumber,
+            application_data: applicationData || {}
+        });
         const savePending = async () => {
             const res = await fetch(`${base}/api/payment/pending`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    merchant_uid: merchantUid,
-                    seminar_id: seminar.id,
-                    user_id: userId,
-                    user_name: fullName,
-                    user_email: email,
-                    user_phone: phoneNumber,
-                    application_data: applicationData || {}
-                })
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
+                },
+                body: pendingBody
             });
             const data = res.ok ? await res.json().catch(() => ({})) : null;
             return !!(res.ok && data?.saved);
         };
 
         let pendingSaved = false;
-        try {
-            pendingSaved = await savePending();
-        } catch (e) {
-            console.warn('paymentService: pending save failed (1st)', e);
-        }
+        try { pendingSaved = await savePending(); } catch (e) { console.warn('paymentService: pending save failed (1st)', e); }
         if (!pendingSaved) {
-            try {
-                await new Promise((r) => setTimeout(r, 1000));
-                pendingSaved = await savePending();
-            } catch (e) {
-                console.warn('paymentService: pending save failed (retry)', e);
-            }
+            try { await new Promise((r) => setTimeout(r, 800)); pendingSaved = await savePending(); } catch (e) { console.warn('paymentService: pending save failed (retry)', e); }
         }
         if (!pendingSaved) {
             alert('결제 준비 중 오류가 발생했습니다. 네트워크를 확인하신 후 다시 시도해 주세요.');
@@ -169,7 +169,6 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
         };
         try {
             await window.PortOne.requestPayment(baseRequest);
-            // 리다이렉트 방식에서는 여기 도달하지 않음. 결과는 /payment/result에서만 처리
         } catch (e) {
             const msg = e?.message || e?.errorMessage || '결제 요청 중 오류가 발생했습니다.';
             const isPgError = /등록된\s*PG|PG\s*설정\s*정보가\s*없습니다/i.test(msg);
@@ -184,6 +183,7 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
         return;
     }
 
+    // PC 결제
     try {
         const response = await window.PortOne.requestPayment(baseRequest);
         if (response?.code != null) {
@@ -192,30 +192,26 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
             return;
         }
 
-        // PC 결제 성공 후 서버에서 결제 완료 확인 (웹훅 처리 대기 폴링)
-        // 서버 확인을 통해 실제 결제금액과 상태를 검증한 뒤 신청 처리
-        if (apiBaseUrl) {
-            const base = apiBaseUrl.replace(/\/$/, '');
-            const serverConfirmed = await (async () => {
-                const delays = [400, 1200, 2000, 3000];
-                for (const delay of delays) {
-                    await new Promise((r) => setTimeout(r, delay));
-                    try {
-                        const r = await fetch(`${base}/api/payment/status?paymentId=${encodeURIComponent(merchantUid)}`);
-                        const d = r.ok ? await r.json().catch(() => ({})) : {};
-                        if (d.completed === true) return true;
-                    } catch (_) { /* 네트워크 오류 무시하고 재시도 */ }
-                }
-                return false;
-            })();
-            if (!serverConfirmed) {
-                // 웹훅 지연: 서버 미확인이지만 결제창 응답은 성공 → merchant_uid 포함해 신청 저장
-                // 웹훅이 나중에 도착해도 merchant_uid 중복 체크로 이중 신청 방지됨
-                console.warn('[paymentService] 서버 결제 확인 미완료 (웹훅 지연 가능) — 클라이언트 신청 저장 진행', merchantUid);
+        // SDK 성공 → 서버에서 신청 생성(complete) + 폴링으로 확인 (공용 유틸 사용)
+        let serverCompleted = false;
+        let pollReason = '';
+        if (base) {
+            const result = await pollPaymentUntilComplete({
+                apiBaseUrl: base,
+                paymentId: merchantUid,
+                userId,
+                idToken,
+                maxMs: 20000
+            });
+            serverCompleted = result.completed === true;
+            pollReason = result.reason || '';
+            if (!serverCompleted) {
+                console.warn('[paymentService] payment not confirmed by server', result.reason);
             }
         }
 
-        if (onSuccess) onSuccess({ merchantUid, response });
+        // serverCompleted=true면 서버가 이미 applications 생성·인원 반영 → 클라이언트 중복 처리 방지용 플래그 전달
+        if (onSuccess) onSuccess({ merchantUid, response, serverCompleted, pollReason });
     } catch (e) {
         const msg = e?.message || e?.errorMessage || '결제 요청 중 오류가 발생했습니다.';
         const isPgError = /등록된\s*PG|PG\s*설정\s*정보가\s*없습니다/i.test(msg);

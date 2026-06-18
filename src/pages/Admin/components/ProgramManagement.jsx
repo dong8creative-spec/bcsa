@@ -8,6 +8,7 @@ import {
   writeAdminHiddenEntries,
   notifyAdminHiddenApplicationsChanged,
   collectProgramSeminarKeys,
+  isRegisteredApplication,
 } from '../../../utils/adminHiddenApplications';
 import { SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD } from '../../../constants/appConstants';
 import { calculateStatus } from '../../../utils';
@@ -441,16 +442,18 @@ export const ProgramManagement = () => {
     notifyAdminHiddenApplicationsChanged();
   }, []);
 
-  /** 프로그램별 신청 건수 — Firestore applications만 (결제대기·관리자 숨김 제외) */
+  /** 프로그램별 명단 확정 신청 건수 (유료: merchant_uid 보유, 관리자 숨김 제외) */
   const applicationCountByProgramId = useMemo(() => {
     const map = {};
     (programs || []).forEach((p) => {
       if (p.id == null) return;
       const pid = String(p.id);
+      const fee = Number(p.applicationFee) || 0;
       map[pid] = (applications || []).filter(
         (app) =>
           applicationMatchesProgram(p, app) &&
-          !(app.id != null && hiddenApplicationIdSet.has(String(app.id)))
+          !(app.id != null && hiddenApplicationIdSet.has(String(app.id))) &&
+          isRegisteredApplication(app, fee)
       ).length;
     });
     return map;

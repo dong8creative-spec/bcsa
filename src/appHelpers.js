@@ -3,6 +3,7 @@
  */
 
 import { getSeminarCapacity, is정모 } from './utils/seminarDisplay';
+import { getEffectiveCapacityLimit } from './utils/adminHiddenApplications';
 
 /** 승인된 회원만 필터링 (approvalStatus가 'approved'이거나 없는 회원) */
 export function filterApprovedMembers(users) {
@@ -87,10 +88,9 @@ export function getUpcomingSeminarPopupCandidates(seminarsData, now = new Date()
     .filter(Boolean)
     .filter((s) => !!s.img)
     .filter((s) => {
-      const full = is정모(s)
-        ? false
-        : (s.currentParticipants || 0) >= (s.maxParticipants || 999);
-      return is정모(s) || !full;
+      const limit = getEffectiveCapacityLimit(s);
+      const full = Number.isFinite(limit) && (s.currentParticipants || 0) >= limit;
+      return !full;
     })
     .sort((a, b) => a.dateObj - b.dateObj)
     .slice(0, maxSeminars)

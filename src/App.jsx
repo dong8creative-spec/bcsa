@@ -16,6 +16,7 @@ import {
 } from './utils/authUtils';
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from './constants';
 import { getApiBaseUrl } from './utils/api';
+import { formatPaymentCancelError, formatPaymentApplySuccess, formatCapacityFullRefund } from './utils/paymentMessages';
 import { getIdToken } from 'firebase/auth';
 import { auth } from './firebase';
 import { waitForKakaoMapsCoreReady, invokeKakaoMapsLoad, KAKAO_MAP_SDK_URL } from './utils/kakaoMapReady';
@@ -60,8 +61,15 @@ import {
     readAdminHiddenEntries,
     applyPublicSeminarParticipantDisplay,
     seminarUsesApplicationsParticipantCount,
+    isSeminarCapacityFull,
+    countRegisteredParticipants,
 } from './utils/adminHiddenApplications';
 import { getSeminarCapacity, getDisplayedParticipantCurrent } from './utils/seminarDisplay';
+import {
+    readProgramPopupCache,
+    writeProgramPopupCache,
+    preloadPopupImages,
+} from './utils/programPopupCache';
 import { LoginModal } from './components/LoginModal';
 import KakaoLinkPromptModal from './components/KakaoLinkPromptModal';
 import { MobileMenu } from './components/MobileMenu';
@@ -402,6 +410,8 @@ const App = () => {
     const kakaoMapCallbackRef = useRef(null);
     const kakaoMapReadyPromiseRef = useRef(null);
     const popupShownRef = useRef(false); // 팝업 설정 중복 실행 방지용 ref
+    const manualLogoutRef = useRef(false); // 명시적 로그아웃 중 카카오 자동 로그인 스킵
+    const kakaoExchangeProcessedRef = useRef(''); // 카카오 code 1회 교환 보장 (Strict Mode 이중 호출 방지)
     const programTrackRef = useRef(null);
     const programScrollOffsetRef = useRef(0);
     const [programScrollOffset, setProgramScrollOffset] = useState(0);
@@ -663,29 +673,12 @@ const App = () => {
         
     }, [showLoginModal]);
     
-    // 홈에서 팝업 후보 이미지 미리 preload (프로그램 + 외부행사)
+    // 홈 프로그램 팝업: 캐시 즉시 표시 → Firestore(seminars+posters) 반영 (applications 구독 대기 없음)
     useEffect(() => {
-        if (currentView !== 'home') return;
-        const toShow = buildProgramPopupItems(seminarsDataPublic, externalEventPosters);
-        if (toShow.length === 0) return;
-        toShow.forEach((p) => {
-            if (p.img && typeof p.img === 'string') {
-                const img = new Image();
-                img.src = p.img;
-            }
-        });
-    }, [currentView, seminarsDataPublic, externalEventPosters]);
-
-    // 메인페이지 진입 시 다가오는 프로그램 팝업 표시 (최대 3개). 신청 여부와 관계없이 표시, 재진입/일정시간 후 다시 표시.
-    useEffect(() => {
-        // 24시간 숨김 중이면 제외 (직접 닫거나 24h 체크 후 일정시간·재진입 시에는 다시 뜨도록 busan_ycc_popup_shown은 사용하지 않음)
         try {
             if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
                 const hideUntil = localStorage.getItem('busan_ycc_popup_hide_until');
                 if (hideUntil && Date.now() < Number(hideUntil)) {
-                    return;
-                }
-                if (popupShownRef.current) {
                     return;
                 }
             }
@@ -695,32 +688,46 @@ const App = () => {
         if (location.pathname === '/program-popup') {
             return;
         }
-        if (currentView === 'home') {
-            const toShow = buildProgramPopupItems(seminarsDataPublic, externalEventPosters);
-            if (toShow.length > 0) {
-                toShow.forEach((p) => {
-                    if (p.img && typeof p.img === 'string') {
-                        const img = new Image();
-                        img.src = p.img;
-                    }
-                });
-                popupShownRef.current = true;
-                const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-                if (POPUP_AS_NEW_WINDOW && toShow.length > 0 && !isMobile) {
-                    try {
-                        const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                        window.open(origin + '/program-popup', 'bcsaProgramPopup', 'width=460,height=720,scrollbars=yes,resizable=yes');
-                    } catch (e) {
-                        setPopupPrograms(toShow);
-                    }
-                } else {
-                    setPopupPrograms(toShow);
-                }
-            } else {
-                setPopupPrograms([]);
-            }
+        if (currentView !== 'home') {
+            return;
         }
-    }, [currentView, seminarsDataPublic, externalEventPosters, mySeminars, location.pathname]);
+
+        const alreadyOpened = popupShownRef.current;
+
+        // Firestore 대기 전 캐시로 선표시 (재방문·새로고침 체감 속도)
+        const cached = readProgramPopupCache();
+        if (cached.length > 0 && !alreadyOpened) {
+            preloadPopupImages(cached);
+            setPopupPrograms(cached);
+        }
+
+        const toShow = buildProgramPopupItems(seminarsData, externalEventPosters);
+        if (toShow.length === 0) {
+            if (cached.length === 0) setPopupPrograms([]);
+            return;
+        }
+
+        preloadPopupImages(toShow);
+        writeProgramPopupCache(toShow);
+
+        if (alreadyOpened) {
+            setPopupPrograms(toShow);
+            return;
+        }
+
+        popupShownRef.current = true;
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+        if (POPUP_AS_NEW_WINDOW && !isMobile) {
+            try {
+                const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                window.open(origin + '/program-popup', 'bcsaProgramPopup', 'width=460,height=720,scrollbars=yes,resizable=yes');
+            } catch (e) {
+                setPopupPrograms(toShow);
+            }
+        } else {
+            setPopupPrograms(toShow);
+        }
+    }, [currentView, seminarsData, externalEventPosters, location.pathname]);
     
     // Load members from Firebase (우선 사용 - 애드민과 동기화)
     useEffect(() => {
@@ -884,6 +891,11 @@ const App = () => {
                     setMyApplications([]);
                     setProgramAlerts([]);
                     setShowProgramAlertModal(false);
+                    // 명시적 로그아웃 직후에는 카카오 자동 로그인 재시도하지 않음 (handleLogout에서 플래그 제거 후 signOut)
+                    if (manualLogoutRef.current) {
+                        manualLogoutRef.current = false;
+                        return;
+                    }
                     // 카카오 자동 로그인: 세션 만료 후 재방문 시 카카오 OAuth로 자동 로그인 시도
                     try {
                         if (localStorage.getItem('bcsa_kakao_auto_login') === '1') {
@@ -1791,6 +1803,11 @@ const App = () => {
         if (!exchangeCode && !legacyToken) return;
         if (!authService?.signInWithKakaoToken) return;
 
+        // 동일 code로 exchange 2회 호출 방지 (React Strict Mode·새로고침)
+        const exchangeKey = exchangeCode || legacyToken || '';
+        if (exchangeKey && kakaoExchangeProcessedRef.current === exchangeKey) return;
+        if (exchangeKey) kakaoExchangeProcessedRef.current = exchangeKey;
+
         (async () => {
             try {
                 let token = legacyToken;
@@ -1837,30 +1854,49 @@ const App = () => {
                 window.history.replaceState(null, '', location.pathname || '/');
                 await applySocialLoginResult(user, userDoc);
             } catch (e) {
+                if (exchangeKey) kakaoExchangeProcessedRef.current = '';
                 console.error('카카오 로그인 처리 실패:', e);
-                alert(e?.message || '카카오 로그인 처리에 실패했습니다.');
+                const msg = e?.code === 'code_not_found'
+                    ? '카카오 로그인 세션이 만료되었습니다. 다시 로그인해 주세요.'
+                    : (e?.message || '카카오 로그인 처리에 실패했습니다.');
+                alert(msg);
+                try { localStorage.removeItem('bcsa_kakao_auto_login'); } catch (_) {}
                 window.history.replaceState(null, '', location.pathname || '/');
             }
         })();
     }, [location.hash, location.search, applySocialLoginResult, navigate]);
 
     const handleLogout = async () => {
+        // 카카오 자동 로그인 플래그·명시적 로그아웃 표시를 signOut 전에 처리 (onAuthStateChanged race 방지)
+        manualLogoutRef.current = true;
+        try { localStorage.removeItem('bcsa_kakao_auto_login'); } catch (_) {}
+
+        let signOutError = null;
         try {
-            if (authService && authService.signOut) {
+            if (authService?.logout) {
+                await authService.logout();
+            } else if (authService?.signOut) {
                 await authService.signOut();
             }
-            // 자동 로그인 플래그 제거 (명시적 로그아웃 시 자동 로그인 해제)
-            try { localStorage.removeItem('bcsa_kakao_auto_login'); } catch (_) {}
+        } catch (error) {
+            signOutError = error;
+            console.warn('signOut error (may still be logged out locally):', error);
+        }
+
+        const stillLoggedIn = !!(authService?.getCurrentUser?.() || auth.currentUser);
+        if (stillLoggedIn && signOutError) {
+            manualLogoutRef.current = false;
+            alert('로그아웃에 실패했습니다.');
+            return;
+        }
+
         setCurrentUser(null);
         setCurrentView('home');
         setMySeminars([]);
         setMyApplications([]);
         setMyFoods([]);
         setMyPosts([]);
-            alert("로그아웃 되었습니다.");
-        } catch (error) {
-            alert('로그아웃에 실패했습니다.');
-        }
+        alert('로그아웃 되었습니다.');
     };
 
     /** 로고 클릭 시 홈으로 강제 이동 (모달·메뉴 닫기, URL 리셋) */
@@ -2085,9 +2121,14 @@ const App = () => {
     };
 
     /** 결제 요청 (Payment Service: 모바일/CEP·UXP는 리다이렉트, PC는 표준 결제) */
-    const requestPortOnePayment = (seminar, applicationData, onSuccess, onFail, overrideCustomer) => {
+    const requestPortOnePayment = async (seminar, applicationData, onSuccess, onFail, overrideCustomer) => {
         const amount = Number(seminar?.applicationFee) || 0;
         if (amount <= 0) {
+            if (onFail) onFail();
+            return;
+        }
+        if (isSeminarCapacityFull(seminar, publicApplicationsList, adminHiddenEntries, applicationsByIdForDisplay)) {
+            alert('정원이 마감되었습니다. (정원 + 10명 초과)');
             if (onFail) onFail();
             return;
         }
@@ -2105,26 +2146,39 @@ const App = () => {
             phoneNumber,
             email
         };
+        // pending/complete 서버 인증용 Firebase ID 토큰
+        let idToken = '';
+        try {
+            const fbUser = auth.currentUser;
+            if (fbUser) idToken = await getIdToken(fbUser, false);
+        } catch (_) {}
         paymentServiceRequestPayment({
             seminar,
             applicationData,
             customer,
             apiBaseUrl: getApiBaseUrl(),
-            userId: currentUser?.id,
+            userId: auth.currentUser?.uid || currentUser?.uid || currentUser?.id,
+            idToken,
             onSuccess,
             onFail
         });
     };
 
-    const handleSeminarApply = async (seminar, applicationData = null, paymentMeta = null) => {
+    const handleSeminarApply = async (seminar, applicationData = null, paymentMeta = null, options = {}) => {
+        // serverCompleted: 서버 /api/payment/complete가 이미 applications 생성·인원 반영을 마친 경우 (이중 처리 방지)
+        const serverCompleted = paymentMeta?.serverCompleted === true;
+        // silent: 결제 결과 페이지 등에서 자체 안내를 표시하는 경우 완료 alert 생략
+        const silent = options?.silent === true;
+        // 정원 초과 자동 환불: 서버가 capacity_full 응답을 보낸 경우 신청 생성 차단
+        if (paymentMeta?.pollReason === 'capacity_full') {
+            alert(formatCapacityFullRefund(seminar?.title));
+            return false;
+        }
         if (!currentUser) { alert("로그인이 필요한 서비스입니다."); return false; }
         if (mySeminars.find(s => s.id === seminar.id)) { alert("이미 신청한 세미나입니다."); return false; }
         if (seminar.status === '종료') { alert("종료된 프로그램입니다."); return false; }
-        const is정모 = (seminar.title || '').includes('정모');
-        const max = getSeminarCapacity(seminar);
-        const current = Number(seminar.currentParticipants) || 0;
-        if (!is정모 && max > 0 && current >= max) {
-            alert("정원이 마감되었습니다.");
+        if (isSeminarCapacityFull(seminar, publicApplicationsList, adminHiddenEntries, applicationsByIdForDisplay)) {
+            alert("정원이 마감되었습니다. (정원 + 10명 초과)");
             return false;
         }
         // 신청서 제출에 필요한 회원 정보 (phone/phoneNumber/verifiedPhone 통일)
@@ -2173,32 +2227,37 @@ const App = () => {
 
         /** 스프레드시트가 먼저 실패하면 return false로 끊기면 Firestore에 신청이 안 남아 관리자 집계가 0으로 보일 수 있음 → Firestore를 먼저 기록 */
         let firestoreApplicationOk = false;
-        try {
-            if (firebaseService && firebaseService.createApplication) {
-                await firebaseService.createApplication({
-                    seminarId: seminar.id,
-                    userId: authUid,
-                    userName,
-                    userEmail,
-                    userPhone,
-                    participationPath: applicationData?.participationPath || '',
-                    applyReason: applicationData?.applyReason || '',
-                    preQuestions: applicationData?.preQuestions || '',
-                    mealAfter: applicationData?.mealAfter || '',
-                    privacyAgreed: applicationData?.privacyAgreed === true,
-                    reason: [applicationData?.participationPath, applicationData?.applyReason].filter(Boolean).join(' / ') || '',
-                    questions: [applicationData?.preQuestions].filter(Boolean),
-                    appliedAt: new Date().toISOString(),
-                    ...pay
-                });
-                firestoreApplicationOk = true;
+        if (serverCompleted) {
+            // 서버가 이미 applications를 생성했으므로 클라이언트에서 재생성하지 않음 (중복·인원 이중 증가 방지)
+            firestoreApplicationOk = true;
+        } else {
+            try {
+                if (firebaseService && firebaseService.createApplication) {
+                    await firebaseService.createApplication({
+                        seminarId: seminar.id,
+                        userId: authUid,
+                        userName,
+                        userEmail,
+                        userPhone,
+                        participationPath: applicationData?.participationPath || '',
+                        applyReason: applicationData?.applyReason || '',
+                        preQuestions: applicationData?.preQuestions || '',
+                        mealAfter: applicationData?.mealAfter || '',
+                        privacyAgreed: applicationData?.privacyAgreed === true,
+                        reason: [applicationData?.participationPath, applicationData?.applyReason].filter(Boolean).join(' / ') || '',
+                        questions: [applicationData?.preQuestions].filter(Boolean),
+                        appliedAt: new Date().toISOString(),
+                        ...pay
+                    });
+                    firestoreApplicationOk = true;
+                }
+            } catch (error) {
+                console.error('Firestore 신청 저장 실패:', error);
             }
-        } catch (error) {
-            console.error('Firestore 신청 저장 실패:', error);
         }
 
         try {
-            if (!seminarUsesApplicationsParticipantCount(seminar)) {
+            if (!serverCompleted && !seminarUsesApplicationsParticipantCount(seminar)) {
                 if (firebaseService?.incrementSeminarParticipants) {
                     await firebaseService.incrementSeminarParticipants(seminar.id, 1);
                 } else if (firebaseService?.updateSeminar) {
@@ -2265,19 +2324,25 @@ const App = () => {
             checkProgramAlerts(updatedMySeminars, currentUser.id);
         }
 
-        if (firestoreApplicationOk && sheetOk) {
-            alert('신청이 완료되었습니다.');
-        } else if (!firestoreApplicationOk && sheetOk) {
-            alert('신청이 완료되었습니다.');
+        if (!silent && firestoreApplicationOk) {
+            if (paymentMeta?.merchantUid) {
+                alert(formatPaymentApplySuccess(seminar.title, { serverCompleted: !!paymentMeta?.serverCompleted }));
+            } else {
+                alert('신청이 완료되었습니다.');
+            }
         }
         /* firestoreApplicationOk && !sheetOk → 스프레드시트 실패 안내는 위에서 이미 표시 */
         return true;
     };
 
-    /** 결제 완료 처리 공통 함수. 리다이렉트 복귀 시 또는 표준 결제 성공 시 사용 */
+    /**
+     * 결제 완료 처리 공통 함수. 리다이렉트(/payment/result) 복귀 시 사용.
+     * 이 시점엔 서버 complete가 이미 applications 생성·인원 반영을 마친 상태이므로
+     * serverCompleted=true로 클라이언트 재생성을 막고, 결과 페이지가 자체 안내를 하므로 silent로 동작.
+     */
     const completePaymentSuccess = async (seminar, applicationData, { afterSuccess, merchantUid } = {}) => {
-        const paymentMeta = merchantUid ? { merchantUid } : null;
-        const ok = await handleSeminarApply(seminar, applicationData, paymentMeta);
+        const paymentMeta = { merchantUid, serverCompleted: true };
+        const ok = await handleSeminarApply(seminar, applicationData, paymentMeta, { silent: true });
         if (ok && afterSuccess) afterSuccess();
         return ok;
     };
@@ -2594,6 +2659,8 @@ END:VCALENDAR`;
                     alert('신청 기록이 삭제되었습니다. 마이페이지 목록에서 제거되었습니다.');
                 } else if (data.free) {
                     alert('신청이 취소되었습니다.');
+                } else if (data.already_cancelled) {
+                    alert(data.message || '결제는 이미 취소된 상태입니다. 신청 기록을 정리했습니다.');
                 } else {
                     const refundMsg = data.refund_message ? `\n${data.refund_message}` : '';
                     alert(`세미나 신청이 취소되었습니다. 환불은 영업일 기준 3~5일 내 처리됩니다.${refundMsg}`);
@@ -2612,8 +2679,7 @@ END:VCALENDAR`;
                 return;
             }
             if (!res.ok) {
-                const msg = data?.message || data?.error || '취소 처리에 실패했습니다.';
-                alert(msg === 'application_not_found' ? '해당 신청 내역을 찾을 수 없습니다.' : `취소 실패: ${msg}. 이메일로 문의해 주세요.`);
+                alert(formatPaymentCancelError(data, res.ok));
                 return;
             }
             alert('취소 처리에 실패했습니다. 이메일로 문의해 주세요.');
@@ -2899,7 +2965,15 @@ END:VCALENDAR`;
     const renderView = () => {
         try {
             if (location.pathname === '/payment/result') {
-                return <PaymentResultView onComplete={completePaymentSuccess} />;
+                return (
+                    <PaymentResultView
+                        onComplete={completePaymentSuccess}
+                        onGoMyPage={() => {
+                            setCurrentView('myPage');
+                            navigate('/', { replace: true });
+                        }}
+                    />
+                );
             }
             if (location.pathname === '/signup') {
                 return (

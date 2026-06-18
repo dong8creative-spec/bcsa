@@ -28,6 +28,41 @@ const db = admin.firestore();
 /** seminars 문서 필드: true면 참가 인원은 applications 건수만 쓰고 currentParticipants는 갱신하지 않음 (클라이언트와 동일 상수명) */
 const USE_APPLICATIONS_PARTICIPANT_COUNT = 'useApplicationsParticipantCount';
 
+/** 설정 정원 초과 수용 버퍼 (클라이언트 CAPACITY_EXTRA_SLOTS와 동일 값 유지) */
+const CAPACITY_EXTRA_SLOTS = 10;
+
+/**
+ * 프로그램(세미나) 하드캡: capacity + CAPACITY_EXTRA_SLOTS.
+ * capacity 미설정(0이하) → Infinity (무제한).
+ */
+function getEffectiveCapacityLimit(seminarData) {
+  const cap = Number(seminarData?.maxParticipants ?? seminarData?.capacity);
+  if (!Number.isFinite(cap) || cap <= 0) return Infinity;
+  return Math.floor(cap) + CAPACITY_EXTRA_SLOTS;
+}
+
+/**
+ * 프로그램의 현재 명단 확정 인원 수 조회 (유료: merchant_uid 보유 문서만).
+ * @param {string} seminarId
+ * @param {number} applicationFee
+ * @returns {Promise<number>}
+ */
+async function countRegisteredParticipantsForSeminar(seminarId, applicationFee) {
+  const sid = String(seminarId);
+  const fee = Number(applicationFee) || 0;
+  const snap = await db.collection('applications').where('seminarId', '==', sid).get();
+  let n = 0;
+  for (const doc of snap.docs) {
+    const d = doc.data();
+    if (fee > 0) {
+      if (d.merchant_uid || d.merchantUid || d.imp_uid || d.impUid) n += 1;
+    } else {
+      n += 1;
+    }
+  }
+  return n;
+}
+
 async function incrementSeminarParticipantsIfLegacy(seminarRef) {
   const seminarSnap = await seminarRef.get();
   if (!seminarSnap.exists) return;
@@ -256,6 +291,110 @@ const calculateRefundAmount = (paidAmount, seminarDateStr) => {
   return 0;
 };
 
+const normEmail = (v) => (v && String(v).trim().toLowerCase()) || '';
+const normPhone = (v) => (v && String(v).replace(/\D/g, '')) || '';
+
+const seminarMatchesId = (data, sid) => {
+  const s1 = data.seminarId != null ? String(data.seminarId) : '';
+  const s2 = data.programId != null ? String(data.programId) : '';
+  const s3 = data.seminar_id != null ? String(data.seminar_id) : '';
+  return s1 === sid || s2 === sid || s3 === sid;
+};
+
+const applicationOwnedByUser = (app, { authUid, userId, userEmail, userPhone }) => {
+  const uid = String(app.userId ?? app.user_id ?? '').trim();
+  if (uid && (uid === authUid || uid === userId)) return true;
+  if (userEmail && normEmail(app.userEmail || app.user_email) === userEmail) return true;
+  if (userPhone && userPhone.length >= 10) {
+    const appPhone = normPhone(app.userPhone || app.user_phone || app.userPhoneNumber);
+    if (appPhone === userPhone) return true;
+  }
+  return false;
+};
+
+/** 취소 API용 사용자 Firestore id + 프로필 조회 */
+async function resolveUserForCancel(authUid) {
+  let userId = authUid;
+  let userData = null;
+  const userDocDirect = await db.collection('users').doc(authUid).get();
+  if (userDocDirect.exists) {
+    userData = userDocDirect.data();
+  } else {
+    const byUid = await db.collection('users').where('uid', '==', authUid).limit(1).get();
+    if (!byUid.empty) {
+      userId = byUid.docs[0].id;
+      userData = byUid.docs[0].data();
+    }
+  }
+  return {
+    userId,
+    userEmail: normEmail(userData?.email || userData?.verifiedEmail),
+    userPhone: normPhone(userData?.phone || userData?.phoneNumber || userData?.verifiedPhone),
+  };
+}
+
+/** 본인 신청 문서 조회 (userId + 이메일/연락처 — 마이페이지와 동일 기준) */
+async function findApplicationsForSeminarCancel({ authUid, userId, userEmail, userPhone, seminarIdStr }) {
+  const sid = String(seminarIdStr);
+  const byCreated = (a, b) => {
+    const at = a.createdAt?.toMillis?.() ?? (a.createdAt?.seconds ?? 0) * 1000;
+    const bt = b.createdAt?.toMillis?.() ?? (b.createdAt?.seconds ?? 0) * 1000;
+    return bt - at;
+  };
+  const seenIds = new Set();
+  const collect = (docs) => docs
+    .filter((d) => {
+      if (seenIds.has(d.id)) return false;
+      if (!seminarMatchesId(d.data(), sid)) return false;
+      if (!applicationOwnedByUser(d.data(), { authUid, userId, userEmail, userPhone })) return false;
+      seenIds.add(d.id);
+      return true;
+    })
+    .map((d) => ({ id: d.id, ...d.data() }));
+
+  const appSnap1 = await db.collection('applications').where('userId', '==', userId).get();
+  const appSnap2 = userId !== authUid
+    ? await db.collection('applications').where('userId', '==', authUid).get()
+    : { docs: [] };
+  let matched = [...collect(appSnap1.docs), ...collect(appSnap2.docs)];
+
+  if (matched.length === 0 && (userEmail || userPhone)) {
+    try {
+      const bySeminar = await db.collection('applications').where('seminarId', '==', sid).get();
+      matched = collect(bySeminar.docs);
+      if (matched.length === 0) {
+        const byProgram = await db.collection('applications').where('programId', '==', sid).get();
+        matched = collect(byProgram.docs);
+      }
+    } catch (e) {
+      console.warn('[Payment Cancel] seminar-wide lookup failed', e.message);
+    }
+  }
+
+  matched.sort(byCreated);
+  return matched;
+}
+
+/** PortOne V2 결제 조회 — 실결제·취소 가능 잔액 */
+async function getPortOneV2PaymentInfo(paymentId) {
+  if (!PORTONE_V2_SECRET || !paymentId) return null;
+  try {
+    const res = await axios.get(
+      `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
+      { headers: { Authorization: `PortOne ${PORTONE_V2_SECRET}` } }
+    );
+    const p = res.data;
+    const paidTotal = Number(p.amount?.total ?? p.totalAmount ?? p.amount ?? 0) || 0;
+    const cancellable = Number(
+      p.amount?.cancellable ?? p.cancellableAmount ?? p.amount?.total ?? paidTotal
+    ) || paidTotal;
+    return { paidTotal, cancellable, status: p.status, payment: p };
+  } catch (e) {
+    console.warn('[Payment Cancel] V2 payment lookup failed', paymentId, e.response?.data?.type || e.message);
+    return null;
+  }
+};
+
 /**
  * 관리자 전용 API 미들웨어: Firebase ID 토큰 검증 + Firestore role=admin 확인
  */
@@ -352,6 +491,28 @@ async function createApplicationFromPending(paymentId, pending) {
 
   const seminarId = pending.seminar_id || pending.seminarId;
   const appData = pending.application_data || pending.applicationData || {};
+
+  // 정원 하드캡 검사: 명단 확정 인원 >= 설정정원 + 10 이면 신청 미생성
+  if (seminarId) {
+    try {
+      const seminarSnap = await db.collection('seminars').doc(String(seminarId)).get();
+      if (seminarSnap.exists) {
+        const seminarData = seminarSnap.data();
+        const limit = getEffectiveCapacityLimit(seminarData);
+        if (Number.isFinite(limit)) {
+          const fee = Number(seminarData?.applicationFee) || 0;
+          const registeredCount = await countRegisteredParticipantsForSeminar(seminarId, fee);
+          if (registeredCount >= limit) {
+            console.warn('[Payment Complete] capacity_full', seminarId, registeredCount, '>=', limit);
+            return { created: false, reason: 'capacity_full', seminarId };
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Payment Complete] capacity check failed (non-fatal), proceeding', e.message);
+    }
+  }
+
   const reason = [appData.participationPath, appData.applyReason].filter(Boolean).join(' / ') || '';
   const questions = Array.isArray(appData.preQuestions)
     ? appData.preQuestions
@@ -844,12 +1005,14 @@ app.post('/api/images/encode-webp', async (req, res) => {
 });
 
 // 결제 전 대기 저장 (리다이렉트 결제 직전 클라이언트 호출)
-app.post('/api/payment/pending', async (req, res) => {
+// requireUserAuth: 로그인 사용자만 호출 가능. user_id는 토큰의 uid로 고정(스푸핑 방지).
+app.post('/api/payment/pending', requireUserAuth, async (req, res) => {
   try {
     const body = req.body || {};
     const merchantUid = extractPaymentId(body);
     const seminarId = body.seminar_id || body.seminarId;
-    const userId = body.user_id || body.userId;
+    // 클라이언트가 보낸 user_id는 신뢰하지 않고 인증된 uid를 사용
+    const userId = req.authUid;
     if (!merchantUid || !seminarId || !userId) {
       res.status(400).json({ saved: false, error: 'merchant_uid, seminar_id, user_id required' });
       return;
@@ -895,7 +1058,12 @@ app.get('/api/payment/status', async (req, res) => {
     const appSnap = await db.collection('applications').where('merchant_uid', '==', merchantUid).limit(1).get();
     if (!appSnap.empty) {
       await db.collection('paymentWebhookEvents').doc(merchantUid).set({ completed: true }, { merge: true });
-      res.status(200).json({ completed: true });
+      const appData = appSnap.docs[0].data();
+      res.status(200).json({
+        completed: true,
+        applicationId: appSnap.docs[0].id,
+        seminarId: appData.seminarId || appData.programId || appData.seminar_id || null,
+      });
       return;
     }
 
@@ -905,11 +1073,18 @@ app.get('/api/payment/status', async (req, res) => {
     if (webhookPaid) {
       const pendingSnap = await db.collection('pendingPayments').doc(merchantUid).get();
       if (pendingSnap.exists) {
-        const { created } = await createApplicationFromPending(merchantUid, pendingSnap.data());
+        const statusCreateResult = await createApplicationFromPending(merchantUid, pendingSnap.data());
+        if (statusCreateResult.reason === 'capacity_full') {
+          console.warn('[Payment Status] capacity_full — auto refund', merchantUid);
+          await cancelPortOnePayment({ paymentId: merchantUid, reason: '정원 마감으로 인한 자동 환불', paidAmount: 0, refundAmount: 0 });
+          await db.collection('pendingPayments').doc(merchantUid).delete();
+          res.status(200).json({ completed: false, error: 'capacity_full' });
+          return;
+        }
         await db.collection('paymentWebhookEvents').doc(merchantUid).set({ completed: true }, { merge: true });
         await db.collection('pendingPayments').doc(merchantUid).delete();
-        console.log('[Payment Status] recovered application from paid webhook', merchantUid, 'created:', created);
-        res.status(200).json({ completed: true });
+        console.log('[Payment Status] recovered application from paid webhook', merchantUid, 'created:', statusCreateResult.created);
+        res.status(200).json({ completed: true, created: true });
         return;
       }
     }
@@ -918,6 +1093,108 @@ app.get('/api/payment/status', async (req, res) => {
   } catch (err) {
     console.error('[Payment Status] error', err);
     res.status(200).json({ completed: false });
+  }
+});
+
+// PC 결제 즉시 완료 처리: SDK 성공 응답 후 클라이언트가 직접 호출 (웹훅 대기 없이 즉시 처리)
+// body: { paymentId, userId }
+app.post('/api/payment/complete', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const merchantUid = String(body.paymentId || body.merchant_uid || body.merchantUid || '').trim();
+    if (!merchantUid) {
+      res.status(400).json({ ok: false, error: 'paymentId required' });
+      return;
+    }
+
+    // 토큰이 있으면 호출자 uid 확인 (없으면 통과 — 웹훅·폴링 복구 경로 비차단)
+    let callerUid = '';
+    const authHeader = (req.headers.authorization || '').toString();
+    if (authHeader.startsWith('Bearer ')) {
+      try {
+        const decoded = await admin.auth().verifyIdToken(authHeader.slice(7).trim());
+        callerUid = decoded.uid;
+      } catch (_) {}
+    }
+
+    // 이미 완료된 경우 즉시 반환
+    const existingApp = await db.collection('applications').where('merchant_uid', '==', merchantUid).limit(1).get();
+    if (!existingApp.empty) {
+      await db.collection('paymentWebhookEvents').doc(merchantUid).set({ completed: true }, { merge: true });
+      const appData = existingApp.docs[0].data();
+      res.status(200).json({
+        ok: true,
+        alreadyCompleted: true,
+        applicationId: existingApp.docs[0].id,
+        seminarId: appData.seminarId || appData.programId || appData.seminar_id || null,
+      });
+      return;
+    }
+
+    // PortOne API로 실결제 검증 (반영 지연 대비 짧은 재시도 — not_paid에 한해 1회 더)
+    let verifyResult = { verified: true, skipped: true };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        verifyResult = await verifyPortOnePayment({ isV2: true, paymentId: merchantUid });
+        if (!verifyResult.verified && verifyResult.reason !== 'amount_mismatch') {
+          // V2 미반영 가능 → V1으로 폴백 시도
+          const v1 = await verifyPortOnePayment({ isV2: false, impUid: merchantUid });
+          if (v1.verified) verifyResult = v1;
+        }
+      } catch (e) {
+        console.warn('[Payment Complete] verify error (non-fatal)', e.message);
+        verifyResult = { verified: true, skipped: true };
+        break;
+      }
+      if (verifyResult.verified || verifyResult.reason === 'amount_mismatch') break;
+      // not_paid 등 일시적 지연 → 잠시 후 재조회
+      await new Promise((r) => setTimeout(r, 600));
+    }
+
+    if (!verifyResult.verified) {
+      res.status(400).json({ ok: false, error: 'payment_not_verified', reason: verifyResult.reason });
+      return;
+    }
+
+    // pendingPayments에서 신청 생성
+    const pendingSnap = await db.collection('pendingPayments').doc(merchantUid).get();
+    if (!pendingSnap.exists) {
+      // pending 없음: 신청 생성 불가 (이미 삭제됐거나 저장 안 된 경우)
+      res.status(200).json({ ok: false, error: 'pending_not_found' });
+      return;
+    }
+
+    // 본인 결제만 완료 처리 (토큰 제공 시): pending의 소유자와 호출자 uid 대조
+    const pendingOwner = String(pendingSnap.data()?.user_id || pendingSnap.data()?.userId || '').trim();
+    if (callerUid && pendingOwner && pendingOwner !== callerUid) {
+      res.status(403).json({ ok: false, error: 'forbidden' });
+      return;
+    }
+
+    const pendingData = pendingSnap.data();
+    const createResult = await createApplicationFromPending(merchantUid, pendingData);
+    if (createResult.reason === 'capacity_full') {
+      console.warn('[Payment Complete] capacity_full — auto refund', merchantUid);
+      await db.collection('paymentWebhookEvents').doc(merchantUid).set({ capacity_full: true }, { merge: true });
+      const fee = pendingData?.application_data?.applicationFee ?? 0;
+      await cancelPortOnePayment({ paymentId: merchantUid, reason: '정원 마감으로 인한 자동 환불', paidAmount: Number(fee) || 0, refundAmount: Number(fee) || 0 });
+      await db.collection('pendingPayments').doc(merchantUid).delete();
+      res.status(200).json({ ok: false, error: 'capacity_full' });
+      return;
+    }
+    const { created, applicationId } = createResult;
+    await db.collection('paymentWebhookEvents').doc(merchantUid).set({ completed: true }, { merge: true });
+    await db.collection('pendingPayments').doc(merchantUid).delete();
+    console.log('[Payment Complete] application created', merchantUid, 'appId:', applicationId, 'created:', created);
+    res.status(200).json({
+      ok: true,
+      applicationId,
+      created,
+      seminarId: pendingData?.seminar_id || pendingData?.seminarId || null,
+    });
+  } catch (err) {
+    console.error('[Payment Complete] error', err);
+    res.status(500).json({ ok: false, error: 'server_error' });
   }
 });
 
@@ -992,7 +1269,18 @@ app.post('/api/payment/webhook', async (req, res) => {
           paymentVerified = true;
         }
 
-        const { created, applicationId } = await createApplicationFromPending(merchantUid, pendingData);
+        const createResult = await createApplicationFromPending(merchantUid, pendingData);
+        if (createResult.reason === 'capacity_full') {
+          console.warn('[Payment Webhook] capacity_full — auto refund', merchantUid);
+          await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set(
+            { capacity_full: true }, { merge: true }
+          );
+          await cancelPortOnePayment({ paymentId: merchantUid, reason: '정원 마감으로 인한 자동 환불', paidAmount: expectedAmount || 0, refundAmount: expectedAmount || 0 });
+          await db.collection('pendingPayments').doc(String(merchantUid)).delete();
+          res.status(200).json({ received: true, merchant_uid: merchantUid, warning: 'capacity_full_refunded' });
+          return;
+        }
+        const { created, applicationId } = createResult;
         await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set({ completed: true }, { merge: true });
         await db.collection('pendingPayments').doc(String(merchantUid)).delete();
         console.log('[Payment Webhook] application completed', merchantUid, 'created:', created, 'appId:', applicationId);
@@ -1119,6 +1407,97 @@ const removeMatchedApplicationsAndDecrementSeminar = async (matched, seminarIdSt
   await decrementSeminarParticipantsIfLegacy(seminarRef, matched.length);
 };
 
+/**
+ * 결제 취소(환불) 호출. 결제가 V2 SDK로 이뤄지므로 V2 API를 우선 사용하고,
+ * V2 미설정·실패 시 V1(iamport) API로 폴백한다.
+ * @returns {Promise<{ ok: boolean, via?: 'v2'|'v1', alreadyCancelled?: boolean, message?: string }>}
+ */
+const cancelPortOnePayment = async ({ paymentId, reason, paidAmount, refundAmount, cancellableAmount }) => {
+  const partial = paidAmount > 0 && refundAmount < paidAmount;
+  const cancelReason = reason || '세미나 신청 취소';
+  const safeRefund = Math.max(0, Math.min(Number(refundAmount) || 0, Number(cancellableAmount ?? refundAmount ?? paidAmount) || 0));
+
+  // 1) V2 우선 (POST https://api.portone.io/payments/{paymentId}/cancel)
+  if (PORTONE_V2_SECRET) {
+    try {
+      const v2Body = { reason: cancelReason };
+      if (partial && safeRefund > 0) {
+        v2Body.amount = safeRefund;
+        const cancellable = Number(cancellableAmount ?? paidAmount);
+        if (cancellable > 0) v2Body.currentCancellableAmount = cancellable;
+      }
+      await axios.post(
+        `https://api.portone.io/payments/${encodeURIComponent(paymentId)}/cancel`,
+        v2Body,
+        { headers: { Authorization: `PortOne ${PORTONE_V2_SECRET}`, 'Content-Type': 'application/json' } }
+      );
+      return { ok: true, via: 'v2', refundAmount: partial ? safeRefund : paidAmount };
+    } catch (e) {
+      const d = e.response?.data;
+      const code = String(d?.type || d?.code || '');
+      const msg = String(d?.message || e.message || '');
+      // 이미 취소된 결제는 성공으로 간주 (사용자 입장에선 환불 완료)
+      if (/ALREADY_CANCELLED|ALREADY_PAID_CANCELLED|CANCELLED|PaymentAlreadyCancelled/i.test(`${code} ${msg}`)) {
+        return { ok: true, via: 'v2', alreadyCancelled: true };
+      }
+      if (e.response?.status === 401 || /UNAUTHORIZED|INVALID_API_SECRET/i.test(code)) {
+        return { ok: false, message: 'PortOne V2 API 키가 올바르지 않습니다. 관리자에게 문의해 주세요.' };
+      }
+      console.warn('[Payment Cancel] V2 cancel failed, fallback to V1', truncateLog(d || e.message));
+      // V1 폴백으로 계속 진행
+    }
+  }
+
+  // 2) V1 폴백 (api.iamport.kr) — 레거시 결제 또는 V2 미설정/실패 대비
+  const apiKey = process.env.PORTONE_API_KEY;
+  const apiSecret = process.env.PORTONE_API_SECRET;
+  if (!apiKey || !apiSecret) {
+    return {
+      ok: false,
+      message: PORTONE_V2_SECRET
+        ? 'V2 취소 실패, V1 키 미설정 (Cloud Run에 PORTONE_V2_SECRET 확인 필요)'
+        : 'payment_config_missing',
+      configMissing: !PORTONE_V2_SECRET,
+    };
+  }
+  try {
+    const tokenRes = await axios.post('https://api.iamport.kr/users/getToken',
+      { imp_key: apiKey, imp_secret: apiSecret },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+    const accessToken = tokenRes.data?.response?.access_token;
+    if (!accessToken) {
+      console.error('[Payment Cancel] getToken failed', truncateLog(tokenRes.data));
+      return { ok: false, message: 'token_failed' };
+    }
+    const cancelPayload = { merchant_uid: paymentId, reason: cancelReason };
+    if (partial && safeRefund > 0) {
+      cancelPayload.amount = safeRefund;
+      cancelPayload.checksum = Number(cancellableAmount ?? paidAmount);
+    }
+    const cancelRes = await axios.post('https://api.iamport.kr/payments/cancel', cancelPayload, {
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }
+    });
+    const cancelBody = cancelRes.data;
+    if (cancelBody?.code !== 0) {
+      const v1Msg = String(cancelBody?.message || '');
+      if (/already|취소|cancel/i.test(v1Msg)) {
+        return { ok: true, via: 'v1', alreadyCancelled: true };
+      }
+      console.warn('[Payment Cancel] V1 cancel failed', truncateLog(cancelBody));
+      return { ok: false, message: cancelBody?.message || '결제 취소 실패' };
+    }
+    return { ok: true, via: 'v1', refundAmount: partial ? safeRefund : paidAmount };
+  } catch (e) {
+    const d = e.response?.data;
+    // 이미 취소·미존재 결제: 신청 기록만 삭제하도록 안내
+    if (e.response?.status === 404 || d?.code === -1) {
+      return { ok: false, message: d?.message || e.message, notFound: true };
+    }
+    return { ok: false, message: d?.message || e.message || '결제 취소 실패' };
+  }
+};
+
 // 결제 취소(환불) API: 유료는 PortOne 취소 후 삭제. 무료·withdraw_only는 DB만 정리.
 // body.withdraw_only === true 이면 PG 호출 없이 본인 신청 문서만 삭제 (이미 PG에서 취소한 경우 등)
 app.post('/api/payment/cancel', requireUserAuth, async (req, res) => {
@@ -1126,16 +1505,8 @@ app.post('/api/payment/cancel', requireUserAuth, async (req, res) => {
     const body = req.body || {};
     const seminarId = body.seminar_id || body.seminarId;
     const withdrawOnly = body.withdraw_only === true || body.withdrawOnly === true;
-
-    // 인증된 uid로 userId 고정 (클라이언트 전달값 무시하여 타인 신청 취소 방지)
     const authUid = req.authUid;
-    // Firestore users 컬렉션에서 authUid에 해당하는 문서 id 조회 (userId 필드 통일)
-    let userId = authUid;
-    const userDocDirect = await db.collection('users').doc(authUid).get();
-    if (!userDocDirect.exists) {
-      const byUid = await db.collection('users').where('uid', '==', authUid).limit(1).get();
-      if (!byUid.empty) userId = byUid.docs[0].id;
-    }
+    const { userId, userEmail, userPhone } = await resolveUserForCancel(authUid);
 
     if (!seminarId) {
       res.status(400).json({ cancelled: false, error: 'seminar_id required' });
@@ -1143,31 +1514,14 @@ app.post('/api/payment/cancel', requireUserAuth, async (req, res) => {
     }
 
     const sid = String(seminarId);
-    // userId(doc id) 또는 authUid 둘 다 검색
-    const appSnap1 = await db.collection('applications').where('userId', '==', userId).get();
-    const appSnap2 = userId !== authUid
-      ? await db.collection('applications').where('userId', '==', authUid).get()
-      : { docs: [] };
-    const seminarMatches = (data) => {
-      const s1 = data.seminarId != null ? String(data.seminarId) : '';
-      const s2 = data.programId != null ? String(data.programId) : '';
-      const s3 = data.seminar_id != null ? String(data.seminar_id) : '';
-      return s1 === sid || s2 === sid || s3 === sid;
-    };
-    const seenIds = new Set();
-    const matched = [...appSnap1.docs, ...appSnap2.docs]
-      .filter((d) => {
-        if (seenIds.has(d.id)) return false;
-        seenIds.add(d.id);
-        return seminarMatches(d.data());
-      })
-      .map((d) => ({ id: d.id, ...d.data() }));
-    const byCreated = (a, b) => {
-      const at = a.createdAt?.toMillis?.() ?? (a.createdAt?.seconds ?? 0) * 1000;
-      const bt = b.createdAt?.toMillis?.() ?? (b.createdAt?.seconds ?? 0) * 1000;
-      return bt - at;
-    };
-    matched.sort(byCreated);
+    const matched = await findApplicationsForSeminarCancel({
+      authUid,
+      userId,
+      userEmail,
+      userPhone,
+      seminarIdStr: sid,
+    });
+
     if (matched.length === 0) {
       res.status(404).json({ cancelled: false, error: 'application_not_found' });
       return;
@@ -1190,19 +1544,38 @@ app.post('/api/payment/cancel', requireUserAuth, async (req, res) => {
       return;
     }
 
-    const apiKey = process.env.PORTONE_API_KEY;
-    const apiSecret = process.env.PORTONE_API_SECRET;
-    if (!apiKey || !apiSecret) {
-      console.error('[Payment Cancel] PORTONE_API_KEY or PORTONE_API_SECRET not set');
-      res.status(500).json({ cancelled: false, error: 'payment_config_missing' });
+    const hasV2 = !!PORTONE_V2_SECRET;
+    const hasV1 = !!(process.env.PORTONE_API_KEY && process.env.PORTONE_API_SECRET);
+    if (!hasV2 && !hasV1) {
+      console.error('[Payment Cancel] No PortOne credentials (V2/V1) set');
+      res.status(503).json({
+        cancelled: false,
+        error: 'payment_config_missing',
+        message: '결제 취소(환불) API 키가 서버에 설정되지 않았습니다. 관리자에게 문의해 주세요.',
+        allow_withdraw_only: true,
+      });
       return;
     }
 
-    // 환불 금액: 세미나 날짜 기준 소비자분쟁해결기준 적용
     const seminarSnap = await db.collection('seminars').doc(sid).get();
     const seminarDate = seminarSnap.exists ? seminarSnap.data()?.date : null;
-    const paidAmount = seminarSnap.exists ? Number(seminarSnap.data()?.applicationFee) || 0 : 0;
+    let paidAmount = seminarSnap.exists ? Number(seminarSnap.data()?.applicationFee) || 0 : 0;
+
+    const payInfo = await getPortOneV2PaymentInfo(merchantUid);
+    if (payInfo?.paidTotal > 0) paidAmount = payInfo.paidTotal;
+    if (payInfo?.status && /CANCEL/i.test(String(payInfo.status))) {
+      await removeMatchedApplicationsAndDecrementSeminar(matched, sid);
+      res.status(200).json({
+        cancelled: true,
+        merchant_uid: merchantUid,
+        already_cancelled: true,
+        message: '결제는 이미 취소된 상태입니다. 신청 기록을 정리했습니다.',
+      });
+      return;
+    }
+
     const refundAmount = calculateRefundAmount(paidAmount, seminarDate);
+    const cancellableAmount = payInfo?.cancellable ?? paidAmount;
 
     if (refundAmount <= 0 && paidAmount > 0) {
       res.status(400).json({
@@ -1213,57 +1586,38 @@ app.post('/api/payment/cancel', requireUserAuth, async (req, res) => {
       return;
     }
 
-    const tokenRes = await axios({
-      url: 'https://api.iamport.kr/users/getToken',
-      method: 'post',
-      headers: { 'Content-Type': 'application/json' },
-      data: { imp_key: apiKey, imp_secret: apiSecret }
+    const cancelResult = await cancelPortOnePayment({
+      paymentId: merchantUid,
+      reason: body.reason,
+      paidAmount,
+      refundAmount,
+      cancellableAmount,
     });
-    const tokenData = tokenRes.data;
-    const accessToken = tokenData?.response?.access_token;
-    if (!accessToken) {
-      console.error('[Payment Cancel] getToken failed', truncateLog(tokenData));
-      res.status(500).json({ cancelled: false, error: 'token_failed' });
-      return;
-    }
-
-    const cancelPayload = {
-      merchant_uid: merchantUid,
-      reason: body.reason || '세미나 신청 취소'
-    };
-    // 부분 환불: 위약금 공제된 금액만 환불
-    if (paidAmount > 0 && refundAmount < paidAmount) {
-      cancelPayload.amount = refundAmount;
-      cancelPayload.checksum = paidAmount;
-    }
-
-    const cancelRes = await axios({
-      url: 'https://api.iamport.kr/payments/cancel',
-      method: 'post',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`
-      },
-      data: cancelPayload
-    });
-    const cancelBody = cancelRes.data;
-    if (cancelBody?.code !== 0) {
-      console.warn('[Payment Cancel] PortOne cancel failed', truncateLog(cancelBody));
-      res.status(400).json({
+    if (!cancelResult.ok) {
+      console.warn('[Payment Cancel] cancel failed', merchantUid, cancelResult.message);
+      const status = cancelResult.configMissing ? 503 : (cancelResult.notFound ? 404 : 400);
+      res.status(status).json({
         cancelled: false,
-        error: 'cancel_failed',
-        message: cancelBody?.message || '결제 취소 실패',
-        allow_withdraw_only: true
+        error: cancelResult.configMissing ? 'payment_config_missing' : (cancelResult.notFound ? 'payment_not_found' : 'cancel_failed'),
+        message: cancelResult.message || '결제 취소 실패',
+        allow_withdraw_only: true,
       });
       return;
     }
 
     await removeMatchedApplicationsAndDecrementSeminar(matched, sid);
-    const refundMessage = paidAmount > 0 && refundAmount < paidAmount
-      ? `환불 금액: ${refundAmount.toLocaleString()}원 (위약금 ${paidAmount - refundAmount}원 공제)`
+    const actualRefund = cancelResult.refundAmount ?? refundAmount;
+    const refundMessage = paidAmount > 0 && actualRefund < paidAmount
+      ? `환불 금액: ${actualRefund.toLocaleString()}원 (위약금 ${paidAmount - actualRefund}원 공제)`
       : undefined;
     console.log('[Payment Cancel] applications cancelled', matched.map((m) => m.id).join(','), merchantUid, refundMessage || '');
-    res.status(200).json({ cancelled: true, merchant_uid: merchantUid, refund_amount: refundAmount, refund_message: refundMessage });
+    res.status(200).json({
+      cancelled: true,
+      merchant_uid: merchantUid,
+      refund_amount: actualRefund,
+      refund_message: refundMessage,
+      already_cancelled: cancelResult.alreadyCancelled === true,
+    });
   } catch (err) {
     console.error('[Payment Cancel] error', err);
     const status = err.response?.status;
@@ -1273,11 +1627,11 @@ app.post('/api/payment/cancel', requireUserAuth, async (req, res) => {
         cancelled: false,
         error: 'payment_not_found',
         message: data?.message || err.message,
-        allow_withdraw_only: true
+        allow_withdraw_only: true,
       });
       return;
     }
-    res.status(500).json({ cancelled: false, error: 'server_error', message: err.message });
+    res.status(500).json({ cancelled: false, error: 'server_error', message: err.message, allow_withdraw_only: true });
   }
 });
 

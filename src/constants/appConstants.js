@@ -40,3 +40,9 @@ export const MEMBERS_ONLY_MENUS = ['부청사 회원', '커뮤니티'];
  * 미설정·false인 기존 프로그램은 기존처럼 `currentParticipants` 필드를 쓴다.
  */
 export const SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD = 'useApplicationsParticipantCount';
+
+/**
+ * 설정 정원을 초과해도 추가로 수용할 수 있는 최대 인원 수.
+ * 실제 차단 기준: capacity + CAPACITY_EXTRA_SLOTS
+ */
+export const CAPACITY_EXTRA_SLOTS = 10;

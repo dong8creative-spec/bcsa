@@ -78,6 +78,7 @@ export const getDisplayedParticipantCurrent = (seminar) => {
 
 /**
  * 신청 인원 UI용: 정원이 없으면 "N명"만, 있으면 current / max.
+ * current는 정원을 넘어도 실제 값 그대로 표시 (예: 35/30).
  * @returns {{ mode: 'noCapacity'|'normal', current: number, max?: number }}
  */
 export const getParticipantCountDisplay = (seminar) => {
