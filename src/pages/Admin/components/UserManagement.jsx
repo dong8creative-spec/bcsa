@@ -41,14 +41,12 @@ const GRADE_STYLES = {
 /**
  * 회원 관리 컴포넌트
  * @param {Object} props
- * @param {Function} [props.onNavigateToMemberDetail] - 회원정보 상세 탭으로 이동 콜백
  * @param {Object} [props.currentUser] - Firebase 로그인 사용자 (쓰기 시 필수)
  */
-export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
+export const UserManagement = ({ currentUser }) => {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState('all');
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [memberModalUser, setMemberModalUser] = useState(null);
   const [bulkGradeValue, setBulkGradeValue] = useState('');
@@ -58,6 +56,7 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
   const [memberEditForm, setMemberEditForm] = useState(() => getInitialMemberEditForm(null));
   const [savingMember, setSavingMember] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [filterMemberGrade, setFilterMemberGrade] = useState('');
 
   const loadUsers = async () => {
     try {
@@ -126,7 +125,7 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
   /** 회원등급 지정 시 승인 처리 + 역할 지정(마스터/운영진=관리자, 그 외=일반 회원) */
   const handleGradeChange = async (userId, value) => {
     if (!currentUser) {
-      alert('회원 등급 변경을 하려면 먼저 로그인해 주세요. 메인 페이지에서 로그인한 뒤 관리자 페이지로 다시 들어와 주세요.');
+      alert('메인 페이지에서 로그인한 뒤 다시 시도해 주세요.');
       return;
     }
     const id = String(userId ?? '').trim();
@@ -150,23 +149,6 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
     }
   };
 
-  const handleRoleChange = async (userId, newRole) => {
-    if (!currentUser) {
-      alert('권한 변경을 하려면 먼저 로그인해 주세요. 메인 페이지에서 로그인한 뒤 관리자 페이지로 다시 들어와 주세요.');
-      return;
-    }
-    if (!confirm(`이 회원을 ${newRole === 'admin' ? '관리자' : '일반 회원'}으로 변경하시겠습니까?`)) return;
-
-    try {
-      await firebaseService.updateUser(userId, { role: newRole });
-      alert('권한이 변경되었습니다.');
-      if (!firebaseService.subscribeUsers) loadUsers();
-    } catch (error) {
-      console.error('권한 변경 오류:', error);
-      alert('권한 변경에 실패했습니다.');
-    }
-  };
-
   const openMemberEdit = () => {
     setMemberEditForm(getInitialMemberEditForm(memberModalUser));
     setMemberModalEditing(true);
@@ -175,7 +157,7 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
   const handleMemberEditSave = async () => {
     if (!memberModalUser) return;
     if (!currentUser) {
-      alert('회원 정보 수정을 하려면 먼저 로그인해 주세요. 메인 페이지에서 로그인한 뒤 관리자 페이지로 다시 들어와 주세요.');
+      alert('메인 페이지에서 로그인한 뒤 다시 시도해 주세요.');
       return;
     }
     const userId = memberModalUser.id || memberModalUser.uid;
@@ -183,11 +165,14 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
     const payload = {};
     const correctedFields = [];
     const str = (v) => String(v ?? '').trim();
-    const arr = (v) => (Array.isArray(v) ? v : (v ? [v] : []));
 
-    if (str(memberEditForm.memberGrade) !== str(u.memberGrade)) { payload.memberGrade = memberEditForm.memberGrade || ''; correctedFields.push('memberGrade'); }
-    if (str(memberEditForm.approvalStatus) !== str(u.approvalStatus)) { payload.approvalStatus = memberEditForm.approvalStatus || 'pending'; correctedFields.push('approvalStatus'); }
-    if (str(memberEditForm.role) !== str(u.role)) { payload.role = memberEditForm.role || 'user'; correctedFields.push('role'); }
+    if (str(memberEditForm.memberGrade) !== str(u.memberGrade)) {
+      const grade = memberEditForm.memberGrade || '';
+      payload.memberGrade = grade;
+      payload.approvalStatus = 'approved';
+      payload.role = grade === '마스터' || grade === '운영진' ? 'admin' : 'user';
+      correctedFields.push('memberGrade');
+    }
     if (str(memberEditForm.company) !== str(u.company)) { payload.company = memberEditForm.company; correctedFields.push('company'); }
     if (str(memberEditForm.companyPhone) !== str(u.companyPhone)) { payload.companyPhone = memberEditForm.companyPhone; correctedFields.push('companyPhone'); }
     if (str(memberEditForm.companyWebsite) !== str(u.companyWebsite)) { payload.companyWebsite = memberEditForm.companyWebsite; correctedFields.push('companyWebsite'); }
@@ -252,7 +237,7 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
 
   const handleBulkGradeChange = async () => {
     if (!currentUser) {
-      alert('일괄 등급 변경을 하려면 먼저 로그인해 주세요. 메인 페이지에서 로그인한 뒤 관리자 페이지로 다시 들어와 주세요.');
+      alert('메인 페이지에서 로그인한 뒤 다시 시도해 주세요.');
       return;
     }
     if (selectedIds.size === 0) {
@@ -272,7 +257,7 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
       if (memberModalUser && (selectedIds.has(memberModalUser.id) || selectedIds.has(memberModalUser.uid))) {
         setMemberModalUser(prev => prev ? { ...prev, ...payload } : null);
       }
-      alert(`${selectedIds.size}명 회원 등급·승인·역할이 적용되었습니다.`);
+      alert(`${selectedIds.size}명 회원 등급이 적용되었습니다.`);
       setSelectedIds(new Set());
       setBulkGradeValue('');
       if (!firebaseService.subscribeUsers) loadUsers();
@@ -284,7 +269,7 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
 
   const handleBulkWithdraw = async () => {
     if (!currentUser) {
-      alert('일괄 탈퇴 처리를 하려면 먼저 로그인해 주세요. 메인 페이지에서 로그인한 뒤 관리자 페이지로 다시 들어와 주세요.');
+      alert('메인 페이지에서 로그인한 뒤 다시 시도해 주세요.');
       return;
     }
     if (selectedIds.size === 0) {
@@ -330,8 +315,8 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
     const matchesSearch = !searchTerm ||
       user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = filterRole === 'all' || user.role === filterRole;
-    return matchesSearch && matchesRole;
+    const matchesGrade = !filterMemberGrade || gradeBucketForStats(user.memberGrade) === filterMemberGrade;
+    return matchesSearch && matchesGrade;
   });
 
   const sortedUsers = React.useMemo(() => {
@@ -381,7 +366,7 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterRole, sortKey, sortOrder]);
+  }, [searchTerm, filterMemberGrade, sortKey, sortOrder]);
 
   const handleSort = (key) => {
     if (sortKey === key) {
@@ -411,16 +396,6 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
           회원 관리
         </h2>
         <div className="flex items-center gap-2">
-          {typeof onNavigateToMemberDetail === 'function' && (
-            <button
-              type="button"
-              onClick={onNavigateToMemberDetail}
-              className="px-4 py-2 bg-white border-2 border-brand text-brand rounded-xl font-bold hover:bg-brand/5 transition-colors flex items-center gap-2"
-            >
-              <Icons.FileSearch size={18} />
-              회원정보 상세
-            </button>
-          )}
           <button
             onClick={loadUsers}
             className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
@@ -432,45 +407,45 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
       </div>
 
       {/* 필터 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">검색</label>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="이름 또는 이메일 검색"
-            className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">권한 필터</label>
-          <select
-            value={filterRole}
-            onChange={(e) => setFilterRole(e.target.value)}
-            className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
-          >
-            <option value="all">전체</option>
-            <option value="user">일반 회원</option>
-            <option value="admin">관리자</option>
-          </select>
-        </div>
+      <div className="mb-6">
+        <label className="block text-sm font-bold text-gray-700 mb-2">검색</label>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="이름 또는 이메일 검색"
+          className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+        />
       </div>
 
-      {/* 등급별 인원 수 (memberGrade 기준) — 한 줄, 컬러별 구분, 컴팩트 */}
+      {/* 등급별 필터 · 인원 수 (memberGrade 기준) */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <span className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 bg-blue-50 border-blue-200">
+        <button
+          type="button"
+          onClick={() => setFilterMemberGrade('')}
+          className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-colors ${
+            !filterMemberGrade
+              ? 'bg-blue-100 border-blue-400 ring-2 ring-blue-300'
+              : 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+          }`}
+        >
           <span className="text-xs font-bold text-blue-700">전체</span>
           <span className="text-sm font-bold text-dark">{users.length}</span>
-        </span>
+        </button>
         {MEMBER_GRADE_OPTIONS.filter((o) => o.value).map((opt) => (
-          <span
+          <button
+            type="button"
             key={opt.value}
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 ${GRADE_STYLES[opt.value] ?? GRADE_STYLES['']}`}
+            onClick={() => setFilterMemberGrade(opt.value)}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-colors ${
+              GRADE_STYLES[opt.value] ?? GRADE_STYLES['']
+            } ${
+              filterMemberGrade === opt.value ? 'ring-2 ring-brand ring-offset-1' : 'hover:opacity-90'
+            }`}
           >
             <span className="text-xs font-bold">{opt.label}</span>
             <span className="text-sm font-bold text-dark">{gradeCounts[opt.value] ?? 0}</span>
-          </span>
+          </button>
         ))}
       </div>
 
@@ -654,7 +629,7 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
         <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => { setMemberModalEditing(false); setMemberModalUser(null); }}>
           <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-blue-100 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-dark">{memberModalEditing ? '회원 정보 수정 (민감정보 제외)' : '회원 정보'}</h3>
+              <h3 className="text-xl font-bold text-dark">{memberModalEditing ? '회원 정보 수정' : '회원 정보'}</h3>
               <button type="button" onClick={() => { setMemberModalEditing(false); setMemberModalUser(null); }} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg">×</button>
             </div>
             <div className="p-5 overflow-y-auto space-y-4 text-sm">
@@ -665,18 +640,11 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
                   <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회원명</span><span className="text-dark">{memberModalUser.name || '-'}</span></div>
                   <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">이메일</span><span className="text-dark">{memberModalUser.email || '-'}</span></div>
                   <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">연락처</span><span className="text-dark">{memberModalUser.phone || memberModalUser.phoneNumber || '-'}</span></div>
-                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">연락처 공개</span><span className="text-dark">{memberModalUser.phonePublic ? '공개' : '비공개'}</span></div>
                   <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">생년월일</span><span className="text-dark">{memberModalUser.birthdate || '-'}</span></div>
                   <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">성별</span><span className="text-dark">{memberModalUser.gender === 'M' ? '남성' : memberModalUser.gender === 'F' ? '여성' : (memberModalUser.gender || '-')}</span></div>
                   <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">주소</span><span className="text-dark">{[memberModalUser.roadAddress, memberModalUser.detailAddress].filter(Boolean).join(' ') || memberModalUser.address || memberModalUser.region || '-'}</span></div>
                   {memberModalUser.zipCode && <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">우편번호</span><span className="text-dark">{memberModalUser.zipCode}</span></div>}
                   <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">가입일자</span><span className="text-dark">{memberModalUser.createdAt?.toDate?.().toLocaleString('ko-KR') ?? (typeof memberModalUser.createdAt === 'string' ? new Date(memberModalUser.createdAt).toLocaleString('ko-KR') : memberModalUser.createdAt) ?? '-'}</span></div>
-                  {memberModalUser.isIdentityVerified && (
-                    <>
-                      <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">본인인증 이름</span><span className="text-dark">{memberModalUser.verifiedName || '-'}</span></div>
-                      <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">본인인증 전화</span><span className="text-dark">{memberModalUser.verifiedPhone || '-'}</span></div>
-                    </>
-                  )}
                   {(memberModalUser.businessRegistrationNumber || memberModalUser.company) && (
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">사업자등록번호</span><span className="text-dark">{memberModalUser.businessRegistrationNumber || '-'}</span></div>
                   )}
@@ -691,21 +659,6 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
                       <span className="w-32 font-bold text-gray-600 shrink-0">회원등급</span>
                       <select value={memberEditForm.memberGrade ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, memberGrade: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none bg-white">
                         {MEMBER_GRADE_OPTIONS.map(opt => <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>)}
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-32 font-bold text-gray-600 shrink-0">승인 여부</span>
-                      <select value={memberEditForm.approvalStatus ?? 'pending'} onChange={e => setMemberEditForm(f => ({ ...f, approvalStatus: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none bg-white">
-                        <option value="pending">대기</option>
-                        <option value="approved">승인</option>
-                        <option value="rejected">거절</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-32 font-bold text-gray-600 shrink-0">권한</span>
-                      <select value={memberEditForm.role ?? 'user'} onChange={e => setMemberEditForm(f => ({ ...f, role: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none bg-white">
-                        <option value="user">일반 회원</option>
-                        <option value="admin">관리자</option>
                       </select>
                     </div>
                     <div className="flex items-center gap-2">
@@ -746,8 +699,6 @@ export const UserManagement = ({ onNavigateToMemberDetail, currentUser }) => {
                   <h4 className="font-bold text-gray-700 mb-3">수정 가능 항목 (현재 값)</h4>
                   <div className="grid grid-cols-1 gap-2">
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회원등급</span><span className="text-dark">{memberModalUser.memberGrade || '-'}</span></div>
-                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">승인 여부</span><span className="text-dark">{memberModalUser.approvalStatus === 'approved' ? '승인' : memberModalUser.approvalStatus === 'rejected' ? '거절' : '대기'}</span></div>
-                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">권한</span><span className="text-dark">{memberModalUser.role === 'admin' ? '관리자' : '일반 회원'}</span></div>
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사명</span><span className="text-dark">{memberModalUser.company || '-'}</span></div>
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사 전화</span><span className="text-dark">{memberModalUser.companyPhone || '-'}</span></div>
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사 사이트</span><span className="text-dark">{memberModalUser.companyWebsite ? <a href={memberModalUser.companyWebsite.startsWith('http') ? memberModalUser.companyWebsite : `https://${memberModalUser.companyWebsite}`} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">{memberModalUser.companyWebsite}</a> : '-'}</span></div>

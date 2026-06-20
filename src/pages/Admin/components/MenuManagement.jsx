@@ -10,7 +10,7 @@ import { Icons } from '../../../components/Icons';
 /**
  * 드래그 가능한 메뉴 아이템 컴포넌트
  */
-const SortableMenuItem = ({ id, menu, enabled, name, onToggle, onNameChange }) => {
+const SortableMenuItem = ({ id, enabled, name, onToggle, onNameChange }) => {
   const {
     attributes,
     listeners,
@@ -51,13 +51,6 @@ const SortableMenuItem = ({ id, menu, enabled, name, onToggle, onNameChange }) =
             onChange={onToggle}
             className="w-5 h-5 text-brand focus:ring-brand border-blue-300 rounded cursor-pointer"
           />
-        </div>
-
-        {/* 메뉴 키 (변경 불가) */}
-        <div className="flex-1 min-w-[120px]">
-          <span className="text-sm font-bold text-gray-500 px-3 py-1 bg-gray-100 rounded-lg">
-            {id}
-          </span>
         </div>
 
         {/* 명칭 수정 */}
@@ -227,18 +220,6 @@ export const MenuManagement = () => {
     }
   };
 
-  const handleReset = () => {
-    if (!confirm('메뉴 설정을 기본값으로 초기화하시겠습니까?')) return;
-
-    setMenuOrder(defaultMenuOrder);
-    const defaultEnabled = {};
-    defaultMenuOrder.forEach(menu => {
-      defaultEnabled[menu] = true;
-    });
-    setMenuEnabled(defaultEnabled);
-    setMenuNames({ ...defaultMenuNames });
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -263,13 +244,6 @@ export const MenuManagement = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handleReset}
-            className="px-4 py-2 border-2 border-blue-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors flex items-center gap-2"
-          >
-            <Icons.RotateCcw size={18} />
-            초기화
-          </button>
           <button
             onClick={handleSave}
             disabled={isSaving}
@@ -312,7 +286,6 @@ export const MenuManagement = () => {
               <SortableMenuItem
                 key={menuKey}
                 id={menuKey}
-                menu={menuKey}
                 enabled={menuEnabled[menuKey] !== false}
                 name={menuNames[menuKey] || menuKey}
                 onToggle={() => handleToggle(menuKey)}

@@ -69,7 +69,11 @@ import {
     readProgramPopupCache,
     writeProgramPopupCache,
     preloadPopupImages,
+    isProgramPopupDismissedThisSession,
+    markProgramPopupDismissedThisSession,
+    clearProgramPopupSessionDismissed,
 } from './utils/programPopupCache';
+import { applyProgramRecruitmentState, getProgramRecruitmentState } from './utils/programRecruitmentSettings';
 import { LoginModal } from './components/LoginModal';
 import KakaoLinkPromptModal from './components/KakaoLinkPromptModal';
 import { MobileMenu } from './components/MobileMenu';
@@ -176,6 +180,7 @@ const App = () => {
             return defaultContent;
         }
     });
+    const programRecruitmentState = useMemo(() => getProgramRecruitmentState(content), [content]);
     const [membersData, setMembersData] = useState([]);
     const [seminarsData, setSeminarsData] = useState([]);
     const [communityPosts, setCommunityPosts] = useState([]);
@@ -685,6 +690,10 @@ const App = () => {
         } catch (error) {
         }
 
+        if (isProgramPopupDismissedThisSession()) {
+            return;
+        }
+
         if (location.pathname === '/program-popup') {
             return;
         }
@@ -711,7 +720,8 @@ const App = () => {
         writeProgramPopupCache(toShow);
 
         if (alreadyOpened) {
-            setPopupPrograms(toShow);
+            // 닫은 뒤 seminarsData 갱신으로 재오픈되지 않도록, 표시 중일 때만 목록 동기화
+            setPopupPrograms((prev) => (prev.length > 0 ? toShow : prev));
             return;
         }
 
@@ -1009,7 +1019,7 @@ const App = () => {
                 }
             }
             
-            return {
+            return applyProgramRecruitmentState({
                 ...seminar,
                 images: images,
                 // 호환성을 위해 img 필드도 유지 (첫 번째 이미지)
@@ -1017,7 +1027,7 @@ const App = () => {
                 date: seminar.date || '',
                 // 관리자가 모집 중단한 경우 '종료', 아니면 날짜 기준 재계산
                 status: seminar.recruitmentClosedByAdmin ? '종료' : calculateStatus(seminar.date || '')
-            };
+            }, programRecruitmentState);
         };
         
         // 강의일자(날짜) 기준 최신순 정렬 (맨 앞 = 가장 최신 강의)
@@ -1055,7 +1065,7 @@ const App = () => {
                 })();
             }
         }
-    }, []);
+    }, [programRecruitmentState]);
 
     useEffect(() => {
         if (!firebaseService?.subscribeExternalEventPosters) return;
@@ -1266,9 +1276,6 @@ const App = () => {
 
     useEffect(() => {
         const handleScroll = () => {
-            if (import.meta.env.DEV) {
-                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleScroll',message:'window scroll',data:{scrollY:window.scrollY},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-            }
             setScrolled(window.scrollY > 20);
         };
         window.addEventListener('scroll', handleScroll);
@@ -2127,6 +2134,11 @@ const App = () => {
             if (onFail) onFail();
             return;
         }
+        if (seminar?.recruitmentClosedByGlobalSetting) {
+            alert(`현재 전체 프로그램 모집이 ${seminar.recruitmentClosedLabel || '중단'} 상태입니다.`);
+            if (onFail) onFail();
+            return;
+        }
         if (isSeminarCapacityFull(seminar, publicApplicationsList, adminHiddenEntries, applicationsByIdForDisplay)) {
             alert('정원이 마감되었습니다. (정원 + 10명 초과)');
             if (onFail) onFail();
@@ -2176,6 +2188,10 @@ const App = () => {
         }
         if (!currentUser) { alert("로그인이 필요한 서비스입니다."); return false; }
         if (mySeminars.find(s => s.id === seminar.id)) { alert("이미 신청한 세미나입니다."); return false; }
+        if (seminar.recruitmentClosedByGlobalSetting) {
+            alert(`현재 전체 프로그램 모집이 ${seminar.recruitmentClosedLabel || '중단'} 상태입니다.`);
+            return false;
+        }
         if (seminar.status === '종료') { alert("종료된 프로그램입니다."); return false; }
         if (isSeminarCapacityFull(seminar, publicApplicationsList, adminHiddenEntries, applicationsByIdForDisplay)) {
             alert("정원이 마감되었습니다. (정원 + 10명 초과)");
@@ -2373,15 +2389,17 @@ const App = () => {
         setCurrentView('community');
     };
 
-    // 팝업 닫기 (재진입 시 다시 뜨도록 영구 저장하지 않음)
+    // 팝업 닫기 — 이번 탭 세션 동안은 다시 표시하지 않음 (탭/브라우저 닫으면 초기화)
     const closePopupAndMarkAsShown = () => {
         setPopupPrograms([]);
-        popupShownRef.current = false;
+        popupShownRef.current = true;
+        markProgramPopupDismissedThisSession();
     };
 
     // 24시간 동안 팝업 보이지 않게 하고 닫기
     const closePopupAndHide24h = () => {
         setPopupPrograms([]);
+        markProgramPopupDismissedThisSession();
         try {
             localStorage.setItem('busan_ycc_popup_hide_until', String(Date.now() + 24 * 60 * 60 * 1000));
         } catch (e) {
@@ -2393,8 +2411,10 @@ const App = () => {
             try {
                 localStorage.removeItem('busan_ycc_popup_shown');
                 localStorage.removeItem('busan_ycc_popup_hide_until');
+                clearProgramPopupSessionDismissed();
+                popupShownRef.current = false;
                 if (import.meta.env.MODE === 'development') {
-                    console.log('[개발] 프로그램 팝업 표시/24시간 숨김 초기화됨. 새로고침 후 홈에서 다시 뜹니다.');
+                    console.log('[개발] 프로그램 팝업 표시/24시간 숨김/세션 닫기 초기화됨. 새로고침 후 홈에서 다시 뜹니다.');
                 }
             } catch {}
         };

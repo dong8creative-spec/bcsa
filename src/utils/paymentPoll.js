@@ -47,9 +47,9 @@ export async function pollPaymentUntilComplete({ apiBaseUrl, paymentId, userId, 
             const r = await fetch(`${base}/api/payment/status?paymentId=${encodeURIComponent(paymentId)}`);
             const d = await r.json().catch(() => ({}));
             if (d.applicationId) lastMeta = { applicationId: d.applicationId, seminarId: d.seminarId };
-            return d.completed === true;
+            return d;
         } catch (_) {
-            return false;
+            return {};
         }
     };
 
@@ -57,6 +57,9 @@ export async function pollPaymentUntilComplete({ apiBaseUrl, paymentId, userId, 
     const first = await tryComplete();
     if (first.ok === true) return { completed: true, ...lastMeta };
     if (first.error === 'capacity_full') return { completed: false, reason: 'capacity_full', ...lastMeta };
+    if (typeof first.error === 'string' && first.error.startsWith('global_recruitment_')) {
+        return { completed: false, reason: first.error, ...lastMeta };
+    }
 
     // pending이 아예 없으면 complete 재시도는 무의미 → status(웹훅 복구)만 확인
     let retryComplete = first.error !== 'pending_not_found';
@@ -69,12 +72,20 @@ export async function pollPaymentUntilComplete({ apiBaseUrl, paymentId, userId, 
     for (let i = 0; i < intervals.length && Date.now() - start < maxMs; i++) {
         await new Promise((r) => setTimeout(r, intervals[i]));
 
-        if (await tryStatus()) return { completed: true, ...lastMeta };
+        const status = await tryStatus();
+        if (status.completed === true) return { completed: true, ...lastMeta };
+        if (status.error === 'capacity_full') return { completed: false, reason: 'capacity_full', ...lastMeta };
+        if (typeof status.error === 'string' && status.error.startsWith('global_recruitment_')) {
+            return { completed: false, reason: status.error, ...lastMeta };
+        }
 
         if (retryComplete) {
             const c = await tryComplete();
             if (c.ok === true) return { completed: true, ...lastMeta };
             if (c.error === 'capacity_full') return { completed: false, reason: 'capacity_full', ...lastMeta };
+            if (typeof c.error === 'string' && c.error.startsWith('global_recruitment_')) {
+                return { completed: false, reason: c.error, ...lastMeta };
+            }
             lastReason = c.error || lastReason;
             if (c.error === 'pending_not_found') retryComplete = false;
         }

@@ -35,6 +35,12 @@ export const CONFIG = {
             ? import.meta.env.VITE_PORTONE_CHANNEL_KEY
             : ''
     },
+
+    PAYMENT_ADMIN: {
+        INICIS_MERCHANT_URL: typeof import.meta !== 'undefined' && import.meta.env?.VITE_INICIS_MERCHANT_URL
+            ? import.meta.env.VITE_INICIS_MERCHANT_URL
+            : 'https://iniweb.inicis.com/'
+    },
     
     IMGBB: {
         API_KEY: '4c975214037cdf1889d5d02a01a7831d'

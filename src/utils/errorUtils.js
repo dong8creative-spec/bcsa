@@ -26,6 +26,7 @@ export const translateFirebaseError = (error) => {
             'auth/requires-recent-login': '보안을 위해 다시 로그인해주세요.',
             'auth/popup-closed-by-user': '로그인 창이 닫혔습니다.',
             'auth/cancelled-popup-request': '로그인이 취소되었습니다.',
+            'auth/unauthorized-domain': '현재 접속 주소가 Firebase에 등록되지 않았습니다. Firebase Console → Authentication → Settings → Authorized domains에 localhost와 127.0.0.1을 추가해 주세요.',
             // Firestore 에러
             'permission-denied': '권한이 없습니다. 관리자에게 문의해주세요.',
             'unavailable': '서비스를 사용할 수 없습니다. 잠시 후 다시 시도해주세요.',
