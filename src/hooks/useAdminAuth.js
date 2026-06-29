@@ -1,49 +1,79 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
+import { isAdminUser } from '../utils/adminAccess';
 
 /**
- * 관리자 권한 확인 커스텀 훅
- * @returns {Object} { isAdmin, isLoading, checkAdminCode }
+ * 관리자 권한 확인 커스텀 훅 (Google 로그인 + Firestore role)
  */
 export const useAdminAuth = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [authUser, setAuthUser] = useState(null);
+  const [userDoc, setUserDoc] = useState(null);
+  const [redirectError, setRedirectError] = useState(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    let cancelled = false;
+
+    const loadUserDoc = async (user) => {
+      if (!user) {
+        setUserDoc(null);
+        setIsAdmin(false);
+        return;
+      }
       try {
-        const user = await authService.getCurrentUser();
-        setCurrentUser(user);
-        
-        // 관리자 권한 확인 (role이 'admin' 또는 'master'인 경우)
-        const isAdminUser = user && (user.role === 'admin' || user.role === 'master');
-        setIsAdmin(isAdminUser);
+        const doc = await authService.getUserData(user);
+        if (cancelled) return;
+        setUserDoc(doc);
+        setIsAdmin(isAdminUser(doc));
       } catch (error) {
         console.error('관리자 권한 확인 오류:', error);
+        if (cancelled) return;
+        setUserDoc(null);
         setIsAdmin(false);
-      } finally {
-        setIsLoading(false);
       }
     };
 
-    checkAuth();
+    (async () => {
+      try {
+        await authService.completeGoogleRedirectSignIn();
+      } catch (error) {
+        console.error('Google redirect 로그인 오류:', error);
+        if (!cancelled) setRedirectError(error);
+      }
+    })();
+
+    const unsubscribe = authService.onAuthStateChanged(async (user) => {
+      if (cancelled) return;
+      setAuthUser(user);
+      await loadUserDoc(user);
+      if (!cancelled) setIsLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
-  /**
-   * 마스터 코드 확인
-   * @param {string} code - 입력된 마스터 코드
-   * @returns {boolean} 코드가 유효한지 여부
-   */
-  const checkAdminCode = (code) => {
-    const ADMIN_CODE = '0219';
-    return code === ADMIN_CODE;
-  };
+  const signInWithGoogle = useCallback(async () => {
+    setRedirectError(null);
+    await authService.signInWithGoogle();
+  }, []);
+
+  const signOut = useCallback(async () => {
+    await authService.logout();
+  }, []);
 
   return {
     isAdmin,
     isLoading,
-    currentUser,
-    checkAdminCode
+    isAuthenticated: !!authUser,
+    authUser,
+    userDoc,
+    currentUser: userDoc,
+    redirectError,
+    signInWithGoogle,
+    signOut,
   };
 };

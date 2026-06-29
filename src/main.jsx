@@ -5,6 +5,7 @@ import App from './App';
 import { AdminDashboard } from './pages/Admin';
 import { AdminRoute } from './components/AdminRoute';
 import AuthResetPasswordPage from './pages/AuthResetPasswordPage';
+import ProgramDetailPage from './pages/ProgramDetailPage';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -24,6 +25,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           } 
         />
         
+        {/* 프로그램 공개 상세 페이지 */}
+        <Route path="/programs/:id" element={<ProgramDetailPage />} />
+
         {/* 메인 앱 (모든 다른 경로) */}
         <Route path="/*" element={<App />} />
       </Routes>

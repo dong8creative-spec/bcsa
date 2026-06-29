@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { authService } from '../../../services/authService';
 import { defaultContent } from '../../../constants/content';
+import { downloadPublishedContentJson } from '../../../utils/siteContent';
 import { imageMetadata } from '../../../constants/imageMetadata';
 import { Icons } from '../../../components/Icons';
 import { ImageCropModal } from '../../../components/ImageCropModal';
@@ -58,7 +59,8 @@ export const ContentManagement = () => {
     try {
       setIsSaving(true);
       await firebaseService.updateContent(content, currentUser?.uid);
-      alert('콘텐츠가 성공적으로 저장되었습니다.');
+      downloadPublishedContentJson(content);
+      alert('콘텐츠가 저장되었습니다.\n\n배포용 JSON이 다운로드되었습니다. 파일을 src/constants/publishedContent.json 에 덮어쓴 뒤 빌드·배포해 주세요.\n(또는 터미널에서 npm run sync-content 실행)');
     } catch (error) {
       console.error('콘텐츠 저장 오류:', error);
       alert('콘텐츠 저장에 실패했습니다.');
@@ -89,19 +91,19 @@ export const ContentManagement = () => {
   };
 
   const sections = [
-    { id: 'images', label: '이미지 관리', icon: Icons.Image },
-    { id: 'hero', label: 'Hero 섹션', icon: Icons.Star },
-    { id: 'stats', label: '통계 섹션', icon: Icons.TrendingUp },
-    { id: 'features', label: 'Features 섹션', icon: Icons.CheckCircle },
-    { id: 'activities', label: '활동 섹션', icon: Icons.Calendar },
-    { id: 'donation', label: '후원 섹션', icon: Icons.DollarSign },
-    { id: 'about', label: '소개 페이지', icon: Icons.Info },
+    { id: 'images', label: '사이트 이미지', icon: Icons.Image },
+    { id: 'hero', label: '메인 상단 배너', icon: Icons.Star },
+    { id: 'stats', label: '숫자 통계', icon: Icons.TrendingUp },
+    { id: 'features', label: '소개 카드', icon: Icons.CheckCircle },
+    { id: 'activities', label: '활동 소개', icon: Icons.Calendar },
+    { id: 'donation', label: '후원 안내', icon: Icons.DollarSign },
+    { id: 'about', label: '단체 소개', icon: Icons.Info },
     { id: 'footer', label: '푸터', icon: Icons.FileText }
   ];
 
   const renderHeroSection = () => (
     <div className="space-y-6">
-      <h3 className="text-xl font-bold text-dark mb-4">메인 Hero 섹션</h3>
+      <h3 className="text-xl font-bold text-dark mb-4">메인 상단 배너</h3>
       
       <div>
         <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
@@ -177,7 +179,7 @@ export const ContentManagement = () => {
 
   const renderStatsSection = () => (
     <div className="space-y-6">
-      <h3 className="text-xl font-bold text-dark mb-4">통계 섹션</h3>
+      <h3 className="text-xl font-bold text-dark mb-4">숫자 통계</h3>
       
       {[1, 2, 3, 4].map((num) => (
         <div key={num} className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl">
@@ -232,7 +234,7 @@ export const ContentManagement = () => {
 
   const renderFeaturesSection = () => (
     <div className="space-y-6">
-      <h3 className="text-xl font-bold text-dark mb-4">Features 섹션</h3>
+      <h3 className="text-xl font-bold text-dark mb-4">소개 카드</h3>
       
       <div>
         <label className="block text-sm font-bold text-gray-700 mb-2">섹션 제목</label>
@@ -301,7 +303,7 @@ export const ContentManagement = () => {
 
   const renderActivitiesSection = () => (
     <div className="space-y-6">
-      <h3 className="text-xl font-bold text-dark mb-4">활동 섹션</h3>
+      <h3 className="text-xl font-bold text-dark mb-4">활동 소개</h3>
       
       <div>
         <label className="block text-sm font-bold text-gray-700 mb-2">섹션 제목</label>
@@ -387,7 +389,7 @@ export const ContentManagement = () => {
 
   const renderDonationSection = () => (
     <div className="space-y-6">
-      <h3 className="text-xl font-bold text-dark mb-4">후원 섹션</h3>
+      <h3 className="text-xl font-bold text-dark mb-4">후원 안내</h3>
       
       <div>
         <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
@@ -535,7 +537,7 @@ export const ContentManagement = () => {
     return (
       <div className="space-y-6">
         <div className="mb-6">
-          <h3 className="text-xl font-bold text-dark mb-2">이미지 관리</h3>
+          <h3 className="text-xl font-bold text-dark mb-2">사이트 이미지</h3>
           <p className="text-sm text-gray-600">
             메인페이지와 소개페이지에 사용되는 모든 이미지를 한 곳에서 관리할 수 있습니다.
             각 이미지는 표시되는 비율에 맞춰 크롭됩니다.
@@ -569,10 +571,10 @@ export const ContentManagement = () => {
 
   const renderAboutSection = () => (
     <div className="space-y-6">
-      <h3 className="text-xl font-bold text-dark mb-4">소개 페이지</h3>
+      <h3 className="text-xl font-bold text-dark mb-4">단체 소개</h3>
       
       <div className="p-4 bg-blue-50 rounded-xl">
-        <h4 className="font-bold text-gray-800 mb-3">Hero 섹션</h4>
+        <h4 className="font-bold text-gray-800 mb-3">상단 배너</h4>
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>

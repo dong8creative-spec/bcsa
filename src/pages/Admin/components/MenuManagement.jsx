@@ -5,12 +5,13 @@ import { CSS } from '@dnd-kit/utilities';
 import { firebaseService } from '../../../services/firebaseService';
 import { authService } from '../../../services/authService';
 import { defaultMenuOrder, defaultMenuNames } from '../../../constants/content';
+import { downloadPublishedContentJson } from '../../../utils/siteContent';
 import { Icons } from '../../../components/Icons';
 
 /**
  * 드래그 가능한 메뉴 아이템 컴포넌트
  */
-const SortableMenuItem = ({ id, menu, enabled, name, onToggle, onNameChange }) => {
+const SortableMenuItem = ({ id, enabled, name, onToggle, onNameChange }) => {
   const {
     attributes,
     listeners,
@@ -51,13 +52,6 @@ const SortableMenuItem = ({ id, menu, enabled, name, onToggle, onNameChange }) =
             onChange={onToggle}
             className="w-5 h-5 text-brand focus:ring-brand border-blue-300 rounded cursor-pointer"
           />
-        </div>
-
-        {/* 메뉴 키 (변경 불가) */}
-        <div className="flex-1 min-w-[120px]">
-          <span className="text-sm font-bold text-gray-500 px-3 py-1 bg-gray-100 rounded-lg">
-            {id}
-          </span>
         </div>
 
         {/* 명칭 수정 */}
@@ -202,12 +196,14 @@ export const MenuManagement = () => {
 
       // Firebase에 저장
       const contentData = await firebaseService.getContent();
-      await firebaseService.updateContent({
+      const payload = {
         ...contentData,
         menuOrder,
         menuEnabled,
         menuNames
-      }, currentUser?.uid);
+      };
+      await firebaseService.updateContent(payload, currentUser?.uid);
+      downloadPublishedContentJson(payload);
 
       // localStorage에도 저장 (폴백용)
       localStorage.setItem('busan_ycc_menu_order', JSON.stringify(menuOrder));
@@ -218,25 +214,13 @@ export const MenuManagement = () => {
       window.dispatchEvent(new Event('menuNamesUpdated'));
       window.dispatchEvent(new Event('storage'));
 
-      alert('메뉴 설정이 저장되었습니다.');
+      alert('메뉴 설정이 저장되었습니다.\n\n배포용 JSON이 다운로드되었습니다. src/constants/publishedContent.json 에 반영 후 빌드·배포해 주세요.');
     } catch (error) {
       console.error('저장 오류:', error);
       alert('메뉴 설정 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleReset = () => {
-    if (!confirm('메뉴 설정을 기본값으로 초기화하시겠습니까?')) return;
-
-    setMenuOrder(defaultMenuOrder);
-    const defaultEnabled = {};
-    defaultMenuOrder.forEach(menu => {
-      defaultEnabled[menu] = true;
-    });
-    setMenuEnabled(defaultEnabled);
-    setMenuNames({ ...defaultMenuNames });
   };
 
   if (isLoading) {
@@ -263,13 +247,6 @@ export const MenuManagement = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handleReset}
-            className="px-4 py-2 border-2 border-blue-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors flex items-center gap-2"
-          >
-            <Icons.RotateCcw size={18} />
-            초기화
-          </button>
           <button
             onClick={handleSave}
             disabled={isSaving}
@@ -312,7 +289,6 @@ export const MenuManagement = () => {
               <SortableMenuItem
                 key={menuKey}
                 id={menuKey}
-                menu={menuKey}
                 enabled={menuEnabled[menuKey] !== false}
                 name={menuNames[menuKey] || menuKey}
                 onToggle={() => handleToggle(menuKey)}

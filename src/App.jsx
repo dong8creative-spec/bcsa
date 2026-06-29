@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react';
+import { useSEO } from './hooks/useSEO';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { firebaseService } from './services/firebaseService';
 import { authService } from './services/authService';
@@ -6,6 +7,7 @@ import { CONFIG } from './config';
 import { calculateStatus, fetchSheetData } from './utils';
 import { uploadImageToImgBB, uploadLogoOrFaviconToGitHub, fileToBase64, normalizeImagesList } from './utils/imageUtils';
 import { translateFirebaseError } from './utils/errorUtils';
+import { isAdminUser } from './utils/adminAccess';
 import { canEditRestaurantInfo } from './utils/restaurantPermissions';
 import { 
   loadUsersFromStorage, 
@@ -23,6 +25,7 @@ import { waitForKakaoMapsCoreReady, invokeKakaoMapsLoad, KAKAO_MAP_SDK_URL } fro
 import { requestPayment as paymentServiceRequestPayment } from './services/paymentService';
 import { PaymentResultView } from './pages/PaymentResultView';
 import { defaultContent, defaultMenuOrder, defaultMenuNames } from './constants/content';
+import { buildSiteContent, getMenuStateFromSiteContent } from './utils/siteContent';
 import PageTitle from './components/PageTitle';
 import NoticeView from './pages/NoticeView';
 import AboutView from './pages/AboutView';
@@ -69,7 +72,11 @@ import {
     readProgramPopupCache,
     writeProgramPopupCache,
     preloadPopupImages,
+    isProgramPopupDismissedThisSession,
+    markProgramPopupDismissedThisSession,
+    clearProgramPopupSessionDismissed,
 } from './utils/programPopupCache';
+import { applyProgramRecruitmentState, getProgramRecruitmentState } from './utils/programRecruitmentSettings';
 import { LoginModal } from './components/LoginModal';
 import KakaoLinkPromptModal from './components/KakaoLinkPromptModal';
 import { MobileMenu } from './components/MobileMenu';
@@ -155,27 +162,16 @@ const warmRestaurantImages = (restaurants) => {
     });
 };
 
+const initialSiteContent = buildSiteContent();
+const initialMenuState = getMenuStateFromSiteContent(initialSiteContent);
+
 const App = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const openMobileMenu = useCallback(() => { setIsMenuOpen(true); }, []);
     const closeMobileMenu = useCallback(() => { setIsMenuOpen(false); }, []);
     const [scrolled, setScrolled] = useState(false);
-    const [content, setContent] = useState(() => {
-        try {
-            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                const stored = localStorage.getItem('busan_ycc_content');
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                    // 기본값과 병합하여 누락된 필드 보완
-                    return { ...defaultContent, ...parsed };
-                }
-            }
-            return defaultContent;
-            } catch (error) {
-            
-            return defaultContent;
-        }
-    });
+    const [content, setContent] = useState(initialSiteContent);
+    const programRecruitmentState = useMemo(() => getProgramRecruitmentState(content), [content]);
     const [membersData, setMembersData] = useState([]);
     const [seminarsData, setSeminarsData] = useState([]);
     const [communityPosts, setCommunityPosts] = useState([]);
@@ -186,6 +182,30 @@ const App = () => {
     const [membersListPage, setMembersListPage] = useState(1);
     const navigate = useNavigate();
     const location = useLocation();
+
+    // View ↔ URL 매핑 (SEO: 각 뷰가 고유 URL을 갖도록)
+    const VIEW_TO_PATH = {
+        home: '/',
+        about: '/about',
+        allSeminars: '/programs',
+        allMembers: '/members',
+        community: '/community',
+        notice: '/notice',
+        donation: '/donation',
+        restaurants: '/restaurants',
+        myPage: '/my',
+    };
+    const PATH_TO_VIEW = {
+        '/': 'home',
+        '/about': 'about',
+        '/programs': 'allSeminars',
+        '/members': 'allMembers',
+        '/community': 'community',
+        '/notice': 'notice',
+        '/donation': 'donation',
+        '/restaurants': 'restaurants',
+        '/my': 'myPage',
+    };
 
     // 햄버거 클릭을 전역 이벤트로도 수신 (클릭이 콜백보다 확실히 전달되도록)
     useEffect(() => {
@@ -268,75 +288,11 @@ const App = () => {
         }
     }, []);
     
-    // Content 실시간 구독 (메인 페이지 텍스트 실시간 업데이트)
-    useEffect(() => {
-        if (firebaseService && firebaseService.subscribeContent) {
-            const unsubscribe = firebaseService.subscribeContent((contentData) => {
-                const data = contentData && typeof contentData === 'object' ? contentData : {};
-                // 기본값과 Firebase Content 병합 (빈 객체여도 defaultContent로 비회원 등에 안정 표시)
-                const merged = { ...defaultContent, ...data };
-                setContent(() => merged);
-                try {
-                    if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                        localStorage.setItem('busan_ycc_content', JSON.stringify(merged));
-                    }
-                } catch (_) {}
-                // menuNames도 Firebase에서 가져오기 (우선 사용)
-                if (data.menuNames) {
-                    setMenuNames(prev => ({ ...defaultMenuNames, ...data.menuNames }));
-                } else {
-                    // Firebase에 menuNames가 없으면 localStorage 사용 (폴백)
-                    const localMenuNames = loadMenuNamesFromStorage();
-                    setMenuNames(localMenuNames);
-                }
-                // menuEnabled도 Firebase에서 가져오기 (우선 사용)
-                if (data.menuEnabled) {
-                    setMenuEnabled(prev => ({ ...loadMenuEnabledFromStorage(), ...data.menuEnabled }));
-                }
-            });
-            
-            return () => unsubscribe();
-        } else {
-            // Firebase Service가 없으면 초기 로드 시 Content 가져오기
-            const loadContent = async () => {
-                        if (firebaseService && firebaseService.getContent) {
-                    try {
-                                const contentData = await firebaseService.getContent();
-                        const data = contentData && typeof contentData === 'object' ? contentData : {};
-                        // 기본값과 Firebase Content 병합 (빈 객체여도 defaultContent로 비회원 등에 안정 표시)
-                        const merged = { ...defaultContent, ...data };
-                        setContent(() => merged);
-                        try {
-                            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                                localStorage.setItem('busan_ycc_content', JSON.stringify(merged));
-                            }
-                        } catch (_) {}
-                        // menuNames도 Firebase에서 가져오기
-                        if (data.menuNames) {
-                            setMenuNames(prev => ({ ...defaultMenuNames, ...data.menuNames }));
-                        } else {
-                            // Firebase에 없으면 localStorage 사용
-                            const localMenuNames = loadMenuNamesFromStorage();
-                            setMenuNames(localMenuNames);
-                        }
-                        // menuEnabled도 Firebase에서 가져오기
-                        if (data.menuEnabled) {
-                            setMenuEnabled(prev => ({ ...loadMenuEnabledFromStorage(), ...data.menuEnabled }));
-                        }
-                    } catch (error) {
-                        console.error('Content 로드 오류:', error);
-                    }
-                }
-            };
-            loadContent();
-        }
-    }, []);
-    
     // pageTitles 상태 관리 (content에서 분리)
-    const [pageTitles, setPageTitles] = useState(() => {
-        // 기본값과 content에서 병합
-        return { ...defaultContent.pageTitles, ...(content.pageTitles || {}) };
-    });
+    const [pageTitles, setPageTitles] = useState(() => ({
+        ...defaultContent.pageTitles,
+        ...(initialSiteContent.pageTitles || {}),
+    }));
     
     // pageTitles를 content에서 동기화 (기본값과 병합)
     useEffect(() => {
@@ -418,6 +374,42 @@ const App = () => {
     const programDragRef = useRef({ active: false, startX: 0, startOffset: 0, hasMoved: false });
     const lastUnknownViewLoggedRef = useRef(null);
 
+    // URL과 currentView를 함께 변경하는 헬퍼 (뒤로가기/공유 링크 지원)
+    const goTo = useCallback((view, { restaurantId, replace = false } = {}) => {
+        setCurrentView(view);
+        if (view === 'restaurantDetail' && restaurantId) {
+            navigate(`/restaurants/${restaurantId}`, { replace });
+        } else if (view === 'restaurantForm' && restaurantId) {
+            navigate(`/restaurants/${restaurantId}/edit`, { replace });
+        } else if (view === 'restaurantForm') {
+            navigate('/restaurants/new', { replace });
+        } else if (VIEW_TO_PATH[view]) {
+            navigate(VIEW_TO_PATH[view], { replace });
+        }
+    }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // SEO: 페이지별 title/meta/OG 동적 설정
+    const seoOgImage = useMemo(() => {
+        if (currentView === 'restaurantDetail' && selectedRestaurant?.images?.[0]) {
+            return selectedRestaurant.images[0];
+        }
+        return content?.hero_image || null;
+    }, [currentView, selectedRestaurant, content?.hero_image]);
+
+    const seoOverrideTitle = useMemo(() => {
+        if (currentView === 'restaurantDetail' && selectedRestaurant?.name) {
+            return `${selectedRestaurant.name} | 부청사 추천 부산맛집`;
+        }
+        return undefined;
+    }, [currentView, selectedRestaurant]);
+
+    const seoOverridePath = useMemo(() => {
+        if (currentView === 'restaurantDetail' && selectedRestaurant?.id) {
+            return `/restaurants/${selectedRestaurant.id}`;
+        }
+        return undefined;
+    }, [currentView, selectedRestaurant]);
+
     const [adminHiddenRevision, setAdminHiddenRevision] = useState(0);
     useEffect(() => {
         if (typeof window === 'undefined') return undefined;
@@ -434,6 +426,46 @@ const App = () => {
     }, []);
 
     const adminHiddenEntries = useMemo(() => readAdminHiddenEntries(), [adminHiddenRevision]);
+
+    // URL 변경(직접 접근·브라우저 뒤로가기) → currentView 동기화
+    useEffect(() => {
+        const path = location.pathname;
+        const skipPaths = ['/payment/result', '/signup', '/privacy', '/terms', '/refund', '/program-popup'];
+        if (skipPaths.some(p => path.startsWith(p))) return;
+        // /programs/:id 는 ProgramDetailPage가 처리
+        if (path.match(/^\/programs\/[^/]+$/)) return;
+        if (path.startsWith('/program/apply/')) return;
+
+        const restaurantDetailMatch = path.match(/^\/restaurants\/([^/]+)$/);
+        const restaurantEditMatch = path.match(/^\/restaurants\/([^/]+)\/edit$/);
+
+        if (path === '/restaurants/new') {
+            setCurrentView('restaurantForm');
+            setSelectedRestaurant(null);
+            return;
+        }
+        if (restaurantEditMatch) {
+            setCurrentView('restaurantForm');
+            return;
+        }
+        if (restaurantDetailMatch) {
+            setCurrentView('restaurantDetail');
+            return;
+        }
+
+        const view = PATH_TO_VIEW[path];
+        if (view) setCurrentView(view);
+    }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // 맛집 상세 직접 URL 접근 시 restaurantsData 로드 후 selectedRestaurant 자동 설정
+    useEffect(() => {
+        const match = location.pathname.match(/^\/restaurants\/([^/]+?)(?:\/edit)?$/);
+        if (!match || !restaurantsData.length) return;
+        const id = match[1];
+        if (id === 'new') return;
+        const found = restaurantsData.find(r => String(r.id) === String(id));
+        if (found) setSelectedRestaurant(found);
+    }, [restaurantsData, location.pathname]);
 
     const [publicApplicationsList, setPublicApplicationsList] = useState([]);
 
@@ -479,6 +511,67 @@ const App = () => {
             ),
         [seminarsData, publicApplicationsList, adminHiddenEntries, applicationsByIdForDisplay]
     );
+
+    const seoJsonLd = useMemo(() => {
+        if (currentView === 'home' || currentView === 'about') {
+            return {
+                '@context': 'https://schema.org',
+                '@type': 'Organization',
+                name: '부청사 | 부산청년사업가들',
+                alternateName: '부청사',
+                url: 'https://bcsa.co.kr',
+                logo: 'https://bcsa.co.kr/assets/images/favicon.png',
+                description: '2017년부터 부산 청년 사업가들의 성장과 연결을 돕는 비즈니스 커뮤니티',
+                address: { '@type': 'PostalAddress', addressLocality: '부산', addressCountry: 'KR' },
+                sameAs: [],
+            };
+        }
+        if (currentView === 'allSeminars' && Array.isArray(seminarsDataPublic) && seminarsDataPublic.length > 0) {
+            const upcoming = seminarsDataPublic
+                .filter(s => s.date && s.title)
+                .slice(0, 10)
+                .map(s => {
+                    const img = Array.isArray(s.images) ? s.images[0] : (typeof s.images === 'string' ? s.images : undefined);
+                    const price = s.price != null ? Number(s.price) : 0;
+                    const event = {
+                        '@type': 'Event',
+                        name: s.title,
+                        startDate: s.date,
+                        eventStatus: 'https://schema.org/EventScheduled',
+                        eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+                        location: {
+                            '@type': 'Place',
+                            name: s.location || s.locationAddress || '부산',
+                            address: { '@type': 'PostalAddress', addressLocality: '부산', addressCountry: 'KR' },
+                        },
+                        organizer: { '@type': 'Organization', name: '부청사', url: 'https://bcsa.co.kr' },
+                        url: 'https://bcsa.co.kr/programs',
+                    };
+                    if (s.desc) event.description = s.desc;
+                    if (img) event.image = img;
+                    if (price > 0) {
+                        event.offers = {
+                            '@type': 'Offer',
+                            price: String(price),
+                            priceCurrency: 'KRW',
+                            availability: 'https://schema.org/InStock',
+                            url: 'https://bcsa.co.kr/programs',
+                        };
+                    }
+                    return event;
+                });
+            return { '@context': 'https://schema.org', '@graph': upcoming };
+        }
+        return null;
+    }, [currentView, seminarsDataPublic]);
+
+    useSEO({
+        view: currentView,
+        ogImage: seoOgImage,
+        overrideTitle: seoOverrideTitle,
+        overridePath: seoOverridePath,
+        jsonLd: seoJsonLd,
+    });
 
     // 프로그램 자동 흐름 애니메이션 (250초 주기) + 드래그 시 일시 정지
     useEffect(() => {
@@ -685,6 +778,10 @@ const App = () => {
         } catch (error) {
         }
 
+        if (isProgramPopupDismissedThisSession()) {
+            return;
+        }
+
         if (location.pathname === '/program-popup') {
             return;
         }
@@ -711,7 +808,8 @@ const App = () => {
         writeProgramPopupCache(toShow);
 
         if (alreadyOpened) {
-            setPopupPrograms(toShow);
+            // 닫은 뒤 seminarsData 갱신으로 재오픈되지 않도록, 표시 중일 때만 목록 동기화
+            setPopupPrograms((prev) => (prev.length > 0 ? toShow : prev));
             return;
         }
 
@@ -1009,7 +1107,7 @@ const App = () => {
                 }
             }
             
-            return {
+            return applyProgramRecruitmentState({
                 ...seminar,
                 images: images,
                 // 호환성을 위해 img 필드도 유지 (첫 번째 이미지)
@@ -1017,7 +1115,7 @@ const App = () => {
                 date: seminar.date || '',
                 // 관리자가 모집 중단한 경우 '종료', 아니면 날짜 기준 재계산
                 status: seminar.recruitmentClosedByAdmin ? '종료' : calculateStatus(seminar.date || '')
-            };
+            }, programRecruitmentState);
         };
         
         // 강의일자(날짜) 기준 최신순 정렬 (맨 앞 = 가장 최신 강의)
@@ -1055,7 +1153,7 @@ const App = () => {
                 })();
             }
         }
-    }, []);
+    }, [programRecruitmentState]);
 
     useEffect(() => {
         if (!firebaseService?.subscribeExternalEventPosters) return;
@@ -1114,149 +1212,9 @@ const App = () => {
     
     // Firebase real-time listeners handle data synchronization automatically
     
-    // 메뉴 항목 활성/비활성 상태 관리 (로컬 스토리지에서 로드)
-    const loadMenuEnabledFromStorage = () => {
-        try {
-            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                const stored = localStorage.getItem('busan_ycc_menu_enabled');
-                const parsed = stored ? JSON.parse(stored) : {};
-                // 기본값 설정 (admin.html과 일치)
-                return {
-                    '홈': parsed['홈'] !== undefined ? parsed['홈'] : true,
-                    '소개': parsed['소개'] !== undefined ? parsed['소개'] : true,
-                    '프로그램': parsed['프로그램'] !== undefined ? parsed['프로그램'] : true,
-                    '부청사 회원': parsed['부청사 회원'] !== undefined ? parsed['부청사 회원'] : true,
-                    '커뮤니티': parsed['커뮤니티'] !== undefined ? parsed['커뮤니티'] : true,
-                    '후원': parsed['후원'] !== undefined ? parsed['후원'] : true,
-                    '부산맛집': parsed['부산맛집'] !== undefined ? parsed['부산맛집'] : true,
-                    ...parsed
-                };
-            }
-        } catch (error) {
-            
-        }
-        return {
-            '홈': true,
-            '소개': true,
-            '프로그램': true,
-            '부청사 회원': true,
-            '커뮤니티': true,
-            '후원': true,
-            '부산맛집': true
-        };
-    };
-
-    const [menuEnabled, setMenuEnabled] = useState(loadMenuEnabledFromStorage());
-
-    // 로컬 스토리지에서 메뉴 명칭 로드
-    const loadMenuNamesFromStorage = () => {
-        try {
-            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                const stored = localStorage.getItem('busan_ycc_menu_names');
-                return stored ? JSON.parse(stored) : defaultMenuNames;
-            }
-        } catch (error) {
-            
-        }
-        return defaultMenuNames;
-    };
-
-    // 메뉴 명칭 저장
-    const saveMenuNamesToStorage = (menuNames) => {
-        try {
-            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                localStorage.setItem('busan_ycc_menu_names', JSON.stringify(menuNames));
-            }
-        } catch (error) {
-            
-        }
-    };
-
-    // menuNames 상태 관리 (Firebase 우선, localStorage 폴백)
-    const [menuNames, setMenuNames] = useState(() => {
-        // 초기값: localStorage에서 로드 (Firebase 구독 전까지 사용)
-        return loadMenuNamesFromStorage();
-    });
-    
-    // menuNames는 Settings 구독에서 함께 처리 (중복 방지)
-    
-    // menuNames 변경 감지 (localStorage 변경 시 자동 업데이트 - Firebase에 없을 때만)
-    useEffect(() => {
-        // Firebase 구독이 있으면 localStorage 변경은 무시 (Firebase가 우선)
-        if (firebaseService && firebaseService.subscribeSettings) {
-            return; // Firebase 구독이 있으면 localStorage 이벤트 무시
-        }
-        
-        const handleStorageChange = (e) => {
-            if (e.key === 'busan_ycc_menu_names') {
-                try {
-                    const newMenuNames = e.newValue ? JSON.parse(e.newValue) : defaultMenuNames;
-                    setMenuNames(newMenuNames);
-                } catch (error) {
-                    console.error('메뉴명 파싱 오류:', error);
-                }
-            }
-        };
-        
-        // localStorage 변경 이벤트 리스너 (다른 탭에서 변경 시)
-        window.addEventListener('storage', handleStorageChange);
-        
-        // 같은 탭에서의 변경 감지를 위한 커스텀 이벤트
-        const handleCustomStorageChange = () => {
-            const newMenuNames = loadMenuNamesFromStorage();
-            setMenuNames(newMenuNames);
-        };
-        window.addEventListener('menuNamesUpdated', handleCustomStorageChange);
-        
-        return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            window.removeEventListener('menuNamesUpdated', handleCustomStorageChange);
-        };
-    }, []);
-
-    // 메뉴 순서 관리
-    const loadMenuOrderFromStorage = () => {
-        try {
-            if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                const stored = localStorage.getItem('busan_ycc_menu_order');
-                if (stored) {
-                    const parsedOrder = JSON.parse(stored);
-                    // 저장된 순서와 기본 메뉴를 병합
-                    const ordered = parsedOrder.filter(key => defaultMenuOrder.includes(key));
-                    const remaining = defaultMenuOrder.filter(key => !parsedOrder.includes(key));
-                    return [...ordered, ...remaining];
-                }
-            }
-        } catch (error) {
-            console.error('메뉴 순서 로드 실패:', error);
-        }
-        return defaultMenuOrder;
-    };
-
-    const [menuOrder, setMenuOrder] = useState(loadMenuOrderFromStorage());
-
-    // menuOrder가 변경되면 업데이트
-    useEffect(() => {
-        const handleStorageChange = () => {
-            setMenuOrder(loadMenuOrderFromStorage());
-        };
-        
-        // localStorage 변경 감지 (다른 탭에서 변경된 경우)
-        window.addEventListener('storage', handleStorageChange);
-        
-        // 주기적으로 확인 (같은 탭에서 변경된 경우)
-        const interval = setInterval(() => {
-            const newOrder = loadMenuOrderFromStorage();
-            if (JSON.stringify(newOrder) !== JSON.stringify(menuOrder)) {
-                setMenuOrder(newOrder);
-            }
-        }, 1000);
-
-        return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            clearInterval(interval);
-        };
-    }, [menuOrder]);
+    const [menuEnabled, setMenuEnabled] = useState(initialMenuState.menuEnabled);
+    const [menuNames, setMenuNames] = useState(initialMenuState.menuNames);
+    const [menuOrder, setMenuOrder] = useState(initialMenuState.menuOrder);
 
     /** 후원 비노출 시 메뉴에서도 제거되도록 */
     const effectiveMenuEnabled = useMemo(() => ({
@@ -1266,9 +1224,6 @@ const App = () => {
 
     useEffect(() => {
         const handleScroll = () => {
-            if (import.meta.env.DEV) {
-                fetch('http://127.0.0.1:7243/ingest/46284bc9-5391-43e7-a040-5d1fa22b83ec',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:handleScroll',message:'window scroll',data:{scrollY:window.scrollY},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-            }
             setScrolled(window.scrollY > 20);
         };
         window.addEventListener('scroll', handleScroll);
@@ -1891,6 +1846,7 @@ const App = () => {
         }
 
         setCurrentUser(null);
+        navigate('/', { replace: true });
         setCurrentView('home');
         setMySeminars([]);
         setMyApplications([]);
@@ -2127,6 +2083,11 @@ const App = () => {
             if (onFail) onFail();
             return;
         }
+        if (seminar?.recruitmentClosedByGlobalSetting) {
+            alert(`현재 전체 프로그램 모집이 ${seminar.recruitmentClosedLabel || '중단'} 상태입니다.`);
+            if (onFail) onFail();
+            return;
+        }
         if (isSeminarCapacityFull(seminar, publicApplicationsList, adminHiddenEntries, applicationsByIdForDisplay)) {
             alert('정원이 마감되었습니다. (정원 + 10명 초과)');
             if (onFail) onFail();
@@ -2176,6 +2137,10 @@ const App = () => {
         }
         if (!currentUser) { alert("로그인이 필요한 서비스입니다."); return false; }
         if (mySeminars.find(s => s.id === seminar.id)) { alert("이미 신청한 세미나입니다."); return false; }
+        if (seminar.recruitmentClosedByGlobalSetting) {
+            alert(`현재 전체 프로그램 모집이 ${seminar.recruitmentClosedLabel || '중단'} 상태입니다.`);
+            return false;
+        }
         if (seminar.status === '종료') { alert("종료된 프로그램입니다."); return false; }
         if (isSeminarCapacityFull(seminar, publicApplicationsList, adminHiddenEntries, applicationsByIdForDisplay)) {
             alert("정원이 마감되었습니다. (정원 + 10명 초과)");
@@ -2370,18 +2335,20 @@ const App = () => {
         
         // 후기 작성할 프로그램 설정 및 커뮤니티 페이지로 이동
         setReviewSeminar(seminar);
-        setCurrentView('community');
+        goTo('community');
     };
 
-    // 팝업 닫기 (재진입 시 다시 뜨도록 영구 저장하지 않음)
+    // 팝업 닫기 — 이번 탭 세션 동안은 다시 표시하지 않음 (탭/브라우저 닫으면 초기화)
     const closePopupAndMarkAsShown = () => {
         setPopupPrograms([]);
-        popupShownRef.current = false;
+        popupShownRef.current = true;
+        markProgramPopupDismissedThisSession();
     };
 
     // 24시간 동안 팝업 보이지 않게 하고 닫기
     const closePopupAndHide24h = () => {
         setPopupPrograms([]);
+        markProgramPopupDismissedThisSession();
         try {
             localStorage.setItem('busan_ycc_popup_hide_until', String(Date.now() + 24 * 60 * 60 * 1000));
         } catch (e) {
@@ -2393,8 +2360,10 @@ const App = () => {
             try {
                 localStorage.removeItem('busan_ycc_popup_shown');
                 localStorage.removeItem('busan_ycc_popup_hide_until');
+                clearProgramPopupSessionDismissed();
+                popupShownRef.current = false;
                 if (import.meta.env.MODE === 'development') {
-                    console.log('[개발] 프로그램 팝업 표시/24시간 숨김 초기화됨. 새로고침 후 홈에서 다시 뜹니다.');
+                    console.log('[개발] 프로그램 팝업 표시/24시간 숨김/세션 닫기 초기화됨. 새로고침 후 홈에서 다시 뜹니다.');
                 }
             } catch {}
         };
@@ -2904,44 +2873,43 @@ END:VCALENDAR`;
             alert('준비중인 서비스입니다.');
             return;
         }
-        // 헤더/푸터 버튼 클릭 시 지정된 페이지가 우선되도록 메인 경로로 이동 후 뷰 전환
-        if (navigate) navigate('/');
 
-        if (item === '홈') { 
-            setCurrentView('home'); 
-            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
-        } else if (item === '소개') { 
-            setCurrentView('about'); 
-            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
-        } else if (item === '프로그램') { 
-            setCurrentView('allSeminars'); 
-            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
-        } else if (item === '부청사 회원') { 
+        const scroll = () => setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+
+        if (item === '홈') {
+            goTo('home');
+            scroll();
+        } else if (item === '소개') {
+            goTo('about');
+            scroll();
+        } else if (item === '프로그램') {
+            goTo('allSeminars');
+            scroll();
+        } else if (item === '부청사 회원') {
             if (!currentUser) {
                 alert('로그인이 필요한 서비스입니다.');
                 setPendingView('allMembers');
                 setShowLoginModal(true);
                 return;
             }
-            setCurrentView('allMembers'); 
-            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
-        } else if (item === '커뮤니티') { 
+            goTo('allMembers');
+            scroll();
+        } else if (item === '커뮤니티') {
             if (!currentUser) {
                 alert('로그인이 필요한 서비스입니다.');
-                setPendingView('community'); // 로그인 후 커뮤니티로 이동할 의도 저장
+                setPendingView('community');
                 setShowLoginModal(true);
                 return;
             }
-            setCurrentView('community'); 
-            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
-        } else if (item === '후원') { 
-            setCurrentView('donation'); 
-            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
-        } else if (item === '부산맛집') { 
-            setCurrentView('restaurants'); 
-            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+            goTo('community');
+            scroll();
+        } else if (item === '후원') {
+            goTo('donation');
+            scroll();
+        } else if (item === '부산맛집') {
+            goTo('restaurants');
+            scroll();
         } else {
-            // 처리되지 않는 메뉴 항목에 대한 fallback
             console.error(`[Navigation] 처리되지 않는 메뉴 항목: "${item}"`);
             console.warn('[Navigation] 사용 가능한 메뉴:', defaultMenuOrder);
             alert(`"${item}" 메뉴는 아직 준비 중입니다.`);
@@ -2969,8 +2937,7 @@ END:VCALENDAR`;
                     <PaymentResultView
                         onComplete={completePaymentSuccess}
                         onGoMyPage={() => {
-                            setCurrentView('myPage');
-                            navigate('/', { replace: true });
+                            goTo('myPage');
                         }}
                     />
                 );
@@ -3088,7 +3055,7 @@ END:VCALENDAR`;
                         </div>
                     );
                 }
-                return <MyPageView onBack={() => setCurrentView('home')} user={currentUser} mySeminars={mySeminars} myApplications={myApplications} onUpdateApplication={handleUpdateApplication} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} onWithdrawApplicationRecord={handleWithdrawApplicationRecord} onWriteReview={handleWriteReview} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} onKakaoLink={() => authService.startKakaoLink(currentUser?.uid || currentUser?.id)} />;
+                return <MyPageView onBack={() => goTo('home')} user={currentUser} mySeminars={mySeminars} myApplications={myApplications} onUpdateApplication={handleUpdateApplication} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} onWithdrawApplicationRecord={handleWithdrawApplicationRecord} onWriteReview={handleWriteReview} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} onKakaoLink={() => authService.startKakaoLink(currentUser?.uid || currentUser?.id)} />;
             }
         if (currentView === 'allMembers' && !currentUser) {
             return (
@@ -3100,7 +3067,7 @@ END:VCALENDAR`;
                             <p className="text-gray-600 mb-6">회원명단은 로그인한 회원만 볼 수 있습니다.</p>
                             <div className="flex flex-wrap justify-center gap-3">
                                 <button type="button" onClick={() => { setPendingView('allMembers'); setShowLoginModal(true); }} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">로그인</button>
-                                <button type="button" onClick={() => setCurrentView('home')} className="px-6 py-3 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5">홈으로</button>
+                                <button type="button" onClick={() => goTo('home')} className="px-6 py-3 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5">홈으로</button>
                             </div>
                         </div>
                     </div>
@@ -3109,7 +3076,7 @@ END:VCALENDAR`;
         }
         if (currentView === 'allMembers' && !menuEnabled['부청사 회원']) {
             alert('준비중인 서비스입니다.');
-            setCurrentView('home');
+            goTo('home');
             return null;
         }
         if (currentView === 'allMembers') {
@@ -3118,23 +3085,23 @@ END:VCALENDAR`;
                 const isApproved = !m.approvalStatus || m.approvalStatus === 'approved';
                 return isApproved;
             });
-            return <AllMembersView currentPage={membersListPage} onPageChange={setMembersListPage} onBack={() => setCurrentView('home')} members={displayMembers} currentUser={currentUser} pageTitles={pageTitles} />;
+            return <AllMembersView currentPage={membersListPage} onPageChange={setMembersListPage} onBack={() => goTo('home')} members={displayMembers} currentUser={currentUser} pageTitles={pageTitles} />;
         }
         if (currentView === 'allSeminars' && !menuEnabled['프로그램']) {
             alert('준비중인 서비스입니다.');
-            setCurrentView('home');
+            goTo('home');
             return null;
         }
         if (currentView === 'allSeminars') {
             try {
                 // seminarsDataPublic: 관리자 숨김 반영된 신청 인원으로 목록 표시
                 const safeSeminarsData = Array.isArray(seminarsDataPublic) ? seminarsDataPublic : [];
-                
-                return <AllSeminarsView 
+
+                return <AllSeminarsView
                     key="programList"
                     currentPage={programListPage}
                     onPageChange={setProgramListPage}
-                    onBack={() => setCurrentView('home')} 
+                    onBack={() => goTo('home')} 
                     seminars={safeSeminarsData} 
                     menuNames={menuNames} 
                     onNavigateToApply={(seminar) => navigate(`/program/apply/${seminar.id}`)}
@@ -3180,7 +3147,7 @@ END:VCALENDAR`;
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        setCurrentView('home');
+                                        goTo('home');
                                         window.location.reload();
                                     }}
                                     className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
@@ -3195,7 +3162,7 @@ END:VCALENDAR`;
         } 
         if (currentView === 'community' && !menuEnabled['커뮤니티']) {
             alert('준비중인 서비스입니다.');
-            setCurrentView('home');
+            goTo('home');
             return null;
         }
         if (currentView === 'community' && !currentUser) {
@@ -3208,7 +3175,7 @@ END:VCALENDAR`;
                             <p className="text-gray-600 mb-6">커뮤니티는 로그인한 회원만 이용할 수 있습니다.</p>
                             <div className="flex flex-wrap justify-center gap-3">
                                 <button type="button" onClick={() => { setPendingView('community'); setShowLoginModal(true); }} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">로그인</button>
-                                <button type="button" onClick={() => setCurrentView('home')} className="px-6 py-3 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5">홈으로</button>
+                                <button type="button" onClick={() => goTo('home')} className="px-6 py-3 border-2 border-brand text-brand font-bold rounded-xl hover:bg-brand/5">홈으로</button>
                             </div>
                         </div>
                     </div>
@@ -3216,9 +3183,9 @@ END:VCALENDAR`;
             );
         }
         if (currentView === 'community') {
-            const isCurrentUserAdmin = typeof localStorage !== 'undefined' && localStorage.getItem('adminAuthenticated') === 'true';
-            return <CommunityView 
-                onBack={() => { setReviewSeminar(null); setCurrentView('home'); }} 
+            const isCurrentUserAdmin = isAdminUser(currentUser);
+            return <CommunityView
+                onBack={() => { setReviewSeminar(null); goTo('home'); }} 
                 posts={communityPosts} 
                 onCreate={handleCommunityCreate} 
                 onDelete={handleCommunityDelete} 
@@ -3236,27 +3203,27 @@ END:VCALENDAR`;
                 isCurrentUserAdmin={isCurrentUserAdmin}
             />;
         }
-        if (currentView === 'notice') return <NoticeView onBack={() => setCurrentView('home')} posts={communityPosts} menuNames={menuNames} pageTitles={pageTitles} />;
+        if (currentView === 'notice') return <NoticeView onBack={() => goTo('home')} posts={communityPosts} menuNames={menuNames} pageTitles={pageTitles} />;
         if (currentView === 'donation' && DONATION_FEATURE_DISABLED) {
             alert('준비중인 서비스입니다.');
-            setCurrentView('home');
+            goTo('home');
             return null;
         }
         if (currentView === 'donation' && !menuEnabled['후원']) {
             alert('준비중인 서비스입니다.');
-            setCurrentView('home');
+            goTo('home');
             return null;
         }
-        if (currentView === 'donation') return <DonationView onBack={() => setCurrentView('home')} currentUser={currentUser} setCurrentUser={setCurrentUser} setMembersData={setMembersData} membersData={membersData} saveCurrentUserToStorage={saveCurrentUserToStorage} pageTitles={pageTitles} />;
+        if (currentView === 'donation') return <DonationView onBack={() => goTo('home')} currentUser={currentUser} setCurrentUser={setCurrentUser} setMembersData={setMembersData} membersData={membersData} saveCurrentUserToStorage={saveCurrentUserToStorage} pageTitles={pageTitles} />;
         if (currentView === 'restaurants' && !menuEnabled['부산맛집']) {
             alert('준비중인 서비스입니다.');
-            setCurrentView('home');
+            goTo('home');
             return null;
         }
         if (currentView === 'restaurants') {
             return (
                 <RestaurantsListView
-                    onBack={() => setCurrentView('home')}
+                    onBack={() => goTo('home')}
                     restaurants={restaurantsData}
                     currentUser={currentUser}
                     isFoodBusinessOwner={isFoodBusinessOwner}
@@ -3265,11 +3232,11 @@ END:VCALENDAR`;
                     waitForKakaoMap={waitForKakaoMap}
                     onRestaurantClick={(restaurant) => {
                         setSelectedRestaurant(restaurant);
-                        setCurrentView('restaurantDetail');
+                        goTo('restaurantDetail', { restaurantId: restaurant.id });
                     }}
                     onCreateClick={() => {
                         setSelectedRestaurant(null);
-                        setCurrentView('restaurantForm');
+                        goTo('restaurantForm');
                     }}
                 />
             );
@@ -3280,17 +3247,17 @@ END:VCALENDAR`;
                     restaurant={selectedRestaurant}
                     onBack={() => {
                         setSelectedRestaurant(null);
-                        setCurrentView('restaurants');
+                        goTo('restaurants');
                     }}
                     currentUser={currentUser}
                     onEdit={() => {
-                        setCurrentView('restaurantForm');
+                        goTo('restaurantForm', { restaurantId: selectedRestaurant.id });
                     }}
                     onDelete={async () => {
                         const success = await handleRestaurantDelete(selectedRestaurant.id);
                         if (success) {
                             setSelectedRestaurant(null);
-                            setCurrentView('restaurants');
+                            goTo('restaurants');
                         }
                     }}
                     waitForKakaoMap={waitForKakaoMap}
@@ -3304,9 +3271,9 @@ END:VCALENDAR`;
                     restaurant={selectedRestaurant}
                     onBack={() => {
                         if (selectedRestaurant) {
-                            setCurrentView('restaurantDetail');
+                            goTo('restaurantDetail', { restaurantId: selectedRestaurant.id });
                         } else {
-                            setCurrentView('restaurants');
+                            goTo('restaurants');
                         }
                     }}
                     onSave={async (restaurantData) => {
@@ -3319,10 +3286,10 @@ END:VCALENDAR`;
                                     const updatedRestaurant = restaurantsData.find(r => r.id === selectedRestaurant.id);
                                     if (updatedRestaurant) {
                                         setSelectedRestaurant(updatedRestaurant);
-                                        setCurrentView('restaurantDetail');
+                                        goTo('restaurantDetail', { restaurantId: updatedRestaurant.id });
                                     } else {
                                         setSelectedRestaurant(null);
-                                        setCurrentView('restaurants');
+                                        goTo('restaurants');
                                     }
                                 }, 500); // Firebase 업데이트 반영 대기
                             }
@@ -3331,7 +3298,7 @@ END:VCALENDAR`;
                             const success = await handleRestaurantCreate(restaurantData);
                             if (success) {
                                 setSelectedRestaurant(null);
-                                setCurrentView('restaurants');
+                                goTo('restaurants');
                             }
                         }
                     }}
@@ -3342,10 +3309,10 @@ END:VCALENDAR`;
         }
         if (currentView === 'about' && !menuEnabled['소개']) {
             alert('준비중인 서비스입니다.');
-            setCurrentView('home');
+            goTo('home');
             return null;
         }
-        if (currentView === 'about') return <AboutView onBack={() => setCurrentView('home')} content={content} pageTitles={pageTitles} />;
+        if (currentView === 'about') return <AboutView onBack={() => goTo('home')} content={content} pageTitles={pageTitles} />;
         
         // 예상치 못한 currentView 값에 대한 fallback (항상 유효한 React 요소 반환 보장)
         // currentView가 'home'이 아니고 위의 모든 조건에 맞지 않으면 홈으로 리다이렉트
@@ -3371,7 +3338,7 @@ END:VCALENDAR`;
                             <p className="text-gray-600 mb-6">요청하신 페이지가 존재하지 않거나 준비 중입니다.</p>
                             <button
                                 type="button"
-                                onClick={() => setCurrentView('home')}
+                                onClick={() => goTo('home')}
                                 className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
                             >
                                 홈으로 돌아가기
@@ -3446,7 +3413,7 @@ END:VCALENDAR`;
                                 <div className={`transition-all duration-300 ease-in-out bg-soft ${isSearchExpanded ? 'max-h-[400px] opacity-100 border-t border-brand/10' : 'max-h-0 opacity-0'}`}>
                                     <div className="p-4 md:p-6 overflow-y-auto max-h-[400px]">
                                         <div className="flex justify-between items-center mb-4"><div className="flex items-center gap-3"><h3 className="text-sm font-bold text-gray-500">검색 결과 <span className="text-brand">{searchResults.length}</span>건</h3></div><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsSearchExpanded(false); }} className="text-xs text-gray-400 hover:text-dark flex items-center gap-1">닫기 <Icons.X size={14}/></button></div>
-                                        {searchResults.length > 0 ? (<div className="grid grid-cols-1 gap-3">{searchResults.map((result, idx) => (<div key={idx} className="bg-white p-4 rounded-2xl border border-blue-100 hover:border-brand/30 hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row md:items-center gap-4" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}><div className="flex-1"><div className="flex gap-2 mb-2"><span className={`text-[10px] font-bold px-2 py-1 rounded-full ${result.status === '모집중' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>{result.status}</span><span className="text-[10px] font-bold px-2 py-1 bg-gray-50 text-gray-500 rounded-full flex items-center gap-1"><Icons.Calendar size={10}/> {result.date}</span><span className="text-[10px] font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">{result.category}</span></div><h4 className="font-bold text-dark text-lg mb-1 break-keep">{result.title}</h4><div className="text-xs text-gray-500 mb-1 font-medium">신청: {result.currentParticipants || 0} / {result.maxParticipants}명</div><p className="text-xs text-gray-500 line-clamp-1 break-keep">{result.desc}</p></div><div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-0 border-gray-50"><span className="text-xs text-brand font-bold hover:underline flex items-center gap-1">상세보기 <Icons.ArrowRight size={12} /></span></div></div>))}</div>) : (<div className="py-10 text-center text-gray-400 flex flex-col items-center gap-3"><div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center"><Icons.Info className="w-6 h-6 text-gray-300" /></div><p className="text-sm">조건에 맞는 세미나가 없습니다.</p></div>)}
+                                        {searchResults.length > 0 ? (<div className="grid grid-cols-1 gap-3">{searchResults.map((result, idx) => (<div key={idx} className="bg-white p-4 rounded-2xl border border-blue-100 hover:border-brand/30 hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row md:items-center gap-4" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}><div className="flex-1"><div className="flex gap-2 mb-2"><span className={`text-[10px] font-bold px-2 py-1 rounded-full ${result.status === '모집중' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>{result.status}</span><span className="text-[10px] font-bold px-2 py-1 bg-gray-50 text-gray-500 rounded-full flex items-center gap-1"><Icons.Calendar size={10}/> {result.date}</span><span className="text-[10px] font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">{result.category}</span></div><h4 className="font-bold text-dark text-lg mb-1 break-keep">{result.title}</h4><div className="text-xs text-gray-500 mb-1 font-medium">신청: {result.currentParticipants || 0} / {result.maxParticipants}명</div><p className="text-xs text-gray-500 line-clamp-1 break-keep">{result.desc}</p></div><div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-0 border-gray-50"><span className="text-xs text-brand font-bold hover:underline flex items-center gap-1">상세보기 <Icons.ArrowRight size={12} /></span></div></div>))}</div>) : (<div className="py-10 text-center text-gray-400 flex flex-col items-center gap-3"><div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center"><Icons.Info className="w-6 h-6 text-gray-300" /></div><p className="text-sm">조건에 맞는 세미나가 없습니다.</p></div>)}
                                     </div>
                                 </div>
                             </div>
@@ -3525,7 +3492,7 @@ END:VCALENDAR`;
                                 <h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">프로그램</h2>
                                 <p className="text-gray-600 text-sm md:text-base break-keep">진행 중인 프로그램을 확인하세요</p>
                             </div>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="self-end md:self-auto text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors shrink-0">전체 보기 <Icons.ArrowRight size={16} /></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="self-end md:self-auto text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors shrink-0">전체 보기 <Icons.ArrowRight size={16} /></button>
                         </div>
                         <div
                             role="region"
@@ -3599,13 +3566,13 @@ END:VCALENDAR`;
                                 <h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">{content.activities_title || '커뮤니티 주요 활동'}</h2>
                                 <p className="text-gray-600 text-sm md:text-base break-keep">{content.activities_subtitle || '사업 역량 강화와 네트워크 확장을 위한 다양한 프로그램'}</p>
                             </div>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="self-end md:self-auto text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors">{content.activities_view_all || '전체 프로그램 보기'} <Icons.ArrowRight size={16} /></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="self-end md:self-auto text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors">{content.activities_view_all || '전체 프로그램 보기'} <Icons.ArrowRight size={16} /></button>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_seminar_image && <img src={content.activity_seminar_image} className="w-full h-full object-cover" alt="비즈니스 세미나" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-brand shadow-sm">SEMINAR</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_seminar_title || '비즈니스 세미나'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_seminar_desc || '매월 진행되는 창업 트렌드 및 마케팅 실무 세미나'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_seminar_schedule || '매월 2째주 목요일'}</span></div></div></button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_investment_image && <img src={content.activity_investment_image} className="w-full h-full object-cover" alt="투자 & 지원사업" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-green-600 shadow-sm">INVESTMENT</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_investment_title || '투자 & 지원사업'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_investment_desc || '최신 정부 지원사업 큐레이션 및 IR 피칭 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_investment_schedule || '수시 모집'}</span></div></div></button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_networking_image && <img src={content.activity_networking_image} className="w-full h-full object-cover" alt="사업가 네트워킹" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-accent shadow-sm">NETWORK</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_networking_title || '사업가 네트워킹'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_networking_desc || '다양한 업종의 대표님들과 교류하며 비즈니스 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_networking_schedule || '매주 금요일'}</span></div></div></button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-soft rounded-3xl p-6 flex flex-col justify-center items-center text-center hover:bg-brand hover:text-white transition-colors duration-300 cursor-pointer group shadow-deep-blue border-none w-full"><div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-brand mb-4 shadow-sm group-hover:scale-110 transition-transform"><Icons.ArrowRight size={24} /></div><h3 className="text-lg font-bold mb-2 text-dark group-hover:text-white">{content.activity_more_title || 'More Programs'}</h3><p className="text-sm text-gray-700 group-hover:text-white break-keep">{content.activity_more_desc || '멘토링, 워크샵 등 더 많은 활동 보기'}</p></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_seminar_image && <img src={content.activity_seminar_image} className="w-full h-full object-cover" alt="비즈니스 세미나" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-brand shadow-sm">SEMINAR</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_seminar_title || '비즈니스 세미나'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_seminar_desc || '매월 진행되는 창업 트렌드 및 마케팅 실무 세미나'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_seminar_schedule || '매월 2째주 목요일'}</span></div></div></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_investment_image && <img src={content.activity_investment_image} className="w-full h-full object-cover" alt="투자 & 지원사업" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-green-600 shadow-sm">INVESTMENT</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_investment_title || '투자 & 지원사업'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_investment_desc || '최신 정부 지원사업 큐레이션 및 IR 피칭 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_investment_schedule || '수시 모집'}</span></div></div></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_networking_image && <img src={content.activity_networking_image} className="w-full h-full object-cover" alt="사업가 네트워킹" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-accent shadow-sm">NETWORK</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_networking_title || '사업가 네트워킹'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_networking_desc || '다양한 업종의 대표님들과 교류하며 비즈니스 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_networking_schedule || '매주 금요일'}</span></div></div></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-soft rounded-3xl p-6 flex flex-col justify-center items-center text-center hover:bg-brand hover:text-white transition-colors duration-300 cursor-pointer group shadow-deep-blue border-none w-full"><div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-brand mb-4 shadow-sm group-hover:scale-110 transition-transform"><Icons.ArrowRight size={24} /></div><h3 className="text-lg font-bold mb-2 text-dark group-hover:text-white">{content.activity_more_title || 'More Programs'}</h3><p className="text-sm text-gray-700 group-hover:text-white break-keep">{content.activity_more_desc || '멘토링, 워크샵 등 더 많은 활동 보기'}</p></button>
                         </div>
                     </div>
                 </section>
@@ -3625,7 +3592,7 @@ END:VCALENDAR`;
                             <div className="relative z-10 max-w-2xl">
                                 <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 leading-tight break-keep">{content.donation_title || '부청사와 함께 성장하세요'}</h2>
                                 <p className="text-green-100 text-base md:text-lg mb-10 break-keep">{content.donation_desc || '후원을 통해 더 많은 청년 사업가들이 꿈을 이룰 수 있도록 도와주세요'}</p>
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('donation'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="px-8 py-4 bg-white text-green-600 font-bold rounded-2xl hover:bg-green-50 transition-all shadow-lg btn-hover">{content.donation_button || '후원하기'}</button>
+                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('donation'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="px-8 py-4 bg-white text-green-600 font-bold rounded-2xl hover:bg-green-50 transition-all shadow-lg btn-hover">{content.donation_button || '후원하기'}</button>
                             </div>
                         </div>
                     </div>
@@ -3670,7 +3637,7 @@ END:VCALENDAR`;
             console.error('Current view:', currentView);
             // 오류 발생 시 에러 메시지 표시 (null 대신 유효한 React 요소 반환)
             if (currentView !== 'home') {
-                setCurrentView('home');
+                goTo('home');
             }
             return (
                 <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in">
@@ -3682,7 +3649,7 @@ END:VCALENDAR`;
                             <button
                                 type="button"
                                 onClick={() => {
-                                    setCurrentView('home');
+                                    goTo('home');
                                     window.location.reload();
                                 }}
                                 className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
@@ -3728,6 +3695,7 @@ END:VCALENDAR`;
             renderView={renderView}
             currentView={currentView}
             setCurrentView={setCurrentView}
+            goTo={goTo}
             onGoHome={onGoHome}
             popupPrograms={popupPrograms}
             setPopupPrograms={setPopupPrograms}

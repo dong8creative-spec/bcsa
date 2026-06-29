@@ -56,6 +56,7 @@ const AppLayout = (props) => {
         renderView,
         currentView,
         setCurrentView,
+        goTo,
         onGoHome,
         popupPrograms,
         setPopupPrograms,
@@ -354,7 +355,7 @@ const AppLayout = (props) => {
                         {currentUser ? (
                             <div className="flex items-center gap-2">
                                 {!isMobile && (
-                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentView('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="text-xs font-bold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">마이페이지</button>
+                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="text-xs font-bold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">마이페이지</button>
                                 )}
                                 <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); }} className={`py-2 bg-gray-200 text-gray-600 rounded-full text-xs font-medium hover:bg-gray-300 transition-colors whitespace-nowrap flex-shrink-0 ${isMobile ? 'px-3' : 'px-4'}`}>로그아웃</button>
                             </div>
@@ -405,18 +406,15 @@ const AppLayout = (props) => {
                     // renderView()가 undefined를 반환하는 경우를 방지
                     if (viewResult === undefined || viewResult === null) {
                         console.error('renderView() returned undefined or null, currentView:', currentView);
-                        // 홈으로 리다이렉트
                         if (currentView !== 'home') {
-                            setCurrentView('home');
+                            goTo('home');
                         }
                         return null;
                     }
-                    // React 요소인지 확인 (React.isValidElement 사용)
                     if (!React.isValidElement(viewResult) && viewResult !== null) {
                         console.error('renderView() returned invalid element:', viewResult);
-                        // 홈으로 리다이렉트
                         if (currentView !== 'home') {
-                            setCurrentView('home');
+                            goTo('home');
                         }
                         return null;
                     }
@@ -424,9 +422,8 @@ const AppLayout = (props) => {
                 } catch (error) {
                     console.error('renderView() error:', error);
                     console.error('Error stack:', error.stack);
-                    // 오류 발생 시 홈으로 리다이렉트
                     if (currentView !== 'home') {
-                        setCurrentView('home');
+                        goTo('home');
                     }
                     return null;
                 }
@@ -463,9 +460,9 @@ const AppLayout = (props) => {
                         })()}
                         <p className="text-[8px] text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가 포럼 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
                         <p className="text-[8px] text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (navigate) navigate('/'); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
                             <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (navigate) navigate('/'); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
                             <span className="text-white/50">|</span>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/terms'); }} className="hover:text-white/90 transition-colors">서비스 이용약관</button>
                             <span className="text-white/50">|</span>
@@ -488,9 +485,9 @@ const AppLayout = (props) => {
                         </p>
                         <p className="text-[8px] md:text-xs text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가 포럼 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
                         <p className="text-[8px] md:text-xs text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (navigate) navigate('/'); setCurrentView('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
                             <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (navigate) navigate('/'); setCurrentView('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
                             <span className="text-white/50">|</span>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/terms'); }} className="hover:text-white/90 transition-colors">서비스 이용약관</button>
                             <span className="text-white/50">|</span>

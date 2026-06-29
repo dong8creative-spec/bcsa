@@ -56,12 +56,6 @@ export const AdminLayout = ({ children, activeTab, onTabChange, onLogout, curren
         </div>
       </header>
 
-      {!currentUser && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-center text-sm text-amber-800">
-          회원 등급·정보 수정 등 쓰기 작업을 하려면 <a href="/" className="font-bold underline hover:no-underline">메인 페이지에서 로그인</a>한 뒤 관리자 페이지로 다시 들어와 주세요.
-        </div>
-      )}
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* 사이드바 */}
@@ -91,14 +85,6 @@ export const AdminLayout = ({ children, activeTab, onTabChange, onLogout, curren
               </nav>
             </div>
 
-            {/* 통계 카드 (옵션) */}
-            <div className="mt-6 bg-gradient-to-br from-brand to-blue-600 rounded-2xl shadow-card p-6 text-white">
-              <div className="flex items-center gap-3 mb-2">
-                <Icons.Activity size={24} />
-                <h3 className="font-bold">시스템 상태</h3>
-              </div>
-              <p className="text-sm opacity-90">정상 작동 중</p>
-            </div>
           </aside>
 
           {/* 메인 콘텐츠 */}

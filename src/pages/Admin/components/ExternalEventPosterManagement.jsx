@@ -12,7 +12,6 @@ const emptyForm = () => ({
   linkUrl: '',
   displayStartLocal: '',
   displayEndLocal: '',
-  sortOrder: 0,
   enabled: true,
 });
 
@@ -62,7 +61,6 @@ export const ExternalEventPosterManagement = () => {
       linkUrl: row.linkUrl || '',
       displayStartLocal: toDatetimeLocalInput(firestoreLikeToMillis(row.displayStartAt)),
       displayEndLocal: toDatetimeLocalInput(firestoreLikeToMillis(row.displayEndAt)),
-      sortOrder: Number(row.sortOrder) || 0,
       enabled: row.enabled !== false,
     });
   };
@@ -106,6 +104,7 @@ export const ExternalEventPosterManagement = () => {
     if (!validate()) return;
     const start = parseDatetimeLocal(form.displayStartLocal);
     const end = parseDatetimeLocal(form.displayEndLocal);
+    const editingRow = editingId ? rows.find((row) => row.id === editingId) : null;
     const payload = {
       title: (form.title || '').trim() || '외부 행사',
       posterUrl: form.posterUrl.trim(),
@@ -113,7 +112,7 @@ export const ExternalEventPosterManagement = () => {
       linkUrl: (form.linkUrl || '').trim(),
       displayStartAt: Timestamp.fromDate(start),
       displayEndAt: Timestamp.fromDate(end),
-      sortOrder: Number(form.sortOrder) || 0,
+      sortOrder: editingId ? Number(editingRow?.sortOrder) || 0 : 0,
       enabled: !!form.enabled,
     };
     try {
@@ -160,8 +159,7 @@ export const ExternalEventPosterManagement = () => {
       <div>
         <h2 className="text-2xl font-bold text-dark mb-2">외부행사 포스터 (기간제)</h2>
         <p className="text-sm text-gray-600 leading-relaxed">
-          부청사 프로그램이 아닌 외부 행사 포스터를 기간으로 지정해 홈 화면 팝업에 노출할 수 있습니다. 여러 건이 있으면
-          표시 순서 숫자가 작은 것부터 채우고, 남는 칸은 다가오는 프로그램 포스터로 채워집니다(최대 3장).
+          외부 행사 포스터를 기간으로 지정해 홈 화면 팝업에 노출할 수 있습니다. 팝업은 최대 3장까지 표시됩니다.
         </p>
       </div>
 
@@ -232,15 +230,6 @@ export const ExternalEventPosterManagement = () => {
               className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
             />
           </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">표시 순서 (작을수록 앞)</label>
-            <input
-              type="number"
-              value={form.sortOrder}
-              onChange={(e) => setForm((f) => ({ ...f, sortOrder: e.target.value === '' ? 0 : Number(e.target.value) }))}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
-            />
-          </div>
           <div className="flex items-end">
             <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-700">
               <input
@@ -285,7 +274,6 @@ export const ExternalEventPosterManagement = () => {
                   <th className="p-3 font-bold text-gray-700">썸네일</th>
                   <th className="p-3 font-bold text-gray-700">행사명</th>
                   <th className="p-3 font-bold text-gray-700">노출 기간</th>
-                  <th className="p-3 font-bold text-gray-700">순서</th>
                   <th className="p-3 font-bold text-gray-700">작업</th>
                 </tr>
               </thead>
@@ -312,7 +300,6 @@ export const ExternalEventPosterManagement = () => {
                         <br />
                         ~ {eMs != null ? new Date(eMs).toLocaleString('ko-KR') : '—'}
                       </td>
-                      <td className="p-3">{row.sortOrder ?? 0}</td>
                       <td className="p-3 whitespace-nowrap">
                         <button type="button" onClick={() => openEdit(row)} className="text-brand font-bold mr-3 hover:underline">
                           수정

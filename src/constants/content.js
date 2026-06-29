@@ -3,6 +3,9 @@
  */
 
 export const defaultContent = {
+    programRecruitmentPaused: false,
+    programRecruitmentStartAt: '',
+    programRecruitmentEndAt: '',
     hero_title: "함께 성장하는\n청년 사업가 커뮤니티\n부산청년사업가들",
     hero_desc: "부산 지역 청년 사업가들이 모여 아이디어를 공유하고, 네트워킹하며 함께 성장해나가는 공간입니다.",
     hero_bg: "", // 히어로 섹션 배경 이미지

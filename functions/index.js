@@ -30,6 +30,9 @@ const USE_APPLICATIONS_PARTICIPANT_COUNT = 'useApplicationsParticipantCount';
 
 /** 설정 정원 초과 수용 버퍼 (클라이언트 CAPACITY_EXTRA_SLOTS와 동일 값 유지) */
 const CAPACITY_EXTRA_SLOTS = 10;
+const PROGRAM_RECRUITMENT_PAUSED = 'programRecruitmentPaused';
+const PROGRAM_RECRUITMENT_START_AT = 'programRecruitmentStartAt';
+const PROGRAM_RECRUITMENT_END_AT = 'programRecruitmentEndAt';
 
 /**
  * 프로그램(세미나) 하드캡: capacity + CAPACITY_EXTRA_SLOTS.
@@ -39,6 +42,69 @@ function getEffectiveCapacityLimit(seminarData) {
   const cap = Number(seminarData?.maxParticipants ?? seminarData?.capacity);
   if (!Number.isFinite(cap) || cap <= 0) return Infinity;
   return Math.floor(cap) + CAPACITY_EXTRA_SLOTS;
+}
+
+function toRecruitmentMs(value) {
+  if (value == null || value === '') return null;
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  if (value?.seconds != null) return value.seconds * 1000;
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function calculateSeminarStatusFromDate(dateStr) {
+  if (!dateStr) return '미정';
+  const matches = String(dateStr).match(/(\d{4})[\.-](\d{2})[\.-](\d{2})/);
+  if (!matches) return '모집중';
+  try {
+    const year = parseInt(matches[1], 10);
+    const month = parseInt(matches[2], 10) - 1;
+    const day = parseInt(matches[3], 10);
+    const seminarDate = new Date(year, month, day);
+    const today = new Date();
+    seminarDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((seminarDate - today) / (1000 * 60 * 60 * 24));
+    if (diffDays < -7) return '종료';
+    if (diffDays < 0) return '후기작성가능';
+    if (diffDays <= 14) return '마감임박';
+    return '모집중';
+  } catch (_) {
+    return '모집중';
+  }
+}
+
+function isSeminarEligibleForGlobalRecruitmentControl(seminarData) {
+  if (!seminarData) return false;
+  if (seminarData.recruitmentClosedByAdmin) return false;
+  const naturalStatus = calculateSeminarStatusFromDate(seminarData.date || '');
+  return naturalStatus === '모집중' || naturalStatus === '마감임박';
+}
+
+async function getGlobalProgramRecruitmentState() {
+  try {
+    const snap = await db.collection('siteContent').doc('main').get();
+    const content = snap.exists ? (snap.data()?.content || {}) : {};
+    const nowMs = Date.now();
+    const startMs = toRecruitmentMs(content[PROGRAM_RECRUITMENT_START_AT]);
+    const endMs = toRecruitmentMs(content[PROGRAM_RECRUITMENT_END_AT]);
+    if (content[PROGRAM_RECRUITMENT_PAUSED] === true) {
+      return { open: false, reason: 'global_recruitment_paused' };
+    }
+    if (startMs != null && nowMs < startMs) {
+      return { open: false, reason: 'global_recruitment_before_start' };
+    }
+    if (endMs != null && nowMs > endMs) {
+      return { open: false, reason: 'global_recruitment_after_end' };
+    }
+  } catch (e) {
+    console.warn('[Payment Complete] global recruitment check failed (non-fatal), proceeding', e.message);
+  }
+  return { open: true, reason: 'open' };
+}
+
+function isGlobalRecruitmentClosedReason(reason) {
+  return typeof reason === 'string' && reason.startsWith('global_recruitment_');
 }
 
 function isAdminAddedApplicationData(d) {
@@ -420,7 +486,12 @@ const requireAdminAuth = async (req, res, next) => {
       const byUid = await db.collection('users').where('uid', '==', decoded.uid).limit(1).get();
       if (!byUid.empty) callerDoc = byUid.docs[0];
     }
-    if (!callerDoc || !callerDoc.exists || callerDoc.data()?.role !== 'admin') {
+    if (!callerDoc || !callerDoc.exists) {
+      res.status(403).json({ success: false, error: 'forbidden' });
+      return;
+    }
+    const role = String(callerDoc.data()?.role || '').trim();
+    if (role !== 'admin' && role !== 'master') {
       res.status(403).json({ success: false, error: 'forbidden' });
       return;
     }
@@ -500,15 +571,37 @@ async function createApplicationFromPending(paymentId, pending) {
   const seminarId = pending.seminar_id || pending.seminarId;
   const appData = pending.application_data || pending.applicationData || {};
 
-  // 정원 하드캡 검사: 명단 확정 인원 >= 설정정원 + 10 이면 신청 미생성
+  let seminarData = null;
   if (seminarId) {
     try {
       const seminarSnap = await db.collection('seminars').doc(String(seminarId)).get();
+      if (seminarSnap.exists) seminarData = seminarSnap.data();
+    } catch (e) {
+      console.warn('[Payment Complete] seminar fetch for recruitment check failed (non-fatal)', e.message);
+    }
+  }
+
+  const globalRecruitment = await getGlobalProgramRecruitmentState();
+  if (globalRecruitment.open === false) {
+    const shouldBlock =
+      !seminarData || isSeminarEligibleForGlobalRecruitmentControl(seminarData);
+    if (shouldBlock) {
+      console.warn('[Payment Complete] global recruitment closed', globalRecruitment.reason);
+      return { created: false, reason: globalRecruitment.reason, seminarId };
+    }
+  }
+
+  // 정원 하드캡 검사: 명단 확정 인원 >= 설정정원 + 10 이면 신청 미생성
+  if (seminarId) {
+    try {
+      const seminarSnap = seminarData
+        ? { exists: true, data: () => seminarData }
+        : await db.collection('seminars').doc(String(seminarId)).get();
       if (seminarSnap.exists) {
-        const seminarData = seminarSnap.data();
-        const limit = getEffectiveCapacityLimit(seminarData);
+        const data = seminarData || seminarSnap.data();
+        const limit = getEffectiveCapacityLimit(data);
         if (Number.isFinite(limit)) {
-          const fee = Number(seminarData?.applicationFee) || 0;
+          const fee = Number(data?.applicationFee) || 0;
           const registeredCount = await countRegisteredParticipantsForSeminar(seminarId, fee);
           if (registeredCount >= limit) {
             console.warn('[Payment Complete] capacity_full', seminarId, registeredCount, '>=', limit);
@@ -1089,6 +1182,13 @@ app.get('/api/payment/status', async (req, res) => {
           res.status(200).json({ completed: false, error: 'capacity_full' });
           return;
         }
+        if (isGlobalRecruitmentClosedReason(statusCreateResult.reason)) {
+          console.warn('[Payment Status] global recruitment closed — auto refund', merchantUid, statusCreateResult.reason);
+          await cancelPortOnePayment({ paymentId: merchantUid, reason: '모집 중단으로 인한 자동 환불', paidAmount: 0, refundAmount: 0 });
+          await db.collection('pendingPayments').doc(merchantUid).delete();
+          res.status(200).json({ completed: false, error: statusCreateResult.reason });
+          return;
+        }
         await db.collection('paymentWebhookEvents').doc(merchantUid).set({ completed: true }, { merge: true });
         await db.collection('pendingPayments').doc(merchantUid).delete();
         console.log('[Payment Status] recovered application from paid webhook', merchantUid, 'created:', statusCreateResult.created);
@@ -1190,6 +1290,15 @@ app.post('/api/payment/complete', async (req, res) => {
       res.status(200).json({ ok: false, error: 'capacity_full' });
       return;
     }
+    if (isGlobalRecruitmentClosedReason(createResult.reason)) {
+      console.warn('[Payment Complete] global recruitment closed — auto refund', merchantUid, createResult.reason);
+      await db.collection('paymentWebhookEvents').doc(merchantUid).set({ global_recruitment_closed: true, reason: createResult.reason }, { merge: true });
+      const fee = pendingData?.application_data?.applicationFee ?? 0;
+      await cancelPortOnePayment({ paymentId: merchantUid, reason: '모집 중단으로 인한 자동 환불', paidAmount: Number(fee) || 0, refundAmount: Number(fee) || 0 });
+      await db.collection('pendingPayments').doc(merchantUid).delete();
+      res.status(200).json({ ok: false, error: createResult.reason });
+      return;
+    }
     const { created, applicationId } = createResult;
     await db.collection('paymentWebhookEvents').doc(merchantUid).set({ completed: true }, { merge: true });
     await db.collection('pendingPayments').doc(merchantUid).delete();
@@ -1286,6 +1395,16 @@ app.post('/api/payment/webhook', async (req, res) => {
           await cancelPortOnePayment({ paymentId: merchantUid, reason: '정원 마감으로 인한 자동 환불', paidAmount: expectedAmount || 0, refundAmount: expectedAmount || 0 });
           await db.collection('pendingPayments').doc(String(merchantUid)).delete();
           res.status(200).json({ received: true, merchant_uid: merchantUid, warning: 'capacity_full_refunded' });
+          return;
+        }
+        if (isGlobalRecruitmentClosedReason(createResult.reason)) {
+          console.warn('[Payment Webhook] global recruitment closed — auto refund', merchantUid, createResult.reason);
+          await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set(
+            { global_recruitment_closed: true, reason: createResult.reason }, { merge: true }
+          );
+          await cancelPortOnePayment({ paymentId: merchantUid, reason: '모집 중단으로 인한 자동 환불', paidAmount: expectedAmount || 0, refundAmount: expectedAmount || 0 });
+          await db.collection('pendingPayments').doc(String(merchantUid)).delete();
+          res.status(200).json({ received: true, merchant_uid: merchantUid, warning: 'global_recruitment_closed_refunded' });
           return;
         }
         const { created, applicationId } = createResult;

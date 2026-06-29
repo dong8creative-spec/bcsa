@@ -6,6 +6,7 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icons } from '../components/Icons';
 import { buildProgramPopupItems } from '../appHelpers';
+import { markProgramPopupDismissedThisSession } from '../utils/programPopupCache';
 
 const POPUP_HIDE_UNTIL_KEY = 'busan_ycc_popup_hide_until';
 
@@ -21,6 +22,7 @@ export default function ProgramPopupWindowView({
     );
 
     const handleClose = () => {
+        markProgramPopupDismissedThisSession();
         try {
             if (window.opener && !window.opener.closed) window.close();
             else window.close();
@@ -31,6 +33,7 @@ export default function ProgramPopupWindowView({
     };
 
     const handleHide24h = () => {
+        markProgramPopupDismissedThisSession();
         try {
             localStorage.setItem(POPUP_HIDE_UNTIL_KEY, String(Date.now() + 24 * 60 * 60 * 1000));
         } catch (e) {}

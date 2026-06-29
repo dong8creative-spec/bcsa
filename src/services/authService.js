@@ -2,6 +2,9 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signInWithCustomToken,
+  signInWithRedirect,
+  getRedirectResult,
+  GoogleAuthProvider,
   signOut as firebaseSignOut, 
   sendPasswordResetEmail,
   deleteUser,
@@ -39,6 +42,24 @@ export const authService = {
       return userCredential.user;
     } catch (error) {
       // 호출부(handleLogin)에서 translateFirebaseError로 사용자 안내
+      throw error;
+    }
+  },
+
+  /** Google 계정으로 Firebase 로그인 — redirect (popup COOP 이슈 회피) */
+  async signInWithGoogle() {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    await signInWithRedirect(auth, provider);
+  },
+
+  /** Google redirect 복귀 후 결과 처리 (페이지 로드마다 1회 호출) */
+  async completeGoogleRedirectSignIn() {
+    try {
+      const result = await getRedirectResult(auth);
+      return result?.user || null;
+    } catch (error) {
+      if (error?.code === 'auth/no-auth-event') return null;
       throw error;
     }
   },
@@ -116,12 +137,20 @@ export const authService = {
   },
 
   // Get user data from Firestore (문서 id가 uid인 경우 단일 조회)
-  async getUserData(uid) {
+  async getUserData(uidOrUser) {
+    const uid = typeof uidOrUser === 'string' ? uidOrUser : uidOrUser?.uid;
+    const email = typeof uidOrUser === 'object' ? (uidOrUser?.email || '').trim() : '';
+    if (!uid) return null;
     try {
-      const userDoc = await firebaseService.getUser(uid);
-      if (userDoc) return userDoc;
-      const users = await firebaseService.getUsers();
-      return users.find(u => u.uid === uid) || null;
+      const byDocId = await firebaseService.getUser(uid);
+      if (byDocId) return byDocId;
+
+      if (email) {
+        const byEmail = await firebaseService.getUserByEmail(email);
+        if (byEmail) return byEmail;
+      }
+
+      return null;
     } catch (error) {
       console.error('Error getting user data:', error);
       throw error;
