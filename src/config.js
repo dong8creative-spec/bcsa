@@ -19,12 +19,6 @@ export const CONFIG = {
         RETRY_DELAY: 1000
     },
     
-    ADMIN: {
-        ID: 'admin',
-        PASSWORD: '1234',
-        MASTER_CODE: 'master9999'
-    },
-    
     // 포트원(구 아임포트) 결제: 관리자 콘솔에서 발급한 가맹점 식별코드
     // https://admin.portone.io 또는 https://admin.iamport.kr → 시스템 설정 → 가맹점 식별코드
     PORTONE: {

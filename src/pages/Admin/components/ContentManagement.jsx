@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { authService } from '../../../services/authService';
 import { defaultContent } from '../../../constants/content';
+import { downloadPublishedContentJson } from '../../../utils/siteContent';
 import { imageMetadata } from '../../../constants/imageMetadata';
 import { Icons } from '../../../components/Icons';
 import { ImageCropModal } from '../../../components/ImageCropModal';
@@ -58,7 +59,8 @@ export const ContentManagement = () => {
     try {
       setIsSaving(true);
       await firebaseService.updateContent(content, currentUser?.uid);
-      alert('콘텐츠가 성공적으로 저장되었습니다.');
+      downloadPublishedContentJson(content);
+      alert('콘텐츠가 저장되었습니다.\n\n배포용 JSON이 다운로드되었습니다. 파일을 src/constants/publishedContent.json 에 덮어쓴 뒤 빌드·배포해 주세요.\n(또는 터미널에서 npm run sync-content 실행)');
     } catch (error) {
       console.error('콘텐츠 저장 오류:', error);
       alert('콘텐츠 저장에 실패했습니다.');

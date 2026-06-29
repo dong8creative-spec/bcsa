@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { firebaseService } from '../../../services/firebaseService';
 import { authService } from '../../../services/authService';
 import { defaultMenuOrder, defaultMenuNames } from '../../../constants/content';
+import { downloadPublishedContentJson } from '../../../utils/siteContent';
 import { Icons } from '../../../components/Icons';
 
 /**
@@ -195,12 +196,14 @@ export const MenuManagement = () => {
 
       // Firebase에 저장
       const contentData = await firebaseService.getContent();
-      await firebaseService.updateContent({
+      const payload = {
         ...contentData,
         menuOrder,
         menuEnabled,
         menuNames
-      }, currentUser?.uid);
+      };
+      await firebaseService.updateContent(payload, currentUser?.uid);
+      downloadPublishedContentJson(payload);
 
       // localStorage에도 저장 (폴백용)
       localStorage.setItem('busan_ycc_menu_order', JSON.stringify(menuOrder));
@@ -211,7 +214,7 @@ export const MenuManagement = () => {
       window.dispatchEvent(new Event('menuNamesUpdated'));
       window.dispatchEvent(new Event('storage'));
 
-      alert('메뉴 설정이 저장되었습니다.');
+      alert('메뉴 설정이 저장되었습니다.\n\n배포용 JSON이 다운로드되었습니다. src/constants/publishedContent.json 에 반영 후 빌드·배포해 주세요.');
     } catch (error) {
       console.error('저장 오류:', error);
       alert('메뉴 설정 저장에 실패했습니다.');

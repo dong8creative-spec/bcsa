@@ -36,7 +36,7 @@ export const uploadImageToStorage = async (file, type = 'program') => {
   } catch (error) {
     const code = error?.code || error?.name || '';
     if (isStorageAuthError(code)) {
-      throw new Error('이미지 업로드에는 로그인이 필요합니다. 홈에서 이메일/비밀번호로 로그인한 뒤 다시 시도해주세요. (관리자는 마스터 코드만이 아니라 회원 로그인도 필요할 수 있습니다.)');
+      throw new Error('이미지 업로드에는 로그인이 필요합니다. 홈에서 로그인한 뒤 다시 시도해 주세요.');
     }
     if (code === 'storage/retry-limit-exceeded' || code === 'storage/unknown') {
       throw new Error('네트워크가 불안정합니다. 잠시 후 다시 시도해주세요.');

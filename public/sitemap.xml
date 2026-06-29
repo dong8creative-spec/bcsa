@@ -1,5 +1,78 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://bcsa.co.kr/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://bcsa.co.kr/signup</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <!-- 메인 -->
+  <url>
+    <loc>https://bcsa.co.kr/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <lastmod>2026-06-29</lastmod>
+  </url>
+
+  <!-- 소개 -->
+  <url>
+    <loc>https://bcsa.co.kr/about</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <lastmod>2026-06-29</lastmod>
+  </url>
+
+  <!-- 프로그램 목록 (부산 사업자 세미나, 마케팅 교육, 네트워킹 모임) -->
+  <url>
+    <loc>https://bcsa.co.kr/programs</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <lastmod>2026-06-29</lastmod>
+  </url>
+
+  <!-- 공지사항 -->
+  <url>
+    <loc>https://bcsa.co.kr/notice</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <lastmod>2026-06-29</lastmod>
+  </url>
+
+  <!-- 부산맛집 -->
+  <url>
+    <loc>https://bcsa.co.kr/restaurants</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <lastmod>2026-06-29</lastmod>
+  </url>
+
+  <!-- 후원 -->
+  <url>
+    <loc>https://bcsa.co.kr/donation</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <lastmod>2026-06-29</lastmod>
+  </url>
+
+  <!-- 회원가입 -->
+  <url>
+    <loc>https://bcsa.co.kr/signup</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <lastmod>2026-06-29</lastmod>
+  </url>
+
+  <!-- 약관 -->
+  <url>
+    <loc>https://bcsa.co.kr/privacy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+    <lastmod>2026-06-29</lastmod>
+  </url>
+  <url>
+    <loc>https://bcsa.co.kr/terms</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+    <lastmod>2026-06-29</lastmod>
+  </url>
+  <url>
+    <loc>https://bcsa.co.kr/refund</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+    <lastmod>2026-06-29</lastmod>
+  </url>
 </urlset>

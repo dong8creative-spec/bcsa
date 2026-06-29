@@ -166,6 +166,37 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                     </div>
                 </section>
 
+            {/* 3-1. Who We Are For */}
+            <section className="py-12 md:py-16 px-6 bg-white">
+                <div className="container mx-auto max-w-4xl">
+                    <div className="text-center mb-10">
+                        <h2 className="text-3xl font-bold text-dark mb-2">부청사와 <span className="text-brand">함께하는 분들</span></h2>
+                        <p className="text-gray-500 text-sm">부산·경남 지역에서 사업을 운영하거나 창업을 준비하는 누구나 환영합니다</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+                        {[
+                            { title: "부산 청년 사업가·자영업자", desc: "부산에서 사업체를 운영 중인 청년 사업가, 자영업자, 소상공인" },
+                            { title: "경남 사업자·자영업자", desc: "경남 지역에서 사업을 운영하거나 부산·경남 창업을 준비 중인 분" },
+                            { title: "예비 창업자", desc: "부산·경남에서 창업을 계획 중이며 실전 정보와 네트워크가 필요한 분" },
+                            { title: "비즈니스 네트워크 확장", desc: "업종을 넘어 새로운 파트너·고객·투자자를 만나고 싶은 사업자" },
+                        ].map((item, idx) => (
+                            <div key={idx} className="flex gap-4 items-start p-5 rounded-xl border border-blue-100 bg-gray-50 hover:border-brand/30 transition-colors">
+                                <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center flex-shrink-0 mt-0.5 font-bold text-sm">{idx + 1}</div>
+                                <div>
+                                    <h3 className="font-bold text-dark mb-1">{item.title}</h3>
+                                    <p className="text-gray-500 text-sm leading-relaxed break-keep">{item.desc}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-center text-gray-500 text-sm break-keep leading-relaxed">
+                        부청사(부산청년사업가들)는 <strong className="text-dark">부산사업자모임·부산비즈니스모임·부산청년플랫폼</strong>으로서
+                        마케팅 세미나, 정기 네트워킹, 창업 교육 등 실전 프로그램을 운영합니다.<br className="hidden md:block" />
+                        경남 사업자·경남 자영업자도 함께하는 광역 비즈니스 커뮤니티입니다.
+                    </p>
+                </div>
+            </section>
+
             {/* 4. History */}
             <section className="py-12 md:py-20 px-6 bg-white overflow-hidden">
                 <div className="container mx-auto max-w-3xl">

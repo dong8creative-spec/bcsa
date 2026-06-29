@@ -13,6 +13,8 @@
     "test:local": "echo '로컬 테스트: npm run test 실행 후 http://127.0.0.1:5173 접속. 자세한 가이드는 README.md 참고.'",
     "test:quick": "echo '✅ 빠른 시작은 README.md를 확인하세요!' && npm run test",
     "build": "vite build",
+    "postbuild": "node scripts/generate-static-pages.mjs",
+    "sync-content": "node scripts/sync-site-content.mjs",
     "preview": "vite preview",
     "deploy": "npm run build && firebase deploy",
     "deploy:hosting": "npm run build && firebase deploy --only hosting",
