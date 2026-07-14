@@ -15,6 +15,7 @@
     "build": "vite build",
     "postbuild": "node scripts/generate-static-pages.mjs",
     "sync-content": "node scripts/sync-site-content.mjs",
+    "sync-admins": "node scripts/sync-site-admins.mjs",
     "preview": "vite preview",
     "deploy": "npm run build && firebase deploy",
     "deploy:hosting": "npm run build && firebase deploy --only hosting",

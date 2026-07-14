@@ -470,7 +470,34 @@ async function getPortOneV2PaymentInfo(paymentId) {
 };
 
 /**
- * 관리자 전용 API 미들웨어: Firebase ID 토큰 검증 + Firestore role=admin 확인
+ * Firestore 사용자 문서 기준 관리자 여부
+ */
+function isAdminFromFirestoreDoc(doc) {
+  if (!doc || !doc.exists) return false;
+  const data = doc.data() || {};
+  const role = String(data.role || '').trim();
+  if (role === 'admin' || role === 'master') return true;
+  const grade = String(data.memberGrade || '').trim();
+  return grade === '마스터' || grade === '운영진';
+}
+
+async function getCallerUserDoc(uid) {
+  let callerDoc = await db.collection('users').doc(uid).get();
+  if (!callerDoc.exists) {
+    const byUid = await db.collection('users').where('uid', '==', uid).limit(1).get();
+    if (!byUid.empty) callerDoc = byUid.docs[0];
+  }
+  return callerDoc?.exists ? callerDoc : null;
+}
+
+async function isCallerAdmin(decoded) {
+  if (decoded?.admin === true) return true;
+  const callerDoc = await getCallerUserDoc(decoded.uid);
+  return isAdminFromFirestoreDoc(callerDoc);
+}
+
+/**
+ * 관리자 전용 API 미들웨어: Firebase ID 토큰 검증 + Custom Claims 또는 Firestore 관리자 확인
  */
 const requireAdminAuth = async (req, res, next) => {
   const authHeader = (req.headers.authorization || '').toString();
@@ -481,17 +508,7 @@ const requireAdminAuth = async (req, res, next) => {
   }
   try {
     const decoded = await admin.auth().verifyIdToken(idToken);
-    let callerDoc = await db.collection('users').doc(decoded.uid).get();
-    if (!callerDoc.exists) {
-      const byUid = await db.collection('users').where('uid', '==', decoded.uid).limit(1).get();
-      if (!byUid.empty) callerDoc = byUid.docs[0];
-    }
-    if (!callerDoc || !callerDoc.exists) {
-      res.status(403).json({ success: false, error: 'forbidden' });
-      return;
-    }
-    const role = String(callerDoc.data()?.role || '').trim();
-    if (role !== 'admin' && role !== 'master') {
+    if (!(await isCallerAdmin(decoded))) {
       res.status(403).json({ success: false, error: 'forbidden' });
       return;
     }
@@ -1878,15 +1895,7 @@ export const addBlockedRegistration = onCall(
       throw new HttpsError('invalid-argument', 'uid is required');
     }
 
-    let callerDoc = await db.collection('users').doc(callerUid).get();
-    if (!callerDoc.exists) {
-      const byUid = await db.collection('users').where('uid', '==', callerUid).limit(1).get();
-      if (!byUid.empty) callerDoc = byUid.docs[0];
-    }
-    if (!callerDoc || !callerDoc.exists) {
-      throw new HttpsError('permission-denied', '권한이 없습니다.');
-    }
-    if (callerDoc.data()?.role !== 'admin') {
+    if (!(await isCallerAdmin({ uid: callerUid, admin: request.auth.token?.admin }))) {
       throw new HttpsError('permission-denied', '관리자만 실행할 수 있습니다.');
     }
 
@@ -2064,17 +2073,7 @@ export const deleteAuthUser = onCall(
       throw new HttpsError('invalid-argument', 'uid is required');
     }
 
-    // 관리자 확인: 문서 id가 uid인 경우 또는 users 컬렉션에서 uid 필드로 조회
-    let callerDoc = await db.collection('users').doc(callerUid).get();
-    if (!callerDoc.exists) {
-      const byUid = await db.collection('users').where('uid', '==', callerUid).limit(1).get();
-      if (!byUid.empty) callerDoc = byUid.docs[0];
-    }
-    if (!callerDoc || !callerDoc.exists) {
-      throw new HttpsError('permission-denied', '권한이 없습니다.');
-    }
-    const role = callerDoc.data()?.role;
-    if (role !== 'admin') {
+    if (!(await isCallerAdmin({ uid: callerUid, admin: request.auth.token?.admin }))) {
       throw new HttpsError('permission-denied', '관리자만 실행할 수 있습니다.');
     }
 

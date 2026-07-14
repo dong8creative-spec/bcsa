@@ -6,3 +6,12 @@ export function isAdminUser(userDoc) {
   const grade = String(userDoc.memberGrade || '').trim();
   return grade === '마스터' || grade === '운영진';
 }
+
+/** Firebase Auth Custom Claims (sync-site-admins 배포) */
+export function hasAdminClaim(claims) {
+  return claims?.admin === true;
+}
+
+export function resolveIsAdmin({ userDoc, claims } = {}) {
+  return hasAdminClaim(claims) || isAdminUser(userDoc);
+}

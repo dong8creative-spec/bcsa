@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
-import { isAdminUser } from '../utils/adminAccess';
+import { resolveIsAdmin } from '../utils/adminAccess';
 
 /**
  * 관리자 권한 확인 커스텀 훅 (Google 로그인 + Firestore role)
@@ -23,9 +23,16 @@ export const useAdminAuth = () => {
       }
       try {
         const doc = await authService.getUserData(user);
+        let claims = {};
+        try {
+          const tokenResult = await user.getIdTokenResult(true);
+          claims = tokenResult.claims || {};
+        } catch (tokenErr) {
+          console.warn('관리자 claim 확인 오류:', tokenErr);
+        }
         if (cancelled) return;
         setUserDoc(doc);
-        setIsAdmin(isAdminUser(doc));
+        setIsAdmin(resolveIsAdmin({ userDoc: doc, claims }));
       } catch (error) {
         console.error('관리자 권한 확인 오류:', error);
         if (cancelled) return;
@@ -61,6 +68,14 @@ export const useAdminAuth = () => {
     await authService.signInWithGoogle();
   }, []);
 
+  const signInWithKakao = useCallback(() => {
+    setRedirectError(null);
+    try {
+      sessionStorage.setItem('bcsa_admin_return', '1');
+    } catch (_) {}
+    authService.startKakaoLogin();
+  }, []);
+
   const signOut = useCallback(async () => {
     await authService.logout();
   }, []);
@@ -74,6 +89,7 @@ export const useAdminAuth = () => {
     currentUser: userDoc,
     redirectError,
     signInWithGoogle,
+    signInWithKakao,
     signOut,
   };
 };

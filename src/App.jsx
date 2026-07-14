@@ -1808,6 +1808,13 @@ const App = () => {
                 }
                 window.history.replaceState(null, '', location.pathname || '/');
                 await applySocialLoginResult(user, userDoc);
+                // /admin 에서 카카오 로그인을 시작한 경우 관리자 페이지로 복귀
+                try {
+                    if (sessionStorage.getItem('bcsa_admin_return') === '1') {
+                        sessionStorage.removeItem('bcsa_admin_return');
+                        navigate('/admin', { replace: true });
+                    }
+                } catch (_) {}
             } catch (e) {
                 if (exchangeKey) kakaoExchangeProcessedRef.current = '';
                 console.error('카카오 로그인 처리 실패:', e);

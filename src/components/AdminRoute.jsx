@@ -4,12 +4,30 @@ import { useAdminAuth } from '../hooks/useAdminAuth';
 import { Icons } from './Icons';
 import { translateFirebaseError } from '../utils/errorUtils';
 
+/** 카카오 심볼 아이콘 (로그인 버튼용) */
+const KakaoSymbol = ({ className = 'w-5 h-5' }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12 3C6.48 3 2 6.58 2 11c0 2.84 1.89 5.33 4.71 6.71-.15.55-.54 1.98-.62 2.29-.09.37.14.36.29.26.12-.08 1.92-1.3 2.7-1.83.62.09 1.26.14 1.92.14 5.52 0 10-3.58 10-8S17.52 3 12 3z" />
+  </svg>
+);
+
 /**
  * 관리자 권한이 필요한 라우트를 보호하는 컴포넌트
+ * 로그인(카카오/Google) + Firestore role·등급 또는 Custom Claims
  */
 export const AdminRoute = ({ children }) => {
   const navigate = useNavigate();
-  const { isAdmin, isLoading, isAuthenticated, authUser, userDoc, redirectError, signInWithGoogle, signOut } = useAdminAuth();
+  const {
+    isAdmin,
+    isLoading,
+    isAuthenticated,
+    authUser,
+    userDoc,
+    redirectError,
+    signInWithGoogle,
+    signInWithKakao,
+    signOut,
+  } = useAdminAuth();
   const [loginError, setLoginError] = useState('');
   const [signingIn, setSigningIn] = useState(false);
 
@@ -36,6 +54,18 @@ export const AdminRoute = ({ children }) => {
       } else {
         setLoginError(translateFirebaseError(error));
       }
+      setSigningIn(false);
+    }
+  };
+
+  const handleKakaoLogin = () => {
+    setLoginError('');
+    setSigningIn(true);
+    try {
+      signInWithKakao();
+    } catch (error) {
+      console.error('카카오 로그인 오류:', error);
+      setLoginError(error?.message || '카카오 로그인을 시작할 수 없습니다.');
       setSigningIn(false);
     }
   };
@@ -73,16 +103,16 @@ export const AdminRoute = ({ children }) => {
           <h2 className="text-2xl font-bold text-gray-800 mb-2">관리자 로그인</h2>
           <p className="text-gray-600">
             {signingIn
-              ? 'Google 로그인 페이지로 이동 중...'
+              ? '로그인 페이지로 이동 중...'
               : isAuthenticated
-              ? '관리자 권한이 있는 Google 계정으로 로그인해 주세요.'
-              : 'Google 계정으로 로그인하면 관리자 페이지에 접속할 수 있습니다.'}
+              ? '관리자 권한이 있는 계정으로 다시 로그인해 주세요.'
+              : '관리자 권한이 있는 계정으로 로그인해 주세요.'}
           </p>
         </div>
 
         {isAuthenticated && !isAdmin && (
           <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 space-y-2">
-            <p className="font-bold">Google 로그인은 되었지만 관리자 권한이 없습니다</p>
+            <p className="font-bold">로그인은 되었지만 관리자 권한이 없습니다</p>
             <p>
               계정: <span className="font-bold">{authUser?.email || userDoc?.email || '알 수 없음'}</span>
             </p>
@@ -106,6 +136,16 @@ export const AdminRoute = ({ children }) => {
         )}
 
         <div className="space-y-3">
+          <button
+            type="button"
+            onClick={handleKakaoLogin}
+            disabled={signingIn}
+            className="w-full px-6 py-3 bg-[#FEE500] text-[#191919] rounded-xl font-bold hover:bg-[#FDD835] transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
+          >
+            <KakaoSymbol className="w-5 h-5" />
+            카카오로 로그인
+          </button>
+
           <button
             type="button"
             onClick={handleGoogleLogin}
