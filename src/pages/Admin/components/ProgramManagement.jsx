@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { deleteField } from 'firebase/firestore';
 import { firebaseService } from '../../../services/firebaseService';
 import {
+  ADMIN_HIDDEN_APPLICATIONS_KEY,
+  ADMIN_HIDDEN_APPLICATIONS_CHANGED,
+  readAdminHiddenEntries,
+  writeAdminHiddenEntries,
+  notifyAdminHiddenApplicationsChanged,
   collectProgramSeminarKeys,
   isRegisteredApplication,
 } from '../../../utils/adminHiddenApplications';
 import { SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD } from '../../../constants/appConstants';
 import { calculateStatus } from '../../../utils';
+import { getSeminarCapacity, isSeminarEligibleForFinalParticipantAdjust } from '../../../utils/seminarDisplay';
 import { Icons } from '../../../components/Icons';
 import { DateTimePicker } from './DateTimePicker';
 import { KakaoMapModal } from './KakaoMapModal';
@@ -31,7 +38,20 @@ const PROGRAM_CATEGORIES = [
 /** 신청 비용 드롭다운 옵션: 1만원~10만원 (1만원 단위) */
 const FEE_OPTIONS = Array.from({ length: 10 }, (_, i) => (i + 1) * 10000);
 
+/** 정원 드롭다운 옵션: 10~90명(10명 단위), 100~500명(100명 단위). 목록에 없는 값은 "직접 입력"으로 처리 */
+const CAPACITY_OPTIONS = [
+  ...Array.from({ length: 9 }, (_, i) => (i + 1) * 10),
+  ...Array.from({ length: 5 }, (_, i) => (i + 1) * 100),
+];
+
 const PAGE_SIZE = 6;
+
+/** 오늘 0시 0분 0초 타임스탬프 (지난 프로그램 판별용) */
+const getTodayStart = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+};
 
 /** 프로그램 날짜 문자열을 비교용 타임스탬프로 변환 */
 const parseDateForSort = (dateStr) => {
@@ -116,6 +136,107 @@ const matchesParticipantAddSearch = (user, rawQuery) => {
   return false;
 };
 
+/** 모집 종료 후 공개 UI에 쓰는 최종 인원 — Firestore `finalParticipantCount` */
+function FinalParticipantCountEditor({ program, onUpdated }) {
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const v =
+      program.finalParticipantCount != null && program.finalParticipantCount !== ''
+        ? String(program.finalParticipantCount)
+        : String(program.currentParticipants ?? '');
+    setValue(v);
+  }, [program.id, program.finalParticipantCount, program.currentParticipants]);
+
+  const cap = getSeminarCapacity(program);
+
+  const handleSave = async () => {
+    const t = String(value).trim();
+    if (t === '') {
+      alert('인원 수를 입력하거나, 자동 집계로 되돌리려면 아래 버튼을 누르세요.');
+      return;
+    }
+    const n = parseInt(t, 10);
+    if (Number.isNaN(n) || n < 0) {
+      alert('0 이상의 정수를 입력하세요.');
+      return;
+    }
+    if (cap > 0 && n > cap) {
+      if (!window.confirm(`입력 ${n}명이 정원 ${cap}명을 넘습니다. 저장할까요?`)) return;
+    }
+    setSaving(true);
+    try {
+      await firebaseService.updateSeminar(program.id, { finalParticipantCount: n });
+      alert('최종 모집 인원이 저장되었습니다.');
+      await onUpdated?.();
+    } catch (e) {
+      console.error(e);
+      alert('저장에 실패했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleClear = async () => {
+    if (!window.confirm('확정값을 지우고 자동 집계(신청 건·카운터)를 따르게 할까요?')) return;
+    setSaving(true);
+    try {
+      await firebaseService.updateSeminar(program.id, { finalParticipantCount: deleteField() });
+      alert('자동 집계로 되돌렸습니다.');
+      await onUpdated?.();
+    } catch (e) {
+      console.error(e);
+      alert('처리에 실패했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const hasFinalOverride =
+    program.finalParticipantCount !== undefined && program.finalParticipantCount !== null && program.finalParticipantCount !== '';
+
+  return (
+    <div className="mt-3 pt-3 border-t border-dashed border-blue-200 space-y-2">
+      <p className="text-xs font-bold text-gray-700">모집 종료 후 공개 인원 (최종 확정)</p>
+      <p className="text-[11px] text-gray-500 leading-snug">
+        홈·프로그램 목록에 보이는 신청 인원에 반영됩니다. 명단 건수와 다를 때만 수정하세요.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="number"
+          min={0}
+          inputMode="numeric"
+          className="w-24 px-2 py-1.5 border border-blue-200 rounded-lg text-sm font-bold text-dark"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          disabled={saving}
+          aria-label="최종 모집 인원"
+        />
+        {cap > 0 ? <span className="text-xs text-gray-500">/ 정원 {cap}명</span> : null}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-bold hover:bg-blue-700 disabled:opacity-50"
+        >
+          {saving ? '…' : '저장'}
+        </button>
+        {hasFinalOverride ? (
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={saving}
+            className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-50 disabled:opacity-50"
+          >
+            자동 집계
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 /**
  * 프로그램 관리 컴포넌트
  */
@@ -138,6 +259,7 @@ export const ProgramManagement = () => {
     capacity: '',
     category: '',
     applicationFee: '', // 신청 비용 (원, 비어 있으면 무료)
+    overflowParticipants: '', // 초과 인원 (정모 등, 선택)
     imageEntries: [] // Array<{ firebase: string | null, imgbb: string | null }>
   });
   const [imageUploading, setImageUploading] = useState(false);
@@ -146,11 +268,32 @@ export const ProgramManagement = () => {
   const [showApplicantModal, setShowApplicantModal] = useState(false);
   const [applicantModalProgram, setApplicantModalProgram] = useState(null);
   const [applicantModalUsers, setApplicantModalUsers] = useState([]);
-  const [, setApplicantModalDataLoading] = useState(false);
+  const [applicantModalDataLoading, setApplicantModalDataLoading] = useState(false);
   const [participantAddSearch, setParticipantAddSearch] = useState('');
   const [addingParticipantUserId, setAddingParticipantUserId] = useState(null);
   const [recruitmentPaused, setRecruitmentPaused] = useState(false);
   const [savingRecruitmentPause, setSavingRecruitmentPause] = useState(false);
+  const [hiddenEntriesState, setHiddenEntriesState] = useState(() => readAdminHiddenEntries());
+  const [isClosingPast, setIsClosingPast] = useState(false);
+  const [closingRecruitmentId, setClosingRecruitmentId] = useState(null);
+
+  const hiddenApplicationIdSet = useMemo(
+    () => new Set(hiddenEntriesState.map((e) => e.applicationId)),
+    [hiddenEntriesState]
+  );
+
+  useEffect(() => {
+    const sync = () => setHiddenEntriesState(readAdminHiddenEntries());
+    window.addEventListener(ADMIN_HIDDEN_APPLICATIONS_CHANGED, sync);
+    const onStorage = (e) => {
+      if (e.key === ADMIN_HIDDEN_APPLICATIONS_KEY) sync();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(ADMIN_HIDDEN_APPLICATIONS_CHANGED, sync);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
 
   useEffect(() => {
     if (!firebaseService?.subscribeContent) return undefined;
@@ -306,7 +449,36 @@ export const ProgramManagement = () => {
     [applicantModalProgram, applications, loadApplicantModalData, loadPrograms]
   );
 
-  /** 프로그램별 명단 확정 신청 건수 */
+  /** 관리자: 이 브라우저의 명단·CSV·인원·홈 집계에서만 숨김 (DB·환불 불변) */
+  const handleAdminRemoveApplicant = useCallback((applicationId, displayName, program) => {
+    if (!applicationId) return;
+    const nameHint = (displayName || '').trim() || '해당 신청';
+    if (
+      !window.confirm(
+        `「${nameHint}」을(를) 이 관리 화면에서만 숨깁니다.\n\n• Firestore 신청 데이터는 바뀌지 않습니다.\n• 홈·프로그램 목록의 신청 인원 표시는 이 브라우저에서만 줄어 보입니다.\n• CSV·붙여넣기에도 나오지 않습니다.\n\n계속할까요?`
+      )
+    ) {
+      return;
+    }
+    const idStr = String(applicationId);
+    const programKeys = [...collectProgramSeminarKeys(program)];
+    setHiddenEntriesState((prev) => {
+      if (prev.some((e) => e.applicationId === idStr)) return prev;
+      const next = [...prev, { applicationId: idStr, programKeys }];
+      writeAdminHiddenEntries(next);
+      notifyAdminHiddenApplicationsChanged();
+      return next;
+    });
+  }, []);
+
+  const clearAllHiddenApplicants = useCallback(() => {
+    if (!window.confirm('이 브라우저에서 숨긴 신청을 모두 다시 보이게 할까요?')) return;
+    setHiddenEntriesState([]);
+    writeAdminHiddenEntries([]);
+    notifyAdminHiddenApplicationsChanged();
+  }, []);
+
+  /** 프로그램별 명단 확정 신청 건수 (유료: merchant_uid 보유, 관리자 숨김 제외) */
   const applicationCountByProgramId = useMemo(() => {
     const map = {};
     (programs || []).forEach((p) => {
@@ -316,11 +488,12 @@ export const ProgramManagement = () => {
       map[pid] = (applications || []).filter(
         (app) =>
           applicationMatchesProgram(p, app) &&
+          !(app.id != null && hiddenApplicationIdSet.has(String(app.id))) &&
           isRegisteredApplication(app, fee)
       ).length;
     });
     return map;
-  }, [applications, programs]);
+  }, [applications, programs, hiddenApplicationIdSet]);
 
   /** 검색어로 필터 + 정렬된 목록 */
   const filteredAndSortedPrograms = useMemo(() => {
@@ -356,6 +529,12 @@ export const ProgramManagement = () => {
     return sorted;
   }, [programs, searchQuery, sortBy, applicationCountByProgramId]);
 
+  /** 지난 프로그램 (행사 일자가 오늘 이전인 프로그램) */
+  const pastPrograms = useMemo(() => {
+    const todayStart = getTodayStart();
+    return programs.filter((p) => parseDateForSort(p.date) < todayStart);
+  }, [programs]);
+
   /** 현재 페이지에 표시할 프로그램 (6개) */
   const displayPrograms = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
@@ -383,6 +562,37 @@ export const ProgramManagement = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, sortBy]);
+
+  /** 지난 프로그램 전부 정원 만석·종료 처리 */
+  const handleClosePastPrograms = async () => {
+    if (pastPrograms.length === 0) {
+      alert('지난 프로그램이 없습니다.');
+      return;
+    }
+    if (!window.confirm(`진행 완료된 지난 프로그램 ${pastPrograms.length}개를 정원 만석·종료 처리할까요?`)) {
+      return;
+    }
+    setIsClosingPast(true);
+    let success = 0;
+    let fail = 0;
+    for (const p of pastPrograms) {
+      try {
+        const cap = Number(p.maxParticipants ?? p.capacity ?? 0);
+        await firebaseService.updateSeminar(p.id, { status: '종료', currentParticipants: cap });
+        success += 1;
+      } catch (err) {
+        fail += 1;
+        console.error('매진·종료 처리 실패:', p.id, err);
+      }
+    }
+    await loadPrograms();
+    setIsClosingPast(false);
+    if (fail === 0) {
+      alert(`${success}개 프로그램을 정원 만석·종료 처리했습니다.`);
+    } else {
+      alert(`${success}개 성공, ${fail}개 실패했습니다.`);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -413,6 +623,12 @@ export const ProgramManagement = () => {
     } else if (editingProgram.currentParticipants != null) {
       payload.currentParticipants = editingProgram.currentParticipants;
     }
+    const overflowNum = formData.overflowParticipants !== '' && formData.overflowParticipants != null ? parseInt(String(formData.overflowParticipants).replace(/\D/g, ''), 10) : null;
+    if (overflowNum != null && !isNaN(overflowNum) && overflowNum >= 0) {
+      payload.overflowParticipants = overflowNum;
+    } else {
+      payload.overflowParticipants = null;
+    }
     try {
       if (editingProgram) {
         await firebaseService.updateSeminar(editingProgram.id, payload);
@@ -440,14 +656,12 @@ export const ProgramManagement = () => {
             : { firebase: item?.firebase ?? null, imgbb: item?.imgbb ?? null }
         )
       : [];
+    // 정원은 저장된 값을 그대로 불러온다 (10/100 단위로 반올림하지 않음 — 값이 조용히 바뀌는 것을 방지).
+    // 드롭다운에 없는 값이면 "직접 입력"으로 표시되어 그대로 편집·저장할 수 있다.
     const rawCapacity = program.capacity != null && program.capacity !== ''
       ? Number(program.capacity)
       : (program.maxParticipants != null && program.maxParticipants !== '' ? Number(program.maxParticipants) : NaN);
-    const capacityNorm = (() => {
-      if (isNaN(rawCapacity) || rawCapacity < 10 || rawCapacity > 500) return '';
-      if (rawCapacity < 100) return String(Math.min(90, Math.max(10, Math.round(rawCapacity / 10) * 10)));
-      return String(Math.min(500, Math.max(100, Math.round(rawCapacity / 100) * 100)));
-    })();
+    const capacityValue = !isNaN(rawCapacity) && rawCapacity > 0 ? String(Math.floor(rawCapacity)) : '';
     setFormData({
       title: program.title || '',
       description: program.description || '',
@@ -455,9 +669,10 @@ export const ProgramManagement = () => {
       location: program.location || '',
       locationLat: program.locationLat || null,
       locationLng: program.locationLng || null,
-      capacity: capacityNorm,
+      capacity: capacityValue,
       category: program.category || '',
       applicationFee: program.applicationFee != null && program.applicationFee !== '' ? String(program.applicationFee) : '',
+      overflowParticipants: program.overflowParticipants != null && program.overflowParticipants !== '' ? String(program.overflowParticipants) : '',
       imageEntries
     });
     setShowModal(true);
@@ -476,6 +691,32 @@ export const ProgramManagement = () => {
     }
   };
 
+  /** 관리자가 이 프로그램 하나만 모집 중단/재개 토글 (중단 시 사용자 화면에서는 '모집중단', 신청 불가) */
+  const handleCloseRecruitment = async (program) => {
+    const todayStart = getTodayStart();
+    if (parseDateForSort(program.date) < todayStart) {
+      alert('이미 지난 프로그램입니다. "지난 프로그램 일괄 종료"를 사용하세요.');
+      return;
+    }
+    const isCurrentlyClosed = !!program.recruitmentClosedByAdmin;
+    const action = isCurrentlyClosed ? '재개' : '중단';
+    const confirmMsg = isCurrentlyClosed
+      ? `"${program.title || '이 프로그램'}" 모집을 재개하시겠습니까?\n재개 후 사용자가 다시 신청할 수 있습니다.`
+      : `"${program.title || '이 프로그램'}" 모집을 중단하시겠습니까?\n중단 후에는 이 프로그램만 사용자가 신청할 수 없게 됩니다 (다른 프로그램은 영향 없음).`;
+    if (!window.confirm(confirmMsg)) return;
+    setClosingRecruitmentId(program.id);
+    try {
+      await firebaseService.updateSeminar(program.id, { recruitmentClosedByAdmin: !isCurrentlyClosed });
+      alert(isCurrentlyClosed ? '모집이 재개되었습니다.' : '모집이 중단되었습니다.');
+      await loadPrograms();
+    } catch (err) {
+      console.error(`모집 ${action} 처리 실패:`, err);
+      alert(`모집 ${action}에 실패했습니다.`);
+    } finally {
+      setClosingRecruitmentId(null);
+    }
+  };
+
   const resetForm = () => {
     setEditingProgram(null);
     setFormData({
@@ -488,6 +729,7 @@ export const ProgramManagement = () => {
       capacity: '',
       category: '',
       applicationFee: '',
+      overflowParticipants: '',
       imageEntries: []
     });
   };
@@ -565,19 +807,35 @@ export const ProgramManagement = () => {
           </button>
           <button
             type="button"
-            onClick={() => saveRecruitmentPaused(false)}
-            disabled={savingRecruitmentPause || !recruitmentPaused}
-            className="px-3 py-2 sm:px-4 rounded-xl font-bold transition-colors flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base whitespace-nowrap disabled:opacity-50 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:hover:bg-emerald-50"
+            onClick={() => {
+              const next = !recruitmentPaused;
+              if (next && !window.confirm('모든 프로그램의 신규 신청을 한 번에 막습니다.\n(개별 프로그램만 마감하려면 각 카드의 "모집 중단" 버튼을 사용하세요.)\n\n계속할까요?')) return;
+              saveRecruitmentPaused(next);
+            }}
+            disabled={savingRecruitmentPause}
+            title="사이트 전체 프로그램의 신규 신청을 한번에 막거나 다시 엽니다 (긴급 상황용). 특정 프로그램 하나만 마감하려면 카드의 개별 버튼을 쓰세요."
+            className={`px-3 py-2 sm:px-4 rounded-xl font-bold transition-colors flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base whitespace-nowrap disabled:opacity-50 ${recruitmentPaused ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
           >
-            모집 재개
+            {savingRecruitmentPause ? (
+              <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : recruitmentPaused ? (
+              <Icons.RefreshCw size={16} />
+            ) : (
+              <Icons.X size={16} />
+            )}
+            {recruitmentPaused ? '전체 모집 재개' : '전체 모집 중단'}
           </button>
           <button
             type="button"
-            onClick={() => saveRecruitmentPaused(true)}
-            disabled={savingRecruitmentPause || recruitmentPaused}
-            className="px-3 py-2 sm:px-4 rounded-xl font-bold transition-colors flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base whitespace-nowrap disabled:opacity-50 bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:hover:bg-amber-50"
+            onClick={handleClosePastPrograms}
+            disabled={isClosingPast}
+            title="행사일이 지난 프로그램을 한 번에 정원 만석·종료 처리합니다"
+            className="px-3 py-2 sm:px-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base whitespace-nowrap disabled:opacity-50"
           >
-            모집 중단
+            {isClosingPast ? (
+              <span className="inline-block w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+            ) : null}
+            지난 프로그램 일괄 종료
           </button>
           <button
             onClick={() => {
@@ -628,6 +886,9 @@ export const ProgramManagement = () => {
             const appCount = applicationCountByProgramId[String(program.id)] ?? 0;
             const thumb = normalizeImageItem(program.images?.[0]) || program.imageUrls?.[0] || program.imageUrl;
             const displayStatus = program.recruitmentClosedByAdmin ? '모집중단' : (program.status || calculateStatus(program.date || ''));
+            const canToggleRecruitment = parseDateForSort(program.date) >= getTodayStart();
+            const isClosingThis = closingRecruitmentId === program.id;
+            const isRecruitmentClosed = !!program.recruitmentClosedByAdmin;
             const statusClass = displayStatus === '모집중단' ? 'bg-amber-100 text-amber-800' : displayStatus === '종료' ? 'bg-gray-100 text-gray-600' : displayStatus === '마감임박' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700';
             return (
               <div key={program.id} className="relative bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
@@ -647,6 +908,9 @@ export const ProgramManagement = () => {
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusClass}`}>{displayStatus}</span>
                   <h3 className="font-bold text-lg text-dark flex-1 truncate pr-8">{program.title}</h3>
                 </div>
+                {program.description && (
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{program.description}</p>
+                )}
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Icons.Calendar size={16} />
@@ -687,7 +951,28 @@ export const ProgramManagement = () => {
                     <Icons.Users size={16} />
                     신청자명단
                   </button>
+                  {canToggleRecruitment && (
+                    <button
+                      type="button"
+                      onClick={() => handleCloseRecruitment(program)}
+                      disabled={isClosingThis}
+                      title={isRecruitmentClosed ? '모집 재개 후 사용자가 다시 신청할 수 있습니다' : '모집 중단 후 이 프로그램만 신청할 수 없습니다'}
+                      className={`flex-none whitespace-nowrap px-3 py-2 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${isRecruitmentClosed ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+                    >
+                      {isClosingThis ? (
+                        <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : isRecruitmentClosed ? (
+                        <Icons.RefreshCw size={16} />
+                      ) : (
+                        <Icons.X size={16} />
+                      )}
+                      {isRecruitmentClosed ? '모집 재개' : '모집 중단'}
+                    </button>
+                  )}
                 </div>
+                {isSeminarEligibleForFinalParticipantAdjust(program) ? (
+                  <FinalParticipantCountEditor program={program} onUpdated={loadPrograms} />
+                ) : null}
               </div>
             );
           })
@@ -785,15 +1070,45 @@ export const ProgramManagement = () => {
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">정원</label>
                 <select
-                  value={formData.capacity}
-                  onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
+                  value={formData.capacity === '' ? '' : CAPACITY_OPTIONS.includes(Number(formData.capacity)) ? formData.capacity : 'direct'}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setFormData({ ...formData, capacity: v === 'direct' ? formData.capacity : v });
+                  }}
                   className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white"
                 >
-                  <option value="">선택 (명)</option>
-                  {[...Array.from({ length: 9 }, (_, i) => (i + 1) * 10), ...Array.from({ length: 5 }, (_, i) => (i + 1) * 100)].map((n) => (
+                  <option value="">선택 안 함 (정원 없음)</option>
+                  {CAPACITY_OPTIONS.map((n) => (
                     <option key={n} value={String(n)}>{n}명</option>
                   ))}
+                  <option value="direct">직접 입력</option>
                 </select>
+                {(formData.capacity === '' ? '' : CAPACITY_OPTIONS.includes(Number(formData.capacity)) ? formData.capacity : 'direct') === 'direct' && (
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={formData.capacity}
+                    onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
+                    placeholder="정원 입력 (명)"
+                    className="w-full mt-2 px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                  />
+                )}
+                <p className="text-xs text-gray-500 mt-1">자주 쓰는 인원수는 목록에서 고르고, 그 외 숫자는 "직접 입력"으로 정확히 입력하세요. 목록 선택 시에도 값이 임의로 반올림되지 않습니다.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">초과 인원 (정모 등)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={formData.overflowParticipants}
+                  onChange={(e) => setFormData({ ...formData, overflowParticipants: e.target.value })}
+                  placeholder="0"
+                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">내부 기록용입니다. 홈·프로그램 목록의 신청 인원 숫자에는 반영되지 않습니다.</p>
               </div>
 
               <div>
@@ -912,6 +1227,7 @@ export const ProgramManagement = () => {
         const programIdNorm = toSeminarId(applicantModalProgram.id);
         const list = (applications || [])
           .filter((app) => applicationMatchesProgram(applicantModalProgram, app))
+          .filter((app) => !(app.id != null && hiddenApplicationIdSet.has(String(app.id))))
           .sort((a, b) => applicantDocTime(b) - applicantDocTime(a));
         const userMap = {};
         const userMapByEmail = {};
@@ -1020,6 +1336,17 @@ export const ProgramManagement = () => {
                 <div className="flex flex-wrap items-center gap-2 p-4 border-b border-blue-100 bg-gray-50/50">
                   <button
                     type="button"
+                    onClick={loadApplicantModalData}
+                    disabled={applicantModalDataLoading}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2 disabled:opacity-50 shrink-0"
+                  >
+                    {applicantModalDataLoading ? (
+                      <span className="inline-block w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                    ) : null}
+                    목록 새로고침
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleCsvDownload}
                     className="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl font-bold hover:bg-blue-200 transition-colors flex items-center gap-2 shrink-0"
                   >
@@ -1033,6 +1360,17 @@ export const ProgramManagement = () => {
                   >
                     스프레드시트에 붙여넣기
                   </button>
+                  <span className="hidden sm:inline-block w-px h-8 bg-gray-200 shrink-0 mx-1" aria-hidden="true" />
+                  <button
+                    type="button"
+                    onClick={clearAllHiddenApplicants}
+                    className="px-3 py-2 text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 shrink-0"
+                  >
+                    숨김 전체 해제
+                  </button>
+                  <span className="text-xs text-gray-500 shrink-0 max-w-[14rem] lg:max-w-none leading-snug">
+                    「명단에서 제거」는 이 브라우저만 반영 (홈·목록 인원 표시 포함, DB 미삭제)
+                  </span>
                 </div>
                 <div className="flex-1 min-h-0 overflow-auto p-4">
                   {(() => {
@@ -1103,28 +1441,67 @@ export const ProgramManagement = () => {
                     <p className="text-gray-500 text-center py-8">신청자가 없습니다.</p>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm min-w-[720px]">
+                      <table className="w-full text-sm min-w-[1020px]">
                         <thead>
                           <tr className="border-b border-blue-200">
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">번호</th>
                             <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">이름</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">닉네임</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">성별</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">생년월일</th>
                             <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">연락처</th>
                             <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">이메일</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">업종/업태</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">협업 업종</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">핵심 고객</th>
                             <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">참여 경로</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">강연 신청 계기</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">강연 사전 질문</th>
                             <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">식사 여부</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">개인정보 동의</th>
                             <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">신청일</th>
+                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap sticky right-0 bg-white z-[1] border-l border-blue-100 shadow-[-6px_0_10px_-6px_rgba(0,0,0,0.12)]">
+                              관리
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {list.map((app, i) => {
                             const user = resolveUser(app);
+                            const rowLabel = (user?.name || app.userName || '').trim() || app.userEmail || `신청 ${i + 1}`;
                             return (
                               <tr key={app.id ? `${app.id}-${i}` : `row-${i}`} className="border-b border-blue-100">
+                                <td className="px-2 py-2 text-gray-600">{i + 1}</td>
                                 <td className="px-2 py-2">{(user?.name || app.userName || '').trim() || '-'}</td>
+                                <td className="px-2 py-2 text-gray-600">{user?.nickname || '-'}</td>
+                                <td className="px-2 py-2 text-gray-600">{user?.gender || '-'}</td>
+                                <td className="px-2 py-2 text-gray-600">{user?.birthdate || '-'}</td>
                                 <td className="px-2 py-2">{app.userPhone || user?.phone || user?.phoneNumber || '-'}</td>
                                 <td className="px-2 py-2">{app.userEmail || user?.email || '-'}</td>
+                                <td className="px-2 py-2 max-w-[120px] truncate" title={user?.industry || user?.businessCategory || ''}>{user?.industry || user?.businessCategory || '-'}</td>
+                                <td className="px-2 py-2 max-w-[100px] truncate" title={user?.collaborationIndustry || ''}>{user?.collaborationIndustry || '-'}</td>
+                                <td className="px-2 py-2 max-w-[100px] truncate" title={user?.keyCustomers || ''}>{user?.keyCustomers || '-'}</td>
                                 <td className="px-2 py-2">{app.participationPath || '-'}</td>
+                                <td className="px-2 py-2 max-w-[150px] truncate" title={app.applyReason || ''}>{app.applyReason || '-'}</td>
+                                <td className="px-2 py-2 max-w-[150px] truncate" title={app.preQuestions || ''}>{app.preQuestions || '-'}</td>
                                 <td className="px-2 py-2">{app.mealAfter || '-'}</td>
+                                <td className="px-2 py-2">{app.privacyAgreed === true ? '동의' : '-'}</td>
                                 <td className="px-2 py-2 text-gray-600">{formatDate(app.createdAt || app.appliedAt)}</td>
+                                <td className="px-2 py-2 align-top sticky right-0 bg-white z-[1] border-l border-blue-100 shadow-[-6px_0_10px_-6px_rgba(0,0,0,0.12)]">
+                                  <button
+                                    type="button"
+                                    disabled={!app.id}
+                                    onClick={() => handleAdminRemoveApplicant(app.id, rowLabel, applicantModalProgram)}
+                                    className="text-xs font-bold text-red-600 hover:text-red-800 px-2 py-1.5 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 whitespace-nowrap"
+                                  >
+                                    명단에서 제거
+                                  </button>
+                                  {app.id ? (
+                                    <div className="text-[10px] text-gray-400 mt-1 font-mono break-all max-w-[8.5rem]" title={app.id}>
+                                      {app.id}
+                                    </div>
+                                  ) : null}
+                                </td>
                               </tr>
                             );
                           })}
