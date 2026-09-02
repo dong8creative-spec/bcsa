@@ -429,7 +429,12 @@ const App = () => {
 
     // URL 변경(직접 접근·브라우저 뒤로가기) → currentView 동기화
     useEffect(() => {
-        const path = location.pathname;
+        // Firebase Hosting은 사전 렌더링된 정적 페이지(/about, /programs 등, generate-static-pages.mjs 산출물)를
+        // 직접 요청하면 끝에 '/'를 붙여 리다이렉트한다(예: /about → /about/). 정규화하지 않으면 아래
+        // PATH_TO_VIEW[path] 조회가 항상 실패해 currentView가 초기값 'home'에 머물러, 직접 접속·새로고침·
+        // 공유링크로 들어온 사용자에게 엉뚱하게 홈 화면이 보이는 문제가 있었다 (SEO 타이틀만 맞고 내용은 홈).
+        const rawPath = location.pathname;
+        const path = rawPath.length > 1 && rawPath.endsWith('/') ? rawPath.slice(0, -1) : rawPath;
         const skipPaths = ['/payment/result', '/signup', '/privacy', '/terms', '/refund', '/program-popup'];
         if (skipPaths.some(p => path.startsWith(p))) return;
         // /programs/:id 는 ProgramDetailPage가 처리
