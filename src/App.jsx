@@ -57,7 +57,7 @@ import {
     PARTNER_LOGOS,
     PARTNER_NAMES
 } from './constants/appConstants';
-import { filterApprovedMembers, getCategoryColor, buildProgramPopupItems } from './appHelpers';
+import { filterApprovedMembers, getCategoryColor, buildProgramPopupItems, firestoreLikeToMillis } from './appHelpers';
 import {
     ADMIN_HIDDEN_APPLICATIONS_KEY,
     ADMIN_HIDDEN_APPLICATIONS_CHANGED,
@@ -342,6 +342,7 @@ const App = () => {
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const [popupPrograms, setPopupPrograms] = useState([]); // 최대 3개 프로그램 팝업
     const [externalEventPosters, setExternalEventPosters] = useState([]);
+    const [supportPrograms, setSupportPrograms] = useState([]);
     const [applySeminarFromPopup, setApplySeminarFromPopup] = useState(null);
     const [isPopupApplyModalOpen, setIsPopupApplyModalOpen] = useState(false);
     const [popupApplicationData, setPopupApplicationData] = useState({ 
@@ -516,6 +517,27 @@ const App = () => {
             ),
         [seminarsData, publicApplicationsList, adminHiddenEntries, applicationsByIdForDisplay]
     );
+
+    // 지원사업 자동 수집 피드: 홈 화면 노출용(활성+공개 상태만, 마감 임박순 → 상시 뒤로)
+    const supportProgramsPublic = useMemo(() => {
+        const rows = Array.isArray(supportPrograms) ? supportPrograms : [];
+        const nowMs = Date.now();
+        const visible = rows.filter((p) => p && p.enabled !== false && p.status === 'published');
+        const dated = [];
+        const rolling = [];
+        visible.forEach((p) => {
+            if (p.isRolling) {
+                rolling.push(p);
+                return;
+            }
+            const dMs = firestoreLikeToMillis(p.deadlineAt);
+            if (dMs == null || dMs < nowMs) return; // 마감일 미설정 또는 이미 마감된 항목은 홈에서 제외
+            dated.push(p);
+        });
+        dated.sort((a, b) => firestoreLikeToMillis(a.deadlineAt) - firestoreLikeToMillis(b.deadlineAt));
+        rolling.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+        return [...dated, ...rolling].slice(0, 8);
+    }, [supportPrograms]);
 
     const seoJsonLd = useMemo(() => {
         if (currentView === 'home' || currentView === 'about') {
@@ -1163,6 +1185,12 @@ const App = () => {
     useEffect(() => {
         if (!firebaseService?.subscribeExternalEventPosters) return;
         const unsub = firebaseService.subscribeExternalEventPosters(setExternalEventPosters);
+        return () => unsub();
+    }, []);
+
+    useEffect(() => {
+        if (!firebaseService?.subscribeSupportPrograms) return;
+        const unsub = firebaseService.subscribeSupportPrograms(setSupportPrograms);
         return () => unsub();
     }, []);
     
@@ -3580,11 +3608,59 @@ END:VCALENDAR`;
                             </div>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="self-end md:self-auto text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors">{content.activities_view_all || '전체 프로그램 보기'} <Icons.ArrowRight size={16} /></button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_seminar_image && <img src={content.activity_seminar_image} className="w-full h-full object-cover" alt="비즈니스 세미나" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-brand shadow-sm">SEMINAR</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_seminar_title || '비즈니스 세미나'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_seminar_desc || '매월 진행되는 창업 트렌드 및 마케팅 실무 세미나'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_seminar_schedule || '매월 2째주 목요일'}</span></div></div></button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_investment_image && <img src={content.activity_investment_image} className="w-full h-full object-cover" alt="투자 & 지원사업" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-green-600 shadow-sm">INVESTMENT</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_investment_title || '투자 & 지원사업'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_investment_desc || '최신 정부 지원사업 큐레이션 및 IR 피칭 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_investment_schedule || '수시 모집'}</span></div></div></button>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_networking_image && <img src={content.activity_networking_image} className="w-full h-full object-cover" alt="사업가 네트워킹" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-accent shadow-sm">NETWORK</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_networking_title || '사업가 네트워킹'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_networking_desc || '다양한 업종의 대표님들과 교류하며 비즈니스 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_networking_schedule || '매주 금요일'}</span></div></div></button>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-soft rounded-3xl p-6 flex flex-col justify-center items-center text-center hover:bg-brand hover:text-white transition-colors duration-300 cursor-pointer group shadow-deep-blue border-none w-full"><div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-brand mb-4 shadow-sm group-hover:scale-110 transition-transform"><Icons.ArrowRight size={24} /></div><h3 className="text-lg font-bold mb-2 text-dark group-hover:text-white">{content.activity_more_title || 'More Programs'}</h3><p className="text-sm text-gray-700 group-hover:text-white break-keep">{content.activity_more_desc || '멘토링, 워크샵 등 더 많은 활동 보기'}</p></button>
+                        </div>
+                    </div>
+                </section>
+                ) : null}
+
+                {/* ============================================
+                    📍 지원사업 (자동 수집 피드 - D-day 카드, ACTIVITIES의 "투자 & 지원사업" 카드를 대체)
+                    ============================================ */}
+                {Array.isArray(supportProgramsPublic) && supportProgramsPublic.length > 0 ? (
+                <section className="py-12 md:py-20 px-6">
+                    <div className="container mx-auto max-w-7xl">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 md:mb-10 gap-4">
+                            <div className="w-full md:w-auto text-left">
+                                <h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">지금 신청할 수 있는 지원사업</h2>
+                                <p className="text-gray-600 text-sm md:text-base break-keep">긴 공고문 대신, 핵심만 요약해서 보여드립니다</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {supportProgramsPublic.map((p) => {
+                                const dMs = firestoreLikeToMillis(p.deadlineAt);
+                                const daysLeft = dMs != null ? Math.ceil((dMs - Date.now()) / 86400000) : null;
+                                const ddayLabel = p.isRolling ? '상시' : (daysLeft != null ? (daysLeft <= 0 ? '마감임박' : `D-${daysLeft}`) : '');
+                                const ddayClass = p.isRolling ? 'bg-emerald-50 text-emerald-600' : (daysLeft != null && daysLeft <= 3 ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600');
+                                const tags = [...(p.region || []), ...(p.industry || [])].slice(0, 2);
+                                const href = p.applyUrl || p.sourceUrl || '#';
+                                return (
+                                    <a
+                                        key={p.id}
+                                        href={href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="bg-white rounded-3xl p-5 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group border-none text-left w-full flex flex-col"
+                                    >
+                                        <div className="flex items-center justify-between mb-3">
+                                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${ddayClass}`}>{ddayLabel}</span>
+                                            {p.amountText ? <span className="text-sm font-bold text-brand">{p.amountText}</span> : null}
+                                        </div>
+                                        <h3 className="text-base font-bold text-dark group-hover:text-brand transition-colors leading-snug line-clamp-2 min-h-[2.5em] mb-2 break-keep">{p.title}</h3>
+                                        {p.org ? <p className="text-xs text-gray-500 mb-3">{p.org}</p> : null}
+                                        {tags.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1 mt-auto">
+                                                {tags.map((t, i) => (
+                                                    <span key={i} className="text-xs bg-soft text-gray-600 px-2 py-0.5 rounded-full">{t}</span>
+                                                ))}
+                                            </div>
+                                        ) : null}
+                                    </a>
+                                );
+                            })}
                         </div>
                     </div>
                 </section>

@@ -20,7 +20,7 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import app, { db } from '../firebase';
-import { deleteHostedImagesForPayload } from '../utils/imageUtils';
+import { deleteHostedImagesForPayload, requestImgbbImageDeletion } from '../utils/imageUtils';
 
 // Firebase Data Service Layer
 export const firebaseService = {
@@ -1379,6 +1379,65 @@ export const firebaseService = {
       await deleteDoc(ref);
     } catch (e) {
       console.error('deleteExternalEventPoster', e);
+      throw e;
+    }
+  },
+
+  // ==========================================
+  // Support programs (지원사업 자동 수집 피드)
+  // ==========================================
+  subscribeSupportPrograms(callback) {
+    return onSnapshot(
+      collection(db, 'supportPrograms'),
+      (snapshot) => {
+        const rows = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        rows.sort((a, b) => {
+          const am = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const bm = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+          return bm - am;
+        });
+        callback(rows);
+      },
+      (error) => {
+        console.error('subscribeSupportPrograms error:', error);
+        callback([]);
+      }
+    );
+  },
+
+  async createSupportProgram(data) {
+    const docRef = await addDoc(collection(db, 'supportPrograms'), {
+      ...data,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return docRef.id;
+  },
+
+  async updateSupportProgram(programId, data) {
+    const id = String(programId || '').trim();
+    if (!id) throw new Error('updateSupportProgram: programId가 비어 있습니다.');
+    await updateDoc(doc(db, 'supportPrograms', id), {
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
+  },
+
+  async deleteSupportProgram(programId) {
+    const id = String(programId || '').trim();
+    if (!id) return;
+    try {
+      const ref = doc(db, 'supportPrograms', id);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data() || {};
+        if (data.thumbnailDeleteUrl) {
+          await requestImgbbImageDeletion(String(data.thumbnailDeleteUrl).trim());
+        }
+      }
+      await deleteDoc(ref);
+    } catch (e) {
+      console.error('deleteSupportProgram', e);
       throw e;
     }
   },

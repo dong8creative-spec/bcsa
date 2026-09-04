@@ -63,6 +63,14 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // 지원사업 자동 수집 피드: 읽기 공개. 관리자 브라우저 UI에서의 수동 등록/수정/삭제는 isAdmin()만 허용.
+    // 주의: 향후 자동 수집 스크립트(scripts/ingest-support-programs.mjs)는 Admin SDK(서비스 계정)로
+    // 쓰기 때문에 이 규칙을 완전히 우회함 — 아래 규칙은 브라우저 클라이언트 쓰기에만 적용됨.
+    match /supportPrograms/{programId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     // 게시글(커뮤니티·후기): 읽기 공개. 작성은 본인 authorId로만, 수정·삭제는 작성자 본인 또는 관리자
     match /posts/{postId} {
       allow read: if true;

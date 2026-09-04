@@ -9,8 +9,9 @@ import { PostManagement } from './components/PostManagement';
 import { ContentManagement } from './components/ContentManagement';
 import { MenuManagement } from './components/MenuManagement';
 import { ExternalEventPosterManagement } from './components/ExternalEventPosterManagement';
+import { SupportProgramManagement } from './components/SupportProgramManagement';
 
-const VALID_TABS = ['users', 'programs', 'externalPosters', 'posts', 'content', 'menu'];
+const VALID_TABS = ['users', 'programs', 'externalPosters', 'supportPrograms', 'posts', 'content', 'menu'];
 
 /**
  * 관리자 대시보드 메인 컴포넌트
@@ -61,6 +62,8 @@ export const AdminDashboard = () => {
         return <ProgramManagement />;
       case 'externalPosters':
         return <ExternalEventPosterManagement />;
+      case 'supportPrograms':
+        return <SupportProgramManagement />;
       case 'posts':
         return <PostManagement />;
       case 'content':
