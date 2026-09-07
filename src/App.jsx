@@ -35,6 +35,7 @@ import AdSlot from './components/AdSlot';
 import NewsView from './pages/NewsView';
 import RequestsView from './pages/RequestsView';
 import QnaView from './pages/QnaView';
+import UnderConstructionView from './pages/UnderConstructionView';
 import MyPageView from './pages/MyPageView';
 import AllMembersView from './pages/AllMembersView';
 import AllSeminarsView from './pages/AllSeminarsView';
@@ -3397,9 +3398,12 @@ END:VCALENDAR`;
         }
         if (currentView === 'tools') return <ToolsView onBack={() => goTo('home')} />;
         if (currentView === 'supportPage') return <SupportProgramsView supportPrograms={supportPrograms} content={content} onBack={() => goTo('home')} />;
-        if (currentView === 'news') return <NewsView content={content} onBack={() => goTo('home')} />;
-        if (currentView === 'requests') return <RequestsView onBack={() => goTo('home')} goTo={goTo} />;
-        if (currentView === 'qna') return <QnaView onBack={() => goTo('home')} />;
+        // 뉴스/의뢰/Q&A: 실제 수집·등록 기능이 아직 없어 목업 예시 데이터만 보여주던 상태였음.
+        // 방문자에게 가짜 데이터를 실제처럼 노출하지 않도록, 실기능이 붙기 전까지 공사중 화면으로 대체.
+        // 실제 기능이 완성되면 아래 3줄만 원래 뷰(NewsView/RequestsView/QnaView)로 되돌리면 된다.
+        if (currentView === 'news') return <UnderConstructionView eyebrow="NEWS" pageLabel="뉴스" onBack={() => goTo('home')} />;
+        if (currentView === 'requests') return <UnderConstructionView eyebrow="REQUESTS" pageLabel="의뢰" onBack={() => goTo('home')} />;
+        if (currentView === 'qna') return <UnderConstructionView eyebrow="EXPERT Q&A" pageLabel="Q&A" onBack={() => goTo('home')} />;
         
         // 예상치 못한 currentView 값에 대한 fallback (항상 유효한 React 요소 반환 보장)
         // currentView가 'home'이 아니고 위의 모든 조건에 맞지 않으면 홈으로 리다이렉트
