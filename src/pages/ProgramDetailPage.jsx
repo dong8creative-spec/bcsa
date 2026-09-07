@@ -79,7 +79,7 @@ const ProgramDetailPage = () => {
                 <p className="text-gray-500 font-medium">프로그램을 찾을 수 없습니다.</p>
                 <button
                     onClick={() => navigate('/programs')}
-                    className="px-5 py-2 bg-brand text-white rounded-xl font-bold text-sm"
+                    className="px-5 py-2 bg-brand text-white rounded-full font-semibold text-sm"
                 >
                     프로그램 목록으로
                 </button>
@@ -91,7 +91,7 @@ const ProgramDetailPage = () => {
         <div className="min-h-screen bg-soft">
             {/* 헤더 */}
             <div className="sticky top-0 z-40 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
-                <button onClick={() => navigate('/programs')} className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                <button onClick={() => navigate('/programs')} className="p-2 rounded-full hover:bg-soft transition-colors">
                     <Icons.ArrowLeft size={20} className="text-dark" />
                 </button>
                 <span className="font-bold text-dark text-sm truncate">{program.title}</span>
@@ -119,7 +119,7 @@ const ProgramDetailPage = () => {
                 </div>
 
                 {/* 기본 정보 */}
-                <div className="bg-white rounded-2xl border border-blue-100 divide-y divide-gray-50 mb-5">
+                <div className="bg-white rounded-2xl border border-black/[0.06] divide-y divide-gray-50 mb-5">
                     {program.date && (
                         <div className="flex items-center gap-3 px-5 py-4">
                             <Icons.Calendar size={18} className="text-brand flex-shrink-0" />
@@ -163,7 +163,7 @@ const ProgramDetailPage = () => {
 
                 {/* 상세 설명 */}
                 {program.desc && (
-                    <div className="bg-white rounded-2xl border border-blue-100 px-5 py-5 mb-5">
+                    <div className="bg-white rounded-2xl border border-black/[0.06] px-5 py-5 mb-5">
                         <h2 className="text-base font-bold text-dark mb-3">프로그램 소개</h2>
                         <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line break-keep">
                             {program.desc}
@@ -187,10 +187,10 @@ const ProgramDetailPage = () => {
                     <button
                         onClick={() => navigate(`/program/apply/${program.id}`)}
                         disabled={status === '종료'}
-                        className={`w-full py-4 rounded-2xl font-black text-base shadow-lg transition-all
+                        className={`w-full py-4 rounded-full font-semibold text-base shadow-lg transition-colors
                             ${status === '종료'
                                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                : 'bg-brand text-white hover:bg-blue-700 active:scale-95'
+                                : 'bg-brand text-white hover:bg-[#00327a] active:scale-95'
                             }`}
                     >
                         {status === '종료' ? '모집이 종료되었습니다' : '신청하기'}

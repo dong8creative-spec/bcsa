@@ -126,7 +126,7 @@ export const defaultContent = {
 // 벤토 리디자인: 상단 메뉴는 목업 그대로 홈/소개/뉴스/지원사업/사업도구/의뢰/Q&A 로 구성.
 // 기존 항목(프로그램/부청사 회원/커뮤니티/후원/부산맛집)은 menuOrder(=상단 노출)에서는 빠지지만,
 // menuEnabled 값 자체는 siteContent.js의 DEFAULT_MENU_ENABLED에 그대로 남겨 홈 화면 섹션 게이팅(예: menuEnabled['프로그램'])이 계속 동작하도록 함.
-export const defaultMenuOrder = ['홈', '소개', '뉴스', '지원사업', '사업도구', '의뢰', 'Q&A'];
+export const defaultMenuOrder = ['홈', '소개', '뉴스', '지원사업', '프로그램', '사업도구', '의뢰', 'Q&A'];
 
 export const defaultMenuNames = {
     '홈': '홈',

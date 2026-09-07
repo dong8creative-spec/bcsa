@@ -119,8 +119,8 @@ export const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) =>
     }
   };
 
-  const inputClass = 'w-full p-3 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm';
-  const primaryBtnClass = 'w-full py-2.5 bg-gradient-to-r from-brand to-blue-600 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-brand/30 transition-all mt-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed';
+  const inputClass = 'w-full px-4 py-3 bg-soft border border-transparent rounded-2xl focus:border-brand/40 focus:bg-white focus:outline-none transition-colors text-sm text-dark placeholder:text-gray-400';
+  const primaryBtnClass = 'w-full py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors mt-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed';
 
   const headerByMode = {
     login: { title: '로그인', desc: '부청사 커뮤니티에 오신 것을 환영합니다' },
@@ -137,24 +137,24 @@ export const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) =>
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
         <div
-          className="bg-white rounded-3xl shadow-2xl w-full max-w-sm z-10 flex flex-col max-h-[90vh] relative border-[0.5px] border-brand scale-90 origin-center"
+          className="bg-white rounded-[28px] shadow-2xl w-full max-w-sm z-10 flex flex-col max-h-[90vh] relative border border-black/[0.06]"
           style={{ opacity: 1 }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex-1 min-h-0 overflow-y-auto p-4 text-center">
-            <div className="mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-brand to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-lg shadow-brand/30">
-                <Icons.Users className="w-6 h-6 text-white" />
+          <div className="flex-1 min-h-0 overflow-y-auto p-6 text-center">
+            <div className="mb-5">
+              <div className="w-14 h-14 rounded-2xl bg-soft flex items-center justify-center mx-auto mb-3">
+                <Icons.Users className="w-7 h-7 text-brand" />
               </div>
-              <h3 className="text-xl font-bold text-dark mb-0.5">{header.title}</h3>
-              <p className="text-xs text-gray-500">{header.desc}</p>
+              <h3 className="text-[20px] font-semibold tracking-tight text-dark mb-1">{header.title}</h3>
+              <p className="text-[12.5px] text-gray-500">{header.desc}</p>
             </div>
 
             {mode === 'login' && (
               <>
                 <form onSubmit={handleSubmit} className="space-y-3 text-left">
                   <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-1">이메일</label>
+                    <label className="block text-[12px] font-semibold text-gray-500 mb-1.5">이메일</label>
                     <input
                       type="text"
                       placeholder="이메일을 입력하세요"
@@ -165,7 +165,7 @@ export const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) =>
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-1">비밀번호</label>
+                    <label className="block text-[12px] font-semibold text-gray-500 mb-1.5">비밀번호</label>
                     <div className="relative">
                       <input
                         type={showPassword ? 'text' : 'password'}
@@ -192,7 +192,7 @@ export const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) =>
                   <button
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onKakaoLogin(); }}
-                    className="w-full mt-2 py-2.5 bg-[#FEE500] text-[#191919] font-bold rounded-xl hover:bg-[#FDD835] transition-colors text-sm flex items-center justify-center gap-2"
+                    className="w-full mt-2 py-3 bg-[#FEE500] text-[#191919] font-semibold rounded-full hover:bg-[#FDD835] transition-colors text-sm flex items-center justify-center gap-2"
                   >
                     <KakaoSymbol className="w-5 h-5" />
                     <span>카카오로 로그인</span>
@@ -202,24 +202,24 @@ export const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) =>
                   <button
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSignUpClick(); }}
-                    className="w-full mt-2 py-2.5 border-[0.5px] border-brand/30 text-brand font-bold rounded-xl hover:bg-brand/5 transition-colors text-sm"
+                    className="w-full mt-2 py-3 border border-brand/20 text-brand font-semibold rounded-full hover:bg-brand/5 transition-colors text-sm"
                   >
                     회원가입
                   </button>
                 ) : null}
-                <div className="flex items-center justify-center gap-3 mt-3">
+                <div className="flex items-center justify-center gap-3 mt-4">
                   <button
                     type="button"
                     onClick={() => switchMode('findId')}
-                    className="text-xs text-brand hover:text-blue-700 font-medium transition-colors underline"
+                    className="text-[12.5px] text-gray-500 hover:text-brand font-medium transition-colors"
                   >
                     아이디 찾기
                   </button>
-                  <span className="text-xs text-gray-300">|</span>
+                  <span className="text-[12px] text-gray-300">|</span>
                   <button
                     type="button"
                     onClick={() => switchMode('resetPassword')}
-                    className="text-xs text-brand hover:text-blue-700 font-medium transition-colors underline"
+                    className="text-[12.5px] text-gray-500 hover:text-brand font-medium transition-colors"
                   >
                     비밀번호 재설정
                   </button>
@@ -231,7 +231,7 @@ export const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) =>
               <>
                 <form onSubmit={handleFindId} className="space-y-3 text-left">
                   <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-1">이름</label>
+                    <label className="block text-[12px] font-semibold text-gray-500 mb-1.5">이름</label>
                     <input
                       type="text"
                       placeholder="가입 시 입력한 이름"
@@ -242,7 +242,7 @@ export const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) =>
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-1">휴대폰 번호</label>
+                    <label className="block text-[12px] font-semibold text-gray-500 mb-1.5">휴대폰 번호</label>
                     <input
                       type="tel"
                       inputMode="numeric"
@@ -259,35 +259,35 @@ export const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) =>
                 </form>
 
                 {findResult?.type === 'success' && (
-                  <div className="mt-3 p-3 rounded-xl bg-green-50 border border-green-200 text-left">
-                    <p className="text-xs text-green-700 mb-1">가입된 계정을 찾았습니다.</p>
-                    <p className="text-sm font-bold text-green-800 break-all">{findResult.maskedEmail}</p>
+                  <div className="mt-3 p-3.5 rounded-2xl bg-green-50 border border-green-200 text-left">
+                    <p className="text-[12px] text-green-700 mb-1">가입된 계정을 찾았습니다.</p>
+                    <p className="text-sm font-semibold text-green-800 break-all">{findResult.maskedEmail}</p>
                     <button
                       type="button"
                       onClick={() => switchMode('resetPassword')}
-                      className="mt-2 text-xs text-brand hover:text-blue-700 font-medium underline"
+                      className="mt-2 text-[12px] text-brand hover:text-[#00327a] font-medium underline"
                     >
                       비밀번호도 잊으셨나요? 재설정하기
                     </button>
                   </div>
                 )}
                 {findResult?.type === 'fail' && (
-                  <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-left">
-                    <p className="text-xs text-amber-700">
+                  <div className="mt-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-left">
+                    <p className="text-[12px] text-amber-700">
                       입력하신 정보와 일치하는 계정을 찾을 수 없습니다. 이름과 휴대폰 번호를 다시 확인해 주세요.
                     </p>
                   </div>
                 )}
                 {findResult?.type === 'error' && (
-                  <div className="mt-3 p-3 rounded-xl bg-red-50 border border-red-200 text-left">
-                    <p className="text-xs text-red-700">{findResult.message}</p>
+                  <div className="mt-3 p-3.5 rounded-2xl bg-red-50 border border-red-200 text-left">
+                    <p className="text-[12px] text-red-700">{findResult.message}</p>
                   </div>
                 )}
 
                 <button
                   type="button"
                   onClick={() => switchMode('login')}
-                  className="w-full mt-3 text-xs text-gray-500 hover:text-gray-700 font-medium transition-colors underline"
+                  className="w-full mt-4 text-[12.5px] text-gray-500 hover:text-brand font-medium transition-colors"
                 >
                   로그인으로 돌아가기
                 </button>
@@ -298,7 +298,7 @@ export const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) =>
               <>
                 <form onSubmit={handleResetPassword} className="space-y-3 text-left">
                   <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-1">이메일</label>
+                    <label className="block text-[12px] font-semibold text-gray-500 mb-1.5">이메일</label>
                     <input
                       type="email"
                       placeholder="가입한 이메일을 입력하세요"
@@ -314,31 +314,31 @@ export const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) =>
                 </form>
 
                 {resetResult?.type === 'sent' && (
-                  <div className="mt-3 p-3 rounded-xl bg-green-50 border border-green-200 text-left">
-                    <p className="text-xs text-green-700">
+                  <div className="mt-3 p-3.5 rounded-2xl bg-green-50 border border-green-200 text-left">
+                    <p className="text-[12px] text-green-700">
                       가입된 이메일이라면 비밀번호 재설정 메일이 발송됩니다. 메일함(스팸함 포함)을 확인해 주세요.
                     </p>
                   </div>
                 )}
                 {resetResult?.type === 'error' && (
-                  <div className="mt-3 p-3 rounded-xl bg-red-50 border border-red-200 text-left">
-                    <p className="text-xs text-red-700">{resetResult.message}</p>
+                  <div className="mt-3 p-3.5 rounded-2xl bg-red-50 border border-red-200 text-left">
+                    <p className="text-[12px] text-red-700">{resetResult.message}</p>
                   </div>
                 )}
 
-                <div className="flex items-center justify-center gap-3 mt-3">
+                <div className="flex items-center justify-center gap-3 mt-4">
                   <button
                     type="button"
                     onClick={() => switchMode('findId')}
-                    className="text-xs text-gray-500 hover:text-gray-700 font-medium transition-colors underline"
+                    className="text-[12.5px] text-gray-500 hover:text-brand font-medium transition-colors"
                   >
                     아이디 찾기
                   </button>
-                  <span className="text-xs text-gray-300">|</span>
+                  <span className="text-[12px] text-gray-300">|</span>
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
-                    className="text-xs text-gray-500 hover:text-gray-700 font-medium transition-colors underline"
+                    className="text-[12.5px] text-gray-500 hover:text-brand font-medium transition-colors"
                   >
                     로그인으로 돌아가기
                   </button>
@@ -346,11 +346,11 @@ export const LoginModal = ({ onClose, onLogin, onKakaoLogin, onSignUpClick }) =>
               </>
             )}
           </div>
-          <div className="shrink-0 border-t border-blue-200 p-2.5 flex justify-end">
+          <div className="shrink-0 border-t border-black/[0.06] p-3 flex justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-brand text-white font-bold rounded-lg hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200 text-sm"
+              className="px-5 py-2 bg-soft text-dark font-semibold rounded-full hover:bg-[#eceef2] transition-colors text-[12.5px]"
             >
               닫기
             </button>

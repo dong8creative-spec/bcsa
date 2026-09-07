@@ -21,22 +21,22 @@ const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, mem
                         <p className="text-gray-500 text-sm">부청사와 함께 성장하세요</p>
                     </div>
                     <div className="w-full flex justify-end">
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-semibold hover:underline px-4 py-2 rounded-full hover:bg-brand/5 transition-colors">
                             <Icons.ArrowLeft size={20} /> 메인으로
                         </button>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 md:p-12">
+                <div className="bg-white rounded-[28px] border border-black/[0.06] p-8 md:p-12">
                     <div className="text-center mb-8">
-                        <h3 className="text-2xl font-bold text-dark mb-2">후원하기</h3>
+                        <h3 className="text-[22px] font-semibold tracking-tight text-dark mb-2">후원하기</h3>
                         <p className="text-gray-600">후원 시스템 준비 중입니다.</p>
                     </div>
                     <div className="mt-6 bg-brand/5 p-6 rounded-2xl border border-brand/20">
                         <p className="text-center text-gray-700">문의: 관리자</p>
                     </div>
                     <div className="flex justify-end mt-6">
-                        <button type="button" onClick={handleDonation} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">
+                        <button type="button" onClick={handleDonation} className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors">
                             후원하기
                         </button>
                     </div>

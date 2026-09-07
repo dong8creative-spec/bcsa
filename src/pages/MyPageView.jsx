@@ -296,7 +296,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                         <p className="text-sm text-gray-500 mt-2">회원 정보와 활동 내역을 확인하세요</p>
                     </div>
                     <div className="w-full flex justify-end md:justify-start">
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-gray-600 text-sm border border-blue-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-gray-600 text-sm border border-black/[0.06] px-4 py-2 rounded-full hover:bg-soft transition-colors">
                             <Icons.ArrowLeft size={18} /> 메인으로
                         </button>
                     </div>
@@ -305,13 +305,13 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                 {/* 알림 (관리자 정정 등) */}
                 {notifications.filter(n => !n.read).length > 0 && (
                     <div className="mb-6 space-y-3">
-                        <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                             <Icons.AlertCircle size={18} /> 알림
                         </h3>
                         {notifications.filter(n => !n.read).map((n) => (
-                            <div key={n.id} className="flex items-start justify-between gap-4 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                            <div key={n.id} className="flex items-start justify-between gap-4 p-4 bg-blue-50 border border-black/[0.06] rounded-2xl">
                                 <p className="text-sm text-gray-800 flex-1">{n.message || '회원정보가 정정되었습니다.'}</p>
-                                <button type="button" onClick={() => handleNotificationConfirm(n.id)} className="shrink-0 px-3 py-1.5 text-sm font-bold text-brand border border-brand rounded-lg hover:bg-brand/5">
+                                <button type="button" onClick={() => handleNotificationConfirm(n.id)} className="shrink-0 px-3 py-1.5 text-sm font-semibold text-brand border border-brand rounded-full hover:bg-brand/5 transition-colors">
                                     확인
                                 </button>
                             </div>
@@ -320,10 +320,10 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                 )}
                 
                 {/* 프로필 섹션 */}
-                <div className="bg-gray-50 border border-blue-100 p-10 mb-20">
+                <div className="bg-gray-50 border border-black/[0.06] p-10 mb-20">
                     <div className="flex flex-col md:flex-row items-start gap-8">
                         <div className="relative">
-                            <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-5xl overflow-hidden border border-blue-300">
+                            <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-5xl overflow-hidden border border-black/10">
                                 {profileImageUploading ? (
                                     <span className="text-xs text-gray-500 px-2 text-center">업로드 중...</span>
                                 ) : editFormData.img ? (
@@ -342,22 +342,22 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                         <div className="flex-1">
                             {isEditingProfile ? (
                                 <div className="w-full max-w-2xl">
-                                    <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                                        <p className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                                    <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                                        <p className="text-sm font-semibold text-amber-800 flex items-center gap-2">
                                             <Icons.AlertCircle className="w-5 h-5 shrink-0" />
                                             표시(*)된 항목은 필수입니다. 회원가입 시와 동일한 항목을 수정할 수 있습니다.
                                         </p>
                                     </div>
                                     <div className="space-y-5">
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">회원 유형 <span className="text-red-500">*</span></label>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">회원 유형 <span className="text-red-500">*</span></label>
                                             <div className="grid grid-cols-2 gap-3">
-                                                <button type="button" onClick={() => setEditUserType('사업자')} className={`p-4 rounded-xl border-2 text-left transition-all ${editUserType === '사업자' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'}`}>
-                                                    <span className="font-bold text-dark">사업자</span>
+                                                <button type="button" onClick={() => setEditUserType('사업자')} className={`p-4 rounded-2xl border-2 text-left transition-all ${editUserType === '사업자' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'}`}>
+                                                    <span className="font-semibold text-dark">사업자</span>
                                                     <p className="text-xs text-gray-500 mt-1">현재 사업을 운영 중이신 분</p>
                                                 </button>
-                                                <button type="button" onClick={() => setEditUserType('예창')} className={`p-4 rounded-xl border-2 text-left transition-all ${editUserType === '예창' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'}`}>
-                                                    <span className="font-bold text-dark">예비창업자</span>
+                                                <button type="button" onClick={() => setEditUserType('예창')} className={`p-4 rounded-2xl border-2 text-left transition-all ${editUserType === '예창' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'}`}>
+                                                    <span className="font-semibold text-dark">예비창업자</span>
                                                     <p className="text-xs text-gray-500 mt-1">창업을 준비 중이신 분</p>
                                                 </button>
                                             </div>
@@ -366,20 +366,20 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                             <>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                     <div>
-                                                        <label className="block text-sm font-bold text-gray-700 mb-2">이름 <span className="text-red-500">*</span></label>
-                                                        <input type="text" required placeholder="이름 입력" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.name} onChange={e => setEditFormData(f => ({ ...f, name: e.target.value }))} />
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">이름 <span className="text-red-500">*</span></label>
+                                                        <input type="text" required placeholder="이름 입력" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.name} onChange={e => setEditFormData(f => ({ ...f, name: e.target.value }))} />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-bold text-gray-700 mb-2">닉네임 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                                        <input type="text" placeholder="닉네임 입력" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.nickname} onChange={e => setEditFormData(f => ({ ...f, nickname: e.target.value }))} />
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">닉네임 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                                        <input type="text" placeholder="닉네임 입력" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.nickname} onChange={e => setEditFormData(f => ({ ...f, nickname: e.target.value }))} />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-bold text-gray-700 mb-2">생년월일 <span className="text-red-500">*</span></label>
-                                                        <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD (예: 1990-01-15)" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.birthdate} onChange={e => { const v = e.target.value; const parsed = parseBirthdateInput(v); setEditFormData(f => ({ ...f, birthdate: parsed || v })); }} />
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">생년월일 <span className="text-red-500">*</span></label>
+                                                        <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD (예: 1990-01-15)" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.birthdate} onChange={e => { const v = e.target.value; const parsed = parseBirthdateInput(v); setEditFormData(f => ({ ...f, birthdate: parsed || v })); }} />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-bold text-gray-700 mb-2">성별 <span className="text-red-500">*</span></label>
-                                                        <select required className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={editFormData.gender} onChange={e => setEditFormData(f => ({ ...f, gender: e.target.value }))}>
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">성별 <span className="text-red-500">*</span></label>
+                                                        <select required className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none bg-white" value={editFormData.gender} onChange={e => setEditFormData(f => ({ ...f, gender: e.target.value }))}>
                                                             <option value="">선택</option>
                                                             <option value="남성">남성</option>
                                                             <option value="여성">여성</option>
@@ -387,8 +387,8 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                         </select>
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-bold text-gray-700 mb-2">연락처 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(숫자 11자리)</span></label>
-                                                        <input type="tel" inputMode="numeric" placeholder="01012345678" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.phone} onChange={e => { const raw = e.target.value.replace(/\D/g, ''); setEditFormData(f => ({ ...f, phone: raw.length > 11 ? raw.slice(0, 11) : raw })); }} maxLength={11} />
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">연락처 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(숫자 11자리)</span></label>
+                                                        <input type="tel" inputMode="numeric" placeholder="01012345678" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.phone} onChange={e => { const raw = e.target.value.replace(/\D/g, ''); setEditFormData(f => ({ ...f, phone: raw.length > 11 ? raw.slice(0, 11) : raw })); }} maxLength={11} />
                                                         {editFormData.phone && editFormData.phone.length === 11 && !validatePhone(editFormData.phone) && <p className="text-xs text-red-500 mt-1">010, 011 등으로 시작하는 11자리 번호를 입력해주세요.</p>}
                                                         <div className="mt-3 flex items-center gap-2">
                                                             <input type="checkbox" id="mypage-phonePublic" checked={editFormData.phonePublic} onChange={e => setEditFormData(f => ({ ...f, phonePublic: e.target.checked }))} className="w-5 h-5 text-brand rounded focus:ring-brand" />
@@ -396,87 +396,87 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-bold text-gray-700 mb-2">이메일 <span className="text-red-500">*</span></label>
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">이메일 <span className="text-red-500">*</span></label>
                                                         <div className="flex flex-wrap gap-2 items-center">
-                                                            <input type="text" inputMode="email" placeholder="example" className="flex-1 min-w-[100px] p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.emailId} onChange={e => setEditFormData(f => ({ ...f, emailId: e.target.value, email: composeEmail(e.target.value, f.emailDomain, f.emailDomainCustom) }))} />
+                                                            <input type="text" inputMode="email" placeholder="example" className="flex-1 min-w-[100px] p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.emailId} onChange={e => setEditFormData(f => ({ ...f, emailId: e.target.value, email: composeEmail(e.target.value, f.emailDomain, f.emailDomainCustom) }))} />
                                                             <span className="text-slate-500">@</span>
-                                                            <select className="p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={editFormData.emailDomain} onChange={e => setEditFormData(f => ({ ...f, emailDomain: e.target.value, email: composeEmail(f.emailId, e.target.value, f.emailDomainCustom) }))}>
+                                                            <select className="p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none bg-white" value={editFormData.emailDomain} onChange={e => setEditFormData(f => ({ ...f, emailDomain: e.target.value, email: composeEmail(f.emailId, e.target.value, f.emailDomainCustom) }))}>
                                                                 {EMAIL_DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
                                                             </select>
                                                             {editFormData.emailDomain === '직접입력' && (
-                                                                <input type="text" placeholder="도메인 입력" className="flex-1 min-w-[120px] p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.emailDomainCustom} onChange={e => setEditFormData(f => ({ ...f, emailDomainCustom: e.target.value, email: composeEmail(f.emailId, f.emailDomain, e.target.value) }))} />
+                                                                <input type="text" placeholder="도메인 입력" className="flex-1 min-w-[120px] p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.emailDomainCustom} onChange={e => setEditFormData(f => ({ ...f, emailDomainCustom: e.target.value, email: composeEmail(f.emailId, f.emailDomain, e.target.value) }))} />
                                                             )}
                                                         </div>
                                                     </div>
                                                     <div className="md:col-span-2">
-                                                        <label className="block text-sm font-bold text-gray-700 mb-2">주소 <span className="text-red-500">*</span></label>
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">주소 <span className="text-red-500">*</span></label>
                                                         <div className="space-y-2">
                                                             <div className="flex gap-2">
-                                                                <input type="text" readOnly placeholder="도로명 주소 검색" className="flex-1 p-3 border border-blue-200 rounded-xl bg-gray-50 text-sm cursor-pointer" value={editFormData.roadAddress} onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setEditFormData(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} />
-                                                                <button type="button" onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setEditFormData(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} className="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-sm whitespace-nowrap flex items-center gap-1">
+                                                                <input type="text" readOnly placeholder="도로명 주소 검색" className="flex-1 p-3 border border-black/[0.06] rounded-2xl bg-gray-50 text-sm cursor-pointer" value={editFormData.roadAddress} onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setEditFormData(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} />
+                                                                <button type="button" onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setEditFormData(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} className="px-4 py-3 bg-brand text-white rounded-full font-semibold hover:bg-[#00327a] transition-colors text-sm whitespace-nowrap flex items-center gap-1">
                                                                     <Icons.MapPin size={16} /> 주소 검색
                                                                 </button>
                                                             </div>
                                                             {editFormData.zipCode ? <p className="text-xs text-gray-500">우편번호: {editFormData.zipCode}</p> : null}
-                                                            <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none text-sm" value={editFormData.detailAddress} onChange={e => setEditFormData(f => ({ ...f, detailAddress: e.target.value }))} />
+                                                            <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none text-sm" value={editFormData.detailAddress} onChange={e => setEditFormData(f => ({ ...f, detailAddress: e.target.value }))} />
                                                         </div>
                                                     </div>
                                                 </div>
                                                 {editUserType === '사업자' && (
                                                     <div className="space-y-5 pt-2">
                                                         <div>
-                                                            <label className="block text-sm font-bold text-gray-700 mb-2">상호명 <span className="text-red-500">*</span></label>
-                                                            <input type="text" required placeholder="회사 또는 사업체 이름" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.company} onChange={e => setEditFormData(f => ({ ...f, company: e.target.value }))} />
+                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">상호명 <span className="text-red-500">*</span></label>
+                                                            <input type="text" required placeholder="회사 또는 사업체 이름" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.company} onChange={e => setEditFormData(f => ({ ...f, company: e.target.value }))} />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-bold text-gray-700 mb-2">사업자등록번호 <span className="text-red-500">*</span></label>
-                                                            <input type="text" inputMode="numeric" maxLength={10} placeholder="숫자 10자리 (예: 1234567890)" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.businessRegistrationNumber} onChange={e => setEditFormData(f => ({ ...f, businessRegistrationNumber: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
+                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">사업자등록번호 <span className="text-red-500">*</span></label>
+                                                            <input type="text" inputMode="numeric" maxLength={10} placeholder="숫자 10자리 (예: 1234567890)" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.businessRegistrationNumber} onChange={e => setEditFormData(f => ({ ...f, businessRegistrationNumber: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
                                                             {editFormData.businessRegistrationNumber && !isBusinessNumberValid && <p className="text-xs text-red-500 mt-1">숫자 10자리를 입력해주세요.</p>}
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-bold text-gray-700 mb-2">직책/직함 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                                            <input type="text" placeholder="예: 대표, 이사, 팀장" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.position} onChange={e => setEditFormData(f => ({ ...f, position: e.target.value }))} />
+                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">직책/직함 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                                            <input type="text" placeholder="예: 대표, 이사, 팀장" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.position} onChange={e => setEditFormData(f => ({ ...f, position: e.target.value }))} />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-bold text-gray-700 mb-2">회사 전화번호 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에 노출)</span></label>
-                                                            <input type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.companyPhone} onChange={e => setEditFormData(f => ({ ...f, companyPhone: e.target.value }))} />
+                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">회사 전화번호 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에 노출)</span></label>
+                                                            <input type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.companyPhone} onChange={e => setEditFormData(f => ({ ...f, companyPhone: e.target.value }))} />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-bold text-gray-700 mb-2">사이트 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에서 노출)</span></label>
-                                                            <input type="url" placeholder="https://www.example.com" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.companyWebsite || ''} onChange={e => setEditFormData(f => ({ ...f, companyWebsite: e.target.value }))} />
+                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">사이트 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에서 노출)</span></label>
+                                                            <input type="url" placeholder="https://www.example.com" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.companyWebsite || ''} onChange={e => setEditFormData(f => ({ ...f, companyWebsite: e.target.value }))} />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-bold text-gray-700 mb-2">업종 / 업태 <span className="text-red-500">*</span></label>
-                                                            <select required className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={editFormData.businessCategory} onChange={e => setEditFormData(f => ({ ...f, businessCategory: e.target.value }))}>
+                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">업종 / 업태 <span className="text-red-500">*</span></label>
+                                                            <select required className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none bg-white" value={editFormData.businessCategory} onChange={e => setEditFormData(f => ({ ...f, businessCategory: e.target.value }))}>
                                                                 <option value="">선택</option>
                                                                 {BUSINESS_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                                             </select>
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-bold text-gray-700 mb-2">사업자등록증 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                                            <input type="file" accept="image/*,.pdf,application/pdf" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand file:text-white file:font-medium file:text-sm" onChange={handleBusinessDocChange} />
+                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">사업자등록증 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                                            <input type="file" accept="image/*,.pdf,application/pdf" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand file:text-white file:font-medium file:text-sm" onChange={handleBusinessDocChange} />
                                                             {editFormData.businessRegistrationFileName && <p className="text-xs text-gray-500 mt-1">등록됨: {editFormData.businessRegistrationFileName}</p>}
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-bold text-gray-700 mb-2">협업 업종 <span className="text-red-500">*</span></label>
-                                                            <input type="text" required placeholder="협업 희망 업종" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.collaborationIndustry} onChange={e => setEditFormData(f => ({ ...f, collaborationIndustry: e.target.value }))} />
+                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">협업 업종 <span className="text-red-500">*</span></label>
+                                                            <input type="text" required placeholder="협업 희망 업종" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.collaborationIndustry} onChange={e => setEditFormData(f => ({ ...f, collaborationIndustry: e.target.value }))} />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-bold text-gray-700 mb-2">핵심고객 <span className="text-red-500">*</span></label>
-                                                            <input type="text" required placeholder="핵심 고객층" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.keyCustomers} onChange={e => setEditFormData(f => ({ ...f, keyCustomers: e.target.value }))} />
+                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">핵심고객 <span className="text-red-500">*</span></label>
+                                                            <input type="text" required placeholder="핵심 고객층" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.keyCustomers} onChange={e => setEditFormData(f => ({ ...f, keyCustomers: e.target.value }))} />
                                                         </div>
                                                     </div>
                                                 )}
                                                 {editUserType === '예창' && (
                                                     <div>
-                                                        <label className="block text-sm font-bold text-gray-700 mb-2">희망업종 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                                        <input type="text" placeholder="희망 업종 또는 분야" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={editFormData.desiredIndustry} onChange={e => setEditFormData(f => ({ ...f, desiredIndustry: e.target.value }))} />
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">희망업종 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                                        <input type="text" placeholder="희망 업종 또는 분야" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.desiredIndustry} onChange={e => setEditFormData(f => ({ ...f, desiredIndustry: e.target.value }))} />
                                                     </div>
                                                 )}
                                                 {profileEditError && <p className="text-sm text-red-600 font-medium">{profileEditError}</p>}
                                                 <div className="flex gap-3 pt-4">
-                                                    <button type="button" onClick={() => { setIsEditingProfile(false); setEditFormData(getInitialEditForm(user)); setEditUserType(user?.userType || ''); setProfileEditError(''); }} className="px-6 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300">취소</button>
-                                                    <button type="button" onClick={handleSaveProfile} className="flex-1 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">저장</button>
+                                                    <button type="button" onClick={() => { setIsEditingProfile(false); setEditFormData(getInitialEditForm(user)); setEditUserType(user?.userType || ''); setProfileEditError(''); }} className="px-6 py-3 bg-white border border-black/[0.06] text-gray-600 font-semibold rounded-full hover:bg-soft transition-colors">취소</button>
+                                                    <button type="button" onClick={handleSaveProfile} className="flex-1 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors">저장</button>
                                                 </div>
                                             </>
                                         )}
@@ -487,7 +487,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                     <h3 className="text-3xl font-light text-gray-900 mb-2">{user.name}</h3>
                                     <p className="text-sm text-gray-600 mb-3">{user.company || ''} {user.company && (user.position || user.role) ? '·' : ''} {user.position || user.role || ''}</p>
                                     <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium mt-1">{user.industry || user.businessCategory || ''}</span>
-                                    <button type="button" onClick={() => { setEditFormData(getInitialEditForm(user)); setEditUserType(user?.userType || (user?.company || user?.businessRegistrationNumber ? '사업자' : '예창')); setProfileEditError(''); setIsEditingProfile(true); }} className="mt-6 px-5 py-2 border border-blue-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
+                                    <button type="button" onClick={() => { setEditFormData(getInitialEditForm(user)); setEditUserType(user?.userType || (user?.company || user?.businessRegistrationNumber ? '사업자' : '예창')); setProfileEditError(''); setIsEditingProfile(true); }} className="mt-6 px-5 py-2 border border-black/10 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
                                         개인정보 수정
                                     </button>
                                     {user.approvalStatus === 'pending' && (
@@ -566,7 +566,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                 </div>
 
                 {/* 탭 메뉴 */}
-                <div className="border-t border-blue-200 mb-16">
+                <div className="border-t border-black/[0.06] mb-16">
                     <div className="flex gap-8 overflow-x-auto">
                         <button onClick={() => setActiveTab('seminars')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'seminars' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>신청한 모임</button>
                         <button onClick={() => setActiveTab('posts')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'posts' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>내 게시글</button>
@@ -592,7 +592,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                             const app = appForSeminar(s);
                             const ended = isSeminarEnded(s);
                             return (
-                                <li key={s.id || idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:bg-gray-50 transition-all">
+                                <li key={s.id || idx} className="flex justify-between items-center p-5 bg-white rounded-2xl border border-black/[0.06] hover:bg-gray-50 transition-all">
                                     <div>
                                         <div className="font-medium text-gray-900 text-base mb-1">{s.title}</div>
                                         <div className="text-xs text-gray-500">{s.date} · {s.location}</div>
@@ -625,7 +625,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                         onCancelSeminar(s.id);
                                                     }
                                                 }}
-                                                className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1 border border-blue-300 hover:bg-gray-50 transition-colors"
+                                                className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1 border border-black/10 hover:bg-gray-50 transition-colors"
                                             >
                                                 신청 취소
                                             </button>
@@ -654,7 +654,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                     if (items.length === 0) return null;
                                     return (
                                         <div key={key || 'other'}>
-                                            <h4 className="text-lg font-bold text-dark mb-4">{label}</h4>
+                                            <h4 className="text-lg font-semibold text-dark mb-4">{label}</h4>
                                             <ul className="space-y-3">
                                                 {items.map((s, idx) => renderItem(s, idx))}
                                             </ul>
@@ -667,7 +667,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                     {activeTab === 'posts' && (
                         <ul className="space-y-3">
                             {myPosts.length > 0 ? myPosts.map((p, idx) => (
-                                <li key={idx} className="flex justify-between items-center p-5 bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:bg-gray-50 transition-all">
+                                <li key={idx} className="flex justify-between items-center p-5 bg-white rounded-2xl border border-black/[0.06] hover:bg-gray-50 transition-all">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-2">
                                             <span className="text-[10px] bg-gray-100 px-2 py-1 text-gray-600 font-medium">{p.category}</span>
@@ -713,7 +713,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                 });
                                                 setIsEditModalOpen(true);
                                             }}
-                                            className="p-2 border border-blue-300 text-gray-600 hover:bg-gray-50 transition-colors"
+                                            className="p-2 border border-black/10 text-gray-600 hover:bg-gray-50 transition-colors"
                                             title="수정"
                                         >
                                             <Icons.Edit size={16} />
@@ -748,7 +748,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
 
                                     {/* 인증 정보 상세 */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="bg-gray-50 border border-blue-200 p-6">
+                                        <div className="bg-gray-50 border border-black/[0.06] p-6">
                                             <div className="flex items-center gap-2 mb-4">
                                                 <Icons.Users className="w-5 h-5 text-gray-600" />
                                                 <h4 className="text-sm font-medium text-gray-900">인증된 이름</h4>
@@ -757,7 +757,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                             <div className="text-xs text-gray-500 mt-3">PortOne 본인인증으로 확인된 이름</div>
                                         </div>
 
-                                        <div className="bg-gray-50 border border-blue-200 p-6">
+                                        <div className="bg-gray-50 border border-black/[0.06] p-6">
                                             <div className="flex items-center gap-2 mb-4">
                                                 <Icons.Phone className="w-5 h-5 text-gray-600" />
                                                 <h4 className="text-sm font-medium text-gray-900">인증된 전화번호</h4>
@@ -767,7 +767,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                         </div>
 
                                         {user.verifiedBirthday && (
-                                            <div className="bg-gray-50 border border-blue-200 p-6">
+                                            <div className="bg-gray-50 border border-black/[0.06] p-6">
                                                 <div className="flex items-center gap-2 mb-4">
                                                     <Icons.Calendar className="w-5 h-5 text-gray-600" />
                                                     <h4 className="text-sm font-medium text-gray-900">생년월일</h4>
@@ -780,7 +780,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                         )}
 
                                         {user.verifiedGender && (
-                                            <div className="bg-gray-50 border border-blue-200 p-6">
+                                            <div className="bg-gray-50 border border-black/[0.06] p-6">
                                                 <div className="flex items-center gap-2 mb-4">
                                                     <Icons.Users className="w-5 h-5 text-gray-600" />
                                                     <h4 className="text-sm font-medium text-gray-900">성별</h4>
@@ -793,7 +793,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
 
                                     {/* 인증 일시 */}
                                     {user.createdAt && (
-                                        <div className="bg-gray-50 border border-blue-200 p-6">
+                                        <div className="bg-gray-50 border border-black/[0.06] p-6">
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <div className="text-xs text-gray-600 mb-2">인증 완료 일시</div>
@@ -831,37 +831,37 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                     )}
                 </div>
                 {/* 카카오 계정 연동 */}
-                <div className="border-t border-blue-200 pt-8 pb-6">
-                    <h4 className="text-sm font-bold text-gray-700 mb-3">소셜 계정 연동</h4>
+                <div className="border-t border-black/[0.06] pt-8 pb-6">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">소셜 계정 연동</h4>
                     {user?.kakaoId ? (
-                        <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                        <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-2xl">
                             <span className="inline-flex w-8 h-8 rounded-full bg-[#FEE500] items-center justify-center text-[#191919] shrink-0">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M12 3C6.2 3 1.5 6.66 1.5 11.18c0 2.84 1.8 5.36 4.61 6.94-.12.44-.42 1.58-.48 1.83-.08.38.14.37.33.27.15-.08 2.42-1.58 3.4-2.27.57.08 1.17.12 1.79.12 5.8 0 10.5-3.66 10.5-8.18S17.8 3 12 3z" />
                                 </svg>
                             </span>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-gray-800">카카오 연동 완료</p>
+                                <p className="text-sm font-semibold text-gray-800">카카오 연동 완료</p>
                                 <p className="text-xs text-gray-500">카카오로 간편 로그인이 가능합니다</p>
                             </div>
-                            <span className="text-xs text-green-600 font-bold bg-green-50 px-2 py-1 rounded-lg">연동됨</span>
+                            <span className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-1 rounded-full">연동됨</span>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-2xl">
                             <span className="inline-flex w-8 h-8 rounded-full bg-gray-200 items-center justify-center text-gray-500 shrink-0">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M12 3C6.2 3 1.5 6.66 1.5 11.18c0 2.84 1.8 5.36 4.61 6.94-.12.44-.42 1.58-.48 1.83-.08.38.14.37.33.27.15-.08 2.42-1.58 3.4-2.27.57.08 1.17.12 1.79.12 5.8 0 10.5-3.66 10.5-8.18S17.8 3 12 3z" />
                                 </svg>
                             </span>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-gray-700">카카오 미연동</p>
+                                <p className="text-sm font-semibold text-gray-700">카카오 미연동</p>
                                 <p className="text-xs text-gray-500">연동하면 카카오로 간편 로그인 가능</p>
                             </div>
                             {onKakaoLink && (
                                 <button
                                     type="button"
                                     onClick={onKakaoLink}
-                                    className="text-xs font-bold text-[#191919] bg-[#FEE500] hover:bg-[#FDD835] px-3 py-1.5 rounded-lg transition-colors shrink-0"
+                                    className="text-xs font-semibold text-[#191919] bg-[#FEE500] hover:bg-[#FDD835] px-3 py-1.5 rounded-full transition-colors shrink-0"
                                 >
                                     연동하기
                                 </button>
@@ -869,7 +869,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                         </div>
                     )}
                 </div>
-                <div className="border-t border-blue-200 pt-6 text-center">
+                <div className="border-t border-black/[0.06] pt-6 text-center">
                     <p className="text-xs text-gray-500 mb-2">자진 탈퇴 시 언제든 재가입할 수 있습니다. (강제 탈퇴 시 1년간 재가입 제한·이용약관 제6조의2)</p>
                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleWithdrawClick(); }} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">회원 탈퇴하기</button>
                 </div>
@@ -879,15 +879,15 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
             {isEditModalOpen && editingPost ? (
                 <ModalPortal>
                 <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
-                    <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-white rounded-2xl border border-black/[0.06] max-w-3xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
-                            <h3 className="text-2xl font-bold text-dark mb-6">게시글 수정</h3>
+                            <h3 className="text-2xl font-semibold text-dark mb-6">게시글 수정</h3>
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">제목 *</label>
                                 <input 
                                     type="text" 
-                                    className="w-full px-4 py-3 border border-blue-300 focus:border-blue-400 focus:outline-none text-sm" 
+                                    className="w-full px-4 py-3 border border-black/10 focus:border-brand/40 focus:outline-none text-sm" 
                                     value={editingPost.title || ''} 
                                     onChange={(e) => setEditingPost({...editingPost, title: e.target.value})} 
                                 />
@@ -895,7 +895,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">내용 *</label>
                                 <textarea 
-                                    className="w-full px-4 py-3 border border-blue-300 focus:border-blue-400 focus:outline-none h-48 resize-none text-sm" 
+                                    className="w-full px-4 py-3 border border-black/10 focus:border-brand/40 focus:outline-none h-48 resize-none text-sm" 
                                     value={editingPost.content || ''} 
                                     onChange={(e) => setEditingPost({...editingPost, content: e.target.value})} 
                                 />
@@ -908,7 +908,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.storeImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={getDisplayImageUrl(img)} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover border border-blue-200" loading="lazy" decoding="async" />
+                                                <img src={getDisplayImageUrl(img)} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover border border-black/[0.06]" loading="lazy" decoding="async" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -923,7 +923,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                             </div>
                                         ))}
                                         {(editingPost.storeImages || []).length < 10 ? (
-                                            <label className="w-32 h-32 border border-dashed border-blue-300 flex items-center justify-center cursor-pointer hover:border-blue-400 transition-colors">
+                                            <label className="w-32 h-32 border border-dashed border-black/15 flex items-center justify-center cursor-pointer hover:border-brand/40 transition-colors">
                                                 {uploadingImages ? (
                                                     <div className="text-center">
                                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
@@ -976,11 +976,11 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                             
                             {editingPost.category === '중고거래' && editingPost.itemImages !== undefined ? (
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">제품 사진 (최대 10장)</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">제품 사진 (최대 10장)</label>
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.itemImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={getDisplayImageUrl(img)} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
+                                                <img src={getDisplayImageUrl(img)} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-2xl border border-black/[0.06]" loading="lazy" decoding="async" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -995,7 +995,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                             </div>
                                         ))}
                                         {(editingPost.itemImages || []).length < 10 ? (
-                                            <label className="w-32 h-32 border border-dashed border-blue-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                            <label className="w-32 h-32 border border-dashed border-black/15 rounded-2xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                     {uploadingImages ? (
                                                         <div className="text-center">
                                                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
@@ -1052,11 +1052,11 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                             
                             {editingPost.category === '프로그램 후기' && (editingPost.reviewImages !== undefined || editingPost.images !== undefined) ? (
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">후기 사진 (최대 10장)</label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">후기 사진 (최대 10장)</label>
                                     <div className="flex gap-4 flex-wrap">
                                         {(editingPost.reviewImages || editingPost.images || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={getDisplayImageUrl(img)} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-xl border border-blue-200" loading="lazy" decoding="async" />
+                                                <img src={getDisplayImageUrl(img)} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-2xl border border-black/[0.06]" loading="lazy" decoding="async" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -1072,7 +1072,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                             </div>
                                         ))}
                                         {((editingPost.reviewImages || editingPost.images || []).length < 10) ? (
-                                            <label className="w-32 h-32 border border-dashed border-blue-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                            <label className="w-32 h-32 border border-dashed border-black/15 rounded-2xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
                                                     {uploadingImages ? (
                                                         <div className="text-center">
                                                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
@@ -1138,14 +1138,14 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                         alert('게시글 수정 기능이 준비되지 않았습니다.');
                                     }
                                 }} 
-                                className="w-full py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 mt-6"
+                                className="w-full py-4 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors mt-6"
                             >
                                 수정
                             </button>
                         </div>
                         </div>
-                        <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
-                            <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                        <div className="shrink-0 border-t border-black/[0.06] p-4 flex justify-end">
+                            <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors">
                                 닫기
                             </button>
                         </div>
@@ -1212,40 +1212,40 @@ function ApplicationEditModal({ seminar, application, onClose, onSave }) {
     return (
         <ModalPortal>
             <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-                <div className="bg-white rounded-2xl shadow-xl border border-blue-200 max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                    <div className="shrink-0 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
-                        <h3 className="text-lg font-bold text-dark">신청 내용 정정</h3>
-                        <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500" aria-label="닫기">
+                <div className="bg-white rounded-2xl shadow-xl border border-black/[0.06] max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                    <div className="shrink-0 px-6 py-4 border-b border-black/[0.06] flex justify-between items-center">
+                        <h3 className="text-lg font-semibold text-dark">신청 내용 정정</h3>
+                        <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-soft text-gray-500" aria-label="닫기">
                             <Icons.X size={22} />
                         </button>
                     </div>
-                    <div className="px-6 py-4 border-b border-blue-100">
+                    <div className="px-6 py-4 border-b border-black/[0.06]">
                         <p className="text-sm text-gray-700 font-medium truncate" title={seminar?.title}>{seminar?.title}</p>
                     </div>
                     <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">참여 경로</label>
-                            <input type="text" className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none" value={participationPath} onChange={(e) => setParticipationPath(e.target.value)} placeholder="예: 부청사 오픈채팅, 지인 추천" />
+                            <input type="text" className="w-full px-3 py-2 border border-black/[0.06] rounded-lg text-sm focus:border-brand focus:outline-none" value={participationPath} onChange={(e) => setParticipationPath(e.target.value)} placeholder="예: 부청사 오픈채팅, 지인 추천" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">강연 신청 계기</label>
-                            <textarea className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none resize-none h-20" value={applyReason} onChange={(e) => setApplyReason(e.target.value)} placeholder="신청하신 이유를 적어 주세요." />
+                            <textarea className="w-full px-3 py-2 border border-black/[0.06] rounded-lg text-sm focus:border-brand focus:outline-none resize-none h-20" value={applyReason} onChange={(e) => setApplyReason(e.target.value)} placeholder="신청하신 이유를 적어 주세요." />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">강연 사전 질문</label>
-                            <textarea className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none resize-none h-20" value={preQuestions} onChange={(e) => setPreQuestions(e.target.value)} placeholder="강연 전에 궁금한 점이 있으면 적어 주세요." />
+                            <textarea className="w-full px-3 py-2 border border-black/[0.06] rounded-lg text-sm focus:border-brand focus:outline-none resize-none h-20" value={preQuestions} onChange={(e) => setPreQuestions(e.target.value)} placeholder="강연 전에 궁금한 점이 있으면 적어 주세요." />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">강연 후 식사 여부</label>
-                            <input type="text" className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none" value={mealAfter} onChange={(e) => setMealAfter(e.target.value)} placeholder="예: 참여함 / 불참" />
+                            <input type="text" className="w-full px-3 py-2 border border-black/[0.06] rounded-lg text-sm focus:border-brand focus:outline-none" value={mealAfter} onChange={(e) => setMealAfter(e.target.value)} placeholder="예: 참여함 / 불참" />
                         </div>
                         <div className="flex items-center gap-2">
-                            <input type="checkbox" id="app-edit-privacy" checked={privacyAgreed} onChange={(e) => setPrivacyAgreed(e.target.checked)} className="rounded border-blue-300 text-brand focus:ring-brand" />
+                            <input type="checkbox" id="app-edit-privacy" checked={privacyAgreed} onChange={(e) => setPrivacyAgreed(e.target.checked)} className="rounded border-black/10 text-brand focus:ring-brand" />
                             <label htmlFor="app-edit-privacy" className="text-sm text-gray-700">개인정보 수집·이용 동의</label>
                         </div>
                         <div className="flex gap-3 pt-4">
-                            <button type="button" onClick={onClose} className="flex-1 py-3 border border-blue-300 text-gray-700 font-medium rounded-xl hover:bg-gray-50">취소</button>
-                            <button type="submit" disabled={saving} className="flex-1 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-60">
+                            <button type="button" onClick={onClose} className="flex-1 py-3 border border-black/10 text-gray-700 font-medium rounded-full hover:bg-soft transition-colors">취소</button>
+                            <button type="submit" disabled={saving} className="flex-1 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors disabled:opacity-60">
                                 {saving ? '저장 중…' : '저장'}
                             </button>
                         </div>

@@ -44,15 +44,15 @@ export default function RefundPolicyView({ onBack, content }) {
   return (
     <div className="min-h-screen bg-soft pt-24 pb-20 px-4 md:px-6">
       <div className="container mx-auto max-w-3xl">
-        <div className="bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden">
-          <div className="p-6 md:p-8 border-b border-blue-100 text-center">
-            <h1 className="text-xl md:text-2xl font-bold text-dark">{TITLE}</h1>
+        <div className="bg-white rounded-[28px] border border-black/[0.06] overflow-hidden">
+          <div className="p-6 md:p-8 border-b border-black/[0.06] text-center">
+            <h1 className="text-[22px] md:text-[26px] font-semibold tracking-tight text-dark">{TITLE}</h1>
             <p className="text-sm text-brand mt-2">* 유료 세미나 및 교육 프로그램 취소·환불에 관한 규정입니다.</p>
           </div>
           <div className="p-6 md:p-8 space-y-8">
             {SECTIONS.map((section, index) => (
               <section key={index}>
-                <h2 className="text-base md:text-lg font-bold text-dark mb-3">{section.title}</h2>
+                <h2 className="text-[15px] md:text-base font-semibold text-dark mb-3">{section.title}</h2>
                 <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
                   {section.bodyBefore != null ? (
                     <>
@@ -67,11 +67,11 @@ export default function RefundPolicyView({ onBack, content }) {
               </section>
             ))}
           </div>
-          <div className="p-6 md:p-8 border-t border-blue-100 flex justify-center">
+          <div className="p-6 md:p-8 border-t border-black/[0.06] flex justify-center">
             <button
               type="button"
               onClick={() => (onBack ? onBack() : window.history.back())}
-              className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2"
+              className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors flex items-center gap-2"
             >
               <Icons.ArrowLeft size={20} />
               이전으로

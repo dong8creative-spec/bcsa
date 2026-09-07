@@ -267,20 +267,20 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                     </div>
                     <div className="w-full flex justify-end md:justify-start items-center gap-3">
                         {canManagePrograms && (
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowProgramAddModal(true); }} className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold bg-brand text-white hover:bg-blue-700 transition-colors">
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowProgramAddModal(true); }} className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold bg-brand text-white hover:bg-[#00327a] transition-colors">
                                 <Icons.Plus size={20} /> 프로그램 등록
                             </button>
                         )}
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-semibold hover:underline px-4 py-2 rounded-full hover:bg-brand/5 transition-colors">
                             <Icons.ArrowLeft size={20} /> 메인으로
                         </button>
                     </div>
                 </div>
 
                 {/* 검색 및 필터 */}
-                <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-6 mb-8">
+                <div className="bg-white rounded-[24px] border border-black/[0.06] p-6 mb-8">
                     <div className="flex flex-col md:flex-row gap-0 items-center">
-                        <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
+                        <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-black/[0.06] py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.Search size={14} className="text-gray-400" /> 키워드 검색
                             </div>
@@ -292,7 +292,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                 onChange={(e) => setSearchKeyword(e.target.value)} 
                             />
                         </div>
-                        <div className="w-full md:w-48 px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
+                        <div className="w-full md:w-48 px-4 border-b md:border-b-0 md:border-r border-black/[0.06] py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.Tag size={14} className="text-gray-400" /> 카테고리
                             </div>
@@ -304,7 +304,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                 {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                             </select>
                         </div>
-                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
+                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-black/[0.06] py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.CheckCircle size={14} className="text-gray-400" /> 모집 상태
                             </div>
@@ -331,7 +331,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                             </select>
                         </div>
                     </div>
-                    <div className="text-xs text-gray-500 mt-4 px-4">
+                    <div className="text-[12px] text-gray-500 mt-4 px-4">
                         검색 결과: <span className="font-bold text-brand">{sortedSeminars.length}</span>개
                     </div>
                 </div>
@@ -348,7 +348,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                     : seminar.imageUrl || seminar.img;
                             
                             return (
-                            <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border border-blue-200 hover:border-brand/20 cursor-pointer overflow-hidden flex flex-col" onClick={() => { if (isMobile && onNavigateToApply) { onNavigateToApply(seminar); } else { setSelectedSeminar(seminar); } }}>
+                            <div key={seminar.id} data-seminar-id={seminar.id} className="bg-white rounded-[24px] transition-colors border border-black/[0.06] hover:border-brand/20 cursor-pointer overflow-hidden flex flex-col" onClick={() => { if (isMobile && onNavigateToApply) { onNavigateToApply(seminar); } else { setSelectedSeminar(seminar); } }}>
                                 <div className="w-full flex-shrink-0 overflow-hidden relative bg-gray-100" style={{ aspectRatio: '3/4' }}>
                                     {displayImage ? (
                                         <>
@@ -446,7 +446,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                 scrollListIntoView();
                             }}
                             disabled={currentPage === 1}
-                            className="px-4 py-2 rounded-xl border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
+                            className="px-4 py-2 rounded-full border border-black/[0.06] disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
                         >
                             <Icons.ChevronLeft size={20} />
                         </button>
@@ -457,10 +457,10 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                     setCurrentPage(page);
                                     scrollListIntoView();
                                 }}
-                                className={`px-4 py-2 rounded-xl font-bold transition-colors ${
+                                className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
                                     currentPage === page
                                         ? 'bg-brand text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        : 'bg-soft text-gray-600 hover:bg-[#eceef2]'
                                 }`}
                             >
                                 {page}
@@ -472,7 +472,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                 scrollListIntoView();
                             }}
                             disabled={currentPage === totalPages}
-                            className="px-4 py-2 rounded-xl border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
+                            className="px-4 py-2 rounded-full border border-black/[0.06] disabled:opacity-50 disabled:cursor-not-allowed hover:border-brand transition-colors"
                         >
                             <Icons.ChevronRight size={20} />
                         </button>
@@ -514,7 +514,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                         }
                     }}>
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[76.8rem] z-10 max-h-[90vh] flex flex-col md:flex-row md:items-start overflow-hidden relative max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="bg-white rounded-[28px] shadow-2xl w-full max-w-[76.8rem] z-10 max-h-[90vh] flex flex-col md:flex-row md:items-start overflow-hidden relative max-md:scale-[0.8] origin-center border border-black/[0.06]" onClick={(e) => e.stopPropagation()}>
                             {/* 이미지: 잘림 없음(object-contain) + 여백 없음(컨테이너 비율=이미지 비율, 오른쪽 높이 맞춤) */}
                             <div
                                 ref={leftColRef}
@@ -623,7 +623,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="bg-soft p-6 rounded-2xl border border-brand/5 mb-6">
+                                    <div className="bg-soft p-6 rounded-[20px] border border-black/[0.06] mb-6">
                                         <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{selectedSeminar.desc}</p>
                                     </div>
                                 </div>

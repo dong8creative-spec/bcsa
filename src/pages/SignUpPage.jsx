@@ -10,7 +10,7 @@ const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 
 /** 필수 항목 번호 뱃지: 미입력 파란색, 입력완료 초록색 */
 const RequiredFieldBadge = ({ number, isFilled }) => (
-    <span className={`inline-flex w-6 h-6 rounded-full items-center justify-center text-xs font-bold text-white shrink-0 ${isFilled ? 'bg-green-500' : 'bg-blue-500'}`}>
+    <span className={`inline-flex w-6 h-6 rounded-full items-center justify-center text-xs font-semibold text-white shrink-0 ${isFilled ? 'bg-green-500' : 'bg-blue-500'}`}>
         {number}
     </span>
 );
@@ -177,7 +177,7 @@ const SignUpPage = ({ onSignUp }) => {
     const businessNumberDigits = (form.businessRegistrationNumber || '').replace(/\D/g, '');
     const isBusinessNumberValid = businessNumberDigits.length === 10;
 
-    const inputClass = 'w-full p-3 border border-blue-200 rounded-xl focus:outline-none focus:border-brand';
+    const inputClass = 'w-full p-3 border border-black/[0.06] rounded-2xl focus:outline-none focus:border-brand';
 
     const isRequiredFilled = useMemo(() => {
         if (!userType) return false;
@@ -377,15 +377,15 @@ const SignUpPage = ({ onSignUp }) => {
                     <button
                         type="button"
                         onClick={() => navigate(-1)}
-                        className="flex items-center gap-2 text-brand font-bold hover:underline mb-4"
+                        className="flex items-center gap-2 text-brand font-semibold hover:underline mb-4"
                     >
                         <Icons.ArrowLeft size={20} /> 이전
                     </button>
-                    <h1 className="text-2xl md:text-3xl font-bold text-dark">회원가입</h1>
+                    <h1 className="text-2xl md:text-3xl font-semibold text-dark">회원가입</h1>
                     <p className="text-sm text-gray-500 mt-1">표시(*)된 항목은 필수 입력입니다.</p>
                     {fromKakao && (
                         <p className="text-sm text-green-700 mt-2 flex items-center gap-2">
-                            <span className="inline-flex w-6 h-6 rounded-full bg-[#FEE500] items-center justify-center text-[#191919] text-xs font-bold shrink-0">K</span>
+                            <span className="inline-flex w-6 h-6 rounded-full bg-[#FEE500] items-center justify-center text-[#191919] text-xs font-semibold shrink-0">K</span>
                             카카오 계정으로 가입 중입니다. 카카오에서 가져온 정보가 미리 채워졌으며, 비밀번호는 입력하지 않아도 됩니다.
                         </p>
                     )}
@@ -397,9 +397,9 @@ const SignUpPage = ({ onSignUp }) => {
                     <p className="text-xs text-gray-400 mt-1">자진 탈퇴 시 언제든 재가입 가능하며, 강제 탈퇴 시 1년간 재가입이 제한됩니다. (이용약관 제6조의2)</p>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-lg border border-blue-100 p-6 md:p-8">
-                    <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                        <p className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                <div className="bg-white rounded-[28px] border border-black/[0.06] p-6 md:p-8">
+                    <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                        <p className="text-sm font-semibold text-amber-800 flex items-center gap-2">
                             <Icons.AlertCircle className="w-5 h-5 shrink-0" />
                             이름, 생년월일, 성별, 연락처, 이메일, 비밀번호, 주소, {userType === '사업자' ? '상호명, 사업자등록번호, 업종/업태, 협업 업종, 핵심고객' : '희망업종(선택)'} 및 약관 동의 등 필수 항목을 입력해주세요.
                         </p>
@@ -408,7 +408,7 @@ const SignUpPage = ({ onSignUp }) => {
                     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                         {/* 회원 유형 */}
                         <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                 <RequiredFieldBadge number={1} isFilled={!!userType} />
                                 회원 유형 <span className="text-red-500">*</span>
                             </label>
@@ -416,17 +416,17 @@ const SignUpPage = ({ onSignUp }) => {
                                 <button
                                     type="button"
                                     onClick={() => setUserType('사업자')}
-                                    className={`p-4 rounded-xl border-2 text-left transition-all ${userType === '사업자' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'}`}
+                                    className={`p-4 rounded-2xl border-2 text-left transition-all ${userType === '사업자' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'}`}
                                 >
-                                    <span className="font-bold text-dark">사업자</span>
+                                    <span className="font-semibold text-dark">사업자</span>
                                     <p className="text-xs text-gray-500 mt-1">현재 사업을 운영 중이신 분</p>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setUserType('예창')}
-                                    className={`p-4 rounded-xl border-2 text-left transition-all ${userType === '예창' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'}`}
+                                    className={`p-4 rounded-2xl border-2 text-left transition-all ${userType === '예창' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'}`}
                                 >
-                                    <span className="font-bold text-dark">예비창업자</span>
+                                    <span className="font-semibold text-dark">예비창업자</span>
                                     <p className="text-xs text-gray-500 mt-1">창업을 준비 중이신 분</p>
                                 </button>
                             </div>
@@ -436,29 +436,29 @@ const SignUpPage = ({ onSignUp }) => {
                             <>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                             <RequiredFieldBadge number={2} isFilled={!!(form.name || '').trim()} />
                                             이름 <span className="text-red-500">*</span>
                                         </label>
                                         <input type="text" required placeholder="이름 입력" className={inputClass} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">닉네임 <span className="text-gray-400 text-xs">(선택, 부청사 활동용)</span></label>
-                                        <input type="text" placeholder="닉네임 입력" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.nickname} onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))} />
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">닉네임 <span className="text-gray-400 text-xs">(선택, 부청사 활동용)</span></label>
+                                        <input type="text" placeholder="닉네임 입력" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.nickname} onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                             <RequiredFieldBadge number={3} isFilled={!!(form.birthdate || '').trim() && !!parseBirthdateInput(form.birthdate)} />
                                             생년월일 <span className="text-red-500">*</span>
                                         </label>
-                                        <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD (예: 1990-01-15)" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.birthdate} onChange={e => { const v = e.target.value; const parsed = parseBirthdateInput(v); setForm(f => ({ ...f, birthdate: parsed || v })); }} />
+                                        <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD (예: 1990-01-15)" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.birthdate} onChange={e => { const v = e.target.value; const parsed = parseBirthdateInput(v); setForm(f => ({ ...f, birthdate: parsed || v })); }} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                             <RequiredFieldBadge number={4} isFilled={!!form.gender} />
                                             성별 <span className="text-red-500">*</span>
                                         </label>
-                                        <select required className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
+                                        <select required className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none bg-white" value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
                                             <option value="">선택</option>
                                             <option value="남성">남성</option>
                                             <option value="여성">여성</option>
@@ -466,7 +466,7 @@ const SignUpPage = ({ onSignUp }) => {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                             <RequiredFieldBadge number={5} isFilled={!!(form.phone || '').trim() && validatePhone(form.phone)} />
                                             연락처 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(숫자 11자리)</span>
                                         </label>
@@ -487,41 +487,41 @@ const SignUpPage = ({ onSignUp }) => {
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                             <RequiredFieldBadge number={6} isFilled={!!(form.email || '').trim() && validateEmail(form.email)} />
                                             이메일 <span className="text-red-500">*</span>
                                         </label>
-                                        <div className="flex flex-wrap gap-2 items-center p-2 rounded-xl">
-                                            <input type="text" inputMode="email" required placeholder="example" className="flex-1 min-w-[100px] p-3 rounded-xl focus:outline-none border border-blue-200 focus:border-brand" value={form.emailId} onChange={e => setForm(f => ({ ...f, emailId: e.target.value, email: composeEmail(e.target.value, f.emailDomain, f.emailDomainCustom) }))} />
+                                        <div className="flex flex-wrap gap-2 items-center p-2 rounded-2xl">
+                                            <input type="text" inputMode="email" required placeholder="example" className="flex-1 min-w-[100px] p-3 rounded-2xl focus:outline-none border border-black/[0.06] focus:border-brand" value={form.emailId} onChange={e => setForm(f => ({ ...f, emailId: e.target.value, email: composeEmail(e.target.value, f.emailDomain, f.emailDomainCustom) }))} />
                                             <span className="text-slate-500">@</span>
-                                            <select className="p-3 rounded-xl focus:outline-none bg-white border border-blue-200 focus:border-brand" value={form.emailDomain} onChange={e => setForm(f => ({ ...f, emailDomain: e.target.value, email: composeEmail(f.emailId, e.target.value, f.emailDomainCustom) }))}>
+                                            <select className="p-3 rounded-2xl focus:outline-none bg-white border border-black/[0.06] focus:border-brand" value={form.emailDomain} onChange={e => setForm(f => ({ ...f, emailDomain: e.target.value, email: composeEmail(f.emailId, e.target.value, f.emailDomainCustom) }))}>
                                                 {EMAIL_DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
                                             </select>
                                             {form.emailDomain === '직접입력' && (
-                                                <input type="text" placeholder="도메인 입력" className="flex-1 min-w-[120px] p-3 rounded-xl focus:outline-none border border-blue-200 focus:border-brand" value={form.emailDomainCustom} onChange={e => setForm(f => ({ ...f, emailDomainCustom: e.target.value, email: composeEmail(f.emailId, f.emailDomain, e.target.value) }))} />
+                                                <input type="text" placeholder="도메인 입력" className="flex-1 min-w-[120px] p-3 rounded-2xl focus:outline-none border border-black/[0.06] focus:border-brand" value={form.emailDomainCustom} onChange={e => setForm(f => ({ ...f, emailDomainCustom: e.target.value, email: composeEmail(f.emailId, f.emailDomain, e.target.value) }))} />
                                             )}
                                         </div>
                                     </div>
                                     {!fromKakao && (
                                     <>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                             <RequiredFieldBadge number={7} isFilled={!!(form.password || '').trim() && validatePassword(form.password).valid} />
                                             비밀번호 <span className="text-red-500">*</span>
                                         </label>
                                         <div className="relative">
-                                            <input type={showPassword ? 'text' : 'password'} required placeholder="8자 이상, 영문+숫자+특수문자" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none pr-10" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+                                            <input type={showPassword ? 'text' : 'password'} required placeholder="8자 이상, 영문+숫자+특수문자" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none pr-10" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
                                             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showPassword ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}</button>
                                         </div>
                                         {form.password && !validatePassword(form.password).valid && <p className="text-xs text-red-500 mt-1">{validatePassword(form.password).message}</p>}
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                             <RequiredFieldBadge number={8} isFilled={!!(form.passwordConfirm || '').trim() && form.password === form.passwordConfirm} />
                                             비밀번호 확인 <span className="text-red-500">*</span>
                                         </label>
                                         <div className="relative">
-                                            <input type={showPasswordConfirm ? 'text' : 'password'} required className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none pr-10" value={form.passwordConfirm} onChange={e => setForm(f => ({ ...f, passwordConfirm: e.target.value }))} />
+                                            <input type={showPasswordConfirm ? 'text' : 'password'} required className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none pr-10" value={form.passwordConfirm} onChange={e => setForm(f => ({ ...f, passwordConfirm: e.target.value }))} />
                                             <button type="button" onClick={() => setShowPasswordConfirm(!showPasswordConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">{showPasswordConfirm ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}</button>
                                         </div>
                                         {form.passwordConfirm && form.password !== form.passwordConfirm && <p className="text-xs text-red-500 mt-1">비밀번호가 일치하지 않습니다.</p>}
@@ -531,119 +531,119 @@ const SignUpPage = ({ onSignUp }) => {
                                 </div>
 
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                         <RequiredFieldBadge number={9} isFilled={!!(form.roadAddress || '').trim()} />
                                         주소 <span className="text-red-500">*</span>
                                     </label>
                                     <div className="space-y-2">
                                         <div className="flex gap-2">
-                                            <input type="text" readOnly placeholder="도로명 주소 검색" className="flex-1 p-3 border border-blue-200 rounded-xl bg-gray-50 text-sm cursor-pointer" value={form.roadAddress} onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setForm(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} />
-                                            <button type="button" onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setForm(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} className="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-sm whitespace-nowrap flex items-center gap-1">
+                                            <input type="text" readOnly placeholder="도로명 주소 검색" className="flex-1 p-3 border border-black/[0.06] rounded-2xl bg-gray-50 text-sm cursor-pointer" value={form.roadAddress} onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setForm(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} />
+                                            <button type="button" onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setForm(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} className="px-4 py-3 bg-brand text-white rounded-full font-semibold hover:bg-[#00327a] transition-colors text-sm whitespace-nowrap flex items-center gap-1">
                                                 <Icons.MapPin size={16} /> 주소 검색
                                             </button>
                                         </div>
                                         {form.zipCode ? <p className="text-xs text-gray-500">우편번호: {form.zipCode}</p> : null}
-                                        <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3 border border-blue-200 rounded-xl focus:border-blue-400 focus:outline-none text-sm" value={form.detailAddress} onChange={e => setForm(f => ({ ...f, detailAddress: e.target.value }))} />
+                                        <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand/40 focus:outline-none text-sm" value={form.detailAddress} onChange={e => setForm(f => ({ ...f, detailAddress: e.target.value }))} />
                                     </div>
                                 </div>
 
                                 {userType === '사업자' && (
                                     <div className="space-y-5 pt-2">
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                                 <RequiredFieldBadge number={11} isFilled={!!(form.company || '').trim()} />
                                                 상호명 <span className="text-red-500">*</span>
                                             </label>
-                                            <input type="text" required placeholder="회사 또는 사업체 이름" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} />
+                                            <input type="text" required placeholder="회사 또는 사업체 이름" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                                 <RequiredFieldBadge number={12} isFilled={isBusinessNumberValid} />
                                                 사업자등록번호 <span className="text-red-500">*</span>
                                             </label>
-                                            <input type="text" inputMode="numeric" maxLength={10} placeholder="숫자 10자리 (예: 1234567890)" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.businessRegistrationNumber} onChange={e => setForm(f => ({ ...f, businessRegistrationNumber: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
+                                            <input type="text" inputMode="numeric" maxLength={10} placeholder="숫자 10자리 (예: 1234567890)" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.businessRegistrationNumber} onChange={e => setForm(f => ({ ...f, businessRegistrationNumber: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
                                             {form.businessRegistrationNumber && !isBusinessNumberValid && <p className="text-xs text-red-500 mt-1">숫자 10자리를 입력해주세요.</p>}
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">직책/직함 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                            <input type="text" placeholder="예: 대표, 이사, 팀장" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} />
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">직책/직함 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                            <input type="text" placeholder="예: 대표, 이사, 팀장" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">회사 전화번호 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에 노출)</span></label>
-                                            <input type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.companyPhone} onChange={e => setForm(f => ({ ...f, companyPhone: e.target.value }))} />
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">회사 전화번호 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에 노출)</span></label>
+                                            <input type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.companyPhone} onChange={e => setForm(f => ({ ...f, companyPhone: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">회사 홈페이지 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에서 미리보기)</span></label>
-                                            <input type="url" placeholder="https://www.example.com" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.companyWebsite} onChange={e => setForm(f => ({ ...f, companyWebsite: e.target.value }))} />
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">회사 홈페이지 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에서 미리보기)</span></label>
+                                            <input type="url" placeholder="https://www.example.com" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.companyWebsite} onChange={e => setForm(f => ({ ...f, companyWebsite: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                                 <RequiredFieldBadge number={13} isFilled={!!form.businessCategory} />
                                                 업종 / 업태 <span className="text-red-500">*</span>
                                             </label>
-                                            <select required className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white" value={form.businessCategory} onChange={e => setForm(f => ({ ...f, businessCategory: e.target.value }))}>
+                                            <select required className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none bg-white" value={form.businessCategory} onChange={e => setForm(f => ({ ...f, businessCategory: e.target.value }))}>
                                                 <option value="">선택</option>
                                                 {BUSINESS_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">사업자등록증 <span className="text-gray-400 text-xs">(선택, 이미지 또는 PDF)</span></label>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">사업자등록증 <span className="text-gray-400 text-xs">(선택, 이미지 또는 PDF)</span></label>
                                             <div className="flex flex-col gap-2">
-                                                <input type="file" accept="image/*,.pdf,application/pdf" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand file:text-white file:font-medium file:text-sm" onChange={handleBusinessDocChange} />
+                                                <input type="file" accept="image/*,.pdf,application/pdf" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand file:text-white file:font-medium file:text-sm" onChange={handleBusinessDocChange} />
                                                 {form.businessRegistrationFileName && <p className="text-xs text-gray-500">등록됨: {form.businessRegistrationFileName}</p>}
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                                 <RequiredFieldBadge number={14} isFilled={!!(form.collaborationIndustry || '').trim()} />
                                                 협업 업종 <span className="text-red-500">*</span>
                                             </label>
-                                            <input type="text" required placeholder="협업 희망 업종" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.collaborationIndustry} onChange={e => setForm(f => ({ ...f, collaborationIndustry: e.target.value }))} />
+                                            <input type="text" required placeholder="협업 희망 업종" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.collaborationIndustry} onChange={e => setForm(f => ({ ...f, collaborationIndustry: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                                                 <RequiredFieldBadge number={15} isFilled={!!(form.keyCustomers || '').trim()} />
                                                 핵심고객 <span className="text-red-500">*</span>
                                             </label>
-                                            <input type="text" required placeholder="핵심 고객층" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.keyCustomers} onChange={e => setForm(f => ({ ...f, keyCustomers: e.target.value }))} />
+                                            <input type="text" required placeholder="핵심 고객층" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.keyCustomers} onChange={e => setForm(f => ({ ...f, keyCustomers: e.target.value }))} />
                                         </div>
                                     </div>
                                 )}
 
                                 {userType === '예창' && (
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">희망업종 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                        <input type="text" placeholder="희망 업종 또는 분야" className="w-full p-3 border border-blue-200 rounded-xl focus:border-brand focus:outline-none" value={form.desiredIndustry} onChange={e => setForm(f => ({ ...f, desiredIndustry: e.target.value }))} />
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">희망업종 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                        <input type="text" placeholder="희망 업종 또는 분야" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.desiredIndustry} onChange={e => setForm(f => ({ ...f, desiredIndustry: e.target.value }))} />
                                     </div>
                                 )}
 
                                 {/* PIPA 준수: 약관 동의 섹션 분리 */}
                                 <div className="space-y-4">
-                                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                                    <div className="p-4 bg-brand/5 rounded-2xl border border-brand/10">
                                         <div className="flex items-start gap-3">
                                             <input type="checkbox" id="termsAgreed" checked={form.termsAgreed} onChange={e => setForm(f => ({ ...f, termsAgreed: e.target.checked }))} className="mt-1 w-5 h-5 text-brand rounded" />
                                             <div className="flex-1 flex items-start gap-2">
                                                 <RequiredFieldBadge number={9} isFilled={form.termsAgreed} />
-                                                <label htmlFor="termsAgreed" className="text-sm font-bold text-gray-700 cursor-pointer">(필수) 이용약관 동의 <span className="text-red-500">*</span></label>
+                                                <label htmlFor="termsAgreed" className="text-sm font-semibold text-gray-700 cursor-pointer">(필수) 이용약관 동의 <span className="text-red-500">*</span></label>
                                                 <button type="button" onClick={() => setTermsModal({ open: true, type: 'service' })} className="ml-2 text-xs text-brand font-medium hover:underline">내용보기</button>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                                    <div className="p-4 bg-brand/5 rounded-2xl border border-brand/10">
                                         <div className="flex items-start gap-3">
                                             <input type="checkbox" id="privacyAgreed" checked={form.privacyAgreed} onChange={e => setForm(f => ({ ...f, privacyAgreed: e.target.checked }))} className="mt-1 w-5 h-5 text-brand rounded" />
                                             <div className="flex-1 flex items-start gap-2">
                                                 <RequiredFieldBadge number={10} isFilled={form.privacyAgreed} />
-                                                <label htmlFor="privacyAgreed" className="text-sm font-bold text-gray-700 cursor-pointer">(필수) 개인정보처리방침을 읽었으며 동의합니다 <span className="text-red-500">*</span></label>
+                                                <label htmlFor="privacyAgreed" className="text-sm font-semibold text-gray-700 cursor-pointer">(필수) 개인정보처리방침을 읽었으며 동의합니다 <span className="text-red-500">*</span></label>
                                                 <button type="button" onClick={() => setTermsModal({ open: true, type: 'privacy' })} className="ml-2 text-xs text-brand font-medium hover:underline">내용보기</button>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                    <div className="p-4 bg-soft rounded-2xl border border-black/[0.06]">
                                         <div className="flex items-start gap-3">
                                             <input type="checkbox" id="marketingAgreed" checked={form.marketingAgreed} onChange={e => setForm(f => ({ ...f, marketingAgreed: e.target.checked }))} className="mt-1 w-5 h-5 text-brand rounded" />
                                             <div className="flex-1">
-                                                <label htmlFor="marketingAgreed" className="text-sm font-bold text-gray-700 cursor-pointer">(선택) 마케팅 정보 수신 및 활용 동의</label>
+                                                <label htmlFor="marketingAgreed" className="text-sm font-semibold text-gray-700 cursor-pointer">(선택) 마케팅 정보 수신 및 활용 동의</label>
                                                 <button type="button" onClick={() => setTermsModal({ open: true, type: 'marketing' })} className="ml-2 text-xs text-brand font-medium hover:underline">내용보기</button>
                                             </div>
                                         </div>
@@ -653,8 +653,8 @@ const SignUpPage = ({ onSignUp }) => {
                                 {error && <p className="text-sm text-red-600 font-medium whitespace-pre-line">{error}</p>}
 
                                 <div className="flex gap-3 pt-4">
-                                    <button type="button" onClick={() => navigate(-1)} className="px-6 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300">취소</button>
-                                    <button type="submit" disabled={submitting} className="flex-1 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <button type="button" onClick={() => navigate(-1)} className="px-6 py-3 bg-white border border-black/[0.06] text-gray-600 font-semibold rounded-full hover:bg-soft transition-colors">취소</button>
+                                    <button type="submit" disabled={submitting} className="flex-1 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                         {submitting ? '가입 처리 중...' : '가입하기'}
                                     </button>
                                 </div>
@@ -667,8 +667,8 @@ const SignUpPage = ({ onSignUp }) => {
             {/* 약관 내용보기 모달 */}
             {termsModal.open && (
                 <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setTermsModal({ open: false, type: '' })}>
-                    <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-                        <div className="p-4 border-b border-blue-100 font-bold text-dark">
+                    <div className="bg-white rounded-[24px] border border-black/[0.06] max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-black/[0.06] font-semibold text-dark">
                             {termsModal.type === 'service' && '이용약관'}
                             {termsModal.type === 'privacy' && '개인정보 수집 및 이용'}
                             {termsModal.type === 'marketing' && '마케팅 정보 수신 및 활용'}
@@ -678,8 +678,8 @@ const SignUpPage = ({ onSignUp }) => {
                             {termsModal.type === 'privacy' && TERMS_PRIVACY}
                             {termsModal.type === 'marketing' && TERMS_MARKETING}
                         </div>
-                        <div className="p-4 border-t border-blue-100">
-                            <button type="button" onClick={() => setTermsModal({ open: false, type: '' })} className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">닫기</button>
+                        <div className="p-4 border-t border-black/[0.06]">
+                            <button type="button" onClick={() => setTermsModal({ open: false, type: '' })} className="w-full py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors">닫기</button>
                         </div>
                     </div>
                 </div>

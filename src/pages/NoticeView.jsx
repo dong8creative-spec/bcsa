@@ -34,13 +34,13 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
                         <p className="text-gray-500 text-sm">단체 소식 안내</p>
                     </div>
                     <div className="w-full flex justify-end">
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-semibold hover:underline px-4 py-2 rounded-full hover:bg-brand/5 transition-colors">
                             <Icons.ArrowLeft size={20} /> 메인으로
                         </button>
                     </div>
                 </div>
                 {/* 공지사항 내용 */}
-                <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-6">
+                <div className="bg-white rounded-[24px] border border-black/[0.06] p-6">
                 {/* 카테고리 필터 */}
                     <div className="flex flex-wrap gap-2 mb-6">
                         {categories.map((cat) => (
@@ -48,10 +48,10 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
                             key={cat}
                             type="button"
                             onClick={() => setSelectedCategory(cat)}
-                                className={`px-4 py-2 rounded-xl font-bold transition-colors ${
+                                className={`px-3.5 py-2 rounded-full text-xs font-semibold transition-colors ${
                                 selectedCategory === cat
                                     ? 'bg-brand text-white'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        : 'bg-soft text-gray-500 hover:bg-[#eceef2]'
                             }`}
                         >
                             {cat}
@@ -69,10 +69,10 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
                         {filteredPosts.map((post) => (
                             <div
                                 key={post.id}
-                                    className="p-5 bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md transition-all cursor-pointer"
+                                    className="p-5 bg-white rounded-[24px] border border-black/[0.06] hover:shadow-md transition-all cursor-pointer"
                                 onClick={() => setSelectedPost(post)}
                             >
-                                    <h3 className="font-bold text-dark mb-2">{post.title}</h3>
+                                    <h3 className="font-semibold text-dark mb-2">{post.title}</h3>
                                     <p className="text-sm text-gray-500 line-clamp-2">{post.content}</p>
                                     <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                                             <span>{post.author}</span>
@@ -89,9 +89,9 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
                 {selectedPost && (
                 <ModalPortal>
                 <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPost(null); }}>
-                    <div className="bg-white rounded-2xl shadow-sm border border-blue-200 max-w-3xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-white rounded-[24px] border border-black/[0.06] max-w-3xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
-                            <h3 className="text-2xl font-bold text-dark mb-2">{selectedPost.title}</h3>
+                            <h3 className="text-2xl font-semibold text-dark mb-2">{selectedPost.title}</h3>
                             <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
                                 <span>{selectedPost.author}</span>
                                 <span>{new Date(selectedPost.createdAt?.toDate?.() || selectedPost.createdAt).toLocaleDateString()}</span>
@@ -100,8 +100,8 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
                             <p className="whitespace-pre-wrap text-gray-700">{selectedPost.content}</p>
                             </div>
                         </div>
-                        <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
-                            <button type="button" onClick={() => setSelectedPost(null)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                        <div className="shrink-0 border-t border-black/[0.06] p-4 flex justify-end">
+                            <button type="button" onClick={() => setSelectedPost(null)} className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors">
                                 닫기
                             </button>
                         </div>

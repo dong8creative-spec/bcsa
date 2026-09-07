@@ -257,9 +257,9 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                 </div>
 
                 {/* 검색바 */}
-                <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-6 mb-8">
+                <div className="bg-white rounded-[24px] border border-black/[0.06] p-6 mb-8">
                     <div className="flex flex-col md:flex-row gap-0 items-center">
-                        <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
+                        <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-black/[0.06] py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.Search size={14} className="text-gray-400" /> 이름 검색
                             </div>
@@ -271,7 +271,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                 onChange={e => setSearchName(e.target.value)}
                             />
                         </div>
-                        <div className="w-full md:w-48 px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
+                        <div className="w-full md:w-48 px-4 border-b md:border-b-0 md:border-r border-black/[0.06] py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.Briefcase size={14} className="text-gray-400" /> 업종 검색
                             </div>
@@ -283,7 +283,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                 onChange={e => setSearchIndustry(e.target.value)}
                             />
                         </div>
-                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
+                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-black/[0.06] py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.MapPin size={14} className="text-gray-400" /> 지역
                             </div>
@@ -295,7 +295,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                 onChange={e => setSearchRegion(e.target.value)}
                             />
                         </div>
-                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
+                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-black/[0.06] py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.MapPin size={14} className="text-gray-400" /> 지역구
                             </div>
@@ -309,7 +309,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                 ))}
                             </select>
                         </div>
-                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-blue-200 py-3">
+                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-black/[0.06] py-3">
                             <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
                                 <Icons.Tag size={14} className="text-gray-400" /> 업종
                             </div>
@@ -348,11 +348,11 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                 </div>
 
                 {/* 회원명단: 회원등급 | 회원명 | 지역구 | 회사명 | 업종/업태 | 가입일자 */}
-                <div className="bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden mb-6">
+                <div className="bg-white rounded-[24px] border border-black/[0.06] overflow-hidden mb-6">
                     <div className="overflow-x-auto">
                         <div role="grid" aria-label="회원명단" className="min-w-0">
                             {/* 헤더 행 — 회원등급·지역구·가입일자 축소, 회사명 확대 */}
-                            <div role="row" className="grid border-b border-blue-200 bg-blue-50/50 h-14 min-h-[3.5rem] grid-cols-[0.5fr_1fr_0.6fr_1.7fr] md:grid-cols-[0.5fr_1fr_0.6fr_1.9fr_1fr_0.75fr]">
+                            <div role="row" className="grid border-b border-black/[0.06] bg-soft h-14 min-h-[3.5rem] grid-cols-[0.5fr_1fr_0.6fr_1.7fr] md:grid-cols-[0.5fr_1fr_0.6fr_1.9fr_1fr_0.75fr]">
                                 <div role="columnheader" aria-sort={sortKey === 'memberGrade' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="relative flex items-center justify-center px-2 md:px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('memberGrade')}>
                                     <span className="text-center">회원등급</span>
                                         <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
@@ -392,7 +392,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                             </div>
                             {/* 데이터 행 */}
                             {paginatedMembers.length === 0 ? (
-                                <div role="row" className="grid h-14 min-h-[3.5rem] border-b border-blue-100 grid-cols-[0.5fr_1fr_0.6fr_1.7fr] md:grid-cols-[0.5fr_1fr_0.6fr_1.9fr_1fr_0.75fr]">
+                                <div role="row" className="grid h-14 min-h-[3.5rem] border-b border-black/[0.06] grid-cols-[0.5fr_1fr_0.6fr_1.7fr] md:grid-cols-[0.5fr_1fr_0.6fr_1.9fr_1fr_0.75fr]">
                                     <div role="gridcell" className="col-span-4 md:col-span-6 flex items-center justify-center px-4 py-3 text-gray-500 text-sm">
                                         조건에 맞는 회원이 없습니다.
                                     </div>
@@ -402,7 +402,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                     <div
                                         key={member.id || member.uid || idx}
                                         role="row"
-                                        className="grid border-b border-blue-100 hover:bg-brand/5 cursor-pointer transition-colors h-14 min-h-[3.5rem] grid-cols-[0.5fr_1fr_0.6fr_1.7fr] md:grid-cols-[0.5fr_1fr_0.6fr_1.9fr_1fr_0.75fr]"
+                                        className="grid border-b border-black/[0.06] hover:bg-brand/5 cursor-pointer transition-colors h-14 min-h-[3.5rem] grid-cols-[0.5fr_1fr_0.6fr_1.7fr] md:grid-cols-[0.5fr_1fr_0.6fr_1.9fr_1fr_0.75fr]"
                                         onClick={() => setSelectedMember(member)}
                                     >
                                         <div role="gridcell" className="flex items-center justify-center px-2 md:px-4 py-3 text-sm text-gray-700">
@@ -450,7 +450,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
 
                     {/* 페이지네이션: 10명 초과 시 표시 */}
                     {totalPages > 1 && (
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 px-4 py-3 border-t border-blue-100 bg-gray-50/50 text-center">
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 px-4 py-3 border-t border-black/[0.06] bg-gray-50/50 text-center">
                             <p className="text-sm text-gray-600 text-center order-2 sm:order-1">
                                 전체 <span className="font-bold text-brand">{sortedMembers.length}</span>명
                                 {sortedMembers.length > PAGE_SIZE && (
@@ -462,7 +462,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                     type="button"
                                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                     disabled={currentPage <= 1}
-                                    className="px-3 py-1.5 rounded-lg border border-blue-200 text-sm font-bold text-gray-700 hover:bg-brand/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-3 py-1.5 rounded-full border border-black/[0.06] text-sm font-semibold text-gray-600 hover:bg-brand/10 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     이전
                                 </button>
@@ -473,7 +473,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                     type="button"
                                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                     disabled={currentPage >= totalPages}
-                                    className="px-3 py-1.5 rounded-lg border border-blue-200 text-sm font-bold text-gray-700 hover:bg-brand/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-3 py-1.5 rounded-full border border-black/[0.06] text-sm font-semibold text-gray-600 hover:bg-brand/10 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     다음
                                 </button>
@@ -487,10 +487,10 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                     <ModalPortal>
                     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedMember(null); }}>
                         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                        <div className={`bg-white rounded-2xl shadow-sm border border-blue-200 w-full z-10 flex flex-col max-md:scale-[0.8] origin-center ${hasSite ? 'max-w-7xl max-h-[92vh]' : 'max-w-6xl max-h-[calc(90vh-100px)]'}`} style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                        <div className={`bg-white rounded-2xl shadow-sm border border-black/[0.06] w-full z-10 flex flex-col max-md:scale-[0.8] origin-center ${hasSite ? 'max-w-7xl max-h-[92vh]' : 'max-w-6xl max-h-[calc(90vh-100px)]'}`} style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
                             <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
                             {/* 선택된 회원 상세 정보 */}
-                            <div className="border-t border-blue-200 pt-6">
+                            <div className="border-t border-black/[0.06] pt-6">
                                 <div className="flex flex-col md:flex-row gap-6 mb-6">
                                     <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-brand/20 shrink-0 mx-auto md:mx-0">
                                         <img 
@@ -557,7 +557,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                                 <span className="text-xs font-bold text-green-700">PortOne 본인인증 완료</span>
                                             </div>
                                         ) : (
-                                            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-blue-200 rounded-lg">
+                                            <div className="flex items-center gap-2 px-3 py-1.5 bg-soft border border-black/[0.06] rounded-lg">
                                                 <Icons.X className="w-4 h-4 text-gray-400" />
                                                 <span className="text-xs text-gray-500">본인인증 미완료</span>
                                             </div>
@@ -567,7 +567,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                 
                                 {/* PortOne 본인인증 정보 상세 (인증 완료 시에만 표시) */}
                                 {selectedMember.isIdentityVerified && (
-                                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-6 mb-6">
+                                    <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6">
                                         <div className="flex items-center gap-3 mb-4">
                                             <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
                                                 <Icons.CheckCircle className="w-6 h-6 text-white" />
@@ -578,11 +578,11 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-white/80 rounded-xl p-4 border border-green-100">
+                                            <div className="bg-white rounded-2xl p-4 border border-green-100">
                                                 <div className="text-xs text-gray-500 mb-2">인증된 이름</div>
                                                 <div className="font-bold text-lg text-green-600">{selectedMember.verifiedName || selectedMember.name}</div>
                                             </div>
-                                            <div className="bg-white/80 rounded-xl p-4 border border-green-100">
+                                            <div className="bg-white rounded-2xl p-4 border border-green-100">
                                                 <div className="text-xs text-gray-500 mb-2">인증된 전화번호</div>
                                                 <div className="font-bold text-lg text-green-600">
                                                 {selectedMember.phonePublic
@@ -599,7 +599,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                             </div>
                                             </div>
                                             {selectedMember.verifiedBirthday && (
-                                                <div className="bg-white/80 rounded-xl p-4 border border-green-100">
+                                                <div className="bg-white rounded-2xl p-4 border border-green-100">
                                                     <div className="text-xs text-gray-500 mb-2">생년월일</div>
                                                     <div className="font-bold text-lg text-green-600">
                                                         {selectedMember.verifiedBirthday && typeof selectedMember.verifiedBirthday === 'string' && /^\d{8}$/.test(selectedMember.verifiedBirthday)
@@ -609,7 +609,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                                 </div>
                                             )}
                                             {selectedMember.verifiedGender && (
-                                                <div className="bg-white/80 rounded-xl p-4 border border-green-100">
+                                                <div className="bg-white rounded-2xl p-4 border border-green-100">
                                                     <div className="text-xs text-gray-500 mb-2">성별</div>
                                                     <div className="font-bold text-lg text-green-600">{selectedMember.verifiedGender === 'M' ? '남성' : '여성'}</div>
                                                 </div>
@@ -628,7 +628,7 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                 
                                 {/* 사이트 (기입한 경우에만 노출) */}
                                 {selectedMember.companyWebsite && (
-                                    <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-6 mb-6">
+                                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-6">
                                         <div className="flex items-center gap-3 mb-4">
                                             <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center">
                                                 <Icons.Info className="w-6 h-6 text-white" />
@@ -661,8 +661,8 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
 
                             </div>
                             </div>
-                            <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
-                                <button type="button" onClick={() => setSelectedMember(null)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                            <div className="shrink-0 border-t border-black/[0.06] p-4 flex justify-end">
+                                <button type="button" onClick={() => setSelectedMember(null)} className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors">
                                     닫기
                                 </button>
                             </div>

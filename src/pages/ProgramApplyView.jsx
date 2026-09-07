@@ -99,14 +99,14 @@ const ProgramApplyView = ({
         return (
             <div className="pt-32 pb-20 px-4 min-h-screen bg-soft overflow-y-auto min-h-0">
                 <div className="container mx-auto max-w-2xl">
-                    <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 text-center">
+                    <div className="bg-white rounded-[24px] border border-black/[0.06] p-8 text-center">
                         <Icons.AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
                         <h2 className="text-xl font-bold text-dark mb-2">프로그램을 찾을 수 없습니다</h2>
                         <p className="text-gray-600 mb-6">존재하지 않거나 삭제된 프로그램일 수 있습니다.</p>
                         <button
                             type="button"
                             onClick={onBack}
-                            className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                            className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors"
                         >
                             돌아가기
                         </button>
@@ -138,7 +138,7 @@ const ProgramApplyView = ({
                 </button>
 
                 {/* ========== 프로그램 상세 영역 (히어로형) ========== */}
-                <div className="bg-white rounded-2xl shadow-lg border border-blue-200 overflow-hidden mb-6">
+                <div className="bg-white rounded-[24px] border border-black/[0.06] overflow-hidden mb-6">
                     {/* 히어로: 풀폭 이미지 + 그라데이션 위에 프로그램명 강조 */}
                     <div className="relative min-h-[260px] md:min-h-[320px] bg-gradient-to-br from-brand/20 to-brand/5">
                         {displayImage && !heroImageError ? (
@@ -195,7 +195,7 @@ const ProgramApplyView = ({
                                     <span className="text-xl md:text-2xl font-bold text-brand">원</span>
                                 </div>
                             ) : (
-                                <span className="inline-block text-2xl md:text-3xl font-extrabold text-green-700 bg-white/80 px-4 py-2 rounded-xl shadow-sm">
+                                <span className="inline-block text-2xl md:text-3xl font-extrabold text-green-700 bg-white/90 px-4 py-2 rounded-2xl">
                                     무료
                                 </span>
                             )}
@@ -211,7 +211,7 @@ const ProgramApplyView = ({
                                             key={idx}
                                             src={src}
                                             alt={`${program.title} ${idx + 1}`}
-                                            className="w-full max-w-full block rounded-xl object-contain border border-gray-200"
+                                            className="w-full max-w-full block rounded-2xl object-contain border border-black/[0.06]"
                                         />
                                     ))}
                                 </div>
@@ -220,7 +220,7 @@ const ProgramApplyView = ({
 
                         {/* 일시 · 장소 · 정원: 아이콘 카드 3열 */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-                            <div className="flex items-start gap-3 p-4 rounded-xl bg-soft border border-blue-100">
+                            <div className="flex items-start gap-3 p-4 rounded-2xl bg-soft border border-black/[0.06]">
                                 <div className="w-10 h-10 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
                                     <Icons.Calendar size={20} className="text-brand" />
                                 </div>
@@ -230,7 +230,7 @@ const ProgramApplyView = ({
                                 </div>
                             </div>
                             {program.location && (
-                                <div className="flex items-start gap-3 p-4 rounded-xl bg-soft border border-blue-100">
+                                <div className="flex items-start gap-3 p-4 rounded-2xl bg-soft border border-black/[0.06]">
                                     <div className="w-10 h-10 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
                                         <Icons.MapPin size={20} className="text-brand" />
                                     </div>
@@ -240,7 +240,7 @@ const ProgramApplyView = ({
                                     </div>
                                 </div>
                             )}
-                            <div className="flex items-start gap-3 p-4 rounded-xl bg-soft border border-blue-100">
+                            <div className="flex items-start gap-3 p-4 rounded-2xl bg-soft border border-black/[0.06]">
                                 <div className="w-10 h-10 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
                                     <Icons.Users size={20} className="text-brand" />
                                 </div>
@@ -261,7 +261,7 @@ const ProgramApplyView = ({
 
                         {/* 상세 설명 */}
                         {program.desc && (
-                            <div className="bg-soft rounded-xl p-5 border border-brand/5 mb-4">
+                            <div className="bg-soft rounded-2xl p-5 border border-black/[0.06] mb-4">
                                 <h3 className="text-sm font-bold text-gray-700 mb-2">상세 내용</h3>
                                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{program.desc}</p>
                             </div>
@@ -270,7 +270,7 @@ const ProgramApplyView = ({
                 </div>
 
                 {/* ========== 취소/환불 규정 (결제 및 신청 바로 위) ========== */}
-                <div className="bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden mb-6 p-6 md:p-8" style={{ fontSize: 'calc(0.75rem * 0.3 * 3)' }}>
+                <div className="bg-white rounded-[24px] border border-black/[0.06] overflow-hidden mb-6 p-6 md:p-8" style={{ fontSize: 'calc(0.75rem * 0.3 * 3)' }}>
                     <h2 className="text-gray-800 font-bold mb-4" style={{ fontSize: '1.2em' }}>[부산청년사업가 포럼] 취소 및 환불 규정</h2>
                     <div className="text-gray-800 leading-relaxed space-y-4">
                         <section>
@@ -314,8 +314,8 @@ const ProgramApplyView = ({
                 </div>
 
                 {/* ========== 결제 및 신청 영역 ========== */}
-                <div className="bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden">
-                    <div className="p-6 md:p-8 border-b border-blue-100">
+                <div className="bg-white rounded-[24px] border border-black/[0.06] overflow-hidden">
+                    <div className="p-6 md:p-8 border-b border-black/[0.06]">
                         <h2 className="text-xl font-bold text-dark">결제 및 신청</h2>
                         <p className="text-sm text-gray-500 mt-1">아래 항목을 입력한 뒤 참여신청 버튼을 눌러주세요.</p>
                     </div>
@@ -330,11 +330,11 @@ const ProgramApplyView = ({
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">강연 신청 계기 <span className="text-gray-400 text-xs">(선택)</span></label>
-                            <textarea className="w-full p-3 border border-blue-200 rounded-lg focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 h-24 resize-none" value={applicationData.applyReason} onChange={(e) => setApplicationData({ ...applicationData, applyReason: e.target.value })} placeholder="신청 계기를 입력해주세요" />
+                            <textarea className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/10 h-24 resize-none" value={applicationData.applyReason} onChange={(e) => setApplicationData({ ...applicationData, applyReason: e.target.value })} placeholder="신청 계기를 입력해주세요" />
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">강연 사전 질문 <span className="text-gray-400 text-xs">(선택)</span></label>
-                            <textarea className="w-full p-3 border border-blue-200 rounded-lg focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 h-24 resize-none" value={applicationData.preQuestions} onChange={(e) => setApplicationData({ ...applicationData, preQuestions: e.target.value })} placeholder="사전 질문을 입력해주세요" />
+                            <textarea className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/10 h-24 resize-none" value={applicationData.preQuestions} onChange={(e) => setApplicationData({ ...applicationData, preQuestions: e.target.value })} placeholder="사전 질문을 입력해주세요" />
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">강연 후 식사 여부 <span className="text-red-500">*</span></label>
@@ -343,7 +343,7 @@ const ProgramApplyView = ({
                                 <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="mealAfter" checked={applicationData.mealAfter === '미참석'} onChange={() => setApplicationData({ ...applicationData, mealAfter: '미참석' })} className="w-4 h-4 text-brand" /> 미참석</label>
                             </div>
                         </div>
-                        <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                        <div className="p-3 bg-brand/5 rounded-2xl border border-brand/10">
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input type="checkbox" checked={applicationData.privacyAgreed} onChange={(e) => setApplicationData({ ...applicationData, privacyAgreed: e.target.checked })} className="w-4 h-4 text-brand rounded" />
                                 <span className="text-sm font-bold text-gray-700">개인정보 수집·이용에 동의합니다 <span className="text-red-500">*</span></span>
@@ -353,7 +353,7 @@ const ProgramApplyView = ({
                             type="button"
                             onClick={handleSubmit}
                             disabled={submitting || isEnded || isDisabledByCapacity}
-                            className="w-full py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
+                            className="w-full py-4 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
                         >
                             {isEnded
                                 ? '종료된 프로그램입니다'
