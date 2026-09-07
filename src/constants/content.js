@@ -6,8 +6,8 @@ export const defaultContent = {
     programRecruitmentPaused: false,
     programRecruitmentStartAt: '',
     programRecruitmentEndAt: '',
-    hero_title: "함께 성장하는\n청년 사업가 커뮤니티\n부산청년사업가들",
-    hero_desc: "부산 지역 청년 사업가들이 모여 아이디어를 공유하고, 네트워킹하며 함께 성장해나가는 공간입니다.",
+    hero_title: "부산에서 사업하기,\n함께, 제대로",
+    hero_desc: "흩어진 정보를 BCSA 하나로 — 지원사업, 실무, 부산 B2B까지",
     hero_bg: "", // 히어로 섹션 배경 이미지
     hero_image: "", // 히어로 섹션 메인 이미지
     stat_1_val: "200+", stat_1_desc: "활동중인 사업가",
@@ -15,10 +15,10 @@ export const defaultContent = {
     stat_3_val: "35+", stat_3_desc: "투자 성공 사례",
     stat_4_val: "100%", stat_4_desc: "성장 열정",
     stat_bg: "", // 통계 섹션 배경 이미지
-    cta_title: "사업의 꿈을 현실로!",
+    cta_title: "정보만 얻고 끝나지 않게.",
     cta_bg: "", // CTA 섹션 배경 이미지
     cta_image: "", // CTA 섹션 메인 이미지
-    cta_desc: "혼자 고민하지 마세요. 부산 최고의 청년 사업가들과 함께 당신의 비즈니스를 다음 단계로 끌어올리세요.",
+    cta_desc: "BCSA의 세미나·네트워킹 경험을 실제 사업 협업과 성장으로 연결합니다.",
     category_area_options: ["부산 전체", "해운대구 / IT", "부산진구 / 유통", "남구 / 금융"],
     category_activity_options: ["비즈니스 세미나", "투자 설명회", "네트워킹 파티", "멘토링"],
     category_target_options: ["예비/초기 창업가", "시리즈A 단계", "대학생", "일반인"],
@@ -123,11 +123,20 @@ export const defaultContent = {
 };
 
 /** 메뉴 순서·명칭 기본값 (index·admin 공통, 일치율 100%) */
-export const defaultMenuOrder = ['홈', '소개', '프로그램', '부청사 회원', '커뮤니티', '후원', '부산맛집'];
+// 벤토 리디자인: 상단 메뉴는 목업 그대로 홈/소개/뉴스/지원사업/사업도구/의뢰/Q&A 로 구성.
+// 기존 항목(프로그램/부청사 회원/커뮤니티/후원/부산맛집)은 menuOrder(=상단 노출)에서는 빠지지만,
+// menuEnabled 값 자체는 siteContent.js의 DEFAULT_MENU_ENABLED에 그대로 남겨 홈 화면 섹션 게이팅(예: menuEnabled['프로그램'])이 계속 동작하도록 함.
+export const defaultMenuOrder = ['홈', '소개', '뉴스', '지원사업', '사업도구', '의뢰', 'Q&A'];
 
 export const defaultMenuNames = {
     '홈': '홈',
     '소개': '소개',
+    '뉴스': '뉴스',
+    '지원사업': '지원사업',
+    '사업도구': '사업도구',
+    '의뢰': '의뢰',
+    'Q&A': 'Q&A',
+    // 하위 호환(기존 섹션 게이팅/관리자 화면에서 계속 참조될 수 있음)
     '프로그램': '프로그램',
     '부청사 회원': '부청사 회원',
     '커뮤니티': '커뮤니티',

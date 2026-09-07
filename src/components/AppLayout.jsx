@@ -306,8 +306,8 @@ const AppLayout = (props) => {
                 </ModalPortal>
             ) : null}
             
-            <header className={`fixed top-0 w-full z-[1000] transition-all duration-300 ease-in-out ${isMobile ? 'px-4 py-3' : 'px-6 py-5'} ${scrolled ? 'bg-white/80 backdrop-blur-lg shadow-glass' : isMobile ? 'bg-white/70 backdrop-blur-sm' : 'bg-transparent'}`}>
-                <div className={`container mx-auto flex items-center relative w-full ${isMobile ? 'grid grid-cols-[auto_1fr_auto] gap-2' : 'flex justify-between gap-0'}`}>
+            <header className={`fixed top-0 w-full z-[1000] bg-white/75 backdrop-blur-xl border-b border-black/[0.06] transition-all duration-300 ease-in-out ${isMobile ? 'px-4 py-3' : 'px-6'}`}>
+                <div className={`mx-auto flex items-center relative w-full ${isMobile ? 'grid grid-cols-[auto_1fr_auto] gap-2' : 'max-w-[1240px] justify-between gap-0 h-[52px]'}`}>
                     {/* 모바일 전용: 가운데 로고(홈 버튼) */}
                     {isMobile && (
                         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none w-full max-w-[60%] z-0">
@@ -323,15 +323,15 @@ const AppLayout = (props) => {
                                 <Icons.Menu size={24} />
                             </button>
                         ) : (
-                            <div className="flex items-center cursor-pointer group h-[75px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onGoHome || (() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'instant' }); }))(); }}>
-                                <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain hover:opacity-90 transition-opacity" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-2xl font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
+                            <div className="flex items-center cursor-pointer group h-[26px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onGoHome || (() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'instant' }); }))(); }}>
+                                <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain hover:opacity-90 transition-opacity" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-sm font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
                             </div>
                         )}
                     </div>
                     {/* 가운데: PC nav만 */}
-                    <div className={`flex items-center min-w-0 relative z-20 ${isMobile ? 'justify-center w-full' : 'flex-1 justify-center'}`}>
+                    <div className={`flex items-center min-w-0 relative z-20 ${isMobile ? 'justify-center w-full' : ''}`}>
                         {!isMobile && (
-                            <nav className={`flex items-center px-2 py-1.5 rounded-full transition-all duration-300 gap-3 relative whitespace-nowrap ${scrolled ? 'bg-transparent' : 'bg-white/40 backdrop-blur-md shadow-glass'}`}>
+                            <nav className="flex items-center gap-8 relative whitespace-nowrap">
                                 {menuOrder.filter(item => {
                                         const enabled = menuEnabled[item];
                                         if (!enabled) return false;
@@ -340,11 +340,9 @@ const AppLayout = (props) => {
                                         const membersOnly = ['부청사 회원', '커뮤니티'];
                                         const isDisabled = membersOnly.includes(item) && !currentUser;
                                         return (
-                                    <div key={idx} className="flex flex-col items-center gap-1 relative flex-shrink-0 min-w-fit">
-                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} relative ${isDisabled ? '!text-gray-400 !font-medium cursor-not-allowed opacity-80 hover:!text-gray-400 hover:opacity-80 nav-item-disabled' : ''}`}>
-                                            {menuNames[item] || item}
-                                        </button>
-                                    </div>
+                                    <button key={idx} type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} ${isDisabled ? '!text-gray-400 !font-medium cursor-not-allowed opacity-80 hover:!text-gray-400 hover:opacity-80 nav-item-disabled' : ''}`}>
+                                        {menuNames[item] || item}
+                                    </button>
                                         );
                                     })}
                             </nav>
@@ -367,10 +365,10 @@ const AppLayout = (props) => {
                                     </button>
                                 ) : (
                                     <>
-                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="text-xs font-semibold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">
+                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="text-[12.5px] font-medium text-sub hover:text-ink transition-colors px-2 flex-shrink-0">
                                             로그인
                                         </button>
-                                        <button type="button" data-testid="header-signup-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSignUpClick?.(); }} className="inline-flex px-4 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 btn-hover whitespace-nowrap flex-shrink-0">가입하기</button>
+                                        <button type="button" data-testid="header-signup-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSignUpClick?.(); }} className="inline-flex px-4 py-[7px] bg-brand text-white rounded-full text-[12.5px] font-semibold hover:bg-[#00327a] transition-colors whitespace-nowrap flex-shrink-0">사업자 등록</button>
                                     </>
                                 )}
                             </div>
@@ -462,6 +460,8 @@ const AppLayout = (props) => {
                         <p className="text-[8px] text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
                             <span className="text-white/50">|</span>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allMembers'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">사업자 명단</button>
+                            <span className="text-white/50">|</span>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
                             <span className="text-white/50">|</span>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/terms'); }} className="hover:text-white/90 transition-colors">서비스 이용약관</button>
@@ -486,6 +486,8 @@ const AppLayout = (props) => {
                         <p className="text-[8px] md:text-xs text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가 포럼 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
                         <p className="text-[8px] md:text-xs text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
+                            <span className="text-white/50">|</span>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allMembers'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">사업자 명단</button>
                             <span className="text-white/50">|</span>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
                             <span className="text-white/50">|</span>

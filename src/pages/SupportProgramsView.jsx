@@ -1,0 +1,186 @@
+import React, { useMemo } from 'react';
+import AdSlot, { hasAdSlot } from '../components/AdSlot';
+import { firestoreLikeToMillis } from '../appHelpers';
+
+const THUMB_COLORS = ['#E7A6A0', '#EBBB8C', '#E9D48C', '#A9CB9B', '#9DC3E0', '#BFA8D9', '#C7C7CC'];
+
+function colorForId(id) {
+    let hash = 0;
+    const s = String(id || '');
+    for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+    return THUMB_COLORS[hash % THUMB_COLORS.length];
+}
+
+function ProgramCard({ p }) {
+    const dMs = firestoreLikeToMillis(p.deadlineAt);
+    const daysLeft = dMs != null ? Math.ceil((dMs - Date.now()) / 86400000) : null;
+    const ddayLabel = p.isRolling ? '상시' : (daysLeft != null ? (daysLeft <= 0 ? '마감임박' : `D-${daysLeft}`) : '');
+    const badgeClass = p.isRolling
+        ? 'bg-emerald-600'
+        : (daysLeft != null && daysLeft <= 3 ? 'bg-red-500' : (daysLeft != null && daysLeft <= 10 ? 'bg-orange-500' : 'bg-brand'));
+    const href = p.applyUrl || p.sourceUrl || '#';
+    const tags = [...(p.region || []), ...(p.industry || [])].slice(0, 2);
+    const sub = p.amountText || tags.join(' · ') || p.org || '';
+
+    return (
+        <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group shrink-0 w-[220px] sm:w-[240px] transition-transform duration-300 hover:-translate-y-1"
+        >
+            <div
+                className="relative rounded-2xl overflow-hidden aspect-[4/3] mb-3"
+                style={p.thumbnailUrl ? undefined : { background: colorForId(p.id) }}
+            >
+                {p.thumbnailUrl ? (
+                    <img
+                        src={p.thumbnailUrl}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                        decoding="async"
+                    />
+                ) : null}
+                {ddayLabel ? (
+                    <span className={`absolute top-3 left-3 inline-flex items-center justify-center h-5 px-2.5 rounded-full text-[11px] font-bold text-white whitespace-nowrap ${badgeClass}`}>
+                        {ddayLabel}
+                    </span>
+                ) : null}
+            </div>
+            <p className="text-sm font-semibold leading-snug break-keep line-clamp-2 min-h-[2.5em] text-dark group-hover:text-brand transition-colors">{p.title}</p>
+            {sub ? <p className="text-xs text-gray-500 mt-1 truncate">{sub}</p> : null}
+        </a>
+    );
+}
+
+function ProgramRow({ title, hint, items }) {
+    return (
+        <div className="pb-10 last:pb-0">
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg md:text-xl font-bold text-dark">{title}</h2>
+                <span className="text-xs text-gray-400">{hint}</span>
+            </div>
+            {items.length > 0 ? (
+                <div className="flex gap-4 overflow-x-auto pb-3 -mx-6 px-6">
+                    {items.map((p) => <ProgramCard key={p.id} p={p} />)}
+                </div>
+            ) : (
+                <div className="py-10 text-center text-gray-400 bg-soft rounded-2xl">
+                    <p className="text-sm">현재 등록된 지원사업이 없습니다.</p>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/**
+ * SupportProgramsView — 지원사업 독립 페이지
+ *
+ * 홈 화면에 인라인으로 있던 지원사업 전체 목록 섹션을 별도 페이지로 분리했다.
+ * 데이터는 App.jsx에서 실시간 구독 중인 원본 supportPrograms 배열을 그대로 전달받아
+ * 이 컴포넌트 내부에서 마감임박/신규/상시 세 그룹으로 가공한다(홈 화면용 8개 캡 없음).
+ */
+export default function SupportProgramsView({ supportPrograms, content, onBack }) {
+    // 우측 배너 레일에 실제로 등록된 광고가 하나도 없으면 레일을 아예 접고 본문 폭을 넓힌다.
+    const hasSidebarAd = hasAdSlot(content, 'support-sidebar-1') || hasAdSlot(content, 'support-sidebar-1b') || hasAdSlot(content, 'support-sidebar-2');
+    const { urgent, fresh, rolling, urgentCount, freshCount } = useMemo(() => {
+        const rows = Array.isArray(supportPrograms) ? supportPrograms : [];
+        const nowMs = Date.now();
+        const visible = rows.filter((p) => p && p.enabled !== false && p.status === 'published');
+
+        const dated = [];
+        const rollingList = [];
+        visible.forEach((p) => {
+            if (p.isRolling) {
+                rollingList.push(p);
+                return;
+            }
+            const dMs = firestoreLikeToMillis(p.deadlineAt);
+            if (dMs == null || dMs < nowMs) return;
+            dated.push(p);
+        });
+        dated.sort((a, b) => firestoreLikeToMillis(a.deadlineAt) - firestoreLikeToMillis(b.deadlineAt));
+        rollingList.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+
+        const freshList = visible
+            .filter((p) => {
+                const cMs = firestoreLikeToMillis(p.createdAt);
+                return cMs != null && (nowMs - cMs) <= 7 * 86400000;
+            })
+            .sort((a, b) => firestoreLikeToMillis(b.createdAt) - firestoreLikeToMillis(a.createdAt));
+
+        const urgentCountVal = dated.filter((p) => {
+            const d = Math.ceil((firestoreLikeToMillis(p.deadlineAt) - nowMs) / 86400000);
+            return d >= 0 && d <= 7;
+        }).length;
+
+        return {
+            urgent: dated.slice(0, 16),
+            fresh: freshList,
+            rolling: rollingList,
+            urgentCount: urgentCountVal,
+            freshCount: freshList.length,
+        };
+    }, [supportPrograms]);
+
+    return (
+        <div className="min-h-screen bg-white overflow-y-auto">
+            <section
+                className="pt-32 pb-16 md:pt-40 md:pb-20 px-6 relative overflow-hidden"
+                style={{ background: 'radial-gradient(circle at 82% 0%, rgba(0,70,165,.12), transparent 55%), #ffffff' }}
+            >
+                <div className="container mx-auto max-w-7xl">
+                    <AdSlot slotId="support-top-banner" content={content} className="mb-8" />
+                    <p className="text-[12.5px] text-gray-500 mb-5">
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="hover:text-dark transition-colors">홈</button>
+                        <span className="mx-1">/</span> 지원사업
+                    </p>
+                    <p className="text-[13px] font-bold text-brand tracking-wide mb-4">SUPPORT PROGRAMS</p>
+                    <h1 className="text-[32px] leading-[1.15] md:text-[52px] md:leading-[1.1] font-semibold tracking-tight text-dark break-keep max-w-2xl">
+                        지금, 가장 뜨거운<br />지원사업
+                    </h1>
+                    <p className="mt-5 text-base md:text-lg text-gray-500 max-w-lg break-keep">
+                        긴 공고문 대신, 핵심만 요약해서 보여드립니다.
+                    </p>
+                    <div className="flex items-center gap-3 mt-8 flex-wrap">
+                        <span className="text-gray-500 text-sm">신규 {freshCount}건 · 이번 주 마감 {urgentCount}건</span>
+                    </div>
+                </div>
+            </section>
+
+            <section className="pb-14 md:pb-20 px-6">
+                <div className="container mx-auto max-w-7xl">
+                    <div className="xl:flex xl:gap-10 xl:items-start">
+                        <div className="flex-1 min-w-0">
+                            <ProgramRow title="마감임박 지원사업" hint="D-day 임박순" items={urgent} />
+                            <ProgramRow title="신규 지원사업" hint="NEW" items={fresh} />
+                            <ProgramRow title="상시 모집" hint="마감 없음" items={rolling} />
+                        </div>
+
+                        {/* 우측 배너 광고 레일 — 구글 표준 300px 폭(300×250/300×600) 기준, 최대 3슬롯.
+                            실제 광고 소재가 등록되기 전까지는 AdSlot이 아무것도 렌더링하지 않으므로
+                            공간을 차지하지 않는다. xl(1280px) 미만에서는 본문 폭 확보를 위해 숨김. */}
+                        {/* 160×600(와이드 스카이스크래퍼) 기준 폭 300px 레일 구성.
+                            160+120=280px로 300px 폭에 딱 맞아, 옆에 남는 폭에 120×600(스카이스크래퍼)을
+                            하나 더 붙였다. 구글 정책상 "한 번에 하나의 sticky 광고만" 허용되므로,
+                            둘 중 메인 광고(160×600)만 스크롤을 따라가게 하고 나머지는 일반 흐름으로 둔다.
+                            실제 등록된 광고가 하나도 없으면(hasSidebarAd=false) 레일 자체를 렌더링하지
+                            않아서, 옆 본문(flex-1)이 그 폭만큼 자연스럽게 넓어진다. */}
+                        {hasSidebarAd ? (
+                            <aside className="hidden xl:block w-[300px] shrink-0 space-y-6">
+                                <div className="flex items-start gap-3">
+                                    <div className="sticky top-[76px]">
+                                        <AdSlot slotId="support-sidebar-1" content={content} className="w-[160px] h-[600px]" showPlaceholder placeholderSize="160×600" />
+                                    </div>
+                                    <AdSlot slotId="support-sidebar-1b" content={content} className="w-[120px] h-[600px]" showPlaceholder placeholderSize="120×600" />
+                                </div>
+                                <AdSlot slotId="support-sidebar-2" content={content} className="w-[300px] h-[250px]" showPlaceholder placeholderSize="300×250" />
+                            </aside>
+                        ) : null}
+                    </div>
+                </div>
+            </section>
+        </div>
+    );
+}

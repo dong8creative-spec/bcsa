@@ -29,6 +29,12 @@ import { buildSiteContent, getMenuStateFromSiteContent } from './utils/siteConte
 import PageTitle from './components/PageTitle';
 import NoticeView from './pages/NoticeView';
 import AboutView from './pages/AboutView';
+import ToolsView from './pages/ToolsView';
+import SupportProgramsView from './pages/SupportProgramsView';
+import AdSlot from './components/AdSlot';
+import NewsView from './pages/NewsView';
+import RequestsView from './pages/RequestsView';
+import QnaView from './pages/QnaView';
 import MyPageView from './pages/MyPageView';
 import AllMembersView from './pages/AllMembersView';
 import AllSeminarsView from './pages/AllSeminarsView';
@@ -194,6 +200,12 @@ const App = () => {
         donation: '/donation',
         restaurants: '/restaurants',
         myPage: '/my',
+        // 벤토 리디자인: 상단 메뉴 신규 항목
+        news: '/news',
+        supportPage: '/support',
+        tools: '/tools',
+        requests: '/requests',
+        qna: '/qna',
     };
     const PATH_TO_VIEW = {
         '/': 'home',
@@ -205,6 +217,11 @@ const App = () => {
         '/donation': 'donation',
         '/restaurants': 'restaurants',
         '/my': 'myPage',
+        '/news': 'news',
+        '/support': 'supportPage',
+        '/tools': 'tools',
+        '/requests': 'requests',
+        '/qna': 'qna',
     };
 
     // 햄버거 클릭을 전역 이벤트로도 수신 (클릭이 콜백보다 확실히 전달되도록)
@@ -2949,6 +2966,21 @@ END:VCALENDAR`;
         } else if (item === '부산맛집') {
             goTo('restaurants');
             scroll();
+        } else if (item === '뉴스') {
+            goTo('news');
+            scroll();
+        } else if (item === '지원사업') {
+            goTo('supportPage');
+            scroll();
+        } else if (item === '사업도구') {
+            goTo('tools');
+            scroll();
+        } else if (item === '의뢰') {
+            goTo('requests');
+            scroll();
+        } else if (item === 'Q&A') {
+            goTo('qna');
+            scroll();
         } else {
             console.error(`[Navigation] 처리되지 않는 메뉴 항목: "${item}"`);
             console.warn('[Navigation] 사용 가능한 메뉴:', defaultMenuOrder);
@@ -2958,7 +2990,6 @@ END:VCALENDAR`;
     };
 
     const getNavClass = (item) => {
-        const baseClass = "nav-item px-3 py-2 rounded-full text-[19px] font-medium text-gray-600 hover:text-brand";
         let isActive = false;
         if (item === '홈' && currentView === 'home') isActive = true;
         else if (item === '소개' && currentView === 'about') isActive = true;
@@ -2967,7 +2998,13 @@ END:VCALENDAR`;
         else if (item === '커뮤니티' && (currentView === 'community' || currentView === 'notice')) isActive = true;
         else if (item === '후원' && currentView === 'donation') isActive = true;
         else if (item === '부산맛집' && (currentView === 'restaurants' || currentView === 'restaurantDetail' || currentView === 'restaurantForm')) isActive = true;
-        return `${baseClass} ${isActive ? 'active' : ''}`;
+        else if (item === '뉴스' && currentView === 'news') isActive = true;
+        else if (item === '지원사업' && currentView === 'supportPage') isActive = true;
+        else if (item === '사업도구' && currentView === 'tools') isActive = true;
+        else if (item === '의뢰' && currentView === 'requests') isActive = true;
+        else if (item === 'Q&A' && currentView === 'qna') isActive = true;
+        const baseClass = "text-[12.5px] font-medium tracking-tight transition-colors";
+        return `${baseClass} ${isActive ? 'text-ink font-semibold' : 'text-sub hover:text-ink'}`;
     }
 
     const renderView = () => {
@@ -3353,6 +3390,16 @@ END:VCALENDAR`;
             return null;
         }
         if (currentView === 'about') return <AboutView onBack={() => goTo('home')} content={content} pageTitles={pageTitles} />;
+        if (currentView === 'tools' && !menuEnabled['사업도구']) {
+            alert('준비중인 서비스입니다.');
+            goTo('home');
+            return null;
+        }
+        if (currentView === 'tools') return <ToolsView onBack={() => goTo('home')} />;
+        if (currentView === 'supportPage') return <SupportProgramsView supportPrograms={supportPrograms} content={content} onBack={() => goTo('home')} />;
+        if (currentView === 'news') return <NewsView content={content} onBack={() => goTo('home')} />;
+        if (currentView === 'requests') return <RequestsView onBack={() => goTo('home')} goTo={goTo} />;
+        if (currentView === 'qna') return <QnaView onBack={() => goTo('home')} />;
         
         // 예상치 못한 currentView 값에 대한 fallback (항상 유효한 React 요소 반환 보장)
         // currentView가 'home'이 아니고 위의 모든 조건에 맞지 않으면 홈으로 리다이렉트
@@ -3394,114 +3441,187 @@ END:VCALENDAR`;
             <div className="min-h-screen overflow-y-auto">
             <Fragment>
                 {/* ============================================
-                    📍 섹션 1: HERO & SEARCH (메인 히어로 + 검색)
-                    ============================================
-                    이 섹션은 페이지 최상단에 표시됩니다.
-                    메인 타이틀, 설명, 배경 이미지, 검색 기능이 포함되어 있습니다.
-                    순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
+                    HERO & SEARCH (bento redesign: minimal hero + simple search)
                     ============================================ */}
-                <section className="pt-32 pb-10 md:pb-16 px-4 md:px-6">
-                     <div className="container mx-auto max-w-7xl relative mb-12 md:mb-24">
-                        <div className="flex flex-col md:flex-row items-center md:items-center justify-between mb-8 px-2 text-center md:text-right">
-                            <div className="flex-1">
-                                <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold leading-tight break-keep text-dark whitespace-pre-line text-center md:text-left">
-                                    {content.hero_title ? content.hero_title.split('\n').map((line, idx) => (
-                                        <span key={idx}>
-                                            {idx === content.hero_title.split('\n').length - 1 ? (
-                                                <span className="text-brand">{line}</span>
-                                            ) : (
-                                                <Fragment>{line}<br/></Fragment>
-                                            )}
-                                        </span>
-                                    )) : (
-                                        <Fragment>함께 성장하는<br/>청년 사업가 커뮤니티<br/><span className="text-brand">부산청년사업가들</span></Fragment>
+                <section className="pt-[130px] pb-20 md:pt-[168px] md:pb-24 px-6 text-center" style={{ background: 'linear-gradient(to bottom, #ffffff 0%, #ffffff 60%, #f5f5f7 100%)' }}>
+                    <div className="container mx-auto max-w-3xl">
+                        <p className="text-[13px] font-semibold text-brand tracking-wide mb-4">BCSA BUSINESS HUB</p>
+                        <h1 className="text-[42px] leading-[1.08] md:text-[76px] md:leading-[1.05] font-semibold tracking-tight text-dark break-keep whitespace-pre-line">
+                            {content.hero_title ? content.hero_title.split('\n').map((line, idx, arr) => (
+                                <span key={idx}>
+                                    {idx === arr.length - 1 ? (
+                                        <span className="text-gray-400">{line}</span>
+                                    ) : (
+                                        <Fragment>{line}<br/></Fragment>
                                     )}
-                                </h1>
-                                <p className="text-gray-500 text-base sm:text-lg md:text-left max-w-md mt-4 break-keep">{content.hero_desc}</p>
-                            </div>
+                                </span>
+                            )) : (
+                                <Fragment>부산에서 사업하기,<br/><span className="text-gray-400">함께, 제대로</span></Fragment>
+                            )}
+                        </h1>
+                        <p className="mt-6 text-base md:text-xl text-gray-500 max-w-xl mx-auto break-keep">{content.hero_desc || '흩어진 정보를 BCSA 하나로 — 지원사업, 실무, 부산 B2B까지'}</p>
+                        <div className="flex items-center justify-center gap-6 mt-7 text-[15px] md:text-[17px] font-medium">
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="text-brand hover:opacity-70 transition-opacity whitespace-nowrap">지원사업 보기 <span aria-hidden="true">›</span></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('tools'); }} className="text-brand hover:opacity-70 transition-opacity whitespace-nowrap">도구 써보기 <span aria-hidden="true">›</span></button>
                         </div>
-                        <div className="relative w-full">
-                            <div className="relative w-full rounded-4xl md:rounded-5xl overflow-hidden shadow-deep-blue group z-0" style={{ aspectRatio: '16/9' }}>
-                                {content.hero_image && <img src={content.hero_image} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Hero" loading="eager" fetchpriority="high" decoding="async" sizes="(max-width: 768px) 100vw, 1280px" />}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+                        <div className="mt-10 max-w-md mx-auto">
+                            <div className="flex items-center gap-2 bg-soft rounded-full px-5 py-3 border border-black/[0.06]">
+                                <Icons.Search size={16} className="text-gray-400 shrink-0" />
+                                <input
+                                    type="text"
+                                    className="flex-1 bg-transparent border-0 outline-none text-sm text-dark placeholder-gray-400 min-w-0"
+                                    placeholder="예: 수영구 카페가 받을 수 있는 지원사업"
+                                    value={searchKeyword}
+                                    onChange={(e) => setSearchKeyword(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                                />
+                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSearch(); }} className="text-brand text-sm font-bold whitespace-nowrap shrink-0">찾기</button>
                             </div>
-                            
-                            <div className="w-[95%] md:min-w-[800px] mx-auto bg-white rounded-2xl md:rounded-3xl shadow-float flex flex-col transition-all duration-300 ease-in-out z-20 overflow-hidden mt-4 md:-mt-12">
-                                <div className="flex flex-col md:flex-row gap-1 md:gap-0 items-center p-2 md:p-3 relative bg-white z-30">
-                                    <div className="flex-1 w-full px-3 md:px-4 border-b md:border-b-0 md:border-r border-brand/10 py-1.5 md:py-0">
-                                        <div className="flex items-center gap-2 mb-0.5 md:mb-1 text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.Search size={12} className="text-accent md:w-3.5 md:h-3.5" /> 키워드 검색</div>
-                                        <input type="text" className="w-full font-bold text-dark bg-transparent outline-none text-xs md:text-sm placeholder-gray-300 py-0.5" placeholder="관심 주제 (예: 투자, 마케팅)" value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSearch()}/>
-                                    </div>
-                                    <div className="w-full md:w-48 px-3 md:px-4 border-b md:border-b-0 md:border-r border-brand/10 py-1.5 md:py-0">
-                                        <div className="flex items-center gap-2 mb-0.5 md:mb-1 text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.Tag size={12} className="text-accent md:w-3.5 md:h-3.5" /> 카테고리</div>
-                                        <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-xs md:text-sm py-0.5" value={searchCategory} onChange={(e) => setSearchCategory(e.target.value)}><option value="">전체 카테고리</option><option value="교육/세미나">📚 교육 · 세미나</option><option value="네트워킹/모임">🤝 네트워킹 · 모임</option><option value="투자/IR">💰 투자 · IR</option><option value="멘토링/상담">💡 멘토링 · 상담</option><option value="기타">🎸 기타</option></select>
-                                    </div>
-                                    <div className="w-full md:w-40 px-3 md:px-4 border-b md:border-b-0 md:border-r border-brand/10 py-1.5 md:py-0">
-                                        <div className="flex items-center gap-2 mb-0.5 md:mb-1 text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.CheckCircle size={12} className="text-accent md:w-3.5 md:h-3.5" /> 모집 상태</div>
-                                        <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-xs md:text-sm py-0.5" value={searchStatus} onChange={(e) => setSearchStatus(e.target.value)}><option value="">전체 상태</option><option value="모집중">모집중</option><option value="마감임박">마감임박</option><option value="종료">종료</option></select>
-                                    </div>
-                                    <div className="w-full md:w-40 px-3 md:px-4 py-1.5 md:py-0">
-                                        <div className="flex items-center gap-2 mb-0.5 md:mb-1 text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap"><Icons.MapPin size={12} className="text-accent md:w-3.5 md:h-3.5" /> 지역구</div>
-                                        <select className="w-full font-bold text-dark bg-transparent outline-none cursor-pointer text-xs md:text-sm py-0.5" value={searchDistrict} onChange={(e) => setSearchDistrict(e.target.value)}>
-                                            {BUSAN_DISTRICTS.map((d) => (
-                                                <option key={d} value={d}>{d}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSearch(); }} className="w-full md:w-16 h-10 md:h-14 bg-brand rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-brand/30 hover:bg-blue-800 transition-colors shrink-0"><Icons.Search className="w-5 h-5 md:w-6 md:h-6" /></button>
-                                </div>
-                                <div className={`transition-all duration-300 ease-in-out bg-soft ${isSearchExpanded ? 'max-h-[400px] opacity-100 border-t border-brand/10' : 'max-h-0 opacity-0'}`}>
-                                    <div className="p-4 md:p-6 overflow-y-auto max-h-[400px]">
-                                        <div className="flex justify-between items-center mb-4"><div className="flex items-center gap-3"><h3 className="text-sm font-bold text-gray-500">검색 결과 <span className="text-brand">{searchResults.length}</span>건</h3></div><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsSearchExpanded(false); }} className="text-xs text-gray-400 hover:text-dark flex items-center gap-1">닫기 <Icons.X size={14}/></button></div>
-                                        {searchResults.length > 0 ? (<div className="grid grid-cols-1 gap-3">{searchResults.map((result, idx) => (<div key={idx} className="bg-white p-4 rounded-2xl border border-blue-100 hover:border-brand/30 hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row md:items-center gap-4" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}><div className="flex-1"><div className="flex gap-2 mb-2"><span className={`text-[10px] font-bold px-2 py-1 rounded-full ${result.status === '모집중' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>{result.status}</span><span className="text-[10px] font-bold px-2 py-1 bg-gray-50 text-gray-500 rounded-full flex items-center gap-1"><Icons.Calendar size={10}/> {result.date}</span><span className="text-[10px] font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">{result.category}</span></div><h4 className="font-bold text-dark text-lg mb-1 break-keep">{result.title}</h4><div className="text-xs text-gray-500 mb-1 font-medium">신청: {result.currentParticipants || 0} / {result.maxParticipants}명</div><p className="text-xs text-gray-500 line-clamp-1 break-keep">{result.desc}</p></div><div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-0 border-gray-50"><span className="text-xs text-brand font-bold hover:underline flex items-center gap-1">상세보기 <Icons.ArrowRight size={12} /></span></div></div>))}</div>) : (<div className="py-10 text-center text-gray-400 flex flex-col items-center gap-3"><div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center"><Icons.Info className="w-6 h-6 text-gray-300" /></div><p className="text-sm">조건에 맞는 세미나가 없습니다.</p></div>)}
+                            {isSearchExpanded ? (
+                                <div className="mt-3 bg-white rounded-2xl shadow-float text-left overflow-hidden">
+                                    <div className="p-4 md:p-6 max-h-[400px] overflow-y-auto">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="text-sm font-bold text-gray-500">검색 결과 <span className="text-brand">{searchResults.length}</span>건</h3>
+                                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsSearchExpanded(false); }} className="text-xs text-gray-400 hover:text-dark flex items-center gap-1">닫기 <Icons.X size={14}/></button>
+                                        </div>
+                                        {searchResults.length > 0 ? (
+                                            <div className="grid grid-cols-1 gap-3">
+                                                {searchResults.map((result, idx) => (
+                                                    <div key={idx} className="bg-soft p-4 rounded-2xl hover:shadow-sm transition-all cursor-pointer flex flex-col md:flex-row md:items-center gap-4" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
+                                                        <div className="flex-1">
+                                                            <div className="flex gap-2 mb-2">
+                                                                <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${result.status === '모집중' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>{result.status}</span>
+                                                                <span className="text-[10px] font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">{result.category}</span>
+                                                            </div>
+                                                            <h4 className="font-bold text-dark text-base mb-1 break-keep">{result.title}</h4>
+                                                            <p className="text-xs text-gray-500 line-clamp-1 break-keep">{result.desc}</p>
+                                                        </div>
+                                                        <span className="text-xs text-brand font-bold flex items-center gap-1 shrink-0">상세보기 <Icons.ArrowRight size={12} /></span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="py-10 text-center text-gray-400"><p className="text-sm">조건에 맞는 세미나가 없습니다.</p></div>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-                
-                {/* ============================================
-                    📍 섹션 2: STATS (통계 숫자)
-                    ============================================
-                    활동중인 사업가, 진행된 세미나, 투자 성공 사례 등의 통계를 표시합니다.
-                    순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
-                    ============================================ */}
-                <section className="pt-10 pb-10 md:py-20 bg-soft/50">
-                    <div className="container mx-auto max-w-6xl px-6">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 text-center">
-                            <div><div className="text-3xl md:text-4xl font-bold text-brand mb-2">{content.stat_1_val}</div><div className="text-sm text-gray-500 font-medium break-keep">{content.stat_1_desc}</div></div>
-                            <div><div className="text-3xl md:text-4xl font-bold text-brand mb-2">{content.stat_2_val}</div><div className="text-sm text-gray-500 font-medium break-keep">{content.stat_2_desc}</div></div>
-                            <div><div className="text-3xl md:text-4xl font-bold text-brand mb-2">{content.stat_3_val}</div><div className="text-sm text-gray-500 font-medium break-keep">{content.stat_3_desc}</div></div>
-                            <div><div className="text-3xl md:text-4xl font-bold text-brand mb-2">{content.stat_4_val}</div><div className="text-sm text-gray-500 font-medium break-keep">{content.stat_4_desc}</div></div>
+                            ) : null}
                         </div>
                     </div>
                 </section>
 
                 {/* ============================================
-                    📍 섹션 4: FEATURES (특장점 소개)
-                    ============================================
-                    "함께할 때 더 멀리 갈 수 있습니다" 섹션입니다.
-                    다양한 네트워크, 검증된 전문가, 성공 사례 공유를 소개합니다.
-                    순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
+                    BENTO QUICK-LINK GRID (real routes/data only)
                     ============================================ */}
-                <section className="py-12 md:py-20 px-6 bg-white">
-                    <div className="container mx-auto max-w-6xl">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
-                            <div className="relative h-[300px] md:h-[500px]">
-                                {content.features_image_1 && <div className="absolute top-0 left-0 w-3/5 rounded-3xl overflow-hidden shadow-deep-blue z-10" style={{ aspectRatio: '1/1' }}><img src={content.features_image_1} className="w-full h-full object-cover" alt="Office" loading="lazy" decoding="async" /></div>}
-                                {content.features_image_2 && <div className="absolute bottom-0 right-0 w-3/5 rounded-3xl overflow-hidden shadow-deep-blue z-20 border-4 border-white" style={{ aspectRatio: '1/1' }}><img src={content.features_image_2} className="w-full h-full object-cover" alt="Meeting" loading="lazy" decoding="async" /></div>}
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-50 rounded-full -z-10 blur-3xl"></div>
+                <section className="px-6 pb-6" style={{ backgroundColor: '#f5f5f7' }}>
+                    <div className="max-w-[1240px] mx-auto bento-top">
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="area-a rounded-[32px] p-7 md:p-8 flex flex-col justify-between text-left text-white relative overflow-hidden" style={{ background: 'linear-gradient(150deg,#071a37,#0046a5 85%)' }}>
+                            <div>
+                                <p className="text-[12px] font-semibold text-blue-200 tracking-wide mb-3">SUPPORT PROGRAMS</p>
+                                <h3 className="text-2xl md:text-[32px] font-semibold leading-tight break-keep">지금 신청할 수 있는<br/>지원사업</h3>
                             </div>
-                            <div><h2 className="text-2xl md:text-5xl font-bold text-dark mb-6 leading-tight break-keep">{content.features_title || '함께할 때 더 멀리 갈 수 있습니다'}</h2><div className="space-y-4 md:space-y-8 mt-6 md:mt-10"><div className="flex gap-4"><div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-brand shrink-0"><Icons.Users /></div><div><h3 className="text-lg md:text-xl font-bold text-dark mb-1">{content.features_network_title || '다양한 네트워크'}</h3><p className="text-gray-500 text-sm leading-relaxed break-keep">{content.features_network_desc || 'IT, 제조, 유통 등 다양한 산업군의 대표님들과 연결되어 새로운 비즈니스 기회를 창출합니다.'}</p></div></div><div className="flex gap-4"><div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-500 shrink-0"><Icons.CheckCircle /></div><div><h3 className="text-lg md:text-xl font-bold text-dark mb-1">{content.features_expert_title || '검증된 전문가'}</h3><p className="text-gray-500 text-sm leading-relaxed break-keep">{content.features_expert_desc || '세무, 노무, 마케팅 등 각 분야 전문가 멘토링을 통해 사업 운영의 어려움을 해결해드립니다.'}</p></div></div><div className="flex gap-4"><div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-500 shrink-0"><Icons.Star /></div><div><h3 className="text-lg md:text-xl font-bold text-dark mb-1">{content.features_success_title || '성공 사례 공유'}</h3><p className="text-gray-500 text-sm leading-relaxed break-keep">{content.features_success_desc || '선배 창업가들의 생생한 성공 및 실패 사례를 통해 시행착오를 줄이고 빠르게 성장하세요.'}</p></div></div></div></div>
+                            <div className="mt-6 space-y-2.5">
+                                {(supportProgramsPublic.length > 0 ? supportProgramsPublic.slice(0, 2).map((p) => {
+                                    const dMs = firestoreLikeToMillis(p.deadlineAt);
+                                    const daysLeft = dMs != null ? Math.ceil((dMs - Date.now()) / 86400000) : null;
+                                    const label = p.isRolling ? '상시' : (daysLeft != null ? (daysLeft <= 0 ? '마감임박' : `D-${daysLeft}`) : '');
+                                    return { id: p.id, title: p.title, label };
+                                }) : [
+                                    { id: 'sample-1', title: '부산 소상공인 디지털 전환 지원', label: 'D-3' },
+                                    { id: 'sample-2', title: '청년 창업기업 성장지원 프로그램', label: 'D-12' },
+                                ]).map((p) => (
+                                    <div key={p.id} className="flex items-center justify-between bg-white/10 rounded-2xl px-4 py-3 text-sm">
+                                        <span className="truncate">{p.title}</span>
+                                        {p.label ? <span className="font-bold text-white bg-white/15 rounded-full px-2.5 py-1 text-xs whitespace-nowrap ml-3">{p.label}</span> : null}
+                                    </div>
+                                ))}
+                            </div>
+                            <span className="mt-6 text-sm font-semibold text-white/90">전체 지원사업 보기 →</span>
+                        </button>
+
+                        <div className="area-b rounded-[32px] p-7 md:p-8 bg-white flex flex-col justify-between">
+                            <p className="text-[12px] font-semibold text-gray-500 tracking-wide">이번 주 마감</p>
+                            <div><span className="text-4xl md:text-5xl font-semibold text-dark">{supportProgramsPublic.filter((p) => { if (p.isRolling) return false; const dMs = firestoreLikeToMillis(p.deadlineAt); if (dMs == null) return false; const d = Math.ceil((dMs - Date.now()) / 86400000); return d >= 0 && d <= 7; }).length || 13}</span><span className="text-gray-500 text-sm ml-1">건</span></div>
                         </div>
+
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('requests'); }} className="area-c rounded-[32px] p-7 md:p-8 bg-brand text-white flex flex-col justify-between text-left hover:bg-[#00327a] transition-colors">
+                            <p className="text-[12px] font-semibold text-blue-100 tracking-wide flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>의뢰 · LIVE</p>
+                            <div><span className="text-4xl md:text-5xl font-semibold">14</span><span className="text-blue-100 text-sm ml-1">건</span></div>
+                        </button>
+
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('tools'); }} className="area-d rounded-[32px] p-7 md:p-8 bg-[#0b0b0c] text-white flex flex-col justify-between text-left">
+                            <div className="flex items-end justify-between gap-4 flex-wrap">
+                                <div>
+                                    <p className="text-[12px] font-semibold text-white/50 tracking-wide mb-2">DAILY TOOLS</p>
+                                    <h3 className="text-2xl md:text-[28px] font-semibold">매일 쓰는 사업자 도구함</h3>
+                                </div>
+                                <span className="text-sm font-semibold text-white/70 whitespace-nowrap">전체 도구 보기 →</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2.5 mt-6">
+                                <span className="flex items-center gap-2 bg-white/10 rounded-full pl-3 pr-4 py-2 text-sm"><span>🧾</span>부가세</span>
+                                <span className="flex items-center gap-2 bg-white/10 rounded-full pl-3 pr-4 py-2 text-sm"><span>📈</span>마진</span>
+                                <span className="flex items-center gap-2 bg-white/10 rounded-full pl-3 pr-4 py-2 text-sm"><span>💸</span>3.3%</span>
+                                <span className="flex items-center gap-2 bg-white/10 rounded-full pl-3 pr-4 py-2 text-sm"><span>⚖️</span>손익분기점</span>
+                                <span className="flex items-center gap-2 bg-white/10 rounded-full pl-3 pr-4 py-2 text-sm"><span>📣</span>ROAS</span>
+                            </div>
+                        </button>
+                    </div>
+                    <AdSlot slotId="home-bento-divider" content={content} className="max-w-[1240px] mx-auto mt-[18px]" />
+                    <div className="max-w-[1240px] mx-auto bento-bottom mt-[18px]">
+                        <div className="area-e rounded-[32px] p-7 md:p-8 bg-white flex flex-col justify-between">
+                            <p className="text-[12px] font-semibold text-gray-500 tracking-wide">신규 지원사업</p>
+                            <div><span className="text-4xl md:text-5xl font-semibold text-dark">{supportProgramsPublic.filter((p) => { const cMs = firestoreLikeToMillis(p.createdAt); return cMs != null && (Date.now() - cMs) <= 7 * 86400000; }).length || 7}</span><span className="text-mint text-xs font-bold ml-2 align-top">NEW</span></div>
+                        </div>
+
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('qna'); }} className="area-f rounded-[32px] p-7 md:p-8 text-white relative overflow-hidden flex flex-col justify-between text-left" style={{ background: 'linear-gradient(160deg,#0b0b0c,#071a37 90%)' }}>
+                            <span className="absolute -right-4 -bottom-14 text-[190px] font-bold text-white/[0.05] select-none leading-none">?</span>
+                            <p className="text-[12px] font-semibold text-white/50 tracking-wide relative z-10">EXPERT Q&amp;A</p>
+                            <div className="relative z-10">
+                                <h3 className="text-2xl md:text-[28px] font-semibold leading-tight break-keep mb-2">사업하면서<br/>막힌 게 있나요?</h3>
+                                <p className="text-sm text-white/60 break-keep">지역 전문가와 선배 사업자에게 바로 물어보세요.</p>
+                            </div>
+                            <span className="relative z-10 text-sm font-semibold text-white/90">질문하러 가기 →</span>
+                        </button>
+
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allMembers'); }} className="area-g rounded-[32px] p-7 md:p-8 bg-white flex flex-col justify-between text-left hover:bg-[#eceef2] transition-colors">
+                            <div className="flex items-end justify-between gap-4 flex-wrap">
+                                <div>
+                                    <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-2">BUSAN PARTNERS</p>
+                                    <h3 className="text-2xl md:text-[28px] font-semibold text-dark">추천 부산 사업자</h3>
+                                </div>
+                                <span className="text-sm font-semibold text-brand whitespace-nowrap">더보기 →</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2.5 mt-6">
+                                <span className="flex items-center gap-2.5 bg-white rounded-full pl-2 pr-4 py-2 shadow-sm"><span className="w-7 h-7 rounded-full bg-brand/10 text-brand font-bold text-xs grid place-items-center">V</span><span className="text-sm font-medium">VCML</span></span>
+                                <span className="flex items-center gap-2.5 bg-white rounded-full pl-2 pr-4 py-2 shadow-sm"><span className="w-7 h-7 rounded-full bg-brand/10 text-brand font-bold text-xs grid place-items-center">T</span><span className="text-sm font-medium">부산 세무 파트너</span></span>
+                                <span className="flex items-center gap-2.5 bg-white rounded-full pl-2 pr-4 py-2 shadow-sm"><span className="w-7 h-7 rounded-full bg-brand/10 text-brand font-bold text-xs grid place-items-center">D</span><span className="text-sm font-medium">로컬 디자인 스튜디오</span></span>
+                                <span className="flex items-center gap-2.5 bg-white rounded-full pl-2 pr-4 py-2 shadow-sm"><span className="w-7 h-7 rounded-full bg-brand/10 text-brand font-bold text-xs grid place-items-center">P</span><span className="text-sm font-medium">부산 인쇄 파트너</span></span>
+                            </div>
+                        </button>
+
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSignUpChoiceModal(true); }} className="area-h rounded-[32px] p-7 md:p-8 bg-dark text-white flex flex-col justify-between text-left">
+                            <p className="text-[12px] font-semibold text-white/50 tracking-wide">JOIN US</p>
+                            <div className="flex items-center justify-between">
+                                <span className="text-lg font-semibold">BCSA 가입하기</span>
+                                <span className="text-xl">→</span>
+                            </div>
+                        </button>
+
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="area-i rounded-[32px] p-7 md:p-8 bg-white flex items-center justify-between gap-4 flex-wrap text-left hover:bg-[#eceef2] transition-colors">
+                            <div>
+                                <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-2">지금 모집 중인 프로그램</p>
+                                <div><span className="text-4xl md:text-5xl font-semibold text-dark">{seminarsDataPublic.filter((s) => s.status === '모집중').length}</span><span className="text-gray-500 text-sm ml-1">건 진행중</span></div>
+                            </div>
+                            <span className="text-sm font-semibold text-brand whitespace-nowrap">프로그램 보기 →</span>
+                        </button>
                     </div>
                 </section>
 
-                {/* 협력기관 (Features 다음, 프로그램 앞) */}
-                <section className="py-12 md:py-20 px-6 bg-soft">
-                    <div className="container mx-auto max-w-6xl">
-                        <h2 className="text-2xl md:text-3xl font-bold text-dark mb-[4.5rem] text-center">협력기관</h2>
+                {/* 협력기관 */}
+                <section className="py-16 md:py-20 px-6 bg-white">
+                    <div className="max-w-[1240px] mx-auto text-center">
+                        <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-2">PARTNERS</p>
+                        <h2 className="text-xl md:text-2xl font-semibold tracking-tight text-dark mb-10 break-keep">협력기관</h2>
                         <div className="flex justify-center">
                             <div className="flex flex-wrap justify-center items-center gap-y-12 gap-x-4 sm:gap-x-12 md:gap-16 max-w-full">
                             {PARTNER_LOGOS.map((src, i) => (
@@ -3522,155 +3642,63 @@ END:VCALENDAR`;
                 </section>
 
                 {/* ============================================
-                    📍 프로그램 (자동 흐름 + 드래그 스크롤, 클릭 시 신청 페이지 이동)
+                    지금 모집 중 & 최근 진행된 프로그램 + CTA (하나의 다크 섹션으로 병합)
                     ============================================ */}
                 {menuEnabled['프로그램'] && Array.isArray(seminarsDataPublic) && seminarsDataPublic.length > 0 ? (
-                <section className="py-12 md:py-20 px-6 overflow-hidden">
-                    <div className="container mx-auto max-w-7xl">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 md:mb-10 gap-4">
-                            <div className="w-full md:w-auto text-left">
-                                <h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">프로그램</h2>
-                                <p className="text-gray-600 text-sm md:text-base break-keep">진행 중인 프로그램을 확인하세요</p>
-                            </div>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="self-end md:self-auto text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors shrink-0">전체 보기 <Icons.ArrowRight size={16} /></button>
-                        </div>
-                        <div
-                            role="region"
-                            aria-label="프로그램 목록"
-                            className="overflow-hidden cursor-grab select-none"
-                            style={{ marginLeft: '-1.5rem', marginRight: '-1.5rem' }}
-                            onMouseDown={handleProgramDragStart}
-                            onTouchStart={handleProgramDragStart}
-                        >
-                            <div
-                                ref={programTrackRef}
-                                className="flex gap-6 w-max"
-                                style={{ transform: `translateX(${programScrollOffset}px)` }}
-                            >
-                                {[...seminarsDataPublic, ...seminarsDataPublic].map((seminar, idx) => {
-                                    const img = (seminar.images && seminar.images[0]) || (seminar.imageUrls && seminar.imageUrls[0]) || seminar.imageUrl || seminar.img;
-                                    const fee = seminar.applicationFee != null ? Number(seminar.applicationFee) : 0;
-                                    const price = seminar.price != null ? Number(seminar.price) : 0;
-                                    const isPaid = fee > 0 || (seminar.requiresPayment && price > 0);
-                                    const amount = fee > 0 ? fee : price;
-                                    return (
-                                        <button
-                                            key={`${seminar.id}-${idx}`}
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                if (programDragRef.current?.hasMoved) return;
-                                                navigate(`/program/apply/${seminar.id}`);
-                                            }}
-                                            className="flex-shrink-0 w-[280px] md:w-[320px] bg-white rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:border-brand/30 transition-all text-left overflow-hidden group flex flex-col"
-                                        >
-                                            <div className="w-full flex-shrink-0 aspect-[3/4] bg-gray-100 overflow-hidden relative">
-                                                {img ? <img src={img} alt={seminar.title} className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><Icons.Calendar size={48} /></div>}
-                                                {(() => {
-                                                    const max = getSeminarCapacity(seminar);
-                                                    const current = getDisplayedParticipantCurrent(seminar);
-                                                    const isPopular = (seminar.title || '').includes('정모') || (max > 0 && current / max >= 0.8);
-                                                    return isPopular ? (
-                                                        <div className="absolute top-2 left-2" style={{ transform: 'scale(0.667)', transformOrigin: 'top left' }}>
-                                                            <div className="px-5 py-2 rounded-lg bg-gradient-to-r from-yellow-500 to-yellow-700 text-white text-2xl font-bold shadow-lg badge-popular-pulse" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.2)' }}>인기</div>
-                                                        </div>
-                                                    ) : null;
-                                                })()}
-                                            </div>
-                                            <div className="p-4 flex flex-col flex-shrink-0 w-full min-h-[7rem] box-border">
-                                                <div className="flex flex-wrap gap-2 mb-2 flex-shrink-0">
-                                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${seminar.status === '모집중' ? 'bg-blue-100 text-blue-700' : seminar.status === '마감임박' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>{seminar.status || '모집중'}</span>
-                                                    <span className="text-xs font-bold px-2 py-0.5 bg-brand/10 text-brand rounded-full">{isPaid ? `${amount.toLocaleString()}원` : '무료'}</span>
-                                                </div>
-                                                <h3 className="font-bold text-base text-dark mb-1 line-clamp-2 group-hover:text-brand transition-colors leading-snug min-h-[2.5em]">{seminar.title}</h3>
-                                                <p className="text-sm text-gray-600 flex items-center gap-1 mt-auto pt-2"><Icons.Calendar size={14} /> {seminar.date}</p>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                </section>
-                ) : null}
+                <section className="px-6 py-20 md:py-28 text-white text-center" style={{ backgroundColor: '#0b0b0c' }}>
+                    <div className="max-w-[1240px] mx-auto">
+                        <p className="text-[12px] font-semibold text-white/40 tracking-wide mb-2">PROGRAMS</p>
+                        <h2 className="text-2xl md:text-4xl font-semibold tracking-tight mb-2 break-keep">지금 모집 중 &amp; 최근 진행된 프로그램</h2>
+                        <p className="text-white/40 text-xs mb-10">진행 중인 프로그램을 확인하세요</p>
 
-                {/* ============================================
-                    📍 ACTIVITIES (커뮤니티 주요 활동 - 고정 카드 그리드)
-                    ============================================ */}
-                {menuEnabled['프로그램'] ? (
-                <section className="py-12 md:py-20 px-6">
-                    <div className="container mx-auto max-w-7xl">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 md:mb-10 gap-4">
-                            <div className="w-full md:w-auto text-left">
-                                <h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">{content.activities_title || '커뮤니티 주요 활동'}</h2>
-                                <p className="text-gray-600 text-sm md:text-base break-keep">{content.activities_subtitle || '사업 역량 강화와 네트워크 확장을 위한 다양한 프로그램'}</p>
-                            </div>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="self-end md:self-auto text-sm font-bold text-gray-500 hover:text-brand flex items-center gap-1 transition-colors">{content.activities_view_all || '전체 프로그램 보기'} <Icons.ArrowRight size={16} /></button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_seminar_image && <img src={content.activity_seminar_image} className="w-full h-full object-cover" alt="비즈니스 세미나" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-brand shadow-sm">SEMINAR</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_seminar_title || '비즈니스 세미나'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_seminar_desc || '매월 진행되는 창업 트렌드 및 마케팅 실무 세미나'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_seminar_schedule || '매월 2째주 목요일'}</span></div></div></button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white rounded-3xl p-3 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group cursor-pointer border-none text-left w-full"><div className="relative rounded-2xl overflow-hidden mb-4 card-zoom" style={{ aspectRatio: '4/3' }}>{content.activity_networking_image && <img src={content.activity_networking_image} className="w-full h-full object-cover" alt="사업가 네트워킹" loading="lazy" decoding="async" />}<div className="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-xs font-bold text-accent shadow-sm">NETWORK</div></div><div className="px-2 pb-2"><div className="flex justify-between items-start mb-2"><h3 className="text-base md:text-lg font-bold text-dark group-hover:text-brand transition-colors leading-snug">{content.activity_networking_title || '사업가 네트워킹'}</h3></div><p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5em] break-keep leading-relaxed">{content.activity_networking_desc || '다양한 업종의 대표님들과 교류하며 비즈니스 기회'}</p><div className="flex items-center justify-between"><span className="text-sm font-bold text-dark">{content.activity_networking_schedule || '매주 금요일'}</span></div></div></button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-soft rounded-3xl p-6 flex flex-col justify-center items-center text-center hover:bg-brand hover:text-white transition-colors duration-300 cursor-pointer group shadow-deep-blue border-none w-full"><div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-brand mb-4 shadow-sm group-hover:scale-110 transition-transform"><Icons.ArrowRight size={24} /></div><h3 className="text-lg font-bold mb-2 text-dark group-hover:text-white">{content.activity_more_title || 'More Programs'}</h3><p className="text-sm text-gray-700 group-hover:text-white break-keep">{content.activity_more_desc || '멘토링, 워크샵 등 더 많은 활동 보기'}</p></button>
-                        </div>
-                    </div>
-                </section>
-                ) : null}
-
-                {/* ============================================
-                    📍 지원사업 (자동 수집 피드 - D-day 카드, ACTIVITIES의 "투자 & 지원사업" 카드를 대체)
-                    ============================================ */}
-                {Array.isArray(supportProgramsPublic) && supportProgramsPublic.length > 0 ? (
-                <section className="py-12 md:py-20 px-6">
-                    <div className="container mx-auto max-w-7xl">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 md:mb-10 gap-4">
-                            <div className="w-full md:w-auto text-left">
-                                <h2 className="text-2xl md:text-3xl font-bold text-dark mb-3 break-keep">지금 신청할 수 있는 지원사업</h2>
-                                <p className="text-gray-600 text-sm md:text-base break-keep">긴 공고문 대신, 핵심만 요약해서 보여드립니다</p>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {supportProgramsPublic.map((p) => {
-                                const dMs = firestoreLikeToMillis(p.deadlineAt);
-                                const daysLeft = dMs != null ? Math.ceil((dMs - Date.now()) / 86400000) : null;
-                                const ddayLabel = p.isRolling ? '상시' : (daysLeft != null ? (daysLeft <= 0 ? '마감임박' : `D-${daysLeft}`) : '');
-                                const ddayClass = p.isRolling ? 'bg-emerald-50 text-emerald-600' : (daysLeft != null && daysLeft <= 3 ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600');
-                                const tags = [...(p.region || []), ...(p.industry || [])].slice(0, 2);
-                                const href = p.applyUrl || p.sourceUrl || '#';
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-[18px] text-left">
+                            {seminarsDataPublic.slice(0, 4).map((seminar) => {
+                                const img = (seminar.images && seminar.images[0]) || (seminar.imageUrls && seminar.imageUrls[0]) || seminar.imageUrl || seminar.img;
+                                const fee = seminar.applicationFee != null ? Number(seminar.applicationFee) : 0;
+                                const price = seminar.price != null ? Number(seminar.price) : 0;
+                                const isPaid = fee > 0 || (seminar.requiresPayment && price > 0);
+                                const amount = fee > 0 ? fee : price;
+                                const max = getSeminarCapacity(seminar);
+                                const current = getDisplayedParticipantCurrent(seminar);
+                                const isPopular = (seminar.title || '').includes('정모') || (max > 0 && current / max >= 0.8);
+                                const statusLabel = seminar.status || '모집중';
+                                const statusClass = statusLabel === '종료' ? 'bg-white/10 text-white/70' : statusLabel === '마감임박' ? 'bg-red-500 text-white' : 'bg-white/15 text-white';
                                 return (
-                                    <a
-                                        key={p.id}
-                                        href={href}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="bg-white rounded-3xl p-5 shadow-deep-blue hover:shadow-deep-blue-hover transition-all duration-300 group border-none text-left w-full flex flex-col"
+                                    <button
+                                        key={seminar.id}
+                                        type="button"
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/program/apply/${seminar.id}`); }}
+                                        className="group relative rounded-[28px] overflow-hidden aspect-[4/5] block hover:-translate-y-1 transition-transform duration-300 bg-gray-800 text-left"
                                     >
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${ddayClass}`}>{ddayLabel}</span>
-                                            {p.amountText ? <span className="text-sm font-bold text-brand">{p.amountText}</span> : null}
+                                        {img ? <img src={img} alt={seminar.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" /> : null}
+                                        <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent"></span>
+                                        <div className="absolute top-4 left-4 flex items-center gap-2">
+                                            <span className={`font-bold rounded-full px-2.5 py-1 text-xs whitespace-nowrap ${statusClass}`}>{statusLabel}</span>
+                                            {isPopular ? <span className="font-bold text-white bg-white/15 rounded-full px-2.5 py-1 text-xs whitespace-nowrap">인기</span> : null}
                                         </div>
-                                        <h3 className="text-base font-bold text-dark group-hover:text-brand transition-colors leading-snug line-clamp-2 min-h-[2.5em] mb-2 break-keep">{p.title}</h3>
-                                        {p.org ? <p className="text-xs text-gray-500 mb-3">{p.org}</p> : null}
-                                        {tags.length > 0 ? (
-                                            <div className="flex flex-wrap gap-1 mt-auto">
-                                                {tags.map((t, i) => (
-                                                    <span key={i} className="text-xs bg-soft text-gray-600 px-2 py-0.5 rounded-full">{t}</span>
-                                                ))}
-                                            </div>
-                                        ) : null}
-                                    </a>
+                                        <div className="absolute bottom-0 left-0 right-0 p-5">
+                                            <h3 className="text-lg font-semibold text-white leading-snug break-keep mb-1 line-clamp-2">{seminar.title}</h3>
+                                            <p className="text-sm text-white/70">{seminar.date} · {isPaid ? `${amount.toLocaleString()}원` : '무료'}</p>
+                                        </div>
+                                    </button>
                                 );
                             })}
                         </div>
+
+                        <div className="mt-20 md:mt-24">
+                            <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-4 break-keep">{content.cta_title || '정보만 얻고 끝나지 않게.'}</h2>
+                            <p className="text-white/60 text-base md:text-lg max-w-xl mx-auto break-keep">{content.cta_desc || 'BCSA의 세미나·네트워킹 경험을 실제 사업 협업과 성장으로 연결합니다.'}</p>
+                            <div className="flex items-center justify-center gap-3 mt-9 flex-wrap">
+                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white text-dark font-semibold rounded-full px-6 py-3.5 text-sm">이번 달 프로그램 보기</button>
+                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSignUpChoiceModal(true); }} className="border border-white/25 text-white font-semibold rounded-full px-6 py-3.5 text-sm hover:bg-white/10 transition-colors">{content.cta_join_button || 'BCSA 가입하기'}</button>
+                            </div>
+                        </div>
                     </div>
                 </section>
                 ) : null}
 
                 {/* ============================================
-                    📍 섹션 6-1: 후원 섹션
-                    ============================================
-                    후원하기 전용 섹션입니다.
-                    순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
+                    후원 섹션
                     ============================================ */}
                 {!DONATION_FEATURE_DISABLED && menuEnabled['후원'] ? (
                 <section className="py-12 md:py-24 px-6 bg-gradient-to-br from-green-50 to-emerald-50">
@@ -3686,33 +3714,6 @@ END:VCALENDAR`;
                     </div>
                 </section>
                 ) : null}
-
-                {/* ============================================
-                    📍 섹션 6: CTA (행동 유도 섹션)
-                    ============================================
-                    "사업의 꿈을 현실로!" 섹션입니다.
-                    가입하기, 문의하기 버튼이 포함된 마지막 홍보 섹션입니다.
-                    순서를 바꾸려면 이 전체 <section> 블록을 이동하세요.
-                    ============================================ */}
-                <section className="py-12 md:py-24 px-6">
-                    <div className="container mx-auto max-w-6xl">
-                        <div className="relative rounded-4xl overflow-hidden bg-brand h-[400px] flex items-center justify-center text-center px-6 shadow-2xl shadow-brand/40">
-                            {content.cta_image && <div className="absolute inset-0"><img src={content.cta_image} className="w-full h-full object-cover opacity-30 mix-blend-overlay" alt="Building" loading="lazy" decoding="async" /></div>}
-                            <div className="relative z-10 max-w-2xl">
-                                <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 leading-tight break-keep">{content.cta_title}</h2>
-                                <p className="text-blue-100 text-base md:text-lg mb-10 break-keep">{content.cta_desc}</p>
-                                <div className="flex flex-col sm:flex-row justify-center gap-4">
-                                    <button type="button" onClick={(e) => { 
-                                        e.preventDefault(); 
-                                        e.stopPropagation(); 
-                                        setShowSignUpChoiceModal(true); 
-                                    }} className="px-8 py-4 bg-white text-brand font-bold rounded-2xl hover:bg-gray-50 transition-all shadow-lg btn-hover">{content.cta_join_button || '지금 가입하기'}</button>
-                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsInquiryModalOpen(true); }} className="px-8 py-4 bg-transparent border border-white/30 text-white font-bold rounded-2xl hover:bg-white/10 transition-all">{content.cta_contact_button || '문의하기'}</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
             </Fragment>
             </div>
         );

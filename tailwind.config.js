@@ -11,17 +11,24 @@ export default {
         desktop: '1400px',
       },
       fontFamily: {
-        sans: ['PyeojinGothic', 'sans-serif'],
-        pop: ['PyeojinGothic', 'sans-serif'],
+        sans: ['SUIT Variable', 'PyeojinGothic', 'sans-serif'],
+        pop: ['SUIT Variable', 'PyeojinGothic', 'sans-serif'],
       },
       colors: {
-        brand: '#0045a5', 
+        // 벤토 리디자인 브랜드 컬러 (기존 #0045a5와 사실상 동일한 블루 — 기존 bg-brand/text-brand 사용처는 영향 없음)
+        brand: '#0046a5',
         accent: '#3b82f6',
-        dark: '#0f172a',
+        // dark/soft 값을 벤토 톤(ink/bone)에 맞춰 재지정 → 기존 text-dark/bg-soft 쓰는 곳 전부 자동으로 새 톤 적용
+        dark: '#1d1d1f',
         gray: '#64748b',
-        soft: '#f8fafc',
+        soft: '#f5f5f7',
         borderLight: '#93c5fd',
         borderLightHover: '#60a5fa',
+        // 벤토 리디자인 신규 토큰 (dark/soft와 동일 값의 별칭 + 신규)
+        ink: '#1d1d1f',
+        sub: '#6e6e73',
+        bone: '#f5f5f7',
+        mint: '#0e9f6e',
       },
       borderRadius: {
         '4xl': '2rem',

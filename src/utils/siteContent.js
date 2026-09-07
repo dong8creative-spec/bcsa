@@ -4,11 +4,17 @@ import { defaultContent, defaultMenuNames, defaultMenuOrder } from '../constants
 const DEFAULT_MENU_ENABLED = {
   '홈': true,
   '소개': true,
+  '뉴스': true,
+  '지원사업': true,
+  '사업도구': true,
+  '의뢰': true,
+  'Q&A': true,
+  // 하위 호환(상단 메뉴에는 더 이상 노출되지 않지만, 홈 화면 섹션 게이팅 등에서 계속 참조됨)
   '프로그램': true,
   '부청사 회원': true,
-  '커뮤니티': true,
+  '커뮤니티': false,
   '후원': true,
-  '부산맛집': true,
+  '부산맛집': false,
 };
 
 /** 관리자가 배포용으로 반영한 콘텐츠 + 코드 기본값 */
