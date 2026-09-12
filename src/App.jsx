@@ -3405,8 +3405,10 @@ END:VCALENDAR`;
         }
         if (currentView === 'tools') return <ToolsView onBack={() => goTo('home')} />;
         if (currentView === 'supportPage') return <SupportProgramsView supportPrograms={supportPrograms} content={content} onBack={() => goTo('home')} />;
-        // 뉴스: supportPrograms(공고) + newsItems(경제뉴스, 매일 07:00 KST 자동수집) 실시간 데이터를 사용.
-        if (currentView === 'news') return <NewsView content={content} onBack={() => goTo('home')} supportPrograms={supportPrograms} newsItems={newsItems} />;
+        // 뉴스: newsItems(관리자 수동 등록 + 매일 07:00 KST 언론사 RSS 자동 수집) 실시간 데이터만 사용.
+        // 지원사업(supportPrograms)은 전용 "지원사업" 페이지(supportPage)에서만 노출한다 — 두 페이지가 같은
+        // 데이터를 동시에 보여주면 콘텐츠가 중복 노출되므로, 뉴스 페이지는 여기서 supportPrograms를 받지 않는다.
+        if (currentView === 'news') return <NewsView content={content} onBack={() => goTo('home')} newsItems={newsItems} />;
         // 의뢰/Q&A: 아직 실제 수집·등록 기능이 없어 공사중 화면으로 대체.
         if (currentView === 'requests') return <UnderConstructionView eyebrow="REQUESTS" pageLabel="의뢰" onBack={() => goTo('home')} />;
         if (currentView === 'qna') return <UnderConstructionView eyebrow="EXPERT Q&A" pageLabel="Q&A" onBack={() => goTo('home')} />;

@@ -7,21 +7,19 @@ import ContentDetailModal from '../components/ContentDetailModal';
 /**
  * NewsView — 뉴스 페이지
  *
- * "지원사업 · 공고" 탭은 supportPrograms 컬렉션(관리자 수동 등록 + 매일 07:00 자동 수집)을 그대로 보여주고,
- * "경제뉴스" 탭은 newsItems 컬렉션(관리자 수동 등록 + 매일 07:00 언론사 RSS 자동 수집)을 보여준다.
- * 둘 다 App.jsx에서 실시간 구독(subscribeSupportPrograms / subscribeNewsItems)한 데이터를 props로 받는다.
+ * newsItems 컬렉션(관리자 수동 등록 + 매일 07:00 언론사 RSS 자동 수집)만 보여준다.
  *
- * 정책: 등록(공고 생성일 / 기사 발행일) 후 1년이 지난 항목은 자동으로 목록에서 숨긴다(ONE_YEAR_MS).
+ * 지원사업 공고(supportPrograms)는 전용 "지원사업" 페이지(SupportProgramsView)에서만 노출한다.
+ * 예전에는 이 페이지에도 supportPrograms를 "지원사업 · 공고" 탭으로 함께 보여줬는데, 그러면 같은
+ * 공고가 지원사업 페이지와 뉴스 페이지 두 군데에 동시에 노출돼 헷갈리므로, 뉴스 페이지는 이제
+ * newsItems만 다룬다. newsItems 문서의 category 필드가 'notice'면 "공고" 배지, 그 외에는
+ * "경제" 배지로 구분해서 보여준다(둘 다 같은 newsItems 컬렉션 안에서만 구분되는 것이라 중복이 아니다).
+ *
+ * 정책: 발행일(publishedAt) 후 1년이 지난 항목은 자동으로 목록에서 숨긴다(ONE_YEAR_MS).
  * 노출: 한 페이지에 10개씩만 보여주고, 10개를 넘으면 페이지 번호를 눌러 넘겨볼 수 있다(PAGE_SIZE).
  * 클릭 시: 외부 사이트로 이동하지 않고, 이미 저장해둔 요약/내용을 사이트 안 모달로 보여준다
  * (ContentDetailModal) — 원문이 필요하면 모달 안의 "원문 보기"로 나갈 수 있다.
  */
-
-const CATEGORIES = [
-    { id: 'all', label: '전체' },
-    { id: 'notice', label: '지원사업 · 공고' },
-    { id: 'econ', label: '경제뉴스' },
-];
 
 const PAGE_SIZE = 10;
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
@@ -57,55 +55,18 @@ function NewsRow({ item, isLast, onOpen }) {
     );
 }
 
-export default function NewsView({ content, onBack, supportPrograms, newsItems }) {
-    const [category, setCategory] = useState('all');
-    const [noticePage, setNoticePage] = useState(1);
-    const [econPage, setEconPage] = useState(1);
+export default function NewsView({ content, onBack, newsItems }) {
+    const [page, setPage] = useState(1);
     const [selected, setSelected] = useState(null);
-    const showNotice = category === 'all' || category === 'notice';
-    const showEcon = category === 'all' || category === 'econ';
     // 우측 배너 레일에 실제로 등록된 광고가 하나도 없으면 레일을 아예 접고 본문 폭을 넓힌다.
     const hasSidebarAd = hasAdSlot(content, 'news-sidebar-1') || hasAdSlot(content, 'news-sidebar-1b') || hasAdSlot(content, 'news-sidebar-2');
 
     const now = Date.now();
 
-    const NOTICE_ITEMS = useMemo(() => {
-        const rows = Array.isArray(supportPrograms) ? supportPrograms : [];
-        return rows
-            .filter((p) => p.enabled !== false && (p.status || 'published') === 'published')
-            .filter((p) => {
-                const createdMs = firestoreLikeToMillis(p.createdAt);
-                return createdMs == null || now - createdMs <= ONE_YEAR_MS; // 등록 1년 경과 시 자동 숨김
-            })
-            .slice()
-            .sort((a, b) => (Number(b.sortOrder) || 0) - (Number(a.sortOrder) || 0))
-            .map((p) => {
-                const dateLabel = relativeTime(firestoreLikeToMillis(p.createdAt));
-                return {
-                    title: p.title || '',
-                    badge: '공고',
-                    meta: [p.org, dateLabel].filter(Boolean).join(' · '),
-                    detail: {
-                        title: p.title || '',
-                        badgeLabel: '공고',
-                        badgeClass: 'bg-sky-500',
-                        org: p.org || '',
-                        dateLabel,
-                        tags: [...(p.region || []), ...(p.industry || [])],
-                        amountText: p.amountText || '',
-                        summary: p.summary || '',
-                        description: p.description || '',
-                        externalUrl: p.applyUrl || p.sourceUrl || '',
-                    },
-                };
-            })
-            .filter((item) => item.title);
-    }, [supportPrograms, now]);
-
-    const ECON_ITEMS = useMemo(() => {
+    const NEWS_ITEMS = useMemo(() => {
         const rows = Array.isArray(newsItems) ? newsItems : [];
         return rows
-            .filter((n) => n.enabled !== false && (n.status || 'published') === 'published' && (n.category || 'econ') === 'econ')
+            .filter((n) => n.enabled !== false && (n.status || 'published') === 'published')
             .filter((n) => {
                 const publishedMs = firestoreLikeToMillis(n.publishedAt);
                 return publishedMs == null || now - publishedMs <= ONE_YEAR_MS; // 발행 1년 경과 시 자동 숨김
@@ -113,15 +74,16 @@ export default function NewsView({ content, onBack, supportPrograms, newsItems }
             .slice()
             .sort((a, b) => (Number(b.sortOrder) || 0) - (Number(a.sortOrder) || 0))
             .map((n) => {
+                const isNotice = n.category === 'notice';
                 const dateLabel = relativeTime(firestoreLikeToMillis(n.publishedAt));
                 return {
                     title: n.title || '',
-                    badge: '경제',
+                    badge: isNotice ? '공고' : '경제',
                     meta: [n.source, dateLabel].filter(Boolean).join(' · '),
                     detail: {
                         title: n.title || '',
-                        badgeLabel: '경제',
-                        badgeClass: 'bg-orange-500',
+                        badgeLabel: isNotice ? '공고' : '경제',
+                        badgeClass: isNotice ? 'bg-sky-500' : 'bg-orange-500',
                         org: n.source || '',
                         dateLabel,
                         tags: [],
@@ -135,12 +97,9 @@ export default function NewsView({ content, onBack, supportPrograms, newsItems }
             .filter((item) => item.title);
     }, [newsItems, now]);
 
-    const noticeTotalPages = Math.max(1, Math.ceil(NOTICE_ITEMS.length / PAGE_SIZE));
-    const econTotalPages = Math.max(1, Math.ceil(ECON_ITEMS.length / PAGE_SIZE));
-    const noticePageClamped = Math.min(noticePage, noticeTotalPages);
-    const econPageClamped = Math.min(econPage, econTotalPages);
-    const noticePageItems = NOTICE_ITEMS.slice((noticePageClamped - 1) * PAGE_SIZE, noticePageClamped * PAGE_SIZE);
-    const econPageItems = ECON_ITEMS.slice((econPageClamped - 1) * PAGE_SIZE, econPageClamped * PAGE_SIZE);
+    const totalPages = Math.max(1, Math.ceil(NEWS_ITEMS.length / PAGE_SIZE));
+    const pageClamped = Math.min(page, totalPages);
+    const pageItems = NEWS_ITEMS.slice((pageClamped - 1) * PAGE_SIZE, pageClamped * PAGE_SIZE);
 
     return (
         <div className="min-h-screen bg-white overflow-y-auto">
@@ -156,18 +115,6 @@ export default function NewsView({ content, onBack, supportPrograms, newsItems }
                     <p className="text-[13px] font-bold text-brand tracking-wide mb-4">NEWS</p>
                     <h1 className="text-[32px] leading-[1.15] md:text-[52px] md:leading-[1.1] font-semibold tracking-tight text-dark break-keep max-w-2xl">뉴스</h1>
                     <p className="mt-5 text-base md:text-lg text-gray-500 max-w-lg break-keep">부산 창업가들이 놓치기 쉬운 소식을 한곳에 모았습니다.</p>
-                    <div className="flex items-center gap-2 flex-wrap mt-8">
-                        {CATEGORIES.map((c) => (
-                            <button
-                                key={c.id}
-                                type="button"
-                                onClick={() => setCategory(c.id)}
-                                className={`text-xs font-semibold rounded-full px-3.5 py-2 transition-colors ${category === c.id ? 'text-white bg-brand' : 'text-gray-500 bg-soft hover:bg-[#eceef2]'}`}
-                            >
-                                {c.label}
-                            </button>
-                        ))}
-                    </div>
                 </div>
             </section>
 
@@ -175,50 +122,25 @@ export default function NewsView({ content, onBack, supportPrograms, newsItems }
                 <div className="container mx-auto max-w-7xl">
                     <div className="xl:flex xl:gap-10 xl:items-start">
                         <div className="flex-1 min-w-0">
-                            {showNotice ? (
-                                <div className="pb-10">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h2 className="text-lg md:text-xl font-bold text-dark">지원사업 · 공고 소식</h2>
-                                        <span className="text-xs text-gray-400">최신순</span>
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-lg md:text-xl font-bold text-dark">창업 · 경제뉴스</h2>
+                                <span className="text-xs text-gray-400">최신순</span>
+                            </div>
+                            {pageItems.length > 0 ? (
+                                <>
+                                    <div className="border-t border-black/[0.06]">
+                                        {pageItems.map((item, i) => (
+                                            <React.Fragment key={`${item.title}-${i}`}>
+                                                <NewsRow item={item} isLast={i === pageItems.length - 1} onOpen={setSelected} />
+                                                {i === 3 ? <AdSlot slotId="news-list-native" content={content} className="my-1" /> : null}
+                                            </React.Fragment>
+                                        ))}
                                     </div>
-                                    {noticePageItems.length > 0 ? (
-                                        <>
-                                            <div className="border-t border-black/[0.06]">
-                                                {noticePageItems.map((item, i) => (
-                                                    <React.Fragment key={`${item.title}-${i}`}>
-                                                        <NewsRow item={item} isLast={i === noticePageItems.length - 1} onOpen={setSelected} />
-                                                        {i === 3 ? <AdSlot slotId="news-list-native" content={content} className="my-1" /> : null}
-                                                    </React.Fragment>
-                                                ))}
-                                            </div>
-                                            <Pager page={noticePageClamped} totalPages={noticeTotalPages} onChange={setNoticePage} />
-                                        </>
-                                    ) : (
-                                        <p className="text-sm text-gray-400 border-t border-black/[0.06] pt-6">등록된 지원사업 공고가 아직 없습니다.</p>
-                                    )}
-                                </div>
-                            ) : null}
-
-                            {showEcon ? (
-                                <div>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h2 className="text-lg md:text-xl font-bold text-dark">창업 · 경제뉴스</h2>
-                                        <span className="text-xs text-gray-400">최신순</span>
-                                    </div>
-                                    {econPageItems.length > 0 ? (
-                                        <>
-                                            <div className="border-t border-black/[0.06]">
-                                                {econPageItems.map((item, i) => (
-                                                    <NewsRow key={`${item.title}-${i}`} item={item} isLast={i === econPageItems.length - 1} onOpen={setSelected} />
-                                                ))}
-                                            </div>
-                                            <Pager page={econPageClamped} totalPages={econTotalPages} onChange={setEconPage} />
-                                        </>
-                                    ) : (
-                                        <p className="text-sm text-gray-400 border-t border-black/[0.06] pt-6">등록된 경제뉴스가 아직 없습니다.</p>
-                                    )}
-                                </div>
-                            ) : null}
+                                    <Pager page={pageClamped} totalPages={totalPages} onChange={setPage} />
+                                </>
+                            ) : (
+                                <p className="text-sm text-gray-400 border-t border-black/[0.06] pt-6">등록된 뉴스가 아직 없습니다.</p>
+                            )}
                         </div>
 
                         {/* 우측 배너 광고 레일 — 구글 표준 300px 폭(300×250/300×600) 기준, 최대 3슬롯.

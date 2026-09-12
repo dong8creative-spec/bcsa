@@ -4,16 +4,23 @@
  *
  * 매일 07:00(KST)에 GitHub Actions(.github/workflows/daily-content-feed.yml)가 실행합니다.
  * - 지원사업: 기업마당(bizinfo.go.kr) 지원사업정보 오픈API → Firestore `supportPrograms` 컬렉션
- * - 뉴스: 언론사 RSS(현재 한국경제 경제섹션) 중 소상공인/자영업/창업 키워드가 포함된 기사만 골라
- *         → Firestore `newsItems` 컬렉션
+ * - 뉴스: 네이버 뉴스검색 API(NAVER API HUB, naverapihub.apigw.ntruss.com — 네이버가 기존
+ *         openapi.naver.com 검색 API를 이쪽으로 이관함)에서 소상공인/자영업/창업 관련 키워드로 검색한
+ *         기사 제목·발췌(요약)를 가져와 → Firestore `newsItems` 컬렉션
  *
  * 두 컬렉션 모두 sourceUrl(또는 기사 링크)의 해시를 문서 ID로 사용해 매일 실행해도 중복 등록되지 않습니다(upsert).
  * 관리자가 admin 화면에서 수동으로 만든 문서(sourceType !== 'site_scan')는 절대 덮어쓰지 않고,
  * 자동수집 문서라도 관리자가 껐던 enabled 값은 건드리지 않습니다(관리자 판단을 항상 우선).
  *
+ * 노출 기간: 뉴스 기사든 지원사업 공고든 등록/발행 후 1년이 지나면 사이트에서 자동으로 숨겨집니다
+ * (Firestore 문서는 그대로 남아있고, 화면 렌더링 단계에서 필터링됩니다 — src/pages/NewsView.jsx,
+ * src/pages/SupportProgramsView.jsx의 ONE_YEAR_MS 참고).
+ *
  * 실행 전 필요한 환경변수:
  *   FIREBASE_SERVICE_ACCOUNT_KEY  - 파이어베이스 서비스 계정 키 JSON 전체(문자열)
  *   BIZINFO_API_KEY               - 기업마당 오픈API 인증키(data.go.kr에서 발급). 없으면 지원사업 수집은 건너뜀.
+ *   NAVER_CLIENT_ID               - NAVER API HUB 검색 API Client ID (콘솔: console.ncloud.com/naver-api-hub)
+ *   NAVER_CLIENT_SECRET           - NAVER API HUB 검색 API Client Secret. 둘 중 하나라도 없으면 뉴스 수집은 건너뜀.
  *
  * 실행:
  *   node scripts/ingest-daily-feed.mjs           # 실제 반영
@@ -23,24 +30,40 @@
 import crypto from 'crypto';
 import admin from 'firebase-admin';
 import fetch from 'node-fetch';
-import Parser from 'rss-parser';
 
 const isDryRun = process.argv.includes('--dry-run');
 
 // 소스당 1회 실행 최대 처리 건수 캡(오작동 시 대량 오등록 방지 안전장치)
 const MAX_ITEMS_PER_SOURCE = 15;
 
-// 경제 RSS 중 이 키워드가 제목/요약에 하나라도 포함된 기사만 "자영업자/예비창업자 관련 뉴스"로 채택.
-// 필요에 따라 자유롭게 추가/수정 가능.
-const NEWS_KEYWORDS = ['소상공인', '자영업', '창업', '개인사업자', '가맹점', '프랜차이즈', '중소기업', '스타트업'];
-
-const NEWS_RSS_SOURCES = [
-  { name: '한국경제', url: 'https://www.hankyung.com/feed/economy' },
-  // 다른 RSS(이투데이 등)나 네이버 검색 오픈API(키워드 검색)는 여기에 소스를 추가하면 됩니다.
-];
+// 네이버 뉴스검색에서 이 키워드들로 각각 검색해 결과를 모은다.
+// 자영업자/예비창업자/소상공인 관련 뉴스를 폭넓게 담기 위한 검색어 목록 — 필요 시 자유롭게 추가/수정 가능.
+const NEWS_KEYWORDS = ['창업', '사업자', '예비창업', '예창', '지원사업', '부산청년'];
 
 function shortHash(input) {
   return crypto.createHash('sha1').update(String(input)).digest('hex').slice(0, 20);
+}
+
+/** 네이버 API 응답의 title/description에 섞여 있는 <b> 태그, HTML 엔티티를 제거한 순수 텍스트로 변환. */
+function stripHtml(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str
+    .replace(/<[^>]*>/g, '')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .trim();
+}
+
+/** 기사 링크의 도메인을 "출처" 표시용 짧은 이름으로 변환 (예: n.news.naver.com, www.hankyung.com). */
+function hostnameLabel(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '네이버뉴스';
+  }
 }
 
 function initAdmin() {
@@ -174,51 +197,79 @@ async function ingestBizinfo(db) {
   return counts;
 }
 
-async function ingestNewsRss(db) {
-  const parser = new Parser({ timeout: 20000 });
-  const totals = { new: 0, updated: 0, skipped: 0 };
+/**
+ * NAVER API HUB 뉴스검색 API로 키워드별 최신 기사를 가져와 newsItems에 upsert.
+ * (2026년 이전 구버전 openapi.naver.com/v1/search/news.json + X-Naver-Client-Id 방식은
+ * 네이버가 종료하고 NAVER API HUB로 이관함 — 도메인/경로/인증 헤더가 모두 바뀌었다.)
+ * API 응답은 기사 제목/발췌(description)만 주기 때문에, summary에는 그 발췌 전문을 담아
+ * "기사 발췌" 형태로 보여준다(전체 본문을 가져오는 게 아님 — 원문은 externalUrl로 연결).
+ */
+async function ingestNaverNews(db) {
+  const clientId = process.env.NAVER_CLIENT_ID;
+  const clientSecret = process.env.NAVER_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    console.log('[naver-news] NAVER_CLIENT_ID/NAVER_CLIENT_SECRET이 없어 뉴스 자동수집을 건너뜁니다.');
+    return { new: 0, updated: 0, skipped: 0 };
+  }
 
-  for (const source of NEWS_RSS_SOURCES) {
-    let feed;
+  const seen = new Set();
+  const collected = [];
+
+  for (const query of NEWS_KEYWORDS) {
+    if (collected.length >= MAX_ITEMS_PER_SOURCE) break;
+    const url = `https://naverapihub.apigw.ntruss.com/search/v1/news?query=${encodeURIComponent(query)}&display=10&sort=date`;
+    let res;
     try {
-      feed = await parser.parseURL(source.url);
+      res = await fetch(url, {
+        headers: {
+          'X-NCP-APIGW-API-KEY-ID': clientId,
+          'X-NCP-APIGW-API-KEY': clientSecret,
+        },
+        timeout: 20000,
+      });
     } catch (err) {
-      console.error(`[news:${source.name}] RSS를 불러오지 못했습니다:`, err.message);
+      console.error(`[naver-news:${query}] 요청 실패:`, err.message);
       continue;
     }
-    const matched = (feed.items || []).filter((it) => {
-      const text = `${it.title || ''} ${it.contentSnippet || ''}`;
-      return NEWS_KEYWORDS.some((kw) => text.includes(kw));
-    });
-
-    const counts = { new: 0, updated: 0, skipped: 0 };
-    for (const it of matched.slice(0, MAX_ITEMS_PER_SOURCE)) {
-      const link = it.link || '';
-      const title = it.title || '';
-      if (!link || !title) continue;
-      const id = shortHash(link);
-      const publishedAt = it.isoDate ? new Date(it.isoDate) : new Date();
-
-      const result = await upsertDoc(db, 'newsItems', id, {
-        onCreate: () => ({
-          title,
-          source: source.name,
-          summary: (it.contentSnippet || '').slice(0, 140),
-          url: link,
-          category: 'econ',
-          publishedAt: admin.firestore.Timestamp.fromDate(publishedAt),
-        }),
-        onUpdate: () => null, // 뉴스는 내용이 바뀔 일이 없어 갱신 불필요
-      });
-      counts[result === 'new' ? 'new' : result === 'updated' ? 'updated' : 'skipped'] =
-        (counts[result === 'new' ? 'new' : result === 'updated' ? 'updated' : 'skipped'] || 0) + 1;
+    if (!res.ok) {
+      console.error(`[naver-news:${query}] API 응답 실패: HTTP ${res.status}`);
+      continue;
     }
-    console.log(`[news:${source.name}] 키워드 매칭 ${matched.length}건 중 신규 ${counts.new}건, 건너뜀 ${counts.skipped}건`);
-    totals.new += counts.new;
-    totals.updated += counts.updated;
-    totals.skipped += counts.skipped;
+    const json = await res.json();
+    for (const item of json.items || []) {
+      const link = item.originallink || item.link || '';
+      if (!link || seen.has(link)) continue;
+      seen.add(link);
+      collected.push(item);
+    }
   }
-  return totals;
+
+  const counts = { new: 0, updated: 0, skipped: 0 };
+  for (const item of collected.slice(0, MAX_ITEMS_PER_SOURCE)) {
+    const link = item.originallink || item.link || '';
+    const title = stripHtml(item.title);
+    const description = stripHtml(item.description);
+    if (!link || !title) continue;
+
+    const id = shortHash(link);
+    const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
+
+    const result = await upsertDoc(db, 'newsItems', id, {
+      onCreate: () => ({
+        title,
+        source: hostnameLabel(link),
+        summary: description.slice(0, 200),
+        url: link,
+        category: 'econ',
+        publishedAt: admin.firestore.Timestamp.fromDate(publishedAt),
+      }),
+      onUpdate: () => null, // 뉴스는 내용이 바뀔 일이 없어 갱신 불필요
+    });
+    counts[result === 'new' ? 'new' : result === 'updated' ? 'updated' : 'skipped'] =
+      (counts[result === 'new' ? 'new' : result === 'updated' ? 'updated' : 'skipped'] || 0) + 1;
+  }
+  console.log(`[naver-news] 검색 수집 ${collected.length}건 중 신규 ${counts.new}건, 건너뜀 ${counts.skipped}건`);
+  return counts;
 }
 
 async function main() {
@@ -228,7 +279,7 @@ async function main() {
   console.log(`[ingest-daily-feed] 시작 (${isDryRun ? 'dry-run' : 'live'}) — ${new Date().toISOString()}`);
 
   const bizinfoResult = await ingestBizinfo(db);
-  const newsResult = await ingestNewsRss(db);
+  const newsResult = await ingestNaverNews(db);
 
   console.log('[ingest-daily-feed] 완료:', { supportPrograms: bizinfoResult, newsItems: newsResult });
   process.exit(0);
