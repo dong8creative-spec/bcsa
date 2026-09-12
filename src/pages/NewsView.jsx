@@ -48,6 +48,12 @@ function categoryMetaFor(category) {
     return CATEGORY_META[category] || DEFAULT_CATEGORY_META;
 }
 
+function formatExactDate(ms) {
+    if (ms == null || !Number.isFinite(ms)) return '';
+    const d = new Date(ms);
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function relativeTime(ms) {
     if (ms == null || !Number.isFinite(ms)) return '';
     const diff = Date.now() - ms;
@@ -81,12 +87,15 @@ function NewsRow({ item, isLast, onOpen }) {
 export default function NewsView({ content, onBack, newsItems }) {
     const [page, setPage] = useState(1);
     const [selected, setSelected] = useState(null);
+    const [sourceFilter, setSourceFilter] = useState('all'); // 신문사 필터 — '전체' 또는 특정 언론사명
+    const [sortMode, setSortMode] = useState('date'); // 'date'(최신순, 기본) | 'source'(신문사순)
     // 우측 배너 레일에 실제로 등록된 광고가 하나도 없으면 레일을 아예 접고 본문 폭을 넓힌다.
     const hasSidebarAd = hasAdSlot(content, 'news-sidebar-1') || hasAdSlot(content, 'news-sidebar-1b') || hasAdSlot(content, 'news-sidebar-2');
 
     const now = Date.now();
 
-    const NEWS_ITEMS = useMemo(() => {
+    // 필터/정렬과 무관한 전체 목록. 여기서 신문사 옵션 목록을 뽑고, 아래서 필터/정렬을 적용한다.
+    const ALL_NEWS_ITEMS = useMemo(() => {
         const rows = Array.isArray(newsItems) ? newsItems : [];
         return rows
             .filter((n) => n.enabled !== false && (n.status || 'published') === 'published')
@@ -94,25 +103,29 @@ export default function NewsView({ content, onBack, newsItems }) {
                 const publishedMs = firestoreLikeToMillis(n.publishedAt);
                 return publishedMs == null || now - publishedMs <= ONE_YEAR_MS; // 발행 1년 경과 시 자동 숨김
             })
-            .slice()
-            .sort((a, b) => (Number(b.sortOrder) || 0) - (Number(a.sortOrder) || 0))
             .map((n) => {
                 const meta = categoryMetaFor(n.category);
-                const dateLabel = relativeTime(firestoreLikeToMillis(n.publishedAt));
+                const publishedMs = firestoreLikeToMillis(n.publishedAt);
+                const dateLabel = relativeTime(publishedMs);
+                const dateExact = formatExactDate(publishedMs);
+                const source = n.source || '';
                 const targets = String(n.target || '')
                     .split(',')
                     .map((t) => t.trim())
                     .filter(Boolean);
                 return {
                     title: n.title || '',
+                    source,
+                    publishedMs,
+                    sortOrder: Number(n.sortOrder) || 0,
                     badge: meta.label,
                     badgeClass: meta.badgeClass,
-                    meta: [n.source, dateLabel].filter(Boolean).join(' · '),
+                    meta: [source, dateExact, dateLabel].filter(Boolean).join(' · '),
                     detail: {
                         title: n.title || '',
                         badgeLabel: meta.label,
                         badgeClass: meta.badgeClass,
-                        org: n.source || '',
+                        org: source,
                         dateLabel,
                         tags: targets,
                         amountText: n.deadlineText ? `신청기한: ${n.deadlineText}` : '',
@@ -124,6 +137,32 @@ export default function NewsView({ content, onBack, newsItems }) {
             })
             .filter((item) => item.title);
     }, [newsItems, now]);
+
+    // 실제 존재하는 신문사만 옵션으로 노출 (가나다순).
+    const sourceOptions = useMemo(() => {
+        const set = new Set();
+        ALL_NEWS_ITEMS.forEach((item) => { if (item.source) set.add(item.source); });
+        return Array.from(set).sort((a, b) => a.localeCompare(b, 'ko'));
+    }, [ALL_NEWS_ITEMS]);
+
+    const NEWS_ITEMS = useMemo(() => {
+        let rows = ALL_NEWS_ITEMS;
+        if (sourceFilter !== 'all') rows = rows.filter((item) => item.source === sourceFilter);
+        rows = rows.slice();
+        if (sortMode === 'source') {
+            rows.sort((a, b) => {
+                const sc = a.source.localeCompare(b.source, 'ko');
+                if (sc !== 0) return sc;
+                return (b.publishedMs || 0) - (a.publishedMs || 0); // 같은 신문사끼리는 최신순
+            });
+        } else {
+            rows.sort((a, b) => b.sortOrder - a.sortOrder); // 최신순(기본)
+        }
+        return rows;
+    }, [ALL_NEWS_ITEMS, sourceFilter, sortMode]);
+
+    // 필터/정렬을 바꾸면 이전 페이지 번호가 남아 빈 페이지가 보일 수 있어 1페이지로 되돌린다.
+    React.useEffect(() => { setPage(1); }, [sourceFilter, sortMode]);
 
     const totalPages = Math.max(1, Math.ceil(NEWS_ITEMS.length / PAGE_SIZE));
     const pageClamped = Math.min(page, totalPages);
@@ -150,9 +189,26 @@ export default function NewsView({ content, onBack, newsItems }) {
                 <div className="container mx-auto max-w-7xl">
                     <div className="xl:flex xl:gap-10 xl:items-start">
                         <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                                 <h2 className="text-lg md:text-xl font-bold text-dark">창업 · 경제뉴스</h2>
-                                <span className="text-xs text-gray-400">최신순</span>
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        value={sourceFilter}
+                                        onChange={(e) => setSourceFilter(e.target.value)}
+                                        className="text-xs md:text-sm border border-black/10 rounded-lg px-2.5 py-1.5 bg-white text-dark focus:outline-none focus:ring-1 focus:ring-brand"
+                                    >
+                                        <option value="all">전체 신문사</option>
+                                        {sourceOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                    <select
+                                        value={sortMode}
+                                        onChange={(e) => setSortMode(e.target.value)}
+                                        className="text-xs md:text-sm border border-black/10 rounded-lg px-2.5 py-1.5 bg-white text-dark focus:outline-none focus:ring-1 focus:ring-brand"
+                                    >
+                                        <option value="date">최신순</option>
+                                        <option value="source">신문사순</option>
+                                    </select>
+                                </div>
                             </div>
                             {pageItems.length > 0 ? (
                                 <>

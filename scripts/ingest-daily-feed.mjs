@@ -764,11 +764,51 @@ async function cleanupLegacyNews(db) {
 }
 
 /**
- * 세 단계(지원사업 수집/뉴스 수집/뉴스 정리)는 서로 독립적이라, 하나가 실패해도 나머지는 계속
- * 진행한다 — 예를 들어 bizinfo.go.kr가 타임아웃 나도 네이버 뉴스 수집은 정상적으로 끝나야 한다
- * (실제로 이 문제를 겪은 뒤 추가한 방어 로직). 하나라도 실패했으면 로그로 남기고, 실행 자체는
- * 실패로 표시(exit code 1)해서 GitHub Actions 화면에서 눈에 띄게 하되, 성공한 나머지 단계의
- * 결과는 이미 Firestore에 반영된 채로 끝난다.
+ * "부산 지원사업" 태그도 같은 이유로 소급 정리가 필요하다 — ingestBizinfo의 onUpdate는 이번 실행에서
+ * 기업마당 API가 다시 반환해준 공고만 region을 재계산한다. 마감이 임박해 API 상위 목록에서 이미
+ * 빠진 예전 공고는 두 번 다시 재계산 기회가 없어서, 과거 버전(본문 전체에서 "부산"을 찾던 느슨한
+ * 판정)으로 잘못 부산 태그가 붙은 문서가 있으면 그대로 영구히 남는다. 그래서 자동수집(site_scan)
+ * 문서 중 region에 '부산'이 있는 것들을 지금 기준(제목/기관명에 "부산"/"부산시"/"부산광역시" 등
+ * "부산"이 직접 포함된 경우만 인정)으로 다시 검사해서, 기준 미달이면 '부산' 태그만 제거한다
+ * (문서 자체는 지우지 않음 — 다른 지역/전국 공고로는 여전히 유효할 수 있으므로).
+ */
+async function cleanupBusanTagging(db) {
+  const snap = await db.collection('supportPrograms').where('sourceType', '==', 'site_scan').get();
+  let checked = 0;
+  let fixed = 0;
+  let batch = db.batch();
+  let opsInBatch = 0;
+  for (const doc of snap.docs) {
+    const data = doc.data() || {};
+    const region = Array.isArray(data.region) ? data.region : [];
+    if (!region.includes('부산')) continue;
+    checked += 1;
+    const title = data.title || '';
+    const org = data.org || '';
+    const stillBusan = /부산/.test(`${title} ${org}`);
+    if (stillBusan) continue;
+    fixed += 1;
+    if (!isDryRun) {
+      batch.update(doc.ref, { region: region.filter((r) => r !== '부산') });
+      opsInBatch += 1;
+      if (opsInBatch >= 400) {
+        await batch.commit();
+        batch = db.batch();
+        opsInBatch = 0;
+      }
+    }
+  }
+  if (!isDryRun && opsInBatch > 0) await batch.commit();
+  console.log(`[cleanup-busan-tagging] 부산 태그 붙은 자동수집 공고 ${checked}건 검사, 기준 미달 ${fixed}건 태그 제거`);
+  return { checked, fixed };
+}
+
+/**
+ * 네 단계(지원사업 수집/뉴스 수집/뉴스 정리/부산 태그 정리)는 서로 독립적이라, 하나가 실패해도
+ * 나머지는 계속 진행한다 — 예를 들어 bizinfo.go.kr가 타임아웃 나도 네이버 뉴스 수집은 정상적으로
+ * 끝나야 한다(실제로 이 문제를 겪은 뒤 추가한 방어 로직). 하나라도 실패했으면 로그로 남기고,
+ * 실행 자체는 실패로 표시(exit code 1)해서 GitHub Actions 화면에서 눈에 띄게 하되, 성공한 나머지
+ * 단계의 결과는 이미 Firestore에 반영된 채로 끝난다.
  */
 async function runStep(label, fn) {
   try {
@@ -788,14 +828,16 @@ async function main() {
   const bizinfoStep = await runStep('bizinfo', () => ingestBizinfo(db));
   const newsStep = await runStep('naver-news', () => ingestNaverNews(db));
   const cleanupStep = await runStep('cleanup-legacy-news', () => cleanupLegacyNews(db));
+  const busanCleanupStep = await runStep('cleanup-busan-tagging', () => cleanupBusanTagging(db));
 
   console.log('[ingest-daily-feed] 완료:', {
     supportPrograms: bizinfoStep.result,
     newsItems: newsStep.result,
     cleanup: cleanupStep.result,
+    busanCleanup: busanCleanupStep.result,
   });
 
-  const anyFailed = [bizinfoStep, newsStep, cleanupStep].some((s) => !s.ok);
+  const anyFailed = [bizinfoStep, newsStep, cleanupStep, busanCleanupStep].some((s) => !s.ok);
   process.exit(anyFailed ? 1 : 0);
 }
 

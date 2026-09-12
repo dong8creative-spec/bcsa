@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import AdSlot, { hasAdSlot } from '../components/AdSlot';
 import { firestoreLikeToMillis, getSupportProgramDdayInfo } from '../appHelpers';
 import Pager from '../components/Pager';
@@ -56,6 +56,7 @@ function ProgramCard({ p, onOpen }) {
             </div>
             <p className="text-sm font-semibold leading-snug break-keep line-clamp-2 min-h-[2.5em] text-dark group-hover:text-brand transition-colors">{p.title}</p>
             {sub ? <p className="text-xs text-gray-500 mt-1 truncate">{sub}</p> : null}
+            <p className="text-[11px] text-gray-400 mt-0.5">{formatDeadlineLabel(p)}</p>
         </button>
     );
 }
@@ -110,22 +111,42 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
     const [urgentPage, setUrgentPage] = useState(1);
     const [freshPage, setFreshPage] = useState(1);
     const [busanPage, setBusanPage] = useState(1);
+    const [orgFilter, setOrgFilter] = useState('all'); // 기관(주최/주관) 필터 — '전체' 또는 특정 기관명
+
+    // 기관 필터 옵션은 필터 적용 전 전체 목록 기준으로 뽑는다(필터를 걸어도 선택지가 줄어들지 않게).
+    const orgOptions = useMemo(() => {
+        const rows = Array.isArray(supportPrograms) ? supportPrograms : [];
+        const nowMs = Date.now();
+        const set = new Set();
+        rows.forEach((p) => {
+            if (!p || p.enabled === false || p.status !== 'published') return;
+            const createdMs = firestoreLikeToMillis(p.createdAt);
+            if (createdMs != null && (nowMs - createdMs) > ONE_YEAR_MS) return;
+            if (p.org) set.add(p.org);
+        });
+        return Array.from(set).sort((a, b) => a.localeCompare(b, 'ko'));
+    }, [supportPrograms]);
 
     const { urgent, fresh, busan, urgentCount, freshCount, busanCount } = useMemo(() => {
         const rows = Array.isArray(supportPrograms) ? supportPrograms : [];
         const nowMs = Date.now();
-        const visible = rows.filter((p) => {
+        let visible = rows.filter((p) => {
             if (!p || p.enabled === false || p.status !== 'published') return false;
             const createdMs = firestoreLikeToMillis(p.createdAt);
             return createdMs == null || (nowMs - createdMs) <= ONE_YEAR_MS; // 등록 1년 경과 시 자동 숨김
         });
+        if (orgFilter !== 'all') visible = visible.filter((p) => p.org === orgFilter);
 
-        // 마감임박: 마감일이 있고 아직 지나지 않은 공고만, 마감일이 가까운 순.
-        const dated = visible.filter((p) => {
-            if (p.isRolling) return false;
-            const dMs = firestoreLikeToMillis(p.deadlineAt);
-            return dMs != null && dMs >= nowMs;
-        });
+        // 마감임박: 마감일이 있고 아직 지나지 않은 공고 중 D-0~10일 이내인 것만, 마감일이 가까운 순.
+        // (D-10보다 먼 공고는 "임박"이 아니므로 이 섹션에는 노출하지 않는다 — getSupportProgramDdayInfo의
+        // isUrgent 기준과 동일하게 맞춘다.)
+        const dated = visible
+            .filter((p) => {
+                if (p.isRolling) return false;
+                const dMs = firestoreLikeToMillis(p.deadlineAt);
+                return dMs != null && dMs >= nowMs;
+            })
+            .filter((p) => getSupportProgramDdayInfo(p).isUrgent);
         dated.sort((a, b) => firestoreLikeToMillis(a.deadlineAt) - firestoreLikeToMillis(b.deadlineAt));
 
         // 신규: 등록 7일 이내, 최신 등록순 (마감일 유무·지역 무관 — 상시모집 새 공고도 여기서 보인다).
@@ -153,8 +174,8 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
         busanRolling.sort((a, b) => (Number(b.sortOrder) || 0) - (Number(a.sortOrder) || 0));
         const busanList = [...busanDated, ...busanRolling];
 
-        // "임박"은 D-10 이내(getSupportProgramDdayInfo와 동일 기준)로 통일한다.
-        const urgentCountVal = dated.filter((p) => getSupportProgramDdayInfo(p).isUrgent).length;
+        // dated 자체가 이미 D-0~10 이내로 걸러져 있으므로 건수는 그대로 사용.
+        const urgentCountVal = dated.length;
 
         return {
             urgent: dated,
@@ -164,7 +185,14 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
             freshCount: freshList.length,
             busanCount: busanList.length,
         };
-    }, [supportPrograms]);
+    }, [supportPrograms, orgFilter]);
+
+    // 기관 필터를 바꾸면 이전 페이지 번호가 남아 빈 페이지가 보일 수 있어 세 목록 모두 1페이지로 되돌린다.
+    useEffect(() => {
+        setUrgentPage(1);
+        setFreshPage(1);
+        setBusanPage(1);
+    }, [orgFilter]);
 
     const urgentTotalPages = Math.max(1, Math.ceil(urgent.length / PAGE_SIZE));
     const freshTotalPages = Math.max(1, Math.ceil(fresh.length / PAGE_SIZE));
@@ -211,8 +239,16 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
                     <p className="mt-5 text-base md:text-lg text-gray-500 max-w-lg break-keep">
                         긴 공고문 대신, 핵심만 요약해서 보여드립니다.
                     </p>
-                    <div className="flex items-center gap-3 mt-8 flex-wrap">
+                    <div className="flex items-center justify-between gap-3 mt-8 flex-wrap">
                         <span className="text-gray-500 text-sm">신규 {freshCount}건 · 마감임박 {urgentCount}건 · 부산 {busanCount}건</span>
+                        <select
+                            value={orgFilter}
+                            onChange={(e) => setOrgFilter(e.target.value)}
+                            className="text-xs md:text-sm border border-black/10 rounded-lg px-2.5 py-1.5 bg-white text-dark focus:outline-none focus:ring-1 focus:ring-brand"
+                        >
+                            <option value="all">전체 기관</option>
+                            {orgOptions.map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
                     </div>
                 </div>
             </section>
