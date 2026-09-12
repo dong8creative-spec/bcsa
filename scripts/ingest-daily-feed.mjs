@@ -708,6 +708,31 @@ async function ingestNaverNews(db) {
   return counts;
 }
 
+/**
+ * 필터 규칙(REQUIRED_TARGET_WORDS/EXCLUDE_TERMS 등)이 오늘 새로 생기거나 강화돼도, 그 이전에 이미
+ * 저장된 자동수집 뉴스 문서에는 소급 적용되지 않는다(운세·부동산 기사가 예전에 잘못 들어와 있어도
+ * 그대로 남아있는 이유) — 그래서 매일 실행 때마다 기존 자동수집 문서를 지금 기준으로 다시 검사해서,
+ * 더 이상 기준을 통과하지 못하는 문서는 정리한다. 관리자가 admin 화면에서 수동으로 만든 문서
+ * (sourceType !== 'site_scan')는 절대 건드리지 않는다.
+ */
+async function cleanupLegacyNews(db) {
+  const snap = await db.collection('newsItems').where('sourceType', '==', 'site_scan').get();
+  let removed = 0;
+  let kept = 0;
+  for (const doc of snap.docs) {
+    const data = doc.data() || {};
+    const text = `${data.title || ''} ${data.summary || ''} ${data.description || ''}`;
+    if (!passesContentFilters(text)) {
+      if (!isDryRun) await doc.ref.delete();
+      removed += 1;
+    } else {
+      kept += 1;
+    }
+  }
+  console.log(`[cleanup-legacy-news] 기준 미달 자동수집 뉴스 ${removed}건 정리, ${kept}건 유지`);
+  return { removed, kept };
+}
+
 async function main() {
   initAdmin();
   const db = admin.firestore();
@@ -716,8 +741,9 @@ async function main() {
 
   const bizinfoResult = await ingestBizinfo(db);
   const newsResult = await ingestNaverNews(db);
+  const cleanupResult = await cleanupLegacyNews(db);
 
-  console.log('[ingest-daily-feed] 완료:', { supportPrograms: bizinfoResult, newsItems: newsResult });
+  console.log('[ingest-daily-feed] 완료:', { supportPrograms: bizinfoResult, newsItems: newsResult, cleanup: cleanupResult });
   process.exit(0);
 }
 
