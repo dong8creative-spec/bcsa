@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import AdSlot, { hasAdSlot } from '../components/AdSlot';
 import { firestoreLikeToMillis } from '../appHelpers';
+import Pager from '../components/Pager';
+import ContentDetailModal from '../components/ContentDetailModal';
 
 /**
  * NewsView — 뉴스 페이지
@@ -11,6 +13,8 @@ import { firestoreLikeToMillis } from '../appHelpers';
  *
  * 정책: 등록(공고 생성일 / 기사 발행일) 후 1년이 지난 항목은 자동으로 목록에서 숨긴다(ONE_YEAR_MS).
  * 노출: 한 페이지에 10개씩만 보여주고, 10개를 넘으면 페이지 번호를 눌러 넘겨볼 수 있다(PAGE_SIZE).
+ * 클릭 시: 외부 사이트로 이동하지 않고, 이미 저장해둔 요약/내용을 사이트 안 모달로 보여준다
+ * (ContentDetailModal) — 원문이 필요하면 모달 안의 "원문 보기"로 나갈 수 있다.
  */
 
 const CATEGORIES = [
@@ -36,57 +40,20 @@ function relativeTime(ms) {
     return `${months}개월 전`;
 }
 
-function NewsRow({ item, isLast }) {
+function NewsRow({ item, isLast, onOpen }) {
     const badgeClass = item.badge === '공고' ? 'bg-sky-500' : 'bg-orange-500';
     return (
-        <a
-            href={item.href || '#'}
-            target={item.href ? '_blank' : undefined}
-            rel={item.href ? 'noopener noreferrer' : undefined}
-            onClick={(e) => { if (!item.href) e.preventDefault(); }}
-            className={`flex items-center justify-between gap-4 py-5 px-2 -mx-2 rounded-xl hover:bg-soft/70 transition-colors ${isLast ? '' : 'border-b border-black/[0.06]'}`}
+        <button
+            type="button"
+            onClick={() => onOpen(item.detail)}
+            className={`w-full flex items-center justify-between gap-4 py-5 px-2 -mx-2 rounded-xl hover:bg-soft/70 transition-colors text-left ${isLast ? '' : 'border-b border-black/[0.06]'}`}
         >
             <div className="flex items-center gap-3 min-w-0">
                 <span className={`inline-flex items-center justify-center h-5 px-2.5 rounded-full text-[11px] font-bold text-white shrink-0 whitespace-nowrap ${badgeClass}`}>{item.badge}</span>
                 <p className="text-sm md:text-base font-semibold text-dark truncate">{item.title}</p>
             </div>
             <span className="text-xs text-gray-500 whitespace-nowrap shrink-0 ml-4">{item.meta}</span>
-        </a>
-    );
-}
-
-function Pager({ page, totalPages, onChange }) {
-    if (totalPages <= 1) return null;
-    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
-    return (
-        <div className="flex items-center justify-center gap-1.5 flex-wrap mt-6">
-            <button
-                type="button"
-                onClick={() => onChange(Math.max(1, page - 1))}
-                disabled={page === 1}
-                className="text-xs font-semibold rounded-full px-3 py-2 bg-soft text-gray-600 hover:bg-[#eceef2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-                이전
-            </button>
-            {pages.map((p) => (
-                <button
-                    key={p}
-                    type="button"
-                    onClick={() => onChange(p)}
-                    className={`text-xs font-semibold rounded-full w-8 h-8 transition-colors ${p === page ? 'bg-brand text-white' : 'bg-soft text-gray-600 hover:bg-[#eceef2]'}`}
-                >
-                    {p}
-                </button>
-            ))}
-            <button
-                type="button"
-                onClick={() => onChange(Math.min(totalPages, page + 1))}
-                disabled={page === totalPages}
-                className="text-xs font-semibold rounded-full px-3 py-2 bg-soft text-gray-600 hover:bg-[#eceef2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-                다음
-            </button>
-        </div>
+        </button>
     );
 }
 
@@ -94,6 +61,7 @@ export default function NewsView({ content, onBack, supportPrograms, newsItems }
     const [category, setCategory] = useState('all');
     const [noticePage, setNoticePage] = useState(1);
     const [econPage, setEconPage] = useState(1);
+    const [selected, setSelected] = useState(null);
     const showNotice = category === 'all' || category === 'notice';
     const showEcon = category === 'all' || category === 'econ';
     // 우측 배너 레일에 실제로 등록된 광고가 하나도 없으면 레일을 아예 접고 본문 폭을 넓힌다.
@@ -111,12 +79,26 @@ export default function NewsView({ content, onBack, supportPrograms, newsItems }
             })
             .slice()
             .sort((a, b) => (Number(b.sortOrder) || 0) - (Number(a.sortOrder) || 0))
-            .map((p) => ({
-                title: p.title || '',
-                badge: '공고',
-                meta: [p.org, relativeTime(firestoreLikeToMillis(p.createdAt))].filter(Boolean).join(' · '),
-                href: p.applyUrl || p.sourceUrl || '',
-            }))
+            .map((p) => {
+                const dateLabel = relativeTime(firestoreLikeToMillis(p.createdAt));
+                return {
+                    title: p.title || '',
+                    badge: '공고',
+                    meta: [p.org, dateLabel].filter(Boolean).join(' · '),
+                    detail: {
+                        title: p.title || '',
+                        badgeLabel: '공고',
+                        badgeClass: 'bg-sky-500',
+                        org: p.org || '',
+                        dateLabel,
+                        tags: [...(p.region || []), ...(p.industry || [])],
+                        amountText: p.amountText || '',
+                        summary: p.summary || '',
+                        description: p.description || '',
+                        externalUrl: p.applyUrl || p.sourceUrl || '',
+                    },
+                };
+            })
             .filter((item) => item.title);
     }, [supportPrograms, now]);
 
@@ -130,12 +112,26 @@ export default function NewsView({ content, onBack, supportPrograms, newsItems }
             })
             .slice()
             .sort((a, b) => (Number(b.sortOrder) || 0) - (Number(a.sortOrder) || 0))
-            .map((n) => ({
-                title: n.title || '',
-                badge: '경제',
-                meta: [n.source, relativeTime(firestoreLikeToMillis(n.publishedAt))].filter(Boolean).join(' · '),
-                href: n.url || '',
-            }))
+            .map((n) => {
+                const dateLabel = relativeTime(firestoreLikeToMillis(n.publishedAt));
+                return {
+                    title: n.title || '',
+                    badge: '경제',
+                    meta: [n.source, dateLabel].filter(Boolean).join(' · '),
+                    detail: {
+                        title: n.title || '',
+                        badgeLabel: '경제',
+                        badgeClass: 'bg-orange-500',
+                        org: n.source || '',
+                        dateLabel,
+                        tags: [],
+                        amountText: '',
+                        summary: n.summary || '',
+                        description: n.description || '',
+                        externalUrl: n.url || '',
+                    },
+                };
+            })
             .filter((item) => item.title);
     }, [newsItems, now]);
 
@@ -190,7 +186,7 @@ export default function NewsView({ content, onBack, supportPrograms, newsItems }
                                             <div className="border-t border-black/[0.06]">
                                                 {noticePageItems.map((item, i) => (
                                                     <React.Fragment key={`${item.title}-${i}`}>
-                                                        <NewsRow item={item} isLast={i === noticePageItems.length - 1} />
+                                                        <NewsRow item={item} isLast={i === noticePageItems.length - 1} onOpen={setSelected} />
                                                         {i === 3 ? <AdSlot slotId="news-list-native" content={content} className="my-1" /> : null}
                                                     </React.Fragment>
                                                 ))}
@@ -213,7 +209,7 @@ export default function NewsView({ content, onBack, supportPrograms, newsItems }
                                         <>
                                             <div className="border-t border-black/[0.06]">
                                                 {econPageItems.map((item, i) => (
-                                                    <NewsRow key={`${item.title}-${i}`} item={item} isLast={i === econPageItems.length - 1} />
+                                                    <NewsRow key={`${item.title}-${i}`} item={item} isLast={i === econPageItems.length - 1} onOpen={setSelected} />
                                                 ))}
                                             </div>
                                             <Pager page={econPageClamped} totalPages={econTotalPages} onChange={setEconPage} />
@@ -242,6 +238,8 @@ export default function NewsView({ content, onBack, supportPrograms, newsItems }
                     </div>
                 </div>
             </section>
+
+            <ContentDetailModal item={selected} onClose={() => setSelected(null)} />
         </div>
     );
 }
