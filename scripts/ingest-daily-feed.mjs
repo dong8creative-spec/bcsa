@@ -3,7 +3,9 @@
  * 지원사업 + 뉴스 일일 자동 수집 스크립트
  *
  * 매일 07:00(KST)에 GitHub Actions(.github/workflows/daily-content-feed.yml)가 실행합니다.
- * - 지원사업: 기업마당(bizinfo.go.kr) 지원사업정보 오픈API → Firestore `supportPrograms` 컬렉션
+ * - 지원사업: 기업마당(bizinfo.go.kr) 지원사업정보 오픈API → Firestore `supportPrograms` 컬렉션.
+ *   전체 공고 조회 + hashtags=부산 조회를 함께 호출해서, 부산 조회에 포함된 공고는 region:['부산']로
+ *   표시한다 — 사이트의 "부산 지원사업" 섹션(SupportProgramsView.jsx)이 이 필드로 걸러 보여준다.
  * - 뉴스: 네이버 뉴스검색 API(NAVER API HUB, naverapihub.apigw.ntruss.com — 네이버가 기존
  *         openapi.naver.com 검색 API를 이쪽으로 이관함)에서 소상공인/자영업/창업 관련 키워드로 검색한
  *         기사 제목·발췌(요약)를 가져와 → Firestore `newsItems` 컬렉션
@@ -16,10 +18,14 @@
  * (Firestore 문서는 그대로 남아있고, 화면 렌더링 단계에서 필터링됩니다 — src/pages/NewsView.jsx,
  * src/pages/SupportProgramsView.jsx의 ONE_YEAR_MS 참고).
  *
- * 마감일 판정: 기업마당 API의 신청기간(reqstBeginEndDe) 필드가 비어있거나 파싱이 안 되면, 공고
- * 설명문 안에서 "OOOO.MM.DD ~ OOOO.MM.DD", "9월 1일부터 9월 30일까지", "~9.30", "9월 30일까지"
- * 같은 기간/마감 표현을 직접 찾아 마감일로 쓴다(extractDeadlineFromText). 그래도 못 찾을 때만
- * "상시모집"으로 남긴다 — 실제로는 기한이 있는데 상시로 잘못 표시되는 경우를 줄이기 위함.
+ * 마감일 판정 (3단계 폴백):
+ *   1) 기업마당 API의 신청기간 필드(reqstBeginEndDe 또는 reqstDt, "20260101 ~ 20260228" 형태)를 우선 사용.
+ *   2) 그게 없거나 파싱 실패하면, 공고 제목+요약문 안에서 "OOOO.MM.DD ~ OOOO.MM.DD", "9월 1일부터
+ *      9월 30일까지", "~9.30", "9월 30일까지" 같은 기간/마감 표현을 직접 찾는다(extractDeadlineFromText).
+ *   3) 그래도 못 찾으면, 공고의 신청 링크(applyUrl → 다르면 sourceUrl 순서)를 실제로 열어서 그 페이지의
+ *      본문 텍스트에서 같은 방식으로 기간/마감 표현을 찾는다(fetchDeadlineFromPage) — 기업마당 자체에는
+ *      신청기간이 없고 연결된 원문 사이트에만 있는 경우가 많기 때문(예: 특정 기관이 매 회차 접수기간을
+ *      자기 사이트에만 공지하는 경우). 페이지 접근에 실패하거나 여기서도 못 찾으면 그때만 "상시모집"으로 남긴다.
  *
  * 실행 전 필요한 환경변수:
  *   FIREBASE_SERVICE_ACCOUNT_KEY  - 파이어베이스 서비스 계정 키 JSON 전체(문자열)
@@ -40,6 +46,13 @@ const isDryRun = process.argv.includes('--dry-run');
 
 // 소스당 1회 실행 최대 처리 건수 캡(오작동 시 대량 오등록 방지 안전장치)
 const MAX_ITEMS_PER_SOURCE = 15;
+// 지원사업은 전체 조회 + 부산 조회를 합친 뒤 중복 제거하므로, 합친 후에도 한 번 더 상한을 둔다.
+const MAX_ITEMS_TOTAL = 25;
+
+// 원문 페이지에서 마감일을 찾기 위해 열어볼 때 쓰는 타임아웃/텍스트 길이 상한
+// (느리거나 응답이 없는 사이트 때문에 전체 실행이 오래 걸리지 않도록 방어).
+const PAGE_FETCH_TIMEOUT_MS = 8000;
+const PAGE_TEXT_MAX_LEN = 20000;
 
 // 네이버 뉴스검색에서 이 키워드들로 각각 검색해 결과를 모은다.
 // 자영업자/예비창업자/소상공인 관련 뉴스를 폭넓게 담기 위한 검색어 목록 — 필요 시 자유롭게 추가/수정 가능.
@@ -156,7 +169,7 @@ function parseDeadlineFromRange(rangeStr) {
  * bizinfo API의 reqstBeginEndDe(신청기간 구조화 필드)가 비어있거나 파싱에 실패했을 때 쓰는 보조 수단 —
  * "상시모집"으로 잘못 분류되는 공고를 줄이기 위함. 연도가 없는 표현(예: "9.1~9.30")은 올해로 가정하고,
  * 그 결과가 이미 두 달 이상 지난 날짜라면 내년으로 보정한다(연말에 등록된 "내년 상반기까지" 류 공고 대응).
- * 못 찾으면 null(= 여전히 상시모집으로 남음).
+ * 못 찾으면 null.
  */
 function extractDeadlineFromText(text) {
   if (!text || typeof text !== 'string') return null;
@@ -210,7 +223,105 @@ function extractDeadlineFromText(text) {
     if (d) return d;
   }
 
+  // 6) "접수기간 2026. 09. 14 ~ 2026. 09. 28" 처럼 라벨(접수기간/신청기간/모집기간) 뒤에 붙는 경우도
+  //    위 1)에서 대부분 잡히지만, 점 뒤에 공백이 많거나 줄바꿈이 끼는 실제 페이지 레이아웃을 위해
+  //    라벨을 기준으로 그 뒤 60자만 잘라 1)의 패턴을 한 번 더 시도한다.
+  m = text.match(/(?:접수기간|신청기간|모집기간)\s*[:：]?\s*([\s\S]{4,60})/);
+  if (m) {
+    const nested = m[1].match(/(20\d{2})[.\-년]\s?(\d{1,2})[.\-월]\s?(\d{1,2})\s*일?\s*(?:~|-|부터)\s*(20\d{2})[.\-년]\s?(\d{1,2})[.\-월]\s?(\d{1,2})/);
+    if (nested) {
+      const d = makeDate(Number(nested[4]), Number(nested[5]), Number(nested[6]));
+      if (d) return d;
+    }
+  }
+
   return null;
+}
+
+/** HTML에서 <script>/<style>/주석 블록을 통째로 지운 뒤 나머지를 stripHtml로 텍스트화. */
+function htmlPageToText(html) {
+  if (!html || typeof html !== 'string') return '';
+  const withoutNoise = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ');
+  return stripHtml(withoutNoise).slice(0, PAGE_TEXT_MAX_LEN);
+}
+
+/**
+ * 공고의 신청 링크(원문 페이지)를 실제로 열어서 그 페이지 텍스트에서 마감일을 찾는다.
+ * 기업마당 API 자체에는 신청기간 정보가 없고, 연결된 기관 사이트에만 접수기간이 적혀 있는 경우를 위한
+ * 마지막 폴백. 페이지 접근 실패/타임아웃/HTML이 아닌 응답(PDF 등)이면 조용히 null을 반환하고 넘어간다
+ * (원문 크롤링은 "되면 좋고 안 되면 상시로 남기는" 보조 수단이라 실패해도 전체 실행을 막지 않는다).
+ */
+async function fetchDeadlineFromPage(url) {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  try {
+    const res = await fetch(url, {
+      timeout: PAGE_FETCH_TIMEOUT_MS,
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; BCSA-ingest-bot/1.0; +https://bcsa.co.kr)',
+        Accept: 'text/html,application/xhtml+xml',
+      },
+    });
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType && !contentType.includes('text/html') && !contentType.includes('xhtml')) return null;
+    const html = await res.text();
+    const text = htmlPageToText(html);
+    return extractDeadlineFromText(text);
+  } catch (err) {
+    console.log(`  [deadline-crawl] ${url} 접근 실패 또는 시간초과 — 건너뜀 (${err.message})`);
+    return null;
+  }
+}
+
+/**
+ * 공고 하나의 마감일을 3단계 폴백으로 판정한다: 구조화 필드 → 제목/요약 텍스트 → 원문 페이지 크롤링.
+ * 앞 단계에서 찾으면 뒤 단계(특히 네트워크가 필요한 원문 크롤링)는 건너뛴다.
+ * 반환값의 usedCrawl은 원문 페이지 접근을 실제로 시도했는지(로그/통계용) 나타낸다.
+ */
+async function resolveDeadline({ item, title, summaryText, applyUrl, sourceUrl }) {
+  let deadline = parseDeadlineFromRange(item.reqstBeginEndDe || item.reqstDt);
+  if (deadline) return { deadline, usedCrawl: false };
+
+  deadline = extractDeadlineFromText(`${title} ${summaryText}`);
+  if (deadline) return { deadline, usedCrawl: false };
+
+  deadline = await fetchDeadlineFromPage(applyUrl);
+  if (deadline) return { deadline, usedCrawl: true };
+
+  if (sourceUrl && sourceUrl !== applyUrl) {
+    deadline = await fetchDeadlineFromPage(sourceUrl);
+    if (deadline) return { deadline, usedCrawl: true };
+  }
+
+  return { deadline: null, usedCrawl: true };
+}
+
+/**
+ * 기업마당 지원사업정보 API를 한 번 호출한다. hashtags를 넘기면 그 태그로 필터링된 결과만 온다
+ * (예: hashtags='부산' → 부산 지역 공고만). 공식 문서 기준 지역 해시태그는 시/도 한글명 그대로 사용.
+ */
+async function fetchBizinfoList(apiKey, hashtags) {
+  const params = new URLSearchParams({
+    crtfcKey: apiKey,
+    dataType: 'json',
+    pageUnit: String(MAX_ITEMS_PER_SOURCE),
+    pageIndex: '1',
+  });
+  if (hashtags) params.set('hashtags', hashtags);
+  const url = `https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do?${params.toString()}`;
+  const res = await fetch(url, { timeout: 20000 });
+  if (!res.ok) {
+    console.error(`[bizinfo${hashtags ? ':' + hashtags : ''}] API 응답 실패: HTTP ${res.status}`);
+    return [];
+  }
+  const json = await res.json();
+  // 응답 최상위 배열 키가 버전에 따라 다를 수 있어 방어적으로 탐색.
+  const items = json?.jsonArray || json?.items || json?.result || [];
+  return Array.isArray(items) ? items.slice(0, MAX_ITEMS_PER_SOURCE) : [];
 }
 
 async function ingestBizinfo(db) {
@@ -220,34 +331,48 @@ async function ingestBizinfo(db) {
     return { new: 0, updated: 0, skipped: 0 };
   }
 
-  const url = `https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do?crtfcKey=${encodeURIComponent(apiKey)}&dataType=json&pageUnit=${MAX_ITEMS_PER_SOURCE}&pageIndex=1`;
-  const res = await fetch(url, { timeout: 20000 });
-  if (!res.ok) {
-    console.error(`[bizinfo] API 응답 실패: HTTP ${res.status}`);
-    return { new: 0, updated: 0, skipped: 0 };
-  }
-  const json = await res.json();
-  // 응답 최상위 배열 키가 버전에 따라 다를 수 있어 방어적으로 탐색.
-  const items = json?.jsonArray || json?.items || json?.result || [];
-  if (!Array.isArray(items) || items.length === 0) {
+  // 전체 공고 + 부산 지역 공고(hashtags=부산)를 각각 조회한다. 기업마당 API 자체에 시/도 필드가
+  // 없어서(공식 문서 확인 — jrsdInsttNm 등 소관기관명만 있고 별도 지역 필드는 없음), 지역으로
+  // 걸러 받으려면 hashtags 파라미터로 조회하는 방법뿐이다. 두 결과를 pblancUrl 기준으로 합쳐서
+  // 부산 조회에 포함된 공고만 region:['부산']으로 표시하고, 나머지는 region:[]로 둔다
+  // (사이트의 "부산 지원사업" 섹션은 이 region 필드로 걸러 보여준다 — SupportProgramsView.jsx 참고).
+  const [generalItems, busanItems] = await Promise.all([
+    fetchBizinfoList(apiKey, null),
+    fetchBizinfoList(apiKey, '부산'),
+  ]);
+  if (generalItems.length === 0 && busanItems.length === 0) {
     console.log('[bizinfo] 수집된 공고가 없습니다. (응답 형식이 예상과 다르면 이 스크립트의 필드 매핑을 점검하세요)');
     return { new: 0, updated: 0, skipped: 0 };
   }
 
+  const busanUrlSet = new Set(busanItems.map((i) => i.pblancUrl).filter(Boolean));
+  const merged = new Map();
+  for (const item of [...generalItems, ...busanItems]) {
+    if (item.pblancUrl) merged.set(item.pblancUrl, item);
+  }
+  const allItems = Array.from(merged.values()).slice(0, MAX_ITEMS_TOTAL);
+
   const counts = { new: 0, updated: 0, skipped: 0 };
-  for (const item of items.slice(0, MAX_ITEMS_PER_SOURCE)) {
+  let crawledCount = 0;
+  let busanCount = 0;
+  for (const item of allItems) {
     const title = item.pblancNm || item.title || '';
     const org = item.jrsdInsttNm || item.excInsttNm || item.instt || '';
     const sourceUrl = item.pblancUrl || '';
     const applyUrl = item.rceptEngnHmpgUrl || sourceUrl;
     if (!title || !sourceUrl) continue;
 
+    const isBusan = busanUrlSet.has(sourceUrl);
+    if (isBusan) busanCount += 1;
+    const region = isBusan ? ['부산'] : [];
+
     const id = shortHash(sourceUrl);
     // bsnsSumryCn은 <p>/<br> 등이 섞인 raw HTML로 온다 — 화면에 태그가 그대로 노출되지 않도록
     // 순수 텍스트로 정리한 뒤에만 요약/설명/마감일 추출에 사용한다.
     const summaryText = stripHtml(item.bsnsSumryCn || '');
-    // 신청기간 구조화 필드가 비거나 파싱 실패하면, 제목+설명문에서 기간/마감 표현을 직접 찾는다.
-    const deadline = parseDeadlineFromRange(item.reqstBeginEndDe) || extractDeadlineFromText(`${title} ${summaryText}`);
+
+    const { deadline, usedCrawl } = await resolveDeadline({ item, title, summaryText, applyUrl, sourceUrl });
+    if (usedCrawl) crawledCount += 1;
 
     const result = await upsertDoc(db, 'supportPrograms', id, {
       onCreate: () => ({
@@ -256,7 +381,7 @@ async function ingestBizinfo(db) {
         summary: summaryText.slice(0, 120),
         description: summaryText,
         amountText: '',
-        region: [],
+        region,
         industry: item.pldirSportRealmLclasCodeNm ? [item.pldirSportRealmLclasCodeNm] : [],
         applyUrl,
         sourceUrl,
@@ -270,6 +395,7 @@ async function ingestBizinfo(db) {
         org,
         summary: summaryText.slice(0, 120),
         description: summaryText,
+        region,
         deadlineAt: deadline ? admin.firestore.Timestamp.fromDate(deadline) : null,
         isRolling: !deadline,
       }),
@@ -277,7 +403,7 @@ async function ingestBizinfo(db) {
     counts[result === 'new' ? 'new' : result === 'updated' ? 'updated' : 'skipped'] =
       (counts[result === 'new' ? 'new' : result === 'updated' ? 'updated' : 'skipped'] || 0) + 1;
   }
-  console.log(`[bizinfo] 신규 ${counts.new}건, 갱신 ${counts.updated}건, 건너뜀 ${counts.skipped}건`);
+  console.log(`[bizinfo] 신규 ${counts.new}건, 갱신 ${counts.updated}건, 건너뜀 ${counts.skipped}건 (부산 ${busanCount}건, 원문 페이지 크롤링 시도 ${crawledCount}건)`);
   return counts;
 }
 

@@ -60,7 +60,7 @@ function ProgramCard({ p, onOpen }) {
     );
 }
 
-function ProgramRow({ title, hint, items, page, totalPages, onPageChange, onOpen }) {
+function ProgramRow({ title, hint, items, page, totalPages, onPageChange, onOpen, emptyText }) {
     return (
         <div className="pb-10 last:pb-0">
             <div className="flex items-center justify-between mb-4">
@@ -76,7 +76,7 @@ function ProgramRow({ title, hint, items, page, totalPages, onPageChange, onOpen
                 </>
             ) : (
                 <div className="py-10 text-center text-gray-400 bg-soft rounded-2xl">
-                    <p className="text-sm">현재 등록된 지원사업이 없습니다.</p>
+                    <p className="text-sm">{emptyText || '현재 등록된 지원사업이 없습니다.'}</p>
                 </div>
             )}
         </div>
@@ -88,7 +88,15 @@ function ProgramRow({ title, hint, items, page, totalPages, onPageChange, onOpen
  *
  * 홈 화면에 인라인으로 있던 지원사업 전체 목록 섹션을 별도 페이지로 분리했다.
  * 데이터는 App.jsx에서 실시간 구독 중인 원본 supportPrograms 배열을 그대로 전달받아
- * 이 컴포넌트 내부에서 마감임박/신규/상시 세 그룹으로 가공한다(홈 화면용 8개 캡 없음).
+ * 이 컴포넌트 내부에서 마감임박/신규/부산 세 그룹으로 가공한다(홈 화면용 8개 캡 없음).
+ *
+ * 세 그룹은 서로 배타적이지 않다(같은 공고가 마감임박이면서 동시에 신규·부산일 수 있음) —
+ * 각 그룹은 "이 기준으로 보면 이런 공고들" 이라는 별도의 보기일 뿐이다.
+ * - 마감임박: 마감일이 있고(상시 제외) 아직 지나지 않은 공고를 마감일이 가까운 순으로.
+ * - 신규: 등록(createdAt) 후 7일 이내인 공고를 최신 등록순으로 (마감일 유무·지역 무관).
+ * - 부산: region 필드에 '부산'이 포함된 공고(자동수집은 scripts/ingest-daily-feed.mjs가 기업마당
+ *   API를 hashtags=부산으로 한 번 더 조회해서 채워준다. 관리자 수동 등록 시에도 지역에 "부산"을
+ *   입력하면 이 섹션에 잡힌다). 마감일이 가까운 공고를 먼저, 상시모집은 뒤에 최신 등록순으로.
  *
  * 정책: 등록(createdAt) 후 1년이 지난 공고는 자동으로 목록에서 숨긴다(ONE_YEAR_MS).
  * 노출: 각 그룹은 10개씩 페이지네이션된다(PAGE_SIZE).
@@ -101,9 +109,9 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
     const [selected, setSelected] = useState(null);
     const [urgentPage, setUrgentPage] = useState(1);
     const [freshPage, setFreshPage] = useState(1);
-    const [rollingPage, setRollingPage] = useState(1);
+    const [busanPage, setBusanPage] = useState(1);
 
-    const { urgent, fresh, rolling, urgentCount, freshCount } = useMemo(() => {
+    const { urgent, fresh, busan, urgentCount, freshCount, busanCount } = useMemo(() => {
         const rows = Array.isArray(supportPrograms) ? supportPrograms : [];
         const nowMs = Date.now();
         const visible = rows.filter((p) => {
@@ -112,20 +120,15 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
             return createdMs == null || (nowMs - createdMs) <= ONE_YEAR_MS; // 등록 1년 경과 시 자동 숨김
         });
 
-        const dated = [];
-        const rollingList = [];
-        visible.forEach((p) => {
-            if (p.isRolling) {
-                rollingList.push(p);
-                return;
-            }
+        // 마감임박: 마감일이 있고 아직 지나지 않은 공고만, 마감일이 가까운 순.
+        const dated = visible.filter((p) => {
+            if (p.isRolling) return false;
             const dMs = firestoreLikeToMillis(p.deadlineAt);
-            if (dMs == null || dMs < nowMs) return;
-            dated.push(p);
+            return dMs != null && dMs >= nowMs;
         });
         dated.sort((a, b) => firestoreLikeToMillis(a.deadlineAt) - firestoreLikeToMillis(b.deadlineAt));
-        rollingList.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
 
+        // 신규: 등록 7일 이내, 최신 등록순 (마감일 유무·지역 무관 — 상시모집 새 공고도 여기서 보인다).
         const freshList = visible
             .filter((p) => {
                 const cMs = firestoreLikeToMillis(p.createdAt);
@@ -133,27 +136,45 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
             })
             .sort((a, b) => firestoreLikeToMillis(b.createdAt) - firestoreLikeToMillis(a.createdAt));
 
+        // 부산: region에 '부산'이 포함된 공고. 마감일 가까운 순으로 먼저, 상시모집은 뒤에 최신 등록순.
+        const busanAll = visible.filter((p) => Array.isArray(p.region) && p.region.includes('부산'));
+        const busanDated = [];
+        const busanRolling = [];
+        busanAll.forEach((p) => {
+            if (p.isRolling) {
+                busanRolling.push(p);
+                return;
+            }
+            const dMs = firestoreLikeToMillis(p.deadlineAt);
+            if (dMs == null || dMs < nowMs) return; // 마감 지난 건 제외
+            busanDated.push(p);
+        });
+        busanDated.sort((a, b) => firestoreLikeToMillis(a.deadlineAt) - firestoreLikeToMillis(b.deadlineAt));
+        busanRolling.sort((a, b) => (Number(b.sortOrder) || 0) - (Number(a.sortOrder) || 0));
+        const busanList = [...busanDated, ...busanRolling];
+
         // "임박"은 D-10 이내(getSupportProgramDdayInfo와 동일 기준)로 통일한다.
         const urgentCountVal = dated.filter((p) => getSupportProgramDdayInfo(p).isUrgent).length;
 
         return {
             urgent: dated,
             fresh: freshList,
-            rolling: rollingList,
+            busan: busanList,
             urgentCount: urgentCountVal,
             freshCount: freshList.length,
+            busanCount: busanList.length,
         };
     }, [supportPrograms]);
 
     const urgentTotalPages = Math.max(1, Math.ceil(urgent.length / PAGE_SIZE));
     const freshTotalPages = Math.max(1, Math.ceil(fresh.length / PAGE_SIZE));
-    const rollingTotalPages = Math.max(1, Math.ceil(rolling.length / PAGE_SIZE));
+    const busanTotalPages = Math.max(1, Math.ceil(busan.length / PAGE_SIZE));
     const urgentPageClamped = Math.min(urgentPage, urgentTotalPages);
     const freshPageClamped = Math.min(freshPage, freshTotalPages);
-    const rollingPageClamped = Math.min(rollingPage, rollingTotalPages);
+    const busanPageClamped = Math.min(busanPage, busanTotalPages);
     const urgentItems = urgent.slice((urgentPageClamped - 1) * PAGE_SIZE, urgentPageClamped * PAGE_SIZE);
     const freshItems = fresh.slice((freshPageClamped - 1) * PAGE_SIZE, freshPageClamped * PAGE_SIZE);
-    const rollingItems = rolling.slice((rollingPageClamped - 1) * PAGE_SIZE, rollingPageClamped * PAGE_SIZE);
+    const busanItems = busan.slice((busanPageClamped - 1) * PAGE_SIZE, busanPageClamped * PAGE_SIZE);
 
     function openDetail(p) {
         const { label: badgeLabel, badgeClass } = getSupportProgramDdayInfo(p);
@@ -191,7 +212,7 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
                         긴 공고문 대신, 핵심만 요약해서 보여드립니다.
                     </p>
                     <div className="flex items-center gap-3 mt-8 flex-wrap">
-                        <span className="text-gray-500 text-sm">신규 {freshCount}건 · 마감임박 {urgentCount}건</span>
+                        <span className="text-gray-500 text-sm">신규 {freshCount}건 · 마감임박 {urgentCount}건 · 부산 {busanCount}건</span>
                     </div>
                 </div>
             </section>
@@ -202,7 +223,7 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
                         <div className="flex-1 min-w-0">
                             <ProgramRow title="마감임박 지원사업" hint="D-day 임박순" items={urgentItems} page={urgentPageClamped} totalPages={urgentTotalPages} onPageChange={setUrgentPage} onOpen={openDetail} />
                             <ProgramRow title="신규 지원사업" hint="NEW" items={freshItems} page={freshPageClamped} totalPages={freshTotalPages} onPageChange={setFreshPage} onOpen={openDetail} />
-                            <ProgramRow title="상시 모집" hint="마감 없음" items={rollingItems} page={rollingPageClamped} totalPages={rollingTotalPages} onPageChange={setRollingPage} onOpen={openDetail} />
+                            <ProgramRow title="부산 지원사업" hint="부산 소재" items={busanItems} page={busanPageClamped} totalPages={busanTotalPages} onPageChange={setBusanPage} onOpen={openDetail} emptyText="현재 등록된 부산 지원사업이 없습니다." />
                         </div>
 
                         {/* 우측 배너 광고 레일 — 구글 표준 300px 폭(300×250/300×600) 기준, 최대 3슬롯.
