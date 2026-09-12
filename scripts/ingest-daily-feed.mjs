@@ -54,9 +54,182 @@ const MAX_ITEMS_TOTAL = 25;
 const PAGE_FETCH_TIMEOUT_MS = 8000;
 const PAGE_TEXT_MAX_LEN = 20000;
 
-// 네이버 뉴스검색에서 이 키워드들로 각각 검색해 결과를 모은다.
-// 자영업자/예비창업자/소상공인 관련 뉴스를 폭넓게 담기 위한 검색어 목록 — 필요 시 자유롭게 추가/수정 가능.
-const NEWS_KEYWORDS = ['창업', '사업자', '예비창업', '예창', '지원사업', '부산청년'];
+// ==========================================
+// 뉴스 수집 설정 — 검색어/분류/필터링
+// ==========================================
+// 검색어를 "카테고리 그룹"별로 묶어서 관리한다. 그룹마다 기본 카테고리를 붙여두면,
+// 어떤 검색어로 찾은 기사인지에 따라 8개 카테고리(지원사업/창업·투자/모집·행사/상권·소비/
+// 판로·마케팅/세무·노무/기술·트렌드/위기·대응) 중 하나로 자동 분류할 수 있다(resolveCategory 참고).
+// "부산" 접두어가 없는 그룹(세무·노무 등)은 지역 무관하게 전국 사업자 공통 정보라 그대로 둔다.
+const NEWS_KEYWORD_GROUPS = [
+  {
+    category: '지원사업',
+    keywords: [
+      '부산 소상공인 지원', '부산 청년창업 지원', '부산 창업 지원사업', '부산 중소기업 지원사업',
+      '부산 사업화 지원', '부산 정부지원금 사업자', '부산 정책자금 소상공인', '부산 창업자금',
+      '부산 소상공인 대출', '부산 신용보증 소상공인', '부산 폐업 지원', '부산 재창업 지원',
+    ],
+  },
+  {
+    category: '창업·투자',
+    keywords: [
+      '부산 창업기업 모집', '부산 스타트업 모집', '부산 입주기업 모집', '부산 창업공간 모집',
+      '부산 IR 참가기업 모집', '부산 데모데이',
+    ],
+  },
+  {
+    category: '모집·행사',
+    keywords: [
+      '부산 창업교육 모집', '부산 창업 컨설팅', '부산 창업 공모전', '부산 박람회 참가기업',
+      '부산 팝업스토어 모집', '부산 청년사업가 네트워킹',
+    ],
+  },
+  {
+    category: '상권·소비',
+    keywords: [
+      '부산 소상공인', '부산 자영업', '부산 골목상권', '부산 전통시장', '부산 지역상권',
+      '부산 상권 분석', '부산 소비동향', '부산 유동인구 상권', '부산 공실률 상가',
+      '부산 상가 임대료', '부산 관광객 소비', '부산 외식업 동향',
+    ],
+  },
+  {
+    category: '판로·마케팅',
+    keywords: [
+      '부산 중소기업 판로', '부산 소상공인 판로', '부산 온라인 판로 지원', '부산 라이브커머스 지원',
+      '부산 로컬브랜드', '부산 로컬크리에이터', '부산 공동구매', '부산 수출 지원 중소기업',
+      '부산 해외 판로', '부산 공공조달 중소기업', '부산 마케팅 지원사업',
+    ],
+  },
+  {
+    // 지역명이 없어도 전국 사업자에게 공통으로 적용되는 세무/노무/법률 정보라 "부산" 접두어 없이 수집.
+    category: '세무·노무',
+    keywords: [
+      '소상공인 세금 개정', '자영업자 세금 지원', '사업자 부가가치세', '개인사업자 종합소득세',
+      '소상공인 고용지원금', '자영업자 4대보험', '소상공인 최저임금', '사업자 인건비 지원',
+      '상가임대차 개정', '전자상거래법 사업자', '표시광고법 소상공인', '배달앱 수수료 소상공인',
+      '온라인 플랫폼 규제 소상공인',
+    ],
+  },
+  {
+    category: '기술·트렌드',
+    keywords: [
+      '부산 소상공인 AI', '부산 중소기업 디지털전환', '부산 스마트상점', '부산 콘텐츠기업 지원',
+      '부산 관광기업 지원', '부산 식품기업 지원', '부산 뷰티기업 지원', '부산 영상콘텐츠 지원',
+      '부산 해양스타트업', '부산 물류스타트업', '소상공인 AI 활용', '자영업 마케팅 트렌드',
+      '온라인 소비 트렌드',
+    ],
+  },
+];
+const NEWS_KEYWORDS = NEWS_KEYWORD_GROUPS.flatMap((g) => g.keywords);
+const KEYWORD_CATEGORY_MAP = new Map();
+NEWS_KEYWORD_GROUPS.forEach((g) => g.keywords.forEach((k) => KEYWORD_CATEGORY_MAP.set(k, g.category)));
+
+// 48시간이 지난 기사는 "오늘의 뉴스"로서 의미가 없어 수집하지 않는다.
+const NEWS_RECENCY_MS = 48 * 60 * 60 * 1000;
+// 검색어가 73개나 되므로(위 그룹 합계) 한 번 실행에 저장하는 뉴스 건수에는 별도 상한을 둔다
+// (bizinfo의 MAX_ITEMS_PER_SOURCE와는 별개 — 뉴스는 검색어 자체가 많아 그 캡을 그대로 쓰면 너무 적다).
+const NEWS_MAX_ITEMS_PER_RUN = 60;
+// 키워드 73개를 연달아 호출하다 네이버 API에 과부하를 주지 않도록 요청 사이에 살짝 텀을 둔다.
+const NEWS_REQUEST_INTERVAL_MS = 120;
+
+// 기사 제목/요약에 아래 단어가 하나도 없으면 "사업자에게 필요한 정보"로 보기 어려워 제외한다
+// (부산 경제 뉴스만으로 검색하면 대기업 실적·부동산 기사까지 섞이는 것을 막기 위한 핵심 필터).
+const REQUIRED_TARGET_WORDS = [
+  '소상공인', '자영업자', '개인사업자', '중소기업', '스타트업', '창업기업', '예비창업자',
+  '초기창업기업', '청년기업', '청년창업가', '로컬기업', '로컬크리에이터', '지역기업',
+  '1인기업', '벤처기업', '사회적기업', '협동조합',
+];
+
+// 아래 표현이 제목/요약의 중심이면 대기업 실적·주가·공시 기사일 가능성이 높아 제외 대상으로 본다.
+const EXCLUDE_TERMS = [
+  '대기업', '재벌', '그룹 총수', '회장 취임', '부회장', '오너가', '계열사 실적', '분기 실적',
+  '실적 발표', '영업이익', '매출 전망', '목표주가', '증권가', '특징주', '주가 급등', '주가 하락',
+  '시가총액', '배당', '공시', '코스피', '코스닥', '지분 인수', '기업 합병', 'M&A',
+];
+// 다만 위 EXCLUDE_TERMS가 있어도, 아래 표현이 함께 있으면 소상공인/스타트업과 실제로 관련된
+// 기사(협업·입점·상생 등)일 가능성이 커서 제외하지 않는다 — "대기업 이름이 등장했다"는 이유만으로
+// 걸러내지 않기 위한 예외 목록.
+const OVERRIDE_TERMS = [
+  '상생', '협력업체', '납품', '입점', '판로', '지역상생', '오픈이노베이션',
+  '스타트업 지원', '소상공인 지원', '공급업체 모집', '참가기업 모집',
+];
+
+// 폐업/연체/재기 같은 위기 상황을 다루는 기사는 검색어 그룹과 무관하게 "위기·대응" 카테고리로
+// 재분류한다(resolveCategory에서 최우선으로 검사). 너무 흔한 단어(임대료, 수수료 단독)는 상권·세무
+// 기사까지 오분류할 수 있어 제외하고, 위기 상황이 뚜렷한 구체적 표현만 골랐다.
+const CRISIS_TERMS = [
+  '폐업 위기', '폐업 지원', '연체율', '연체 증가', '임대료 부담', '수수료 부담',
+  '재기 지원', '재창업 지원', '경영위기', '자금난', '부도',
+];
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** 제목에서 [단독]/【사진】 같은 대괄호 태그와 기호를 지우고 한글/영문/숫자만 남겨 비교하기 쉽게 만든다. */
+function normalizeTitleForDedup(title) {
+  return String(title || '')
+    .replace(/\[[^\]]*\]/g, ' ')
+    .replace(/【[^】]*】/g, ' ')
+    .replace(/[^\p{L}\p{N}]+/gu, '')
+    .toLowerCase();
+}
+
+function charBigramSet(s) {
+  const grams = new Set();
+  for (let i = 0; i < s.length - 1; i++) grams.add(s.slice(i, i + 2));
+  return grams;
+}
+
+/** 두 정규화된 제목의 유사도(0~1, 글자 2-gram Jaccard). 같은 사건을 다룬 재작성 기사 판별용. */
+function titleSimilarity(a, b) {
+  if (!a || !b) return a === b ? 1 : 0;
+  const ga = charBigramSet(a);
+  const gb = charBigramSet(b);
+  if (ga.size === 0 || gb.size === 0) return a === b ? 1 : 0;
+  let inter = 0;
+  for (const g of ga) if (gb.has(g)) inter += 1;
+  const union = ga.size + gb.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
+
+const TITLE_DUP_THRESHOLD = 0.82;
+
+function isDuplicateTitle(normTitle, seenNormTitles) {
+  return seenNormTitles.some((seen) => titleSimilarity(normTitle, seen) >= TITLE_DUP_THRESHOLD);
+}
+
+/** REQUIRED_TARGET_WORDS를 만족하고(핵심 대상어 최소 1개), EXCLUDE_TERMS에 걸리지 않아야 통과. */
+function passesContentFilters(text) {
+  const hasRequiredTarget = REQUIRED_TARGET_WORDS.some((w) => text.includes(w));
+  if (!hasRequiredTarget) return false;
+  const hasExclude = EXCLUDE_TERMS.some((w) => text.includes(w));
+  if (hasExclude) {
+    const hasOverride = OVERRIDE_TERMS.some((w) => text.includes(w));
+    if (!hasOverride) return false;
+  }
+  return true;
+}
+
+/** 위기 관련 표현이 있으면 "위기·대응"으로, 아니면 검색어가 속한 기본 카테고리로 분류. */
+function resolveCategory(text, keywordUsed) {
+  if (CRISIS_TERMS.some((term) => text.includes(term))) return '위기·대응';
+  return KEYWORD_CATEGORY_MAP.get(keywordUsed) || '창업·투자';
+}
+
+/** 기사에 언급된 핵심 대상어를 최대 3개까지 뽑아 "이 기사는 누구에게 해당되는가"를 짧게 표시. */
+function extractTargets(text) {
+  const found = [];
+  for (const w of REQUIRED_TARGET_WORDS) {
+    if (found.length >= 3) break;
+    if (text.includes(w)) found.push(w);
+  }
+  return found;
+}
+
+function formatDeadlineText(date) {
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}까지`;
+}
 
 function shortHash(input) {
   return crypto.createHash('sha1').update(String(input)).digest('hex').slice(0, 20);
@@ -362,14 +535,19 @@ async function ingestBizinfo(db) {
     const applyUrl = item.rceptEngnHmpgUrl || sourceUrl;
     if (!title || !sourceUrl) continue;
 
-    const isBusan = busanUrlSet.has(sourceUrl);
-    if (isBusan) busanCount += 1;
-    const region = isBusan ? ['부산'] : [];
-
     const id = shortHash(sourceUrl);
     // bsnsSumryCn은 <p>/<br> 등이 섞인 raw HTML로 온다 — 화면에 태그가 그대로 노출되지 않도록
     // 순수 텍스트로 정리한 뒤에만 요약/설명/마감일 추출에 사용한다.
     const summaryText = stripHtml(item.bsnsSumryCn || '');
+
+    // 부산 판정: hashtags=부산 조회 결과에 있었거나(busanUrlSet), 제목/소관기관/요약에 "부산"이 직접
+    // 나오면 부산으로 본다. hashtags 파라미터가 공식 문서대로 정확히 동작하지 않는 경우(실제로 제목에
+    // "[부산]"이 박힌 공고인데도 hashtags=부산 조회에는 안 잡히는 사례를 확인함)를 텍스트 매칭으로
+    // 보완하기 위한 이중 판정 — 둘 중 하나만 맞아도 부산으로 분류한다.
+    const textMentionsBusan = /부산/.test(`${title} ${org} ${summaryText}`);
+    const isBusan = busanUrlSet.has(sourceUrl) || textMentionsBusan;
+    if (isBusan) busanCount += 1;
+    const region = isBusan ? ['부산'] : [];
 
     const { deadline, usedCrawl } = await resolveDeadline({ item, title, summaryText, applyUrl, sourceUrl });
     if (usedCrawl) crawledCount += 1;
@@ -408,11 +586,25 @@ async function ingestBizinfo(db) {
 }
 
 /**
- * NAVER API HUB 뉴스검색 API로 키워드별 최신 기사를 가져와 newsItems에 upsert.
+ * NAVER API HUB 뉴스검색 API로 NEWS_KEYWORD_GROUPS의 검색어(73개)를 각각 조회해 newsItems에 upsert.
  * (2026년 이전 구버전 openapi.naver.com/v1/search/news.json + X-Naver-Client-Id 방식은
  * 네이버가 종료하고 NAVER API HUB로 이관함 — 도메인/경로/인증 헤더가 모두 바뀌었다.)
+ *
+ * 파이프라인(검색어별로 최신순 조회 → 아래 순서로 필터링):
+ *  1) 48시간 이내 기사만 (NEWS_RECENCY_MS)
+ *  2) REQUIRED_TARGET_WORDS 중 하나 이상 포함 — 아니면 사업자와 무관한 기사로 보고 제외
+ *  3) EXCLUDE_TERMS(대기업 실적/주가/공시 등)에 해당하면 제외하되, OVERRIDE_TERMS(상생/입점/
+ *     협력 등)가 함께 있으면 제외하지 않음
+ *  4) 이미 수집한 기사와 제목이 매우 유사하면(titleSimilarity ≥ TITLE_DUP_THRESHOLD) 재작성
+ *     기사로 보고 제외 — 링크가 달라도 같은 사건을 다룬 기사가 여러 매체에서 나오는 경우가 많음
+ *  5) CRISIS_TERMS가 있으면 "위기·대응", 아니면 검색어가 속한 그룹의 기본 카테고리로 자동 분류
+ *  6) 기사에 언급된 핵심 대상어(최대 3개)와, 제목/요약에서 뽑을 수 있으면 신청기한도 함께 저장
+ *
  * API 응답은 기사 제목/발췌(description)만 주기 때문에, summary에는 그 발췌 전문을 담아
- * "기사 발췌" 형태로 보여준다(전체 본문을 가져오는 게 아님 — 원문은 externalUrl로 연결).
+ * "기사 발췌" 형태로 보여준다(전체 본문을 가져오는 게 아님 — 원문은 externalUrl로 연결). "2문장
+ * 요약"은 네이버가 자체적으로 잘라주는 발췌를 그대로 쓰는 것이고, 기사 본문을 다시 읽고 "왜
+ * 중요한지"를 새로 써주는 것은 아니다 — 그렇게 하려면 별도 LLM 요약 호출이 필요해서, 우선 여기까지만
+ * 구현했다(필요하면 다음 단계로 추가 가능).
  */
 async function ingestNaverNews(db) {
   const clientId = process.env.NAVER_CLIENT_ID;
@@ -422,11 +614,15 @@ async function ingestNaverNews(db) {
     return { new: 0, updated: 0, skipped: 0 };
   }
 
-  const seen = new Set();
+  const seenLinks = new Set();
+  const seenNormTitles = [];
   const collected = [];
+  let rejectedByFilter = 0;
+  let rejectedByDup = 0;
+  let rejectedByAge = 0;
 
   for (const query of NEWS_KEYWORDS) {
-    if (collected.length >= MAX_ITEMS_PER_SOURCE) break;
+    if (collected.length >= NEWS_MAX_ITEMS_PER_RUN) break;
     const url = `https://naverapihub.apigw.ntruss.com/search/v1/news?query=${encodeURIComponent(query)}&display=10&sort=date`;
     let res;
     try {
@@ -435,7 +631,7 @@ async function ingestNaverNews(db) {
           'X-NCP-APIGW-API-KEY-ID': clientId,
           'X-NCP-APIGW-API-KEY': clientSecret,
         },
-        timeout: 20000,
+        timeout: 8000,
       });
     } catch (err) {
       console.error(`[naver-news:${query}] 요청 실패:`, err.message);
@@ -448,21 +644,45 @@ async function ingestNaverNews(db) {
     const json = await res.json();
     for (const item of json.items || []) {
       const link = item.originallink || item.link || '';
-      if (!link || seen.has(link)) continue;
-      seen.add(link);
-      collected.push(item);
+      if (!link || seenLinks.has(link)) continue;
+
+      const title = stripHtml(item.title);
+      if (!title) continue;
+      const description = stripHtml(item.description);
+
+      const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
+      if (Number.isNaN(publishedAt.getTime()) || Date.now() - publishedAt.getTime() > NEWS_RECENCY_MS) {
+        rejectedByAge += 1;
+        continue;
+      }
+
+      const fullText = `${title} ${description}`;
+      if (!passesContentFilters(fullText)) {
+        rejectedByFilter += 1;
+        continue;
+      }
+
+      const normTitle = normalizeTitleForDedup(title);
+      if (isDuplicateTitle(normTitle, seenNormTitles)) {
+        rejectedByDup += 1;
+        continue;
+      }
+
+      seenLinks.add(link);
+      seenNormTitles.push(normTitle);
+      collected.push({ link, title, description, publishedAt, query, fullText });
+      if (collected.length >= NEWS_MAX_ITEMS_PER_RUN) break;
     }
+    await sleep(NEWS_REQUEST_INTERVAL_MS);
   }
 
   const counts = { new: 0, updated: 0, skipped: 0 };
-  for (const item of collected.slice(0, MAX_ITEMS_PER_SOURCE)) {
-    const link = item.originallink || item.link || '';
-    const title = stripHtml(item.title);
-    const description = stripHtml(item.description);
-    if (!link || !title) continue;
-
+  for (const c of collected) {
+    const { link, title, description, publishedAt, query, fullText } = c;
     const id = shortHash(link);
-    const publishedAt = item.pubDate ? new Date(item.pubDate) : new Date();
+    const category = resolveCategory(fullText, query);
+    const targets = extractTargets(fullText);
+    const deadline = extractDeadlineFromText(fullText);
 
     const result = await upsertDoc(db, 'newsItems', id, {
       onCreate: () => ({
@@ -470,7 +690,10 @@ async function ingestNaverNews(db) {
         source: hostnameLabel(link),
         summary: description.slice(0, 200),
         url: link,
-        category: 'econ',
+        category,
+        target: targets.join(', '),
+        deadlineText: deadline ? formatDeadlineText(deadline) : '',
+        keyword: query,
         publishedAt: admin.firestore.Timestamp.fromDate(publishedAt),
       }),
       onUpdate: () => null, // 뉴스는 내용이 바뀔 일이 없어 갱신 불필요
@@ -478,7 +701,10 @@ async function ingestNaverNews(db) {
     counts[result === 'new' ? 'new' : result === 'updated' ? 'updated' : 'skipped'] =
       (counts[result === 'new' ? 'new' : result === 'updated' ? 'updated' : 'skipped'] || 0) + 1;
   }
-  console.log(`[naver-news] 검색 수집 ${collected.length}건 중 신규 ${counts.new}건, 건너뜀 ${counts.skipped}건`);
+  console.log(
+    `[naver-news] 키워드 ${NEWS_KEYWORDS.length}개 조회, 필터 통과 ${collected.length}건 중 신규 ${counts.new}건, 건너뜀 ${counts.skipped}건` +
+      ` (제외: 48시간초과 ${rejectedByAge}건, 대상어/대기업필터 ${rejectedByFilter}건, 중복제목 ${rejectedByDup}건)`
+  );
   return counts;
 }
 

@@ -7,13 +7,17 @@ import ContentDetailModal from '../components/ContentDetailModal';
 /**
  * NewsView — 뉴스 페이지
  *
- * newsItems 컬렉션(관리자 수동 등록 + 매일 07:00 언론사 RSS 자동 수집)만 보여준다.
+ * newsItems 컬렉션(관리자 수동 등록 + 매일 07:00 네이버 뉴스검색 API 자동 수집)만 보여준다.
  *
  * 지원사업 공고(supportPrograms)는 전용 "지원사업" 페이지(SupportProgramsView)에서만 노출한다.
  * 예전에는 이 페이지에도 supportPrograms를 "지원사업 · 공고" 탭으로 함께 보여줬는데, 그러면 같은
  * 공고가 지원사업 페이지와 뉴스 페이지 두 군데에 동시에 노출돼 헷갈리므로, 뉴스 페이지는 이제
- * newsItems만 다룬다. newsItems 문서의 category 필드가 'notice'면 "공고" 배지, 그 외에는
- * "경제" 배지로 구분해서 보여준다(둘 다 같은 newsItems 컬렉션 안에서만 구분되는 것이라 중복이 아니다).
+ * newsItems만 다룬다.
+ *
+ * 카테고리: 자동수집 스크립트(scripts/ingest-daily-feed.mjs)가 검색어 그룹에 따라 8개 카테고리
+ * (지원사업/창업·투자/모집·행사/상권·소비/판로·마케팅/세무·노무/기술·트렌드/위기·대응) 중 하나를
+ * category 필드에 저장한다 — CATEGORY_META가 배지 색을 정의한다. 예전 방식(notice/econ 두 종류)으로
+ * 저장된 문서도 있을 수 있어 하위 호환으로 같이 처리한다(legacy 항목).
  *
  * 정책: 발행일(publishedAt) 후 1년이 지난 항목은 자동으로 목록에서 숨긴다(ONE_YEAR_MS).
  * 노출: 한 페이지에 10개씩만 보여주고, 10개를 넘으면 페이지 번호를 눌러 넘겨볼 수 있다(PAGE_SIZE).
@@ -23,6 +27,26 @@ import ContentDetailModal from '../components/ContentDetailModal';
 
 const PAGE_SIZE = 10;
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+
+// 카테고리별 배지 라벨/색 — scripts/ingest-daily-feed.mjs의 NEWS_KEYWORD_GROUPS 카테고리와 1:1로 맞춘다.
+// notice/econ은 이전 수집 방식으로 저장된 문서를 위한 하위 호환 항목.
+const CATEGORY_META = {
+    '지원사업': { label: '지원사업', badgeClass: 'bg-blue-600' },
+    '창업·투자': { label: '창업·투자', badgeClass: 'bg-indigo-500' },
+    '모집·행사': { label: '모집·행사', badgeClass: 'bg-sky-500' },
+    '상권·소비': { label: '상권·소비', badgeClass: 'bg-amber-500' },
+    '판로·마케팅': { label: '판로·마케팅', badgeClass: 'bg-emerald-500' },
+    '세무·노무': { label: '세무·노무', badgeClass: 'bg-slate-500' },
+    '기술·트렌드': { label: '기술·트렌드', badgeClass: 'bg-purple-500' },
+    '위기·대응': { label: '위기·대응', badgeClass: 'bg-red-500' },
+    notice: { label: '공고', badgeClass: 'bg-sky-500' },
+    econ: { label: '경제', badgeClass: 'bg-orange-500' },
+};
+const DEFAULT_CATEGORY_META = { label: '뉴스', badgeClass: 'bg-gray-400' };
+
+function categoryMetaFor(category) {
+    return CATEGORY_META[category] || DEFAULT_CATEGORY_META;
+}
 
 function relativeTime(ms) {
     if (ms == null || !Number.isFinite(ms)) return '';
@@ -39,7 +63,6 @@ function relativeTime(ms) {
 }
 
 function NewsRow({ item, isLast, onOpen }) {
-    const badgeClass = item.badge === '공고' ? 'bg-sky-500' : 'bg-orange-500';
     return (
         <button
             type="button"
@@ -47,7 +70,7 @@ function NewsRow({ item, isLast, onOpen }) {
             className={`w-full flex items-center justify-between gap-4 py-5 px-2 -mx-2 rounded-xl hover:bg-soft/70 transition-colors text-left ${isLast ? '' : 'border-b border-black/[0.06]'}`}
         >
             <div className="flex items-center gap-3 min-w-0">
-                <span className={`inline-flex items-center justify-center h-5 px-2.5 rounded-full text-[11px] font-bold text-white shrink-0 whitespace-nowrap ${badgeClass}`}>{item.badge}</span>
+                <span className={`inline-flex items-center justify-center h-5 px-2.5 rounded-full text-[11px] font-bold text-white shrink-0 whitespace-nowrap ${item.badgeClass}`}>{item.badge}</span>
                 <p className="text-sm md:text-base font-semibold text-dark truncate">{item.title}</p>
             </div>
             <span className="text-xs text-gray-500 whitespace-nowrap shrink-0 ml-4">{item.meta}</span>
@@ -74,20 +97,25 @@ export default function NewsView({ content, onBack, newsItems }) {
             .slice()
             .sort((a, b) => (Number(b.sortOrder) || 0) - (Number(a.sortOrder) || 0))
             .map((n) => {
-                const isNotice = n.category === 'notice';
+                const meta = categoryMetaFor(n.category);
                 const dateLabel = relativeTime(firestoreLikeToMillis(n.publishedAt));
+                const targets = String(n.target || '')
+                    .split(',')
+                    .map((t) => t.trim())
+                    .filter(Boolean);
                 return {
                     title: n.title || '',
-                    badge: isNotice ? '공고' : '경제',
+                    badge: meta.label,
+                    badgeClass: meta.badgeClass,
                     meta: [n.source, dateLabel].filter(Boolean).join(' · '),
                     detail: {
                         title: n.title || '',
-                        badgeLabel: isNotice ? '공고' : '경제',
-                        badgeClass: isNotice ? 'bg-sky-500' : 'bg-orange-500',
+                        badgeLabel: meta.label,
+                        badgeClass: meta.badgeClass,
                         org: n.source || '',
                         dateLabel,
-                        tags: [],
-                        amountText: '',
+                        tags: targets,
+                        amountText: n.deadlineText ? `신청기한: ${n.deadlineText}` : '',
                         summary: n.summary || '',
                         description: n.description || '',
                         externalUrl: n.url || '',
