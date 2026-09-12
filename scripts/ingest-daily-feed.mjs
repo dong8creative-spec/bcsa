@@ -4,8 +4,11 @@
  *
  * 매일 07:00(KST)에 GitHub Actions(.github/workflows/daily-content-feed.yml)가 실행합니다.
  * - 지원사업: 기업마당(bizinfo.go.kr) 지원사업정보 오픈API → Firestore `supportPrograms` 컬렉션.
- *   전체 공고 조회 + hashtags=부산 조회를 함께 호출해서, 부산 조회에 포함된 공고는 region:['부산']로
- *   표시한다 — 사이트의 "부산 지원사업" 섹션(SupportProgramsView.jsx)이 이 필드로 걸러 보여준다.
+ *   전체 공고 조회 + hashtags=부산 조회를 함께 호출해 후보군을 넓히되, 실제 region:['부산'] 판정은
+ *   제목/소관기관명에 "부산"이 명시적으로 나오는 공고만으로 좁힌다 — 사이트의 "부산 지원사업" 섹션
+ *   (SupportProgramsView.jsx)이 이 필드로 걸러 보여준다. (전국 대상 공고의 긴 안내문 안에 "…서울,
+ *   부산, 대구… 전국 신청 가능" 식으로 다른 지역과 나란히 "부산"이 언급되는 경우가 많아, 본문 전체를
+ *   훑는 방식은 사실상 전국 공고를 전부 "부산" 것으로 오분류하는 결과를 낳았다 — 실사용자 신고로 확인.)
  * - 뉴스: 네이버 뉴스검색 API(NAVER API HUB, naverapihub.apigw.ntruss.com — 네이버가 기존
  *         openapi.naver.com 검색 API를 이쪽으로 이관함)에서 소상공인/자영업/창업 관련 키워드로 검색한
  *         기사 제목·발췌(요약)를 가져와 → Firestore `newsItems` 컬렉션
@@ -560,12 +563,19 @@ async function ingestBizinfo(db) {
     // 순수 텍스트로 정리한 뒤에만 요약/설명/마감일 추출에 사용한다.
     const summaryText = stripHtml(item.bsnsSumryCn || '');
 
-    // 부산 판정: hashtags=부산 조회 결과에 있었거나(busanUrlSet), 제목/소관기관/요약에 "부산"이 직접
-    // 나오면 부산으로 본다. hashtags 파라미터가 공식 문서대로 정확히 동작하지 않는 경우(실제로 제목에
-    // "[부산]"이 박힌 공고인데도 hashtags=부산 조회에는 안 잡히는 사례를 확인함)를 텍스트 매칭으로
-    // 보완하기 위한 이중 판정 — 둘 중 하나만 맞아도 부산으로 분류한다.
-    const textMentionsBusan = /부산/.test(`${title} ${org} ${summaryText}`);
-    const isBusan = busanUrlSet.has(sourceUrl) || textMentionsBusan;
+    // 부산 판정: 제목 또는 소관기관명(주최/주관)에 "부산"이 직접 나오는 공고만 부산으로 본다.
+    // 이전 버전은 bsnsSumryCn(사업 요약 본문) 전체에서 "부산"을 찾았는데, 전국 대상 공고가 신청
+    // 가능 지역을 "서울·부산·대구·…" 식으로 나열하는 경우가 많아 그런 전국 공고까지 죄다 부산으로
+    // 잘못 분류되는 문제가 있었다(실사용자 신고로 확인 — 김제시/전주 공고가 "부산 지원사업"에 노출됨).
+    // hashtags=부산 조회(busanUrlSet)도 참고는 하되, 기업마당의 hashtags 파라미터가 항상 지역을
+    // 정확히 걸러주는 건 아니라서(공식 문서에 지역 전용 필드가 없음) 제목/기관명 매칭을 반드시
+    // 함께 요구한다 — hashtags 결과 단독으로는 부산으로 분류하지 않는다.
+    const titleOrOrgMentionsBusan = /부산/.test(`${title} ${org}`);
+    const isBusan = titleOrOrgMentionsBusan;
+    if (busanUrlSet.has(sourceUrl) && !titleOrOrgMentionsBusan) {
+      // hashtags=부산 조회엔 잡혔지만 제목/기관명엔 "부산"이 없는 경우 — 참고용으로만 로그를 남긴다.
+      console.log(`[bizinfo] hashtags=부산 후보였지만 제목/기관명 불일치로 제외: ${title}`);
+    }
     if (isBusan) busanCount += 1;
     const region = isBusan ? ['부산'] : [];
 
