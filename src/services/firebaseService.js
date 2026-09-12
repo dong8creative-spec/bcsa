@@ -1441,6 +1441,57 @@ export const firebaseService = {
       throw e;
     }
   },
+
+  // ==========================================
+  // News items (뉴스 자동 수집 피드)
+  // ==========================================
+  subscribeNewsItems(callback) {
+    return onSnapshot(
+      collection(db, 'newsItems'),
+      (snapshot) => {
+        const rows = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        rows.sort((a, b) => {
+          const am = a.sortOrder ?? (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0);
+          const bm = b.sortOrder ?? (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0);
+          return bm - am;
+        });
+        callback(rows);
+      },
+      (error) => {
+        console.error('subscribeNewsItems error:', error);
+        callback([]);
+      }
+    );
+  },
+
+  async createNewsItem(data) {
+    const docRef = await addDoc(collection(db, 'newsItems'), {
+      ...data,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return docRef.id;
+  },
+
+  async updateNewsItem(newsId, data) {
+    const id = String(newsId || '').trim();
+    if (!id) throw new Error('updateNewsItem: newsId가 비어 있습니다.');
+    await updateDoc(doc(db, 'newsItems', id), {
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
+  },
+
+  async deleteNewsItem(newsId) {
+    const id = String(newsId || '').trim();
+    if (!id) return;
+    try {
+      await deleteDoc(doc(db, 'newsItems', id));
+    } catch (e) {
+      console.error('deleteNewsItem', e);
+      throw e;
+    }
+  },
 };
 
 export default firebaseService;

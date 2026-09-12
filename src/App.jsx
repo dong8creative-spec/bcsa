@@ -361,6 +361,7 @@ const App = () => {
     const [popupPrograms, setPopupPrograms] = useState([]); // 최대 3개 프로그램 팝업
     const [externalEventPosters, setExternalEventPosters] = useState([]);
     const [supportPrograms, setSupportPrograms] = useState([]);
+    const [newsItems, setNewsItems] = useState([]);
     const [applySeminarFromPopup, setApplySeminarFromPopup] = useState(null);
     const [isPopupApplyModalOpen, setIsPopupApplyModalOpen] = useState(false);
     const [popupApplicationData, setPopupApplicationData] = useState({ 
@@ -1209,6 +1210,12 @@ const App = () => {
     useEffect(() => {
         if (!firebaseService?.subscribeSupportPrograms) return;
         const unsub = firebaseService.subscribeSupportPrograms(setSupportPrograms);
+        return () => unsub();
+    }, []);
+
+    useEffect(() => {
+        if (!firebaseService?.subscribeNewsItems) return;
+        const unsub = firebaseService.subscribeNewsItems(setNewsItems);
         return () => unsub();
     }, []);
     
@@ -3398,10 +3405,9 @@ END:VCALENDAR`;
         }
         if (currentView === 'tools') return <ToolsView onBack={() => goTo('home')} />;
         if (currentView === 'supportPage') return <SupportProgramsView supportPrograms={supportPrograms} content={content} onBack={() => goTo('home')} />;
-        // 뉴스/의뢰/Q&A: 실제 수집·등록 기능이 아직 없어 목업 예시 데이터만 보여주던 상태였음.
-        // 방문자에게 가짜 데이터를 실제처럼 노출하지 않도록, 실기능이 붙기 전까지 공사중 화면으로 대체.
-        // 실제 기능이 완성되면 아래 3줄만 원래 뷰(NewsView/RequestsView/QnaView)로 되돌리면 된다.
-        if (currentView === 'news') return <UnderConstructionView eyebrow="NEWS" pageLabel="뉴스" onBack={() => goTo('home')} />;
+        // 뉴스: supportPrograms(공고) + newsItems(경제뉴스, 매일 07:00 KST 자동수집) 실시간 데이터를 사용.
+        if (currentView === 'news') return <NewsView content={content} onBack={() => goTo('home')} supportPrograms={supportPrograms} newsItems={newsItems} />;
+        // 의뢰/Q&A: 아직 실제 수집·등록 기능이 없어 공사중 화면으로 대체.
         if (currentView === 'requests') return <UnderConstructionView eyebrow="REQUESTS" pageLabel="의뢰" onBack={() => goTo('home')} />;
         if (currentView === 'qna') return <UnderConstructionView eyebrow="EXPERT Q&A" pageLabel="Q&A" onBack={() => goTo('home')} />;
         
