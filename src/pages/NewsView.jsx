@@ -8,6 +8,9 @@ import { firestoreLikeToMillis } from '../appHelpers';
  * "지원사업 · 공고" 탭은 supportPrograms 컬렉션(관리자 수동 등록 + 매일 07:00 자동 수집)을 그대로 보여주고,
  * "경제뉴스" 탭은 newsItems 컬렉션(관리자 수동 등록 + 매일 07:00 언론사 RSS 자동 수집)을 보여준다.
  * 둘 다 App.jsx에서 실시간 구독(subscribeSupportPrograms / subscribeNewsItems)한 데이터를 props로 받는다.
+ *
+ * 정책: 등록(공고 생성일 / 기사 발행일) 후 1년이 지난 항목은 자동으로 목록에서 숨긴다(ONE_YEAR_MS).
+ * 노출: 한 페이지에 10개씩만 보여주고, 10개를 넘으면 페이지 번호를 눌러 넘겨볼 수 있다(PAGE_SIZE).
  */
 
 const CATEGORIES = [
@@ -15,6 +18,9 @@ const CATEGORIES = [
     { id: 'notice', label: '지원사업 · 공고' },
     { id: 'econ', label: '경제뉴스' },
 ];
+
+const PAGE_SIZE = 10;
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
 function relativeTime(ms) {
     if (ms == null || !Number.isFinite(ms)) return '';
@@ -49,37 +55,81 @@ function NewsRow({ item, isLast }) {
     );
 }
 
+function Pager({ page, totalPages, onChange }) {
+    if (totalPages <= 1) return null;
+    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    return (
+        <div className="flex items-center justify-center gap-1.5 flex-wrap mt-6">
+            <button
+                type="button"
+                onClick={() => onChange(Math.max(1, page - 1))}
+                disabled={page === 1}
+                className="text-xs font-semibold rounded-full px-3 py-2 bg-soft text-gray-600 hover:bg-[#eceef2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+                이전
+            </button>
+            {pages.map((p) => (
+                <button
+                    key={p}
+                    type="button"
+                    onClick={() => onChange(p)}
+                    className={`text-xs font-semibold rounded-full w-8 h-8 transition-colors ${p === page ? 'bg-brand text-white' : 'bg-soft text-gray-600 hover:bg-[#eceef2]'}`}
+                >
+                    {p}
+                </button>
+            ))}
+            <button
+                type="button"
+                onClick={() => onChange(Math.min(totalPages, page + 1))}
+                disabled={page === totalPages}
+                className="text-xs font-semibold rounded-full px-3 py-2 bg-soft text-gray-600 hover:bg-[#eceef2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+                다음
+            </button>
+        </div>
+    );
+}
+
 export default function NewsView({ content, onBack, supportPrograms, newsItems }) {
     const [category, setCategory] = useState('all');
+    const [noticePage, setNoticePage] = useState(1);
+    const [econPage, setEconPage] = useState(1);
     const showNotice = category === 'all' || category === 'notice';
     const showEcon = category === 'all' || category === 'econ';
     // 우측 배너 레일에 실제로 등록된 광고가 하나도 없으면 레일을 아예 접고 본문 폭을 넓힌다.
     const hasSidebarAd = hasAdSlot(content, 'news-sidebar-1') || hasAdSlot(content, 'news-sidebar-1b') || hasAdSlot(content, 'news-sidebar-2');
 
+    const now = Date.now();
+
     const NOTICE_ITEMS = useMemo(() => {
         const rows = Array.isArray(supportPrograms) ? supportPrograms : [];
         return rows
             .filter((p) => p.enabled !== false && (p.status || 'published') === 'published')
+            .filter((p) => {
+                const createdMs = firestoreLikeToMillis(p.createdAt);
+                return createdMs == null || now - createdMs <= ONE_YEAR_MS; // 등록 1년 경과 시 자동 숨김
+            })
             .slice()
             .sort((a, b) => (Number(b.sortOrder) || 0) - (Number(a.sortOrder) || 0))
-            .slice(0, 20)
-            .map((p, i) => ({
+            .map((p) => ({
                 title: p.title || '',
                 badge: '공고',
                 meta: [p.org, relativeTime(firestoreLikeToMillis(p.createdAt))].filter(Boolean).join(' · '),
                 href: p.applyUrl || p.sourceUrl || '',
-                adAfter: i === 3,
             }))
             .filter((item) => item.title);
-    }, [supportPrograms]);
+    }, [supportPrograms, now]);
 
     const ECON_ITEMS = useMemo(() => {
         const rows = Array.isArray(newsItems) ? newsItems : [];
         return rows
             .filter((n) => n.enabled !== false && (n.status || 'published') === 'published' && (n.category || 'econ') === 'econ')
+            .filter((n) => {
+                const publishedMs = firestoreLikeToMillis(n.publishedAt);
+                return publishedMs == null || now - publishedMs <= ONE_YEAR_MS; // 발행 1년 경과 시 자동 숨김
+            })
             .slice()
             .sort((a, b) => (Number(b.sortOrder) || 0) - (Number(a.sortOrder) || 0))
-            .slice(0, 20)
             .map((n) => ({
                 title: n.title || '',
                 badge: '경제',
@@ -87,7 +137,14 @@ export default function NewsView({ content, onBack, supportPrograms, newsItems }
                 href: n.url || '',
             }))
             .filter((item) => item.title);
-    }, [newsItems]);
+    }, [newsItems, now]);
+
+    const noticeTotalPages = Math.max(1, Math.ceil(NOTICE_ITEMS.length / PAGE_SIZE));
+    const econTotalPages = Math.max(1, Math.ceil(ECON_ITEMS.length / PAGE_SIZE));
+    const noticePageClamped = Math.min(noticePage, noticeTotalPages);
+    const econPageClamped = Math.min(econPage, econTotalPages);
+    const noticePageItems = NOTICE_ITEMS.slice((noticePageClamped - 1) * PAGE_SIZE, noticePageClamped * PAGE_SIZE);
+    const econPageItems = ECON_ITEMS.slice((econPageClamped - 1) * PAGE_SIZE, econPageClamped * PAGE_SIZE);
 
     return (
         <div className="min-h-screen bg-white overflow-y-auto">
@@ -128,15 +185,18 @@ export default function NewsView({ content, onBack, supportPrograms, newsItems }
                                         <h2 className="text-lg md:text-xl font-bold text-dark">지원사업 · 공고 소식</h2>
                                         <span className="text-xs text-gray-400">최신순</span>
                                     </div>
-                                    {NOTICE_ITEMS.length > 0 ? (
-                                        <div className="border-t border-black/[0.06]">
-                                            {NOTICE_ITEMS.map((item, i) => (
-                                                <React.Fragment key={`${item.title}-${i}`}>
-                                                    <NewsRow item={item} isLast={i === NOTICE_ITEMS.length - 1} />
-                                                    {item.adAfter ? <AdSlot slotId="news-list-native" content={content} className="my-1" /> : null}
-                                                </React.Fragment>
-                                            ))}
-                                        </div>
+                                    {noticePageItems.length > 0 ? (
+                                        <>
+                                            <div className="border-t border-black/[0.06]">
+                                                {noticePageItems.map((item, i) => (
+                                                    <React.Fragment key={`${item.title}-${i}`}>
+                                                        <NewsRow item={item} isLast={i === noticePageItems.length - 1} />
+                                                        {i === 3 ? <AdSlot slotId="news-list-native" content={content} className="my-1" /> : null}
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
+                                            <Pager page={noticePageClamped} totalPages={noticeTotalPages} onChange={setNoticePage} />
+                                        </>
                                     ) : (
                                         <p className="text-sm text-gray-400 border-t border-black/[0.06] pt-6">등록된 지원사업 공고가 아직 없습니다.</p>
                                     )}
@@ -149,12 +209,15 @@ export default function NewsView({ content, onBack, supportPrograms, newsItems }
                                         <h2 className="text-lg md:text-xl font-bold text-dark">창업 · 경제뉴스</h2>
                                         <span className="text-xs text-gray-400">최신순</span>
                                     </div>
-                                    {ECON_ITEMS.length > 0 ? (
-                                        <div className="border-t border-black/[0.06]">
-                                            {ECON_ITEMS.map((item, i) => (
-                                                <NewsRow key={`${item.title}-${i}`} item={item} isLast={i === ECON_ITEMS.length - 1} />
-                                            ))}
-                                        </div>
+                                    {econPageItems.length > 0 ? (
+                                        <>
+                                            <div className="border-t border-black/[0.06]">
+                                                {econPageItems.map((item, i) => (
+                                                    <NewsRow key={`${item.title}-${i}`} item={item} isLast={i === econPageItems.length - 1} />
+                                                ))}
+                                            </div>
+                                            <Pager page={econPageClamped} totalPages={econTotalPages} onChange={setEconPage} />
+                                        </>
                                     ) : (
                                         <p className="text-sm text-gray-400 border-t border-black/[0.06] pt-6">등록된 경제뉴스가 아직 없습니다.</p>
                                     )}
