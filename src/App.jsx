@@ -64,7 +64,7 @@ import {
     PARTNER_LOGOS,
     PARTNER_NAMES
 } from './constants/appConstants';
-import { filterApprovedMembers, getCategoryColor, buildProgramPopupItems, firestoreLikeToMillis } from './appHelpers';
+import { filterApprovedMembers, getCategoryColor, buildProgramPopupItems, firestoreLikeToMillis, getSupportProgramDdayInfo } from './appHelpers';
 import {
     ADMIN_HIDDEN_APPLICATIONS_KEY,
     ADMIN_HIDDEN_APPLICATIONS_CHANGED,
@@ -3534,9 +3534,7 @@ END:VCALENDAR`;
                             </div>
                             <div className="mt-6 space-y-2.5">
                                 {(supportProgramsPublic.length > 0 ? supportProgramsPublic.slice(0, 2).map((p) => {
-                                    const dMs = firestoreLikeToMillis(p.deadlineAt);
-                                    const daysLeft = dMs != null ? Math.ceil((dMs - Date.now()) / 86400000) : null;
-                                    const label = p.isRolling ? '상시' : (daysLeft != null ? (daysLeft <= 0 ? '마감임박' : `D-${daysLeft}`) : '');
+                                    const { label } = getSupportProgramDdayInfo(p);
                                     return { id: p.id, title: p.title, label };
                                 }) : [
                                     { id: 'sample-1', title: '부산 소상공인 디지털 전환 지원', label: 'D-3' },
@@ -3552,8 +3550,8 @@ END:VCALENDAR`;
                         </button>
 
                         <div className="area-b rounded-[32px] p-7 md:p-8 bg-white flex flex-col justify-between">
-                            <p className="text-[12px] font-semibold text-gray-500 tracking-wide">이번 주 마감</p>
-                            <div><span className="text-4xl md:text-5xl font-semibold text-dark">{supportProgramsPublic.filter((p) => { if (p.isRolling) return false; const dMs = firestoreLikeToMillis(p.deadlineAt); if (dMs == null) return false; const d = Math.ceil((dMs - Date.now()) / 86400000); return d >= 0 && d <= 7; }).length || 13}</span><span className="text-gray-500 text-sm ml-1">건</span></div>
+                            <p className="text-[12px] font-semibold text-gray-500 tracking-wide">마감임박</p>
+                            <div><span className="text-4xl md:text-5xl font-semibold text-dark">{supportProgramsPublic.filter((p) => getSupportProgramDdayInfo(p).isUrgent).length || 13}</span><span className="text-gray-500 text-sm ml-1">건</span></div>
                         </div>
 
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('requests'); }} className="area-c rounded-[32px] p-7 md:p-8 bg-brand text-white flex flex-col justify-between text-left hover:bg-[#00327a] transition-colors">

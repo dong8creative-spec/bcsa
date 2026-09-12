@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import AdSlot, { hasAdSlot } from '../components/AdSlot';
-import { firestoreLikeToMillis } from '../appHelpers';
+import { firestoreLikeToMillis, getSupportProgramDdayInfo } from '../appHelpers';
 import Pager from '../components/Pager';
 import ContentDetailModal from '../components/ContentDetailModal';
 
@@ -16,16 +16,6 @@ function colorForId(id) {
     return THUMB_COLORS[hash % THUMB_COLORS.length];
 }
 
-function getDdayInfo(p) {
-    const dMs = firestoreLikeToMillis(p.deadlineAt);
-    const daysLeft = dMs != null ? Math.ceil((dMs - Date.now()) / 86400000) : null;
-    const label = p.isRolling ? '상시' : (daysLeft != null ? (daysLeft <= 0 ? '마감임박' : `D-${daysLeft}`) : '');
-    const badgeClass = p.isRolling
-        ? 'bg-emerald-600'
-        : (daysLeft != null && daysLeft <= 3 ? 'bg-red-500' : (daysLeft != null && daysLeft <= 10 ? 'bg-orange-500' : 'bg-brand'));
-    return { label, badgeClass, daysLeft };
-}
-
 function formatDeadlineLabel(p) {
     if (p.isRolling) return '상시 모집';
     const dMs = firestoreLikeToMillis(p.deadlineAt);
@@ -35,7 +25,7 @@ function formatDeadlineLabel(p) {
 }
 
 function ProgramCard({ p, onOpen }) {
-    const { label: ddayLabel, badgeClass } = getDdayInfo(p);
+    const { label: ddayLabel, badgeClass } = getSupportProgramDdayInfo(p);
     const tags = [...(p.region || []), ...(p.industry || [])].slice(0, 2);
     const sub = p.amountText || tags.join(' · ') || p.org || '';
 
@@ -143,10 +133,8 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
             })
             .sort((a, b) => firestoreLikeToMillis(b.createdAt) - firestoreLikeToMillis(a.createdAt));
 
-        const urgentCountVal = dated.filter((p) => {
-            const d = Math.ceil((firestoreLikeToMillis(p.deadlineAt) - nowMs) / 86400000);
-            return d >= 0 && d <= 7;
-        }).length;
+        // "임박"은 D-10 이내(getSupportProgramDdayInfo와 동일 기준)로 통일한다.
+        const urgentCountVal = dated.filter((p) => getSupportProgramDdayInfo(p).isUrgent).length;
 
         return {
             urgent: dated,
@@ -168,7 +156,7 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
     const rollingItems = rolling.slice((rollingPageClamped - 1) * PAGE_SIZE, rollingPageClamped * PAGE_SIZE);
 
     function openDetail(p) {
-        const { label: badgeLabel, badgeClass } = getDdayInfo(p);
+        const { label: badgeLabel, badgeClass } = getSupportProgramDdayInfo(p);
         setSelected({
             title: p.title || '',
             badgeLabel,
@@ -203,7 +191,7 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
                         긴 공고문 대신, 핵심만 요약해서 보여드립니다.
                     </p>
                     <div className="flex items-center gap-3 mt-8 flex-wrap">
-                        <span className="text-gray-500 text-sm">신규 {freshCount}건 · 이번 주 마감 {urgentCount}건</span>
+                        <span className="text-gray-500 text-sm">신규 {freshCount}건 · 마감임박 {urgentCount}건</span>
                     </div>
                 </div>
             </section>

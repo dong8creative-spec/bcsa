@@ -16,6 +16,11 @@
  * (Firestore 문서는 그대로 남아있고, 화면 렌더링 단계에서 필터링됩니다 — src/pages/NewsView.jsx,
  * src/pages/SupportProgramsView.jsx의 ONE_YEAR_MS 참고).
  *
+ * 마감일 판정: 기업마당 API의 신청기간(reqstBeginEndDe) 필드가 비어있거나 파싱이 안 되면, 공고
+ * 설명문 안에서 "OOOO.MM.DD ~ OOOO.MM.DD", "9월 1일부터 9월 30일까지", "~9.30", "9월 30일까지"
+ * 같은 기간/마감 표현을 직접 찾아 마감일로 쓴다(extractDeadlineFromText). 그래도 못 찾을 때만
+ * "상시모집"으로 남긴다 — 실제로는 기한이 있는데 상시로 잘못 표시되는 경우를 줄이기 위함.
+ *
  * 실행 전 필요한 환경변수:
  *   FIREBASE_SERVICE_ACCOUNT_KEY  - 파이어베이스 서비스 계정 키 JSON 전체(문자열)
  *   BIZINFO_API_KEY               - 기업마당 오픈API 인증키(data.go.kr에서 발급). 없으면 지원사업 수집은 건너뜀.
@@ -44,16 +49,28 @@ function shortHash(input) {
   return crypto.createHash('sha1').update(String(input)).digest('hex').slice(0, 20);
 }
 
-/** 네이버 API 응답의 title/description에 섞여 있는 <b> 태그, HTML 엔티티를 제거한 순수 텍스트로 변환. */
+/**
+ * HTML(기업마당 bsnsSumryCn, 네이버 뉴스 title/description 등)을 순수 텍스트로 변환.
+ * 블록 태그는 지우기 전에 줄바꿈으로 바꿔서 문단이 이어붙지 않게 한다
+ * (기업마당 bsnsSumryCn이 <p>...</p><p><br></p><p style="...">...</p> 형태의 raw HTML로 오는 경우가 많음).
+ */
 function stripHtml(str) {
   if (!str || typeof str !== 'string') return '';
   return str
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '- ')
+    .replace(/<\/li>/gi, '\n')
     .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
@@ -134,6 +151,68 @@ function parseDeadlineFromRange(rangeStr) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/**
+ * 공고 설명문(자유 텍스트) 안에서 기간/마감 표현을 찾아 마감일(Date)을 추출한다.
+ * bizinfo API의 reqstBeginEndDe(신청기간 구조화 필드)가 비어있거나 파싱에 실패했을 때 쓰는 보조 수단 —
+ * "상시모집"으로 잘못 분류되는 공고를 줄이기 위함. 연도가 없는 표현(예: "9.1~9.30")은 올해로 가정하고,
+ * 그 결과가 이미 두 달 이상 지난 날짜라면 내년으로 보정한다(연말에 등록된 "내년 상반기까지" 류 공고 대응).
+ * 못 찾으면 null(= 여전히 상시모집으로 남음).
+ */
+function extractDeadlineFromText(text) {
+  if (!text || typeof text !== 'string') return null;
+  const currentYear = new Date().getFullYear();
+
+  const makeDate = (y, mo, d) => {
+    const date = new Date(y, mo - 1, d, 23, 59, 59);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+  // 연도 없는 월/일만 나온 경우: 이미 많이 지난 날짜면 내년으로 보정.
+  const makeDateInferYear = (mo, d) => {
+    let date = makeDate(currentYear, mo, d);
+    if (date && date.getTime() < Date.now() - 60 * 86400000) {
+      date = makeDate(currentYear + 1, mo, d);
+    }
+    return date;
+  };
+
+  // 1) "2026.09.01 ~ 2026.09.30" / "2026-09-01~2026-09-30" / "2026년 9월 1일부터 2026년 9월 30일까지"
+  let m = text.match(/(20\d{2})[.\-년]\s?(\d{1,2})[.\-월]\s?(\d{1,2})\s*일?\s*(?:~|-|부터)\s*(20\d{2})[.\-년]\s?(\d{1,2})[.\-월]\s?(\d{1,2})/);
+  if (m) {
+    const d = makeDate(Number(m[4]), Number(m[5]), Number(m[6]));
+    if (d) return d;
+  }
+
+  // 2) "9.1 ~ 9.30" / "09/01~09/30" (연도 없음, 월.일 형식 두 번)
+  m = text.match(/(\d{1,2})[.\/](\d{1,2})\s*(?:~|-)\s*(\d{1,2})[.\/](\d{1,2})(?!\d)/);
+  if (m) {
+    const d = makeDateInferYear(Number(m[3]), Number(m[4]));
+    if (d) return d;
+  }
+
+  // 3) "9월 1일부터 9월 30일까지" / "9월 1일 ~ 9월 30일"
+  m = text.match(/\d{1,2}월\s*\d{1,2}일\s*(?:부터|~|-)\s*(\d{1,2})월\s*(\d{1,2})일\s*까지/);
+  if (m) {
+    const d = makeDateInferYear(Number(m[1]), Number(m[2]));
+    if (d) return d;
+  }
+
+  // 4) 종료일만 명시: "~2026.09.30", "2026-09-30까지", "마감: 2026.09.30", "마감일 2026-09-30"
+  m = text.match(/(?:~|마감\s*[:：]?\s*|마감일\s*[:：]?\s*)(20\d{2})[.\-년]\s?(\d{1,2})[.\-월]\s?(\d{1,2})/);
+  if (m) {
+    const d = makeDate(Number(m[1]), Number(m[2]), Number(m[3]));
+    if (d) return d;
+  }
+
+  // 5) "9월 30일까지" (연도 없음)
+  m = text.match(/(\d{1,2})월\s*(\d{1,2})일\s*까지/);
+  if (m) {
+    const d = makeDateInferYear(Number(m[1]), Number(m[2]));
+    if (d) return d;
+  }
+
+  return null;
+}
+
 async function ingestBizinfo(db) {
   const apiKey = process.env.BIZINFO_API_KEY;
   if (!apiKey) {
@@ -164,14 +243,18 @@ async function ingestBizinfo(db) {
     if (!title || !sourceUrl) continue;
 
     const id = shortHash(sourceUrl);
-    const deadline = parseDeadlineFromRange(item.reqstBeginEndDe);
+    // bsnsSumryCn은 <p>/<br> 등이 섞인 raw HTML로 온다 — 화면에 태그가 그대로 노출되지 않도록
+    // 순수 텍스트로 정리한 뒤에만 요약/설명/마감일 추출에 사용한다.
+    const summaryText = stripHtml(item.bsnsSumryCn || '');
+    // 신청기간 구조화 필드가 비거나 파싱 실패하면, 제목+설명문에서 기간/마감 표현을 직접 찾는다.
+    const deadline = parseDeadlineFromRange(item.reqstBeginEndDe) || extractDeadlineFromText(`${title} ${summaryText}`);
 
     const result = await upsertDoc(db, 'supportPrograms', id, {
       onCreate: () => ({
         title,
         org,
-        summary: (item.bsnsSumryCn || '').slice(0, 120),
-        description: item.bsnsSumryCn || '',
+        summary: summaryText.slice(0, 120),
+        description: summaryText,
         amountText: '',
         region: [],
         industry: item.pldirSportRealmLclasCodeNm ? [item.pldirSportRealmLclasCodeNm] : [],
@@ -185,7 +268,8 @@ async function ingestBizinfo(db) {
       onUpdate: () => ({
         title,
         org,
-        description: item.bsnsSumryCn || '',
+        summary: summaryText.slice(0, 120),
+        description: summaryText,
         deadlineAt: deadline ? admin.firestore.Timestamp.fromDate(deadline) : null,
         isRolling: !deadline,
       }),

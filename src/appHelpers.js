@@ -53,6 +53,57 @@ export function firestoreLikeToMillis(val) {
   return null;
 }
 
+/** 지원사업 D-day 판단 기준: 마감까지 이 일수 이하로 남으면 "임박"으로 취급한다(주황/빨강 배지 + 카운트 대상). */
+export const SUPPORT_PROGRAM_URGENT_WITHIN_DAYS = 10;
+
+/**
+ * 지원사업 공고의 D-day 뱃지 정보를 계산한다 — 달력 날짜 기준으로 세밀하게 판단한다
+ * (시:분:초는 무시하고 "오늘"과 "마감일" 사이의 날짜 차이만 센다. 예: 마감이 내일 23:59면
+ * 지금이 새벽이든 밤 11시든 항상 D-1로 동일하게 나온다 — 시:분까지 섞어 raw ms로 나누면
+ * 하루 안에서도 D-1/D-2가 들쭉날쭉해지는 문제가 있었음).
+ *
+ * 홈 화면 bento 카드(App.jsx)와 지원사업 페이지(SupportProgramsView.jsx)가 서로 다른 계산식을
+ * 쓰면 같은 공고인데 표시가 어긋날 수 있어, 이 한 곳에서만 계산하고 양쪽에서 가져다 쓴다.
+ *
+ * 반환: { label, badgeClass, daysLeft, isUrgent }
+ * - daysLeft: 남은 날짜(음수면 이미 지남 — 목록 필터링에서 보통 걸러지지만 방어적으로 처리)
+ * - isUrgent: SUPPORT_PROGRAM_URGENT_WITHIN_DAYS(D-10) 이내인지 — "이번 주 마감" 류 카운트에 사용
+ */
+export function getSupportProgramDdayInfo(program, now = new Date()) {
+  if (program?.isRolling) {
+    return { label: '상시', badgeClass: 'bg-emerald-600', daysLeft: null, isUrgent: false };
+  }
+  const deadlineMs = firestoreLikeToMillis(program?.deadlineAt);
+  if (deadlineMs == null) {
+    return { label: '', badgeClass: 'bg-brand', daysLeft: null, isUrgent: false };
+  }
+  const deadline = new Date(deadlineMs);
+  const deadlineDateOnly = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
+  const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const daysLeft = Math.round((deadlineDateOnly - nowDateOnly) / (1000 * 60 * 60 * 24));
+  const isUrgent = daysLeft >= 0 && daysLeft <= SUPPORT_PROGRAM_URGENT_WITHIN_DAYS;
+
+  let label;
+  let badgeClass;
+  if (daysLeft < 0) {
+    label = '마감';
+    badgeClass = 'bg-gray-400';
+  } else if (daysLeft === 0) {
+    label = '오늘마감';
+    badgeClass = 'bg-red-600';
+  } else if (daysLeft <= 3) {
+    label = `D-${daysLeft}`;
+    badgeClass = 'bg-red-500';
+  } else if (daysLeft <= SUPPORT_PROGRAM_URGENT_WITHIN_DAYS) {
+    label = `D-${daysLeft}`;
+    badgeClass = 'bg-orange-500';
+  } else {
+    label = `D-${daysLeft}`;
+    badgeClass = 'bg-brand';
+  }
+  return { label, badgeClass, daysLeft, isUrgent };
+}
+
 /**
  * 홈 팝업에 올 세미나 후보(날짜·이미지·정원 필터 적용, 최대 maxSeminars개)
  * @param {Array} seminarsData
