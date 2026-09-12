@@ -476,6 +476,11 @@ async function resolveDeadline({ item, title, summaryText, applyUrl, sourceUrl }
 /**
  * 기업마당 지원사업정보 API를 한 번 호출한다. hashtags를 넘기면 그 태그로 필터링된 결과만 온다
  * (예: hashtags='부산' → 부산 지역 공고만). 공식 문서 기준 지역 해시태그는 시/도 한글명 그대로 사용.
+ *
+ * bizinfo.go.kr 서버가 가끔 연결 자체를 타임아웃시키는 경우가 있어(ETIMEDOUT — 실제로 워크플로우
+ * 실행 중 한 번 발생해서 전체 스크립트가 죽은 적이 있음), 네트워크 예외를 반드시 try/catch로 잡고,
+ * 한 번은 잠깐 쉬었다 재시도한다. 그래도 안 되면 빈 배열을 반환해서 이 소스만 건너뛰고 나머지
+ * (뉴스 수집 등)는 정상적으로 계속 진행되게 한다.
  */
 async function fetchBizinfoList(apiKey, hashtags) {
   const params = new URLSearchParams({
@@ -486,9 +491,24 @@ async function fetchBizinfoList(apiKey, hashtags) {
   });
   if (hashtags) params.set('hashtags', hashtags);
   const url = `https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do?${params.toString()}`;
-  const res = await fetch(url, { timeout: 20000 });
+  const label = `bizinfo${hashtags ? ':' + hashtags : ''}`;
+
+  let res = null;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      res = await fetch(url, { timeout: 20000 });
+      break;
+    } catch (err) {
+      console.error(`[${label}] 요청 실패(시도 ${attempt}/2): ${err.message}`);
+      if (attempt < 2) await sleep(2000);
+    }
+  }
+  if (!res) {
+    console.error(`[${label}] 재시도해도 응답이 없어 이번 실행에서는 건너뜁니다.`);
+    return [];
+  }
   if (!res.ok) {
-    console.error(`[bizinfo${hashtags ? ':' + hashtags : ''}] API 응답 실패: HTTP ${res.status}`);
+    console.error(`[${label}] API 응답 실패: HTTP ${res.status}`);
     return [];
   }
   const json = await res.json();
@@ -507,12 +527,12 @@ async function ingestBizinfo(db) {
   // 전체 공고 + 부산 지역 공고(hashtags=부산)를 각각 조회한다. 기업마당 API 자체에 시/도 필드가
   // 없어서(공식 문서 확인 — jrsdInsttNm 등 소관기관명만 있고 별도 지역 필드는 없음), 지역으로
   // 걸러 받으려면 hashtags 파라미터로 조회하는 방법뿐이다. 두 결과를 pblancUrl 기준으로 합쳐서
-  // 부산 조회에 포함된 공고만 region:['부산']으로 표시하고, 나머지는 region:[]로 둔다
-  // (사이트의 "부산 지원사업" 섹션은 이 region 필드로 걸러 보여준다 — SupportProgramsView.jsx 참고).
-  const [generalItems, busanItems] = await Promise.all([
-    fetchBizinfoList(apiKey, null),
-    fetchBizinfoList(apiKey, '부산'),
-  ]);
+  // 부산 조회에 포함된 공고만 region:['부산']으로 표시하고, 나머지는 region:[]로 둔다(부산 여부는
+  // 아래 텍스트 매칭으로도 한 번 더 보완한다 — hashtags 파라미터가 항상 정확하진 않아서).
+  // 두 호출을 동시에(Promise.all) 보내면 bizinfo.go.kr 서버에 부담을 줘서 타임아웃이 더 잘 나는
+  // 것으로 보여(실제로 한 번 겪음), 순차로 호출한다.
+  const generalItems = await fetchBizinfoList(apiKey, null);
+  const busanItems = await fetchBizinfoList(apiKey, '부산');
   if (generalItems.length === 0 && busanItems.length === 0) {
     console.log('[bizinfo] 수집된 공고가 없습니다. (응답 형식이 예상과 다르면 이 스크립트의 필드 매핑을 점검하세요)');
     return { new: 0, updated: 0, skipped: 0 };
@@ -733,18 +753,40 @@ async function cleanupLegacyNews(db) {
   return { removed, kept };
 }
 
+/**
+ * 세 단계(지원사업 수집/뉴스 수집/뉴스 정리)는 서로 독립적이라, 하나가 실패해도 나머지는 계속
+ * 진행한다 — 예를 들어 bizinfo.go.kr가 타임아웃 나도 네이버 뉴스 수집은 정상적으로 끝나야 한다
+ * (실제로 이 문제를 겪은 뒤 추가한 방어 로직). 하나라도 실패했으면 로그로 남기고, 실행 자체는
+ * 실패로 표시(exit code 1)해서 GitHub Actions 화면에서 눈에 띄게 하되, 성공한 나머지 단계의
+ * 결과는 이미 Firestore에 반영된 채로 끝난다.
+ */
+async function runStep(label, fn) {
+  try {
+    return { ok: true, result: await fn() };
+  } catch (err) {
+    console.error(`[ingest-daily-feed] ${label} 단계 실패:`, err);
+    return { ok: false, error: err };
+  }
+}
+
 async function main() {
   initAdmin();
   const db = admin.firestore();
 
   console.log(`[ingest-daily-feed] 시작 (${isDryRun ? 'dry-run' : 'live'}) — ${new Date().toISOString()}`);
 
-  const bizinfoResult = await ingestBizinfo(db);
-  const newsResult = await ingestNaverNews(db);
-  const cleanupResult = await cleanupLegacyNews(db);
+  const bizinfoStep = await runStep('bizinfo', () => ingestBizinfo(db));
+  const newsStep = await runStep('naver-news', () => ingestNaverNews(db));
+  const cleanupStep = await runStep('cleanup-legacy-news', () => cleanupLegacyNews(db));
 
-  console.log('[ingest-daily-feed] 완료:', { supportPrograms: bizinfoResult, newsItems: newsResult, cleanup: cleanupResult });
-  process.exit(0);
+  console.log('[ingest-daily-feed] 완료:', {
+    supportPrograms: bizinfoStep.result,
+    newsItems: newsStep.result,
+    cleanup: cleanupStep.result,
+  });
+
+  const anyFailed = [bizinfoStep, newsStep, cleanupStep].some((s) => !s.ok);
+  process.exit(anyFailed ? 1 : 0);
 }
 
 main().catch((err) => {
