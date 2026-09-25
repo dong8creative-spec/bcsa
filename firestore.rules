@@ -76,7 +76,17 @@ service cloud.firestore {
     // 이 규칙을 완전히 우회함 — 아래 규칙은 브라우저 클라이언트 쓰기에만 적용됨.
     match /newsItems/{newsId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow create, delete: if isAdmin();
+      // 조회수(viewCount)만은 누구나(비로그인 포함) +1씩 올릴 수 있게 허용한다 — 사이트 안에서
+      // 기사를 읽을 때마다 클라이언트가 increment(1)을 보낸다(firebaseService.incrementNewsViewCount).
+      // 그 외 필드를 함께 바꾸려는 요청이거나, viewCount가 정확히 1씩 늘어난 게 아니면(음수/건너뛰기
+      // 등) 거부해서 관리자 외에는 다른 데이터를 손댈 수 없게 막는다.
+      allow update: if isAdmin()
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
+          && request.resource.data.viewCount is int
+          && request.resource.data.viewCount == resource.data.get('viewCount', 0) + 1
+        );
     }
 
     // 게시글(커뮤니티·후기): 읽기 공개. 작성은 본인 authorId로만, 수정·삭제는 작성자 본인 또는 관리자

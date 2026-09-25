@@ -1482,6 +1482,20 @@ export const firebaseService = {
     });
   },
 
+  // 사이트 안에서 실제로 클릭해서 본 횟수. 로그인 여부와 무관하게 누구나 볼 수 있는 페이지라
+  // 익명 사용자도 이 필드 하나만 정확히 +1씩 올리도록 firestore.rules에서 별도로 허용해뒀다
+  // (다른 필드는 여전히 관리자만 수정 가능). 실패해도 조회 자체를 막을 이유는 없으니 에러를
+  // 삼키고 조용히 넘어간다 — 조회수 갱신은 부가 기능이지 핵심 기능이 아니다.
+  async incrementNewsViewCount(newsId) {
+    const id = String(newsId || '').trim();
+    if (!id) return;
+    try {
+      await updateDoc(doc(db, 'newsItems', id), { viewCount: increment(1) });
+    } catch (e) {
+      console.error('incrementNewsViewCount', e);
+    }
+  },
+
   async deleteNewsItem(newsId) {
     const id = String(newsId || '').trim();
     if (!id) return;

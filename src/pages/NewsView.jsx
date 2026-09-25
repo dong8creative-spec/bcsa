@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import AdSlot, { hasAdSlot } from '../components/AdSlot';
 import { firestoreLikeToMillis } from '../appHelpers';
 import Pager from '../components/Pager';
-import ContentDetailModal from '../components/ContentDetailModal';
+import NewsDetailModal from '../components/NewsDetailModal';
+import firebaseService from '../services/firebaseService';
 
 /**
  * NewsView — 뉴스 페이지
@@ -22,7 +23,26 @@ import ContentDetailModal from '../components/ContentDetailModal';
  * 정책: 발행일(publishedAt) 후 1년이 지난 항목은 자동으로 목록에서 숨긴다(ONE_YEAR_MS).
  * 노출: 한 페이지에 10개씩만 보여주고, 10개를 넘으면 페이지 번호를 눌러 넘겨볼 수 있다(PAGE_SIZE).
  * 클릭 시: 외부 사이트로 이동하지 않고, 이미 저장해둔 요약/내용을 사이트 안 모달로 보여준다
- * (ContentDetailModal) — 원문이 필요하면 모달 안의 "원문 보기"로 나갈 수 있다.
+ * (NewsDetailModal — 뉴스 전용 상세 모달, 지원사업 카드의 ContentDetailModal과는 별개) —
+ * 원문이 필요하면 모달 안의 "원문 보기"로 나갈 수 있다. 어느 경우든 사이트를 벗어나지 않고
+ * 모달 안에서 제목·본문을 다 읽을 수 있고, "원문 보기"를 직접 눌렀을 때만 새 탭으로 나간다.
+ *
+ * 필터: "카테고리"(지원사업 등 8종 + 실제 존재하는 것만 노출), "신문사", "정렬"(최신순/신문사순)을
+ * 목록 위에서 고를 수 있다 — 지원금(지원사업) 관련 기사만 따로 보고 싶으면 카테고리에서 "지원사업"을
+ * 고르면 된다.
+ * 모달의 "핵심 문장"은 별도 필드(newsItems.keySentence)로, 수집 스크립트가 네이버 요약 스니펫을
+ * 문장 단위로 쪼개 가장 완결되고 핵심 정보가 많은 한 문장을 규칙 기반으로 골라둔 것이다 — Claude 등
+ * LLM이 새로 문장을 써주는 "진짜 AI 요약"은 아니다(그러려면 별도 API 키와 비용 필요, 우선 보류).
+ *
+ * 조회수: newsItems.viewCount를 목록/모달에 노출한다. 기사를 열 때(openNewsDetail)
+ * firebaseService.incrementNewsViewCount를 호출해 "이 사이트 안에서" 실제로 열어본 횟수만
+ * +1씩 쌓는다(원문 언론사 사이트의 조회수가 아니라 우리 사이트 자체 집계) — firestore.rules가
+ * viewCount 필드 하나만 정확히 +1씩 올리는 요청은 비로그인 사용자에게도 허용해준다. 모달을 여는
+ * 순간 화면에 보이는 숫자는 실제 저장 결과를 기다리지 않고 +1을 미리 더해 보여준다(낙관적 갱신) —
+ * Firestore 왕복을 기다리면 클릭 직후 잠깐 옛 숫자가 보이는 게 더 어색하다.
+ *
+ * 동전 애니메이션: 지원금/정책자금/대출 관련 기사(카테고리가 "지원사업"이거나 본문에 해당
+ * 키워드가 있으면)는 모달 맨 아래에 작은 동전 애니메이션이 뜬다(showCoinAnimation → NewsDetailModal).
  */
 
 const PAGE_SIZE = 10;
@@ -48,11 +68,41 @@ function categoryMetaFor(category) {
     return CATEGORY_META[category] || DEFAULT_CATEGORY_META;
 }
 
+// 신문사 이름 — 네이버 뉴스검색 API는 언론사명을 별도 필드로 주지 않아서(title/link/description/
+// pubDate뿐), 수집 스크립트가 링크 주소의 도메인을 "출처"로 대신 저장해왔다(예: yna.co.kr).
+// 실제 수집된 도메인 중 자신 있게 아는 주요 언론사만 이름으로 바꿔 보여준다 — 모르는 도메인까지
+// 억지로 이름을 지어 붙이면 틀린 언론사명을 보여줄 위험이 있어서, 매핑에 없는 도메인은 예전처럼
+// 도메인 그대로 보여준다(틀리느니 안전한 쪽).
+const PRESS_NAMES = {
+    'yna.co.kr': '연합뉴스', 'news1.kr': '뉴스1', 'newsis.com': '뉴시스', 'newspim.com': '뉴스핌',
+    'sedaily.com': '서울경제', 'mt.co.kr': '머니투데이', 'fnnews.com': '파이낸셜뉴스', 'mk.co.kr': '매일경제',
+    'hankyung.com': '한국경제', 'edaily.co.kr': '이데일리', 'etnews.com': '전자신문', 'zdnet.co.kr': '지디넷코리아',
+    'dt.co.kr': '디지털타임스', 'inews24.com': '아이뉴스24', 'thebell.co.kr': '더벨', 'newstomato.com': '뉴스토마토',
+    'chosun.com': '조선일보', 'donga.com': '동아일보', 'joongang.co.kr': '중앙일보', 'hani.co.kr': '한겨레',
+    'khan.co.kr': '경향신문', 'seoul.co.kr': '서울신문', 'segye.com': '세계일보', 'munhwa.com': '문화일보',
+    'hankookilbo.com': '한국일보', 'kmib.co.kr': '국민일보', 'nocutnews.co.kr': '노컷뉴스', 'pressian.com': '프레시안',
+    'kukinews.com': '쿠키뉴스', 'ajunews.com': '아주경제', 'view.asiae.co.kr': '아시아경제', 'asiatoday.co.kr': '아시아투데이',
+    'biz.heraldcorp.com': '헤럴드경제', 'etoday.co.kr': '이투데이', 'viva100.com': '브릿지경제', 'ekn.kr': '에너지경제',
+    'news.kbs.co.kr': 'KBS뉴스', 'news.sbs.co.kr': 'SBS뉴스', 'biz.sbs.co.kr': 'SBS Biz', 'imnews.imbc.com': 'MBC뉴스',
+    'ytn.co.kr': 'YTN', 'mbn.co.kr': 'MBN', 'news.mtn.co.kr': 'MTN', 'wowtv.co.kr': '한국경제TV',
+    'busan.com': '부산일보', 'kookje.co.kr': '국제신문', 'news.knn.co.kr': 'KNN', 'busanmbc.co.kr': '부산MBC',
+    'yeongnam.com': '영남일보', 'imaeil.com': '매일신문', 'kado.net': '강원도민일보', 'kyeonggi.com': '경기일보',
+    'naeil.com': '내일신문', 'nongmin.com': '농민신문', 'venturesquare.net': '벤처스퀘어', 'platum.kr': '플래텀',
+    'techm.kr': '테크M', 'ddaily.co.kr': '디지털데일리', 'businesskorea.co.kr': 'Business Korea',
+    'metroseoul.co.kr': '메트로신문', 'sentv.co.kr': '서울경제TV', 'cnbnews.com': 'CNB뉴스', 'tbc.co.kr': 'TBC',
+};
+function pressName(source) {
+    return PRESS_NAMES[source] || source;
+}
+
 function formatExactDate(ms) {
     if (ms == null || !Number.isFinite(ms)) return '';
     const d = new Date(ms);
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
+
+// 지원금/정책자금/대출 관련 기사인지 — 동전 애니메이션을 붙일지 판단하는 기준.
+const FUNDING_KEYWORD_RE = /지원금|정책자금|대출/;
 
 function relativeTime(ms) {
     if (ms == null || !Number.isFinite(ms)) return '';
@@ -68,6 +118,8 @@ function relativeTime(ms) {
     return `${months}개월 전`;
 }
 
+// 요청에 따라 한 줄 요약 미리보기(item.preview)는 목록에서 뺐다 — 대신 제목을 크게 키워서
+// 목록을 "훑어보기" 쉽게 하고, 실제 내용은 눌렀을 때 NewsDetailModal에서 여유 있게 보여준다.
 function NewsRow({ item, isLast, onOpen }) {
     return (
         <button
@@ -75,9 +127,11 @@ function NewsRow({ item, isLast, onOpen }) {
             onClick={() => onOpen(item.detail)}
             className={`w-full flex items-center justify-between gap-4 py-5 px-2 -mx-2 rounded-xl hover:bg-soft/70 transition-colors text-left ${isLast ? '' : 'border-b border-black/[0.06]'}`}
         >
-            <div className="flex items-center gap-3 min-w-0">
-                <span className={`inline-flex items-center justify-center h-5 px-2.5 rounded-full text-[11px] font-bold text-white shrink-0 whitespace-nowrap ${item.badgeClass}`}>{item.badge}</span>
-                <p className="text-sm md:text-base font-semibold text-dark truncate">{item.title}</p>
+            <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-3 min-w-0">
+                    <span className={`inline-flex items-center justify-center h-5 px-2.5 rounded-full text-[11px] font-bold text-white shrink-0 whitespace-nowrap ${item.badgeClass}`}>{item.badge}</span>
+                    <p className="text-base md:text-lg font-bold text-dark truncate">{item.title}</p>
+                </div>
             </div>
             <span className="text-xs text-gray-500 whitespace-nowrap shrink-0 ml-4">{item.meta}</span>
         </button>
@@ -88,11 +142,17 @@ export default function NewsView({ content, onBack, newsItems }) {
     const [page, setPage] = useState(1);
     const [selected, setSelected] = useState(null);
     const [sourceFilter, setSourceFilter] = useState('all'); // 신문사 필터 — '전체' 또는 특정 언론사명
+    const [categoryFilter, setCategoryFilter] = useState('all'); // 카테고리 필터 — '전체' 또는 지원사업 등 특정 카테고리
     const [sortMode, setSortMode] = useState('date'); // 'date'(최신순, 기본) | 'source'(신문사순)
     // 우측 배너 레일에 실제로 등록된 광고가 하나도 없으면 레일을 아예 접고 본문 폭을 넓힌다.
     const hasSidebarAd = hasAdSlot(content, 'news-sidebar-1') || hasAdSlot(content, 'news-sidebar-1b') || hasAdSlot(content, 'news-sidebar-2');
 
-    const now = Date.now();
+    // "1년 지난 기사 숨기기" 기준 시각 — 마운트 시 한 번만 고정한다.
+    // 예전에는 매 렌더마다 Date.now()를 새로 읽어 useMemo 의존성 배열에 넣었는데, 밀리초 단위로
+    // 거의 항상 값이 달라지다 보니 아래 ALL_NEWS_ITEMS의 useMemo가 사실상 매번 다시 계산되고
+    // 있었다(캐시 효과가 없었음) — 필터를 바꾸거나 페이지만 넘겨도 전체 목록을 다시 필터링·정렬.
+    // "1년 지났는지" 판정은 초 단위로 정확할 필요가 없으므로 한 번만 고정해도 충분하다.
+    const now = useMemo(() => Date.now(), []);
 
     // 필터/정렬과 무관한 전체 목록. 여기서 신문사 옵션 목록을 뽑고, 아래서 필터/정렬을 적용한다.
     const ALL_NEWS_ITEMS = useMemo(() => {
@@ -104,34 +164,44 @@ export default function NewsView({ content, onBack, newsItems }) {
                 return publishedMs == null || now - publishedMs <= ONE_YEAR_MS; // 발행 1년 경과 시 자동 숨김
             })
             .map((n) => {
-                const meta = categoryMetaFor(n.category);
+                const categoryKey = n.category || '';
+                const meta = categoryMetaFor(categoryKey);
                 const publishedMs = firestoreLikeToMillis(n.publishedAt);
                 const dateLabel = relativeTime(publishedMs);
                 const dateExact = formatExactDate(publishedMs);
                 const source = n.source || '';
+                const viewCount = Number(n.viewCount) || 0;
                 const targets = String(n.target || '')
                     .split(',')
                     .map((t) => t.trim())
                     .filter(Boolean);
+                const showCoinAnimation = categoryKey === '지원사업' || FUNDING_KEYWORD_RE.test(`${n.title || ''} ${n.summary || ''}`);
                 return {
+                    id: n.id || '',
                     title: n.title || '',
                     source,
+                    categoryKey,
                     publishedMs,
                     sortOrder: Number(n.sortOrder) || 0,
                     badge: meta.label,
                     badgeClass: meta.badgeClass,
-                    meta: [source, dateExact, dateLabel].filter(Boolean).join(' · '),
+                    meta: [pressName(source), dateExact, dateLabel, `조회 ${viewCount}`].filter(Boolean).join(' · '),
                     detail: {
+                        id: n.id || '',
                         title: n.title || '',
                         badgeLabel: meta.label,
                         badgeClass: meta.badgeClass,
-                        org: source,
+                        org: pressName(source),
                         dateLabel,
+                        dateExact,
+                        viewCount,
                         tags: targets,
                         amountText: n.deadlineText ? `신청기한: ${n.deadlineText}` : '',
                         summary: n.summary || '',
+                        keySentence: n.keySentence || '',
                         description: n.description || '',
                         externalUrl: n.url || '',
+                        showCoinAnimation,
                     },
                 };
             })
@@ -145,9 +215,17 @@ export default function NewsView({ content, onBack, newsItems }) {
         return Array.from(set).sort((a, b) => a.localeCompare(b, 'ko'));
     }, [ALL_NEWS_ITEMS]);
 
+    // 실제 존재하는 카테고리만 옵션으로 노출 — CATEGORY_META 정의 순서(지원사업이 맨 앞)를 그대로 따른다.
+    const categoryOptions = useMemo(() => {
+        const present = new Set();
+        ALL_NEWS_ITEMS.forEach((item) => { present.add(item.categoryKey); });
+        return Object.keys(CATEGORY_META).filter((key) => present.has(key));
+    }, [ALL_NEWS_ITEMS]);
+
     const NEWS_ITEMS = useMemo(() => {
         let rows = ALL_NEWS_ITEMS;
         if (sourceFilter !== 'all') rows = rows.filter((item) => item.source === sourceFilter);
+        if (categoryFilter !== 'all') rows = rows.filter((item) => item.categoryKey === categoryFilter);
         rows = rows.slice();
         if (sortMode === 'source') {
             rows.sort((a, b) => {
@@ -159,14 +237,28 @@ export default function NewsView({ content, onBack, newsItems }) {
             rows.sort((a, b) => b.sortOrder - a.sortOrder); // 최신순(기본)
         }
         return rows;
-    }, [ALL_NEWS_ITEMS, sourceFilter, sortMode]);
+    }, [ALL_NEWS_ITEMS, sourceFilter, categoryFilter, sortMode]);
 
     // 필터/정렬을 바꾸면 이전 페이지 번호가 남아 빈 페이지가 보일 수 있어 1페이지로 되돌린다.
-    React.useEffect(() => { setPage(1); }, [sourceFilter, sortMode]);
+    React.useEffect(() => { setPage(1); }, [sourceFilter, categoryFilter, sortMode]);
 
     const totalPages = Math.max(1, Math.ceil(NEWS_ITEMS.length / PAGE_SIZE));
     const pageClamped = Math.min(page, totalPages);
     const pageItems = NEWS_ITEMS.slice((pageClamped - 1) * PAGE_SIZE, pageClamped * PAGE_SIZE);
+
+    // 기사를 열 때 "이 사이트에서 본 조회수"를 +1 올린다. 실제 저장은 백그라운드로 보내고,
+    // 화면에는 바로 +1된 숫자를 보여준다(낙관적 갱신) — Firestore 응답을 기다리면 클릭 직후
+    // 잠깐 옛 숫자가 보이는 게 더 어색해서다. 실패해도(firebaseService가 에러를 삼킴) 열람
+    // 자체는 막지 않는다.
+    function openNewsDetail(detail) {
+        if (!detail) return;
+        if (detail.id) {
+            firebaseService.incrementNewsViewCount(detail.id);
+            setSelected({ ...detail, viewCount: (Number(detail.viewCount) || 0) + 1 });
+        } else {
+            setSelected(detail);
+        }
+    }
 
     return (
         <div className="min-h-screen bg-white overflow-y-auto">
@@ -191,14 +283,24 @@ export default function NewsView({ content, onBack, newsItems }) {
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                                 <h2 className="text-lg md:text-xl font-bold text-dark">창업 · 경제뉴스</h2>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <select
+                                        value={categoryFilter}
+                                        onChange={(e) => setCategoryFilter(e.target.value)}
+                                        className="text-xs md:text-sm border border-black/10 rounded-lg px-2.5 py-1.5 bg-white text-dark focus:outline-none focus:ring-1 focus:ring-brand"
+                                    >
+                                        <option value="all">전체 카테고리</option>
+                                        {categoryOptions.map((key) => (
+                                            <option key={key} value={key}>{categoryMetaFor(key).label}</option>
+                                        ))}
+                                    </select>
                                     <select
                                         value={sourceFilter}
                                         onChange={(e) => setSourceFilter(e.target.value)}
                                         className="text-xs md:text-sm border border-black/10 rounded-lg px-2.5 py-1.5 bg-white text-dark focus:outline-none focus:ring-1 focus:ring-brand"
                                     >
                                         <option value="all">전체 신문사</option>
-                                        {sourceOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                                        {sourceOptions.map((s) => <option key={s} value={s}>{pressName(s)}</option>)}
                                     </select>
                                     <select
                                         value={sortMode}
@@ -214,8 +316,11 @@ export default function NewsView({ content, onBack, newsItems }) {
                                 <>
                                     <div className="border-t border-black/[0.06]">
                                         {pageItems.map((item, i) => (
-                                            <React.Fragment key={`${item.title}-${i}`}>
-                                                <NewsRow item={item} isLast={i === pageItems.length - 1} onOpen={setSelected} />
+                                            // key는 제목이 아니라 id로 — 같은 날 비슷한 제목의 기사가 여러 신문사에서
+                                            // 동시에 실리는 일이 흔해서, 제목 기준 key는 다른 기사인데 같은 key로
+                                            // 잡혀 React가 잘못된 항목을 재사용할 수 있었다.
+                                            <React.Fragment key={item.id || `${item.title}-${i}`}>
+                                                <NewsRow item={item} isLast={i === pageItems.length - 1} onOpen={openNewsDetail} />
                                                 {i === 3 ? <AdSlot slotId="news-list-native" content={content} className="my-1" /> : null}
                                             </React.Fragment>
                                         ))}
@@ -245,7 +350,7 @@ export default function NewsView({ content, onBack, newsItems }) {
                 </div>
             </section>
 
-            <ContentDetailModal item={selected} onClose={() => setSelected(null)} />
+            <NewsDetailModal item={selected} onClose={() => setSelected(null)} />
         </div>
     );
 }

@@ -11,11 +11,19 @@ import ModalPortal from './ModalPortal';
  * Firestore에 저장해둔 요약/본문 데이터를 이 사이트 안에서 바로 보여주고, 원문이 필요한
  * 사람만 "원문 보기"를 눌러 실제 출처로 나가도록 했다.
  *
- * item: { title, badgeLabel, badgeClass, org, dateLabel, tags, amountText, summary, description, externalUrl }
+ * item: { title, badgeLabel, badgeClass, org, dateLabel, dateExact, viewCount, tags, amountText,
+ *          summary, keySentence, description, externalUrl, showCoinAnimation }
+ * dateExact/viewCount/keySentence/showCoinAnimation은 뉴스(NewsView)에서만 채워서 넘긴다 — 지원사업
+ * 카드는 이 필드들 없이 넘어오므로 아래에서 값이 있을 때만 렌더링한다(공용 모달이라 도메인별 필드는
+ * 선택적). keySentence가 있으면 그걸 "핵심 문장"으로 강조해서 보여주고, 없으면(지원사업이거나 아직
+ * 예전 방식으로 수집된 뉴스) summary를 "요약"으로 대신 보여준다.
  */
 export default function ContentDetailModal({ item, onClose }) {
     if (!item) return null;
     const tags = Array.isArray(item.tags) ? item.tags.filter(Boolean) : [];
+    const metaLine = [item.dateExact, item.dateLabel, item.viewCount != null ? `조회 ${item.viewCount}` : null]
+        .filter(Boolean)
+        .join(' · ');
 
     return (
         <ModalPortal>
@@ -35,7 +43,7 @@ export default function ContentDetailModal({ item, onClose }) {
                                         {item.badgeLabel}
                                     </span>
                                 ) : null}
-                                {item.dateLabel ? <span className="text-xs text-gray-400">{item.dateLabel}</span> : null}
+                                {metaLine ? <span className="text-xs text-gray-400">{metaLine}</span> : null}
                             </div>
                             <button
                                 type="button"
@@ -64,16 +72,48 @@ export default function ContentDetailModal({ item, onClose }) {
                             </div>
                         ) : null}
 
-                        {item.summary ? (
-                            <p className="text-sm md:text-base text-dark leading-relaxed break-keep whitespace-pre-line mb-4">{item.summary}</p>
+                        {item.keySentence ? (
+                            <div className="mb-4 pl-4 border-l-[3px] border-brand/30">
+                                <p className="text-[11px] font-bold text-gray-400 tracking-wide mb-1.5">핵심 문장</p>
+                                <p className="text-sm md:text-base text-dark leading-relaxed break-keep whitespace-pre-line font-medium">{item.keySentence}</p>
+                            </div>
+                        ) : item.summary ? (
+                            <div className="mb-4">
+                                <p className="text-[11px] font-bold text-gray-400 tracking-wide mb-1.5">요약</p>
+                                <p className="text-sm md:text-base text-dark leading-relaxed break-keep whitespace-pre-line">{item.summary}</p>
+                            </div>
                         ) : null}
 
                         {item.description && item.description !== item.summary ? (
                             <p className="text-sm text-gray-600 leading-relaxed break-keep whitespace-pre-line">{item.description}</p>
                         ) : null}
 
-                        {!item.summary && !item.description ? (
+                        {!item.keySentence && !item.summary && !item.description ? (
                             <p className="text-sm text-gray-400">등록된 상세 내용이 없습니다.</p>
+                        ) : null}
+
+                        {item.showCoinAnimation ? (
+                            <div className="flex items-center justify-center gap-1.5 pt-6 mt-2" aria-hidden="true">
+                                <span className="bcsa-coin" style={{ animationDelay: '0ms' }}>🪙</span>
+                                <span className="bcsa-coin" style={{ animationDelay: '160ms' }}>🪙</span>
+                                <span className="bcsa-coin" style={{ animationDelay: '320ms' }}>🪙</span>
+                                <style>{`
+                                    .bcsa-coin {
+                                        display: inline-block;
+                                        font-size: 22px;
+                                        line-height: 1;
+                                        animation: bcsa-coin-bounce 1.2s ease-in-out infinite;
+                                    }
+                                    @keyframes bcsa-coin-bounce {
+                                        0%, 100% { transform: translateY(0) rotate(0deg); }
+                                        30% { transform: translateY(-10px) rotate(180deg); }
+                                        55% { transform: translateY(0) rotate(360deg); }
+                                    }
+                                    @media (prefers-reduced-motion: reduce) {
+                                        .bcsa-coin { animation: none; }
+                                    }
+                                `}</style>
+                            </div>
                         ) : null}
                     </div>
 

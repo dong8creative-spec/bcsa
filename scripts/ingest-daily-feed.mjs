@@ -234,6 +234,40 @@ function formatDeadlineText(date) {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}까지`;
 }
 
+// 네이버 뉴스검색 API가 주는 description은 이미 짧게 잘린 스니펫이라(원문 전체를 가져오는 게
+// 아니라, 네이버가 미리 잘라서 주는 것), 그 안에서 문장 단위로 쪼개 "제일 핵심적인 완결된 한 문장"을
+// 고른다 — 무작정 글자 수로 잘라 문장 중간에서 끊기는 것(previewFrom 방식)보다 낫다. LLM 요약이
+// 아니라 규칙 기반 선택이라 완벽하진 않지만, 새 API 키/비용 없이 지금 갖고 있는 데이터만으로 가능한
+// 개선이다.
+function splitSentences(text) {
+  const cleaned = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!cleaned) return [];
+  return cleaned
+    .split(/(?<=[.!?다요음함임됨]\.?)\s+(?=[가-힣A-Za-z0-9"'“(\[])/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function extractKeySentence(text, keywordUsed) {
+  const sentences = splitSentences(text);
+  if (sentences.length === 0) return '';
+  const isCompleteEnding = (s) => /(다|요|음|함|임|됨)\.?$/.test(s) || /[.!?]$/.test(s);
+  const scored = sentences.map((s, idx) => {
+    let score = 0;
+    if (isCompleteEnding(s)) score += 3; // 문장 중간에 잘리지 않고 끝맺은 문장을 우선
+    if (keywordUsed && s.includes(keywordUsed)) score += 2;
+    if (REQUIRED_TARGET_WORDS.some((w) => s.includes(w))) score += 2;
+    if (/\d/.test(s)) score += 1; // 금액/기한 등 숫자가 있는 문장을 약간 우대
+    if (s.length >= 15 && s.length <= 120) score += 1; // 너무 짧거나 너무 긴 문장은 감점
+    score -= idx * 0.3; // 두괄식 기사가 많아 앞쪽 문장을 약간 더 선호
+    return { s, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  let best = scored[0].s;
+  if (best.length > 140) best = `${best.slice(0, 140).trim()}…`;
+  return best;
+}
+
 function shortHash(input) {
   return crypto.createHash('sha1').update(String(input)).digest('hex').slice(0, 20);
 }
@@ -713,18 +747,21 @@ async function ingestNaverNews(db) {
     const category = resolveCategory(fullText, query);
     const targets = extractTargets(fullText);
     const deadline = extractDeadlineFromText(fullText);
+    const keySentence = extractKeySentence(description, query);
 
     const result = await upsertDoc(db, 'newsItems', id, {
       onCreate: () => ({
         title,
         source: hostnameLabel(link),
         summary: description.slice(0, 200),
+        keySentence,
         url: link,
         category,
         target: targets.join(', '),
         deadlineText: deadline ? formatDeadlineText(deadline) : '',
         keyword: query,
         publishedAt: admin.firestore.Timestamp.fromDate(publishedAt),
+        viewCount: 0, // 사이트 안에서 클릭해서 본 횟수 — firestore.rules가 이 필드만 누구나 +1 가능하게 허용
       }),
       onUpdate: () => null, // 뉴스는 내용이 바뀔 일이 없어 갱신 불필요
     });
