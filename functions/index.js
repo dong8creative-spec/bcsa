@@ -1256,32 +1256,7 @@ app.post('/api/payment/complete', async (req, res) => {
       return;
     }
 
-    // PortOne API로 실결제 검증 (반영 지연 대비 짧은 재시도 — not_paid에 한해 1회 더)
-    let verifyResult = { verified: true, skipped: true };
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        verifyResult = await verifyPortOnePayment({ isV2: true, paymentId: merchantUid });
-        if (!verifyResult.verified && verifyResult.reason !== 'amount_mismatch') {
-          // V2 미반영 가능 → V1으로 폴백 시도
-          const v1 = await verifyPortOnePayment({ isV2: false, impUid: merchantUid });
-          if (v1.verified) verifyResult = v1;
-        }
-      } catch (e) {
-        console.warn('[Payment Complete] verify error (non-fatal)', e.message);
-        verifyResult = { verified: true, skipped: true };
-        break;
-      }
-      if (verifyResult.verified || verifyResult.reason === 'amount_mismatch') break;
-      // not_paid 등 일시적 지연 → 잠시 후 재조회
-      await new Promise((r) => setTimeout(r, 600));
-    }
-
-    if (!verifyResult.verified) {
-      res.status(400).json({ ok: false, error: 'payment_not_verified', reason: verifyResult.reason });
-      return;
-    }
-
-    // pendingPayments에서 신청 생성
+    // pendingPayments에서 신청 생성 (먼저 조회 — 아래 결제 검증에서 기대 금액으로 사용)
     const pendingSnap = await db.collection('pendingPayments').doc(merchantUid).get();
     if (!pendingSnap.exists) {
       // pending 없음: 신청 생성 불가 (이미 삭제됐거나 저장 안 된 경우)
@@ -1297,6 +1272,53 @@ app.post('/api/payment/complete', async (req, res) => {
     }
 
     const pendingData = pendingSnap.data();
+
+    // 결제 금액 검증용 기대 금액 (웹훅 경로와 동일하게 seminars.applicationFee 기준)
+    // 주의: expectedAmount 없이 검증하면 "결제됐는지"만 확인하고 "얼마 냈는지"는 확인하지 않아,
+    // 클라이언트에서 PortOne 요청 금액을 조작해 실제 참가비보다 적게 내고도 신청이 완료될 수 있었다.
+    const seminarSnapForAmount = pendingData?.seminar_id
+      ? await db.collection('seminars').doc(String(pendingData.seminar_id)).get()
+      : null;
+    const expectedAmount = seminarSnapForAmount?.exists
+      ? Number(seminarSnapForAmount.data()?.applicationFee) || null
+      : null;
+
+    // PortOne API로 실결제 검증 (반영 지연 대비 짧은 재시도 — not_paid에 한해 1회 더)
+    let verifyResult = { verified: true, skipped: true };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        verifyResult = await verifyPortOnePayment({ isV2: true, paymentId: merchantUid, expectedAmount });
+        if (!verifyResult.verified && verifyResult.reason !== 'amount_mismatch') {
+          // V2 미반영 가능 → V1으로 폴백 시도
+          const v1 = await verifyPortOnePayment({ isV2: false, impUid: merchantUid, expectedAmount });
+          if (v1.verified) verifyResult = v1;
+        }
+      } catch (e) {
+        console.warn('[Payment Complete] verify error (non-fatal)', e.message);
+        verifyResult = { verified: true, skipped: true };
+        break;
+      }
+      if (verifyResult.verified || verifyResult.reason === 'amount_mismatch') break;
+      // not_paid 등 일시적 지연 → 잠시 후 재조회
+      await new Promise((r) => setTimeout(r, 600));
+    }
+
+    if (verifyResult.reason === 'amount_mismatch') {
+      // 실제 결제 금액이 참가비와 다름 — 신청을 만들지 않고 낸 만큼 전액 자동 환불
+      console.error('[Payment Complete] amount_mismatch — auto refund', merchantUid, verifyResult.expected, verifyResult.actual);
+      const actualPaid = Number(verifyResult.actual) || 0;
+      await cancelPortOnePayment({ paymentId: merchantUid, reason: '결제 금액 불일치로 인한 자동 환불', paidAmount: actualPaid, refundAmount: actualPaid });
+      await db.collection('paymentWebhookEvents').doc(merchantUid).set({ amount_mismatch: true }, { merge: true });
+      await db.collection('pendingPayments').doc(merchantUid).delete();
+      res.status(400).json({ ok: false, error: 'amount_mismatch' });
+      return;
+    }
+
+    if (!verifyResult.verified) {
+      res.status(400).json({ ok: false, error: 'payment_not_verified', reason: verifyResult.reason });
+      return;
+    }
+
     const createResult = await createApplicationFromPending(merchantUid, pendingData);
     if (createResult.reason === 'capacity_full') {
       console.warn('[Payment Complete] capacity_full — auto refund', merchantUid);

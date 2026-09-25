@@ -92,6 +92,20 @@ const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d
 const RESTAURANTS_CACHE_KEY = 'bcsa_restaurants_cache_v1';
 const HIGH_PRIORITY_RESTAURANT_IMAGE_COUNT = 9;
 
+// localStorage에 저장된 JSON 배열을 안전하게 읽는다. 값이 손상돼 있어도(용량 초과로 잘림,
+// 구버전 형식 등) 예외를 던지는 대신 빈 배열로 넘어간다 — 다른 localStorage 캐시들과 동일한 방식.
+const readLocalJsonArray = (key) => {
+    try {
+        if (typeof Storage === 'undefined' || typeof localStorage === 'undefined') return [];
+        const raw = localStorage.getItem(key);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+};
+
 const readRestaurantsCache = () => {
     try {
         if (typeof Storage === 'undefined' || typeof localStorage === 'undefined') return [];
@@ -906,7 +920,7 @@ const App = () => {
         
         // 이미 확인한 알람 목록 가져오기
         const checkedAlertsKey = `program_alerts_checked_${userId}`;
-        const checkedAlerts = JSON.parse(localStorage.getItem(checkedAlertsKey) || '[]');
+        const checkedAlerts = readLocalJsonArray(checkedAlertsKey);
         
         // 날짜 문자열을 Date 객체로 변환하는 함수
         const parseDateString = (dateStr) => {
@@ -1006,7 +1020,7 @@ const App = () => {
                                 console.error('신청한 프로그램 목록 로드 실패:', error);
                                 // 실패 시 localStorage에서 가져오기 (폴백)
                                 try {
-                                    const localApplications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
+                                    const localApplications = readLocalJsonArray('busan_ycc_seminar_applications');
                                     const meId = String(userDoc.id || userDoc.uid || '');
                                     const meEmail = (userDoc.email || '').trim().toLowerCase();
                                     const mePhone = (userDoc.phone || userDoc.phoneNumber || '').replace(/\D/g, '');
@@ -1076,7 +1090,7 @@ const App = () => {
                 console.error('신청한 프로그램 목록 로드 실패:', e);
             }
             try {
-                const local = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
+                const local = readLocalJsonArray('busan_ycc_seminar_applications');
                 const meId = String(currentUser.id || '');
                 const meEmail = (currentUser.email || '').trim().toLowerCase();
                 const mePhone = (currentUser.phone || currentUser.phoneNumber || '').replace(/\D/g, '');
@@ -1098,7 +1112,7 @@ const App = () => {
         if (!userId) return;
         
         const checkedAlertsKey = `program_alerts_checked_${userId}`;
-        const checkedAlerts = JSON.parse(localStorage.getItem(checkedAlertsKey) || '[]');
+        const checkedAlerts = readLocalJsonArray(checkedAlertsKey);
         
         // 오늘 확인한 알람들을 기록
         const today = new Date().toISOString().split('T')[0];
@@ -2305,7 +2319,7 @@ const App = () => {
         try {
             if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
                 const storageKey = 'busan_ycc_seminar_applications';
-                const existingApplications = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                const existingApplications = readLocalJsonArray(storageKey);
                 existingApplications.push(application);
                 localStorage.setItem(storageKey, JSON.stringify(existingApplications));
             }
@@ -2386,7 +2400,7 @@ const App = () => {
         }
         
         // 참여자인지 확인 (로컬 + Firebase 신청 목록)
-        const applications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
+        const applications = readLocalJsonArray('busan_ycc_seminar_applications');
         const fromStorage = applications.some(app =>
             String(app.seminarId) === String(seminar.id) && String(app.userId) === String(currentUser?.id)
         );
@@ -2472,7 +2486,7 @@ const App = () => {
             // localStorage에서 확인 (폴백)
             try {
                 if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                    const applications = JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]');
+                    const applications = readLocalJsonArray('busan_ycc_seminar_applications');
                     const hasApplied = applications.some(app => 
                         app.seminarId === program.id && app.userId === currentUser.id
                     );
@@ -2572,7 +2586,7 @@ const App = () => {
         // localStorage에도 저장 (폴백용)
         try {
             if (typeof Storage !== 'undefined' && typeof localStorage !== 'undefined') {
-                const existingInquiries = JSON.parse(localStorage.getItem('busan_ycc_inquiries') || '[]');
+                const existingInquiries = readLocalJsonArray('busan_ycc_inquiries');
                 const updatedInquiries = [...existingInquiries, newInquiry];
                 localStorage.setItem('busan_ycc_inquiries', JSON.stringify(updatedInquiries));
             }
@@ -3015,6 +3029,33 @@ END:VCALENDAR`;
         return `${baseClass} ${isActive ? 'text-ink font-semibold' : 'text-sub hover:text-ink'}`;
     }
 
+    // 비활성화된 메뉴로 들어오면 홈으로 돌려보낸다.
+    // 예전에는 이 alert()+goTo() 호출이 renderView() 안(=렌더링 도중)에 있어서, React가 "무엇을
+    // 그릴지" 계산하는 동안 브라우저 alert 창을 띄우고 setState/navigate까지 실행하고 있었다.
+    // 개발 모드(StrictMode)에서 같은 화면을 두 번 그려보는 특성상 alert가 두 번 뜰 수 있었고,
+    // "렌더링 중인 컴포넌트를 업데이트했다"는 경고의 원인이었다. 부작용(alert, 이동)은 항상
+    // useEffect로만 실행하고, renderView()는 그리기만 담당하도록 분리했다.
+    useEffect(() => {
+        if (currentView === 'donation' && (DONATION_FEATURE_DISABLED || !menuEnabled['후원'])) {
+            alert('준비중인 서비스입니다.');
+            goTo('home');
+            return;
+        }
+        const requiredMenuByView = {
+            allMembers: '부청사 회원',
+            allSeminars: '프로그램',
+            community: '커뮤니티',
+            restaurants: '부산맛집',
+            about: '소개',
+            tools: '사업도구',
+        };
+        const requiredKey = requiredMenuByView[currentView];
+        if (requiredKey && !menuEnabled[requiredKey]) {
+            alert('준비중인 서비스입니다.');
+            goTo('home');
+        }
+    }, [currentView, menuEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const renderView = () => {
         try {
             if (location.pathname === '/payment/result') {
@@ -3160,8 +3201,7 @@ END:VCALENDAR`;
             );
         }
         if (currentView === 'allMembers' && !menuEnabled['부청사 회원']) {
-            alert('준비중인 서비스입니다.');
-            goTo('home');
+            // 알림·홈 이동은 위 useEffect가 처리 — 여기서는 그리지 않고 대기만 한다.
             return null;
         }
         if (currentView === 'allMembers') {
@@ -3173,8 +3213,7 @@ END:VCALENDAR`;
             return <AllMembersView currentPage={membersListPage} onPageChange={setMembersListPage} onBack={() => goTo('home')} members={displayMembers} currentUser={currentUser} pageTitles={pageTitles} />;
         }
         if (currentView === 'allSeminars' && !menuEnabled['프로그램']) {
-            alert('준비중인 서비스입니다.');
-            goTo('home');
+            // 알림·홈 이동은 위 useEffect가 처리 — 여기서는 그리지 않고 대기만 한다.
             return null;
         }
         if (currentView === 'allSeminars') {
@@ -3217,7 +3256,7 @@ END:VCALENDAR`;
                     openKakaoPlacesSearch={openKakaoPlacesSearch}
                     pageTitles={pageTitles}
                     onWriteReview={handleWriteReview}
-                    applications={JSON.parse(localStorage.getItem('busan_ycc_seminar_applications') || '[]')}
+                    applications={readLocalJsonArray('busan_ycc_seminar_applications')}
                     communityPosts={communityPosts}
                 />;
             } catch (error) {
@@ -3246,8 +3285,7 @@ END:VCALENDAR`;
             }
         } 
         if (currentView === 'community' && !menuEnabled['커뮤니티']) {
-            alert('준비중인 서비스입니다.');
-            goTo('home');
+            // 알림·홈 이동은 위 useEffect가 처리 — 여기서는 그리지 않고 대기만 한다.
             return null;
         }
         if (currentView === 'community' && !currentUser) {
@@ -3289,20 +3327,13 @@ END:VCALENDAR`;
             />;
         }
         if (currentView === 'notice') return <NoticeView onBack={() => goTo('home')} posts={communityPosts} menuNames={menuNames} pageTitles={pageTitles} />;
-        if (currentView === 'donation' && DONATION_FEATURE_DISABLED) {
-            alert('준비중인 서비스입니다.');
-            goTo('home');
-            return null;
-        }
-        if (currentView === 'donation' && !menuEnabled['후원']) {
-            alert('준비중인 서비스입니다.');
-            goTo('home');
+        if (currentView === 'donation' && (DONATION_FEATURE_DISABLED || !menuEnabled['후원'])) {
+            // 알림·홈 이동은 위 useEffect가 처리 — 여기서는 그리지 않고 대기만 한다.
             return null;
         }
         if (currentView === 'donation') return <DonationView onBack={() => goTo('home')} currentUser={currentUser} setCurrentUser={setCurrentUser} setMembersData={setMembersData} membersData={membersData} saveCurrentUserToStorage={saveCurrentUserToStorage} pageTitles={pageTitles} />;
         if (currentView === 'restaurants' && !menuEnabled['부산맛집']) {
-            alert('준비중인 서비스입니다.');
-            goTo('home');
+            // 알림·홈 이동은 위 useEffect가 처리 — 여기서는 그리지 않고 대기만 한다.
             return null;
         }
         if (currentView === 'restaurants') {
@@ -3393,14 +3424,12 @@ END:VCALENDAR`;
             );
         }
         if (currentView === 'about' && !menuEnabled['소개']) {
-            alert('준비중인 서비스입니다.');
-            goTo('home');
+            // 알림·홈 이동은 위 useEffect가 처리 — 여기서는 그리지 않고 대기만 한다.
             return null;
         }
         if (currentView === 'about') return <AboutView onBack={() => goTo('home')} content={content} pageTitles={pageTitles} />;
         if (currentView === 'tools' && !menuEnabled['사업도구']) {
-            alert('준비중인 서비스입니다.');
-            goTo('home');
+            // 알림·홈 이동은 위 useEffect가 처리 — 여기서는 그리지 않고 대기만 한다.
             return null;
         }
         if (currentView === 'tools') return <ToolsView onBack={() => goTo('home')} />;

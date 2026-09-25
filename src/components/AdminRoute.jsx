@@ -90,7 +90,10 @@ export const AdminRoute = ({ children }) => {
   }
 
   if (isAdmin) {
-    return children;
+    // useAdminAuth()가 여기서 이미 Firestore 사용자 문서를 읽고 토큰을 확인했다.
+    // children(AdminDashboard)이 같은 훅을 또 호출해 똑같은 조회를 반복하지 않도록,
+    // 이미 확인된 값을 그대로 props로 내려준다 (이중 Firestore 읽기·이중 토큰 강제 갱신 제거).
+    return React.cloneElement(children, { userDoc, authUser });
   }
 
   return (
@@ -117,12 +120,11 @@ export const AdminRoute = ({ children }) => {
               계정: <span className="font-bold">{authUser?.email || userDoc?.email || '알 수 없음'}</span>
             </p>
             {authUser?.uid && (
+              // 관리자가 아닌 계정에도 필요한 Firestore 필드값을 그대로 알려주고 있었다.
+              // 실제로 이 정보만으로 권한을 얻을 수는 없지만(스스로 role/memberGrade를 바꾸는 건
+              // firestore.rules가 이미 막고 있음), 굳이 UID까지 화면에 노출할 이유는 없어 지웠다.
               <p className="text-xs text-amber-800 break-all">
-                Firebase UID: {authUser.uid}
-                <br />
-                Firestore <code className="bg-amber-100 px-1 rounded">users</code> 문서에 위 UID와{' '}
-                <code className="bg-amber-100 px-1 rounded">role: admin</code> 또는{' '}
-                <code className="bg-amber-100 px-1 rounded">memberGrade: 마스터</code> 설정이 필요합니다.
+                관리자 권한이 필요하시면 기존 관리자에게 위 계정으로 권한 부여를 요청해 주세요.
               </p>
             )}
           </div>

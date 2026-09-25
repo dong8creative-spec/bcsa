@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authService } from '../../services/authService';
-import { useAdminAuth } from '../../hooks/useAdminAuth';
 import { AdminLayout } from './components/AdminLayout';
 import { UserManagement } from './components/UserManagement';
 import { ProgramManagement } from './components/ProgramManagement';
@@ -17,12 +16,13 @@ const VALID_TABS = ['users', 'programs', 'externalPosters', 'supportPrograms', '
 /**
  * 관리자 대시보드 메인 컴포넌트
  */
-export const AdminDashboard = () => {
+// userDoc은 AdminRoute가 이미 확인해 둔 값을 그대로 props로 받는다
+// (여기서 useAdminAuth()를 다시 호출하면 Firestore 조회·토큰 갱신이 두 번 일어난다).
+export const AdminDashboard = ({ userDoc }) => {
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
   const initialTab = VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'users';
   const [activeTab, setActiveTab] = useState(initialTab);
-  const { userDoc } = useAdminAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
