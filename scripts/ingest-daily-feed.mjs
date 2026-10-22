@@ -214,6 +214,27 @@ function passesContentFilters(text) {
   return true;
 }
 
+// 제목 자체가 사업·지역 주제여야 한다. 본문 발췌에 "소상공인"이 한 번 스치기만 해도 통과되어
+// 정치 인터뷰·타 지역 의회 동정·해외 사건 기사가 섞이던 문제(2026-10 점검) 대응.
+const TITLE_TOPIC_WORDS = [
+  ...REQUIRED_TARGET_WORDS,
+  '부산', '창업', '지원사업', '지원금', '상권', '판로', '세무', '노무', '세금', '부가세', '종소세',
+  '사업자', '상공인', '자금', '보증', '대출', '수출', '기업', '상인', '전통시장', '골목', '가게', '매장',
+  '프랜차이즈', '고용', '채용', '최저임금', '플랫폼', '커머스', '마케팅',
+  '수수료', '배달', '상생', '동반성장', '중기부', '중기', '중진공', '소진공', '서민금융', '정책자금',
+];
+// 제목에 있으면 사업 정보보다 정치·사건 기사일 가능성이 높아 제외 (예외 없음)
+const TITLE_EXCLUDE_TERMS = [
+  '[패트롤]', '정국인터뷰', '정부 성패', '민주당', '국민의힘', '대선', '총선', '탄핵', '국정감사',
+];
+
+/** 제목 기준 관련성: 사업·지역 주제어가 있고, 정치·사건성 표현이 없어야 통과 */
+function passesTitleRelevance(title) {
+  const t = String(title || '');
+  if (TITLE_EXCLUDE_TERMS.some((w) => t.includes(w))) return false;
+  return TITLE_TOPIC_WORDS.some((w) => t.includes(w));
+}
+
 /** 위기 관련 표현이 있으면 "위기·대응"으로, 아니면 검색어가 속한 기본 카테고리로 분류. */
 function resolveCategory(text, keywordUsed) {
   if (CRISIS_TERMS.some((term) => text.includes(term))) return '위기·대응';
@@ -361,17 +382,28 @@ async function upsertDoc(db, collectionName, id, { onCreate, onUpdate }) {
   return 'updated';
 }
 
-/** "20260101 ~ 20260228" 형태 문자열에서 마감일(뒤쪽 날짜)을 Date로 파싱. 실패하면 null. */
+/**
+ * 신청기간 문자열에서 마감일(뒤쪽 날짜)을 Date로 파싱. 실패하면 null.
+ * "20260101 ~ 20260228"뿐 아니라 "2026-10-26 ~ 2026-11-01", "2026.10.26~2026.11.01" 형식도 처리한다
+ * (예전엔 8자리 숫자만 읽어서 구분자가 있는 기간을 놓치고 본문의 엉뚱한 날짜로 넘어갔다).
+ */
 function parseDeadlineFromRange(rangeStr) {
   if (!rangeStr || typeof rangeStr !== 'string') return null;
-  const nums = rangeStr.match(/\d{8}/g);
-  if (!nums || nums.length === 0) return null;
-  const last = nums[nums.length - 1];
-  const y = Number(last.slice(0, 4));
-  const m = Number(last.slice(4, 6)) - 1;
-  const d = Number(last.slice(6, 8));
-  const date = new Date(y, m, d, 23, 59, 59);
-  return Number.isNaN(date.getTime()) ? null : date;
+  const dates = [...rangeStr.matchAll(/(20\d{2})[.\-\/]?\s?(\d{1,2})[.\-\/]?\s?(\d{1,2})/g)];
+  if (dates.length === 0) return null;
+  const [, y, m, d] = dates[dates.length - 1];
+  const date = new Date(Number(y), Number(m) - 1, Number(d), 23, 59, 59);
+  return isPlausibleDeadline(date) ? date : null;
+}
+
+/**
+ * 마감일로 볼 수 있는 날짜인지: 1년 이상 지난 날짜는 제외한다.
+ * 공고 본문의 "1986.1.1.~2007.12.31. 출생" 같은 나이 조건이 신청기간으로 잘못 읽혀
+ * 마감일이 2008년으로 표시되던 문제 방지.
+ */
+function isPlausibleDeadline(date) {
+  if (!date || Number.isNaN(date.getTime())) return false;
+  return date.getTime() >= Date.now() - 365 * 86400000;
 }
 
 /**
@@ -387,7 +419,7 @@ function extractDeadlineFromText(text) {
 
   const makeDate = (y, mo, d) => {
     const date = new Date(y, mo - 1, d, 23, 59, 59);
-    return Number.isNaN(date.getTime()) ? null : date;
+    return isPlausibleDeadline(date) ? date : null;
   };
   // 연도 없는 월/일만 나온 경우: 이미 많이 지난 날짜면 내년으로 보정.
   const makeDateInferYear = (mo, d) => {
@@ -604,7 +636,12 @@ async function ingestBizinfo(db) {
     // hashtags=부산 조회(busanUrlSet)도 참고는 하되, 기업마당의 hashtags 파라미터가 항상 지역을
     // 정확히 걸러주는 건 아니라서(공식 문서에 지역 전용 필드가 없음) 제목/기관명 매칭을 반드시
     // 함께 요구한다 — hashtags 결과 단독으로는 부산으로 분류하지 않는다.
-    const titleOrOrgMentionsBusan = /부산/.test(`${title} ${org}`);
+    // "부산"이 단어 앞부분으로 나올 때만 인정한다(부산광역시·부산경제진흥원·[부산] 등).
+    // "영농부산물"처럼 다른 낱말 속에 들어간 "부산"은 제외 — 상주시 공고가 부산으로 분류되던 원인.
+    // 제목이 [경북]처럼 다른 지역 태그로 시작하면 기관명에 부산이 있을 때만 부산으로 본다.
+    const mentionsBusan = (s) => /(^|[^가-힣])부산/.test(s);
+    const otherRegionTag = /^\s*\[(?!부산)[^\]]+\]/.test(title);
+    const titleOrOrgMentionsBusan = otherRegionTag ? mentionsBusan(org) : mentionsBusan(`${title} ${org}`);
     const isBusan = titleOrOrgMentionsBusan;
     if (busanUrlSet.has(sourceUrl) && !titleOrOrgMentionsBusan) {
       // hashtags=부산 조회엔 잡혔지만 제목/기관명엔 "부산"이 없는 경우 — 참고용으로만 로그를 남긴다.
@@ -721,7 +758,7 @@ async function ingestNaverNews(db) {
       }
 
       const fullText = `${title} ${description}`;
-      if (!passesContentFilters(fullText)) {
+      if (!passesTitleRelevance(title) || !passesContentFilters(fullText)) {
         rejectedByFilter += 1;
         continue;
       }
@@ -789,7 +826,7 @@ async function cleanupLegacyNews(db) {
   for (const doc of snap.docs) {
     const data = doc.data() || {};
     const text = `${data.title || ''} ${data.summary || ''} ${data.description || ''}`;
-    if (!passesContentFilters(text)) {
+    if (!passesTitleRelevance(data.title) || !passesContentFilters(text)) {
       if (!isDryRun) await doc.ref.delete();
       removed += 1;
     } else {

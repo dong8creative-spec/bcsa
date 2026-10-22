@@ -185,7 +185,7 @@ export default function NewsView({ content, onBack, newsItems }) {
                     sortOrder: Number(n.sortOrder) || 0,
                     badge: meta.label,
                     badgeClass: meta.badgeClass,
-                    meta: [pressName(source), dateExact, dateLabel, `조회 ${viewCount}`].filter(Boolean).join(' · '),
+                    meta: [pressName(source), dateExact, dateLabel, viewCount > 0 ? `조회 ${viewCount}` : null].filter(Boolean).join(' · '),
                     detail: {
                         id: n.id || '',
                         title: n.title || '',

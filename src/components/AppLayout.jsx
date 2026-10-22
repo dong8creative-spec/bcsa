@@ -5,6 +5,7 @@ import InquiryModal from './InquiryModal';
 import ModalPortal from './ModalPortal';
 import { useMediaQuery, MOBILE_QUERY } from '../hooks/useMediaQuery';
 import { defaultContent } from '../constants/content';
+import { isAdminUser } from '../utils/adminAccess';
 
 const FAB_GAP_PX = 16;
 const FAB_ESTIMATE_HEIGHT_PX = 152;
@@ -323,7 +324,7 @@ const AppLayout = (props) => {
                                 <Icons.Menu size={24} />
                             </button>
                         ) : (
-                            <div className="flex items-center cursor-pointer group h-[26px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onGoHome || (() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'instant' }); }))(); }}>
+                            <div className="flex items-center cursor-pointer group h-[40px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onGoHome || (() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'instant' }); }))(); }}>
                                 <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain hover:opacity-90 transition-opacity" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-sm font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
                             </div>
                         )}
@@ -416,7 +417,8 @@ const AppLayout = (props) => {
                         }
                         return null;
                     }
-                    return viewResult;
+                    // 화면별 코드를 나눠 받는 동안(lazy) 빈 영역을 유지해 레이아웃이 튀지 않게 한다
+                    return <React.Suspense fallback={<div className="min-h-[60vh]" />}>{viewResult}</React.Suspense>;
                 } catch (error) {
                     console.error('renderView() error:', error);
                     console.error('Error stack:', error.stack);
@@ -432,7 +434,7 @@ const AppLayout = (props) => {
             <footer ref={footerRef} className="py-12 px-6 text-white bg-[#0046a5]">
                 <div className="container mx-auto max-w-6xl">
                     <div className="md:hidden text-center">
-                        <h3 className="text-lg font-bold text-white mb-4">{content?.footer_title || '부산청년사업가 포럼'}</h3>
+                        <h3 className="text-lg font-bold text-white mb-4">{content?.footer_title || '부산청년사업가들'}</h3>
                         <div className="mb-2">
                             <p className="text-[26px] text-white font-bold mb-0">
                                 <span className="mr-2" aria-hidden="true">☎</span><a href={`tel:${(content?.footer_phone || defaultContent.footer_phone).replace(/\s/g, '')}`} className="hover:text-white/90 transition-colors">{content?.footer_phone || defaultContent.footer_phone}</a>
@@ -456,7 +458,7 @@ const AppLayout = (props) => {
                                 </>
                             );
                         })()}
-                        <p className="text-[8px] text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가 포럼 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
+                        <p className="text-[8px] text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가들 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
                         <p className="text-[8px] text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
                             <span className="text-white/50">|</span>
@@ -469,12 +471,17 @@ const AppLayout = (props) => {
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/privacy'); }} className="hover:text-white/90 transition-colors">개인정보 처리방침</button>
                             <span className="text-white/50">|</span>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/refund'); }} className="hover:text-white/90 transition-colors">취소/환불 규정</button>
-                            <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = '/admin'; }} className="text-white/60 hover:text-white/90 transition-colors" title="관리자">Admin</button>
+                            {/* 관리자 바로가기는 관리자에게만 노출 */}
+                            {isAdminUser(currentUser) ? (
+                                <>
+                                    <span className="text-white/50">|</span>
+                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = '/admin'; }} className="text-white/60 hover:text-white/90 transition-colors" title="관리자">Admin</button>
+                                </>
+                            ) : null}
                         </p>
                     </div>
                     <div className="hidden md:block text-left">
-                        <h3 className="text-lg font-bold text-white mb-4">{content?.footer_title || '부산청년사업가 포럼'}</h3>
+                        <h3 className="text-lg font-bold text-white mb-4">{content?.footer_title || '부산청년사업가들'}</h3>
                         <p className="text-[10px] md:text-sm text-white/90 mb-2">
                             부산광역시 연제구 법원남로9번길 17(거제동) | 대표 정은지 | 사업자등록번호{' '}
                             <a href="http://www.ftc.go.kr/bizCommPop.do?wrkr_no=7927200616" target="_blank" rel="noopener noreferrer" className="hover:text-white underline">792-72-00616</a>
@@ -483,7 +490,7 @@ const AppLayout = (props) => {
                             대표번호 <a href={`tel:${(content?.footer_phone || defaultContent.footer_phone).replace(/\s/g, '')}`} className="hover:text-white transition-colors font-bold">{content?.footer_phone || defaultContent.footer_phone}</a>
                             {content?.footer_hours ? ` (${content.footer_hours})` : ' (평일 09:00–18:00 / 주말·공휴일 휴무)'} | 대표 메일 <a href={`mailto:${content?.footer_email || defaultContent.footer_email}`} className="hover:text-white transition-colors font-bold">{content?.footer_email || defaultContent.footer_email}</a>
                         </p>
-                        <p className="text-[8px] md:text-xs text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가 포럼 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
+                        <p className="text-[8px] md:text-xs text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가들 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
                         <p className="text-[8px] md:text-xs text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
                             <span className="text-white/50">|</span>
@@ -496,8 +503,13 @@ const AppLayout = (props) => {
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/privacy'); }} className="hover:text-white/90 transition-colors">개인정보 처리방침</button>
                             <span className="text-white/50">|</span>
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/refund'); }} className="hover:text-white/90 transition-colors">취소/환불 규정</button>
-                            <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = '/admin'; }} className="text-white/60 hover:text-white/90 transition-colors" title="관리자">Admin</button>
+                            {/* 관리자 바로가기는 관리자에게만 노출 */}
+                            {isAdminUser(currentUser) ? (
+                                <>
+                                    <span className="text-white/50">|</span>
+                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = '/admin'; }} className="text-white/60 hover:text-white/90 transition-colors" title="관리자">Admin</button>
+                                </>
+                            ) : null}
                         </p>
                     </div>
                 </div>

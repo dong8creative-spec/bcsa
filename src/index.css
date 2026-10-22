@@ -63,7 +63,7 @@
   gap: 18px;
 }
 .bento-top { grid-template-areas: "a a b c" "a a d d"; }
-.bento-bottom { grid-template-areas: "e f g g" "h f i i"; }
+.bento-bottom { grid-template-areas: "g g g h" "i i i h"; }
 .area-a { grid-area: a; }
 .area-b { grid-area: b; }
 .area-c { grid-area: c; }
@@ -80,7 +80,7 @@
     grid-auto-rows: 188px;
   }
   .bento-top { grid-template-areas: "a a" "a a" "b c" "d d"; }
-  .bento-bottom { grid-template-areas: "e f" "g g" "h f" "i i"; }
+  .bento-bottom { grid-template-areas: "g g" "h h" "i i"; }
 }
 @media (max-width: 640px) {
   .bento-top, .bento-bottom {
@@ -88,7 +88,7 @@
     grid-auto-rows: auto;
   }
   .bento-top { grid-template-areas: "a" "b" "c" "d"; }
-  .bento-bottom { grid-template-areas: "e" "f" "g" "h" "i"; }
+  .bento-bottom { grid-template-areas: "g" "h" "i"; }
   .bento-top > *, .bento-bottom > * { min-height: 180px; }
   .area-f { min-height: 260px !important; }
 }

@@ -104,6 +104,49 @@ export function getSupportProgramDdayInfo(program, now = new Date()) {
   return { label, badgeClass, daysLeft, isUrgent };
 }
 
+const SUPPORT_PROGRAM_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
+
+/**
+ * 지원사업을 지원사업 페이지 탭 기준으로 나눈다 (홈 화면 숫자도 같은 함수를 써서 서로 맞춘다).
+ * - baseVisible: 게시 상태이고 등록 1년 이내인 공고
+ * - busanFreshAll: ① 부산 지역 + 최근 7일 등록 (최신 등록순)
+ * - urgentAll: ② ①에 들어가지 않은 공고 중 마감 D-0~10일 (마감 가까운 순)
+ * 공고 하나는 한 탭에만 들어간다(① 우선).
+ */
+export function bucketSupportPrograms(supportPrograms, nowMs = Date.now()) {
+  const rows = Array.isArray(supportPrograms) ? supportPrograms : [];
+  const baseVisible = rows.filter((p) => {
+    if (!p || p.enabled === false || p.status !== 'published') return false;
+    const createdMs = firestoreLikeToMillis(p.createdAt);
+    return createdMs == null || (nowMs - createdMs) <= SUPPORT_PROGRAM_MAX_AGE_MS;
+  });
+
+  const claimed = new Set();
+  const claim = (p) => { claimed.add(p.id); return p; };
+
+  const busanFreshAll = baseVisible
+    .filter((p) => Array.isArray(p.region) && p.region.includes('부산'))
+    .filter((p) => {
+      const cMs = firestoreLikeToMillis(p.createdAt);
+      return cMs != null && (nowMs - cMs) <= 7 * 86400000;
+    })
+    .sort((a, b) => firestoreLikeToMillis(b.createdAt) - firestoreLikeToMillis(a.createdAt))
+    .map(claim);
+
+  const urgentAll = baseVisible
+    .filter((p) => !claimed.has(p.id))
+    .filter((p) => {
+      if (p.isRolling) return false;
+      const dMs = firestoreLikeToMillis(p.deadlineAt);
+      return dMs != null && dMs >= nowMs;
+    })
+    .filter((p) => getSupportProgramDdayInfo(p).isUrgent)
+    .sort((a, b) => firestoreLikeToMillis(a.deadlineAt) - firestoreLikeToMillis(b.deadlineAt))
+    .map(claim);
+
+  return { baseVisible, busanFreshAll, urgentAll };
+}
+
 /**
  * 홈 팝업에 올 세미나 후보(날짜·이미지·정원 필터 적용, 최대 maxSeminars개)
  * @param {Array} seminarsData

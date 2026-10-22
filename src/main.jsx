@@ -1,16 +1,19 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import App from './App';
-import { AdminDashboard } from './pages/Admin';
 import { AdminRoute } from './components/AdminRoute';
-import AuthResetPasswordPage from './pages/AuthResetPasswordPage';
-import ProgramDetailPage from './pages/ProgramDetailPage';
+
+// 관리자·비밀번호 재설정·프로그램 상세는 필요할 때만 내려받는다 (첫 화면 번들 축소)
+const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'));
+const AuthResetPasswordPage = lazy(() => import('./pages/AuthResetPasswordPage'));
+const ProgramDetailPage = lazy(() => import('./pages/ProgramDetailPage'));
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
+      <Suspense fallback={<div className="min-h-screen" />}>
       <Routes>
         {/* 비밀번호 재설정 (메일 링크) */}
         <Route path="/auth/reset-password" element={<AuthResetPasswordPage />} />
@@ -31,6 +34,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         {/* 메인 앱 (모든 다른 경로) */}
         <Route path="/*" element={<App />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   </React.StrictMode>
 );

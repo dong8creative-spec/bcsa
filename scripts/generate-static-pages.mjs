@@ -2,7 +2,10 @@
  * 빌드 후 각 라우트별 정적 HTML 생성 + sitemap.xml 업데이트 (네이버/구글 봇 대응)
  *
  * 1. 라우트별 HTML 생성 (title/meta/OG 태그 + 소개 페이지 키워드 본문 삽입)
- * 2. Firebase REST API로 세미나 목록 조회 → sitemap.xml에 /programs/:id URL 추가
+ * 2. Firebase REST API로 세미나 목록 조회 → 프로그램 상세 페이지 HTML 생성 + sitemap.xml에 추가
+ *
+ * GitHub Pages는 dist/<경로>/index.html이 있어야 그 주소에 200으로 응답한다(없으면 404.html로 404 응답).
+ * /about 처럼 슬래시 없는 주소는 /about/ 으로 301 이동하므로 canonical·sitemap은 끝 슬래시 주소로 통일한다.
  */
 
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
@@ -14,6 +17,10 @@ const distDir = join(__dirname, '..', 'dist');
 const BASE_URL = 'https://bcsa.co.kr';
 const FIREBASE_PROJECT = 'bcsa-b190f';
 const TODAY = new Date().toISOString().split('T')[0];
+const DEFAULT_OG_IMAGE = `${BASE_URL}/assets/images/og-image.png`;
+const toCanonicalPath = (path) => (path === '/' ? '/' : `${path.replace(/\/$/, '')}/`);
+const escapeHtml = (v) => String(v ?? '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 // ─── 페이지 정의 ───────────────────────────────────────────────
 const PAGES = [
@@ -45,14 +52,19 @@ const PAGES = [
     description: '부청사의 새로운 소식과 공지사항을 확인하세요.',
   },
   {
-    path: '/restaurants',
-    title: '부산맛집 | 부청사 회원 추천 부산 맛집 - 부청사',
-    description: '부청사 회원들이 추천하는 부산 지역 맛집 정보를 확인하세요.',
+    path: '/news',
+    title: '뉴스 | 부산 창업·소상공인 경제 소식 - 부청사',
+    description: '부산 창업가·소상공인이 놓치기 쉬운 지원·상권·판로 소식을 매일 모아 보여드립니다.',
   },
   {
-    path: '/donation',
-    title: '후원 | 부청사를 함께 만들어가세요',
-    description: '부산 청년 사업가들의 성장을 응원하는 부청사 후원 프로그램입니다.',
+    path: '/support',
+    title: '지원사업 | 부산 신규·마감임박 정부 지원사업 - 부청사',
+    description: '부산 지역 신규 지원사업과 마감이 다가온 정부·지자체 지원사업을 핵심만 요약해 보여드립니다.',
+  },
+  {
+    path: '/tools',
+    title: '사업도구 | 부가세·마진·3.3%·손익분기점 계산기 - 부청사',
+    description: '부가세, 마진율, 3.3% 원천징수, 손익분기점, 광고 ROAS를 바로 계산하는 사업자 도구함입니다.',
   },
   {
     path: '/members',
@@ -62,8 +74,21 @@ const PAGES = [
 ];
 
 // ─── HTML 치환 ─────────────────────────────────────────────────
-function replaceMeta(html, { title, description, canonical, ogTitle, ogDescription, ogUrl, bodyAppend }) {
+function replaceMeta(html, { title, description, canonical, ogTitle, ogDescription, ogUrl, ogImage, bodyAppend }) {
   let result = html;
+  title = escapeHtml(title);
+  description = escapeHtml(description);
+  ogTitle = escapeHtml(ogTitle);
+  ogDescription = escapeHtml(ogDescription);
+  if (ogImage) {
+    const img = escapeHtml(ogImage);
+    result = result.replace(/(<meta\s+property="og:image"\s+content=")[^"]*(")/, `$1${img}$2`);
+    result = result.replace(/(<meta\s+name="twitter:image"\s+content=")[^"]*(")/, `$1${img}$2`);
+    // 기본 이미지(1200×630)가 아니면 크기 정보가 틀리므로 지운다 (카카오톡이 실제 크기로 처리)
+    if (ogImage !== DEFAULT_OG_IMAGE) {
+      result = result.replace(/\s*<meta\s+property="og:image:(?:width|height)"\s+content="[^"]*">/g, '');
+    }
+  }
   result = result.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
   result = result.replace(/(<meta\s+name="description"\s+content=")[^"]*(")/,         `$1${description}$2`);
   result = result.replace(/(<link\s+rel="canonical"\s+href=")[^"]*(")/,               `$1${canonical}$2`);
@@ -78,20 +103,55 @@ function replaceMeta(html, { title, description, canonical, ogTitle, ogDescripti
   return result;
 }
 
-// ─── Firebase REST API로 세미나 ID 목록 조회 ───────────────────
-async function fetchSeminarIds() {
+// ─── Firebase REST API로 세미나 목록 조회 (상세 페이지 메타용) ───
+const fieldValue = (f) => {
+  if (!f) return null;
+  if ('stringValue' in f) return f.stringValue;
+  if ('integerValue' in f) return Number(f.integerValue);
+  if ('doubleValue' in f) return f.doubleValue;
+  if ('arrayValue' in f) return (f.arrayValue.values || []).map(fieldValue);
+  if ('mapValue' in f) {
+    const out = {};
+    for (const [k, v] of Object.entries(f.mapValue.fields || {})) out[k] = fieldValue(v);
+    return out;
+  }
+  return null;
+};
+
+async function fetchSeminars() {
   try {
-    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/seminars?pageSize=200&mask.fieldPaths=date&mask.fieldPaths=recruitmentClosedByAdmin`;
+    const fields = ['title', 'desc', 'images', 'imageUrls', 'imageUrl', 'img', 'date', 'location'];
+    const mask = fields.map((f) => `mask.fieldPaths=${f}`).join('&');
+    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents/seminars?pageSize=300&${mask}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (!data.documents) return [];
-    return data.documents.map(doc => doc.name.split('/').pop());
+    return (data.documents || []).map((doc) => {
+      const f = doc.fields || {};
+      // 사이트 카드와 같은 우선순위: images[0] → imageUrls[0] → imageUrl → img
+      const candidates = [...(fieldValue(f.images) || []), ...(fieldValue(f.imageUrls) || []), fieldValue(f.imageUrl), fieldValue(f.img)]
+        .map((im) => (typeof im === 'string' ? im : im?.url));
+      const firstImage = candidates.find((u) => /^https?:\/\//.test(u || '')) || null;
+      return {
+        id: doc.name.split('/').pop(),
+        title: fieldValue(f.title) || '프로그램',
+        desc: fieldValue(f.desc) || '',
+        date: fieldValue(f.date) || '',
+        location: fieldValue(f.location) || '',
+        image: firstImage,
+      };
+    });
   } catch (e) {
-    console.warn('⚠️  세미나 목록 조회 실패 (sitemap 개별 URL 생략):', e.message);
+    console.warn('⚠️  세미나 목록 조회 실패 (상세 페이지·sitemap 개별 URL 생략):', e.message);
     return [];
   }
 }
+
+/** 공유 미리보기용 한 줄 설명: URL 제거 + 공백 정리 + 길이 제한 */
+const summarize = (text, max = 110) => {
+  const t = String(text || '').replace(/https?:\/\/\S+/g, ' ').replace(/\s+/g, ' ').trim();
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+};
 
 // ─── sitemap.xml 재생성 ────────────────────────────────────────
 function buildSitemap(seminarIds) {
@@ -100,15 +160,16 @@ function buildSitemap(seminarIds) {
     { loc: '/about',       priority: '0.8', changefreq: 'monthly' },
     { loc: '/programs',    priority: '0.9', changefreq: 'weekly' },
     { loc: '/notice',      priority: '0.7', changefreq: 'weekly' },
-    { loc: '/restaurants', priority: '0.7', changefreq: 'weekly' },
-    { loc: '/donation',    priority: '0.5', changefreq: 'monthly' },
-    { loc: '/signup',      priority: '0.6', changefreq: 'monthly' },
+    { loc: '/news',        priority: '0.8', changefreq: 'daily' },
+    { loc: '/support',     priority: '0.9', changefreq: 'daily' },
+    { loc: '/tools',       priority: '0.7', changefreq: 'monthly' },
+    { loc: '/members',     priority: '0.5', changefreq: 'weekly' },
     { loc: '/privacy',     priority: '0.3', changefreq: 'yearly' },
     { loc: '/terms',       priority: '0.3', changefreq: 'yearly' },
     { loc: '/refund',      priority: '0.3', changefreq: 'yearly' },
   ];
 
-  const programUrls = seminarIds.map(id => ({
+  const programUrls = seminarIds.map((id) => ({
     loc: `/programs/${id}`,
     priority: '0.6',
     changefreq: 'weekly',
@@ -117,7 +178,7 @@ function buildSitemap(seminarIds) {
   const allUrls = [...staticUrls, ...programUrls];
 
   const entries = allUrls.map(({ loc, priority, changefreq }) => `  <url>
-    <loc>${BASE_URL}${loc}</loc>
+    <loc>${BASE_URL}${toCanonicalPath(loc)}</loc>
     <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
     <lastmod>${TODAY}</lastmod>
@@ -135,7 +196,7 @@ const baseHtml = readFileSync(join(distDir, 'index.html'), 'utf-8');
 // 1. 라우트별 정적 HTML 생성
 let generated = 0;
 for (const page of PAGES) {
-  const canonicalUrl = BASE_URL + page.path;
+  const canonicalUrl = BASE_URL + toCanonicalPath(page.path);
   const html = replaceMeta(baseHtml, {
     title: page.title,
     description: page.description,
@@ -143,6 +204,7 @@ for (const page of PAGES) {
     ogTitle: page.title,
     ogDescription: page.description,
     ogUrl: canonicalUrl,
+    ogImage: DEFAULT_OG_IMAGE,
     bodyAppend: page.bodyAppend,
   });
 
@@ -155,11 +217,30 @@ for (const page of PAGES) {
 
 console.log(`\n📄  ${generated}개 정적 HTML 생성 완료`);
 
-// 2. sitemap.xml 업데이트
+// 2. 프로그램 상세 페이지 HTML (공유 시 프로그램 제목·포스터가 미리보기에 나오도록)
 console.log('\n🔍  Firebase에서 세미나 목록 조회 중...');
-const seminarIds = await fetchSeminarIds();
-console.log(`    → ${seminarIds.length}개 세미나 URL 추가`);
+const seminars = await fetchSeminars();
+for (const sem of seminars) {
+  const path = `/programs/${sem.id}`;
+  const canonicalUrl = BASE_URL + toCanonicalPath(path);
+  const title = `${sem.title} | 부청사 프로그램`;
+  const description = summarize([sem.date, sem.location, sem.desc].filter(Boolean).join(' · ')) || '부청사 프로그램 안내';
+  const html = replaceMeta(baseHtml, {
+    title,
+    description,
+    canonical: canonicalUrl,
+    ogTitle: title,
+    ogDescription: description,
+    ogUrl: canonicalUrl,
+    ogImage: sem.image || DEFAULT_OG_IMAGE,
+  });
+  const outDir = join(distDir, path);
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(join(outDir, 'index.html'), html, 'utf-8');
+}
+console.log(`    → 프로그램 상세 ${seminars.length}개 HTML 생성`);
 
-const sitemap = buildSitemap(seminarIds);
+// 3. sitemap.xml 업데이트
+const sitemap = buildSitemap(seminars.map((sem) => sem.id));
 writeFileSync(join(distDir, 'sitemap.xml'), sitemap, 'utf-8');
-console.log(`✅  sitemap.xml 업데이트 (총 ${10 + seminarIds.length}개 URL)\n`);
+console.log(`✅  sitemap.xml 업데이트 (프로그램 ${seminars.length}개 포함)\n`);

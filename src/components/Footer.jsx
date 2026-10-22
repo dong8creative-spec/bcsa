@@ -3,7 +3,7 @@ import React from 'react';
 const FTC_BIZ_POPUP_URL = 'http://www.ftc.go.kr/bizCommPop.do?wrkr_no=7927200616';
 
 const DEFAULT_DATA = {
-  companyName: '부산청년사업가 포럼',
+  companyName: '부산청년사업가들',
   address: '부산광역시 연제구 법원남로9번길 17(거제동)',
   representative: '정은지',
   businessNumber: '792-72-00616',

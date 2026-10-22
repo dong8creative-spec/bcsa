@@ -26,10 +26,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
 
-      # npm ci 사용 시 로컬(Node 버전)과 CI(Node 18)의 lock 해석 차이로 실패할 수 있어 npm install 사용
+      # npm ci 사용 시 로컬(Node 버전)과 CI(Node 22)의 lock 해석 차이로 실패할 수 있어 npm install 사용
       - name: Install dependencies
         run: npm install
 

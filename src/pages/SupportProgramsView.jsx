@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AdSlot, { hasAdSlot } from '../components/AdSlot';
-import { firestoreLikeToMillis, getSupportProgramDdayInfo } from '../appHelpers';
+import { firestoreLikeToMillis, getSupportProgramDdayInfo, bucketSupportPrograms } from '../appHelpers';
 import Pager from '../components/Pager';
 import ContentDetailModal from '../components/ContentDetailModal';
 import ModalPortal from '../components/ModalPortal';
@@ -334,13 +334,8 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
     }, [supportPrograms]);
 
     const { busanFresh, urgent, busanFreshCount, urgentCount, orgGroups, orgCountsByTab } = useMemo(() => {
-        const rows = Array.isArray(supportPrograms) ? supportPrograms : [];
-        const nowMs = Date.now();
-        const baseVisible = rows.filter((p) => {
-            if (!p || p.enabled === false || p.status !== 'published') return false;
-            const createdMs = firestoreLikeToMillis(p.createdAt);
-            return createdMs == null || (nowMs - createdMs) <= ONE_YEAR_MS; // 등록 1년 경과 시 자동 숨김
-        });
+        // 탭 배정 기준은 홈 화면 숫자와 똑같이 맞추기 위해 appHelpers.bucketSupportPrograms로 공유한다.
+        const { baseVisible, busanFreshAll, urgentAll } = bucketSupportPrograms(supportPrograms);
 
         // 기관별 보기용 집계 — orgFilter를 적용하기 "전" 전체 기준으로 세야, 특정 기관을 이미
         // 선택한 상태에서도 다른 기관 타일들이 계속 보인다(둘러보다 다른 기관으로 바로 옮겨갈 수 있게).
@@ -351,40 +346,6 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
         });
         const orgGroupsVal = Array.from(orgCounts, ([org, count]) => ({ org, count, isLocalGov: isLocalGovOrg(org) }))
             .sort((a, b) => b.count - a.count || a.org.localeCompare(b.org, 'ko'));
-
-        // 같은 공고가 마감임박이면서 동시에 신규·부산일 수 있어, 예전에는 두세 섹션에 똑같이
-        // 중복 노출됐다. 이제는 공고 하나당 한 탭에만 나오게 하고, 우선순위는
-        // ① 부산 신규(기본 탭) → ② 마감임박 순으로 "먼저 차지한 탭"이 그 공고를 가져간다.
-        // orgFilter를 적용하기 "전"(baseVisible) 기준으로 배정해야, 기관별 보기 모달이 "이 기관은
-        // 부산신규 O건·마감임박 O건"을 어떤 기관을 보고 있든 정확하게 계산할 수 있다.
-        const claimed = new Set();
-        const claim = (p) => { claimed.add(p.id); return p; };
-
-        // ① 부산 신규 — "부산 지역 + 최근 7일 이내 등록"을 모두 만족하는 공고. 부청사는 부산
-        // 청년 사업가 커뮤니티라, 마감임박·기관별보기보다 먼저 "우리 동네에 새로 뜬 공고"를
-        // 기본 탭으로 보여준다. 최신 등록순.
-        const busanFreshAll = baseVisible
-            .filter((p) => Array.isArray(p.region) && p.region.includes('부산'))
-            .filter((p) => {
-                const cMs = firestoreLikeToMillis(p.createdAt);
-                return cMs != null && (nowMs - cMs) <= 7 * 86400000;
-            })
-            .sort((a, b) => firestoreLikeToMillis(b.createdAt) - firestoreLikeToMillis(a.createdAt))
-            .map(claim);
-
-        // ② 마감임박: 마감일이 있고 아직 지나지 않은 공고 중 D-0~10일 이내인 것만, 마감일이 가까운 순.
-        // (D-10보다 먼 공고는 "임박"이 아니므로 이 탭에는 노출하지 않는다 — getSupportProgramDdayInfo의
-        // isUrgent 기준과 동일하게 맞춘다.)
-        const urgentAll = baseVisible
-            .filter((p) => !claimed.has(p.id))
-            .filter((p) => {
-                if (p.isRolling) return false;
-                const dMs = firestoreLikeToMillis(p.deadlineAt);
-                return dMs != null && dMs >= nowMs;
-            })
-            .filter((p) => getSupportProgramDdayInfo(p).isUrgent)
-            .sort((a, b) => firestoreLikeToMillis(a.deadlineAt) - firestoreLikeToMillis(b.deadlineAt))
-            .map(claim);
 
         // 기관별 보기 모달에서 "이 기관은 부산신규 O건 · 마감임박 O건"을 보여주기 위한 기관별 집계.
         const byTab = new Map();
