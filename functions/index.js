@@ -1015,38 +1015,80 @@ app.post('/api/auth/kakao/exchange', async (req, res) => {
   }
 });
 
+// 카카오 계정 상태 변경 웹훅(SET, RS256 JWT) 검증용 공개키 — 카카오 권고대로 일정 시간 캐시
+const KAKAO_JWKS_URL = 'https://kauth.kakao.com/.well-known/jwks.json';
+const KAKAO_JWKS_TTL_MS = 60 * 60 * 1000;
+let kakaoJwksCache = { keys: [], fetchedAt: 0 };
+async function getKakaoPublicKey(kid, { forceRefresh = false } = {}) {
+  const stale = Date.now() - kakaoJwksCache.fetchedAt > KAKAO_JWKS_TTL_MS;
+  if (forceRefresh || stale || !kakaoJwksCache.keys.length) {
+    const r = await axios.get(KAKAO_JWKS_URL, { timeout: 5000 });
+    kakaoJwksCache = { keys: Array.isArray(r.data?.keys) ? r.data.keys : [], fetchedAt: Date.now() };
+  }
+  const jwk = kakaoJwksCache.keys.find((k) => k.kid === kid);
+  return jwk ? crypto.createPublicKey({ key: jwk, format: 'jwk' }) : null;
+}
+
+/**
+ * 카카오 SET 검증 (공식 문서: alg RS256, iss https://kauth.kakao.com, aud = 앱 REST API 키, kid 공개키 서명)
+ * 예전에는 서명 없이 payload만 읽어, 누구나 가짜 이벤트로 회원의 카카오 연결을 끊을 수 있었다.
+ * @returns {{ ok: true, payload } | { ok: false, err: string }}
+ */
+async function verifyKakaoSecurityEvent(jwtStr) {
+  const parts = String(jwtStr || '').split('.');
+  if (parts.length !== 3) return { ok: false, err: 'invalid_request' };
+  const decode = (seg) => JSON.parse(Buffer.from(seg.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+  let header;
+  let payload;
+  try {
+    header = decode(parts[0]);
+    payload = decode(parts[1]);
+  } catch {
+    return { ok: false, err: 'invalid_request' };
+  }
+  if (header.alg !== 'RS256' || !header.kid) return { ok: false, err: 'invalid_request' };
+  if (payload.iss !== 'https://kauth.kakao.com') return { ok: false, err: 'invalid_issuer' };
+  const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+  if (!KAKAO_REST_KEY || !aud.includes(KAKAO_REST_KEY)) return { ok: false, err: 'invalid_audience' };
+  let key = await getKakaoPublicKey(header.kid);
+  if (!key) key = await getKakaoPublicKey(header.kid, { forceRefresh: true }); // 키 교체 직후 대비
+  if (!key) return { ok: false, err: 'invalid_key' };
+  const signature = Buffer.from(parts[2].replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+  const valid = crypto.verify('RSA-SHA256', Buffer.from(`${parts[0]}.${parts[1]}`), key, signature);
+  return valid ? { ok: true, payload } : { ok: false, err: 'invalid_key' };
+}
+
 // 카카오 계정 상태 변경 웹훅 (OAuth: user-linked 등) — Content-Type: application/secevent+jwt
 app.post('/api/webhook/kakao', express.raw({ type: 'application/secevent+jwt' }), async (req, res) => {
   try {
     const raw = req.body;
     const jwtStr = Buffer.isBuffer(raw) ? raw.toString('utf8') : (typeof raw === 'string' ? raw : '');
-    if (jwtStr) {
-      const parts = jwtStr.split('.');
-      if (parts.length >= 2) {
-        const payload = JSON.parse(
-          Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
-        );
-        const eventTypes = Object.keys(payload.events || {});
-        console.log('[Kakao Webhook]', { sub: payload.sub, eventTypes });
-
-        // 연결 해제(unlink) 이벤트: 해당 kakaoId 회원의 카카오 연결 정보 정리
-        const isUnlink = eventTypes.some((t) => /unlink|unregister|withdraw/i.test(t));
-        const kakaoId = payload.sub != null ? String(payload.sub) : '';
-        if (isUnlink && kakaoId) {
-          const snap = await db.collection('users').where('kakaoId', '==', kakaoId).get();
-          for (const d of snap.docs) {
-            await d.ref.update({
-              providers: admin.firestore.FieldValue.arrayRemove('kakao'),
-              kakaoId: admin.firestore.FieldValue.delete(),
-              kakaoUnlinkedAt: admin.firestore.FieldValue.serverTimestamp(),
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-          }
-          console.log('[Kakao Webhook] unlinked kakao for users:', snap.docs.map((d) => d.id).join(',') || '(none)');
-        }
-      }
+    const verified = await verifyKakaoSecurityEvent(jwtStr);
+    if (!verified.ok) {
+      console.warn('[Kakao Webhook] 검증 실패 — 무시', verified.err);
+      res.status(400).json({ err: verified.err, description: 'security event verification failed' });
+      return;
     }
-    res.status(200).json({ received: true });
+    const payload = verified.payload;
+    const eventTypes = Object.keys(payload.events || {});
+    console.log('[Kakao Webhook]', { sub: payload.sub, eventTypes });
+
+    // 연결 해제(unlink) 이벤트: 해당 kakaoId 회원의 카카오 연결 정보 정리
+    const isUnlink = eventTypes.some((t) => /unlink|unregister|withdraw/i.test(t));
+    const kakaoId = payload.sub != null ? String(payload.sub) : '';
+    if (isUnlink && kakaoId) {
+      const snap = await db.collection('users').where('kakaoId', '==', kakaoId).get();
+      for (const d of snap.docs) {
+        await d.ref.update({
+          providers: admin.firestore.FieldValue.arrayRemove('kakao'),
+          kakaoId: admin.firestore.FieldValue.delete(),
+          kakaoUnlinkedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+      console.log('[Kakao Webhook] unlinked kakao for users:', snap.docs.map((d) => d.id).join(',') || '(none)');
+    }
+    res.status(202).end();
   } catch (err) {
     console.error('[Kakao Webhook]', err);
     res.status(200).json({ received: true });
