@@ -77,12 +77,29 @@ export const authService = {
 
   /**
    * 이미 로그인된 사용자의 계정에 카카오를 연결 (마이페이지 → 카카오 연동)
-   * @param {string} uid - 현재 로그인된 Firebase uid
+   * 서버가 ID 토큰으로 본인을 확인한 뒤 발급한 연결 티켓을 들고 카카오 인가로 이동한다.
    */
-  startKakaoLink(uid) {
+  async startKakaoLink() {
     const base = getKakaoCallbackBaseUrl();
-    const params = new URLSearchParams({ origin: window.location.origin, link_uid: uid });
-    window.location.href = `${base}/api/auth/kakao/start?${params.toString()}`;
+    const fbUser = auth.currentUser;
+    if (!fbUser) {
+      alert('로그인 후 카카오 계정을 연결할 수 있습니다.');
+      return;
+    }
+    try {
+      const idToken = await fbUser.getIdToken();
+      const res = await fetch(`${base}/api/auth/kakao/link-ticket`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ticket) throw new Error(data?.error || 'link_ticket_failed');
+      const params = new URLSearchParams({ origin: window.location.origin, link_ticket: data.ticket });
+      window.location.href = `${base}/api/auth/kakao/start?${params.toString()}`;
+    } catch (e) {
+      console.error('[Kakao Link] ticket failed', e);
+      alert('카카오 계정 연결을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    }
   },
 
   /** 카카오 콜백 후 백엔드가 발급한 Firebase Custom Token으로 로그인 */
@@ -146,8 +163,11 @@ export const authService = {
       if (byDocId) return byDocId;
 
       if (email) {
-        const byEmail = await firebaseService.getUserByEmail(email);
-        if (byEmail) return byEmail;
+        // 문서 id ≠ uid인 예전 가입자 폴백. 규칙상 본인 이메일 문서만 조회되므로 실패해도 null로 처리
+        try {
+          const byEmail = await firebaseService.getUserByEmail(email);
+          if (byEmail) return byEmail;
+        } catch (_) {}
       }
 
       return null;

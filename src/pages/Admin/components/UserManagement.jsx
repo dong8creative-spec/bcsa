@@ -61,7 +61,7 @@ export const UserManagement = ({ currentUser }) => {
   const loadUsers = async () => {
     try {
       setIsLoading(true);
-      const usersData = await firebaseService.getUsers();
+      const usersData = await firebaseService.getUsersAdmin();
       setUsers(usersData);
     } catch (error) {
       console.error('회원 목록 로드 오류:', error);
@@ -72,9 +72,9 @@ export const UserManagement = ({ currentUser }) => {
   };
 
   useEffect(() => {
-    if (firebaseService.subscribeUsers) {
+    if (firebaseService.subscribeUsersAdmin) {
       setIsLoading(true);
-      const unsubscribe = firebaseService.subscribeUsers((usersData) => {
+      const unsubscribe = firebaseService.subscribeUsersAdmin((usersData) => {
         setUsers(usersData);
         setIsLoading(false);
       });
@@ -113,7 +113,7 @@ export const UserManagement = ({ currentUser }) => {
       }
       await firebaseService.deleteUser(userId);
       alert('회원이 강제 탈퇴 처리되었습니다. 해당 회원은 1년간 재가입이 제한됩니다.');
-      if (!firebaseService.subscribeUsers) loadUsers();
+      if (!firebaseService.subscribeUsersAdmin) loadUsers();
       return true;
     } catch (error) {
       console.error('회원 삭제 오류:', error);
@@ -142,7 +142,7 @@ export const UserManagement = ({ currentUser }) => {
       if (memberModalUser && (String(memberModalUser.id) === id || String(memberModalUser.uid) === id)) {
         setMemberModalUser(prev => prev ? { ...prev, ...payload } : null);
       }
-      if (!firebaseService.subscribeUsers) loadUsers();
+      if (!firebaseService.subscribeUsersAdmin) loadUsers();
     } catch (error) {
       console.error('회원등급 변경 오류:', error);
       alert(`회원등급 변경에 실패했습니다. ${error?.message || ''}`);
@@ -199,7 +199,7 @@ export const UserManagement = ({ currentUser }) => {
       alert('저장되었습니다. 해당 회원에게 정정 알림이 전달됩니다.');
       setMemberModalEditing(false);
       setMemberModalUser(prev => prev ? { ...prev, ...payload } : null);
-      if (!firebaseService.subscribeUsers) loadUsers();
+      if (!firebaseService.subscribeUsersAdmin) loadUsers();
     } catch (error) {
       console.error('회원 정보 수정 오류:', error);
       alert(error?.message || '저장에 실패했습니다.');
@@ -260,7 +260,7 @@ export const UserManagement = ({ currentUser }) => {
       alert(`${selectedIds.size}명 회원 등급이 적용되었습니다.`);
       setSelectedIds(new Set());
       setBulkGradeValue('');
-      if (!firebaseService.subscribeUsers) loadUsers();
+      if (!firebaseService.subscribeUsersAdmin) loadUsers();
     } catch (error) {
       console.error('일괄 등급 변경 오류:', error);
       alert('일괄 등급 변경에 실패했습니다.');
@@ -304,7 +304,7 @@ export const UserManagement = ({ currentUser }) => {
       alert(`${selectedIds.size}명 회원이 탈퇴 처리되었습니다. 해당 회원들은 1년간 재가입이 제한됩니다.`);
       setSelectedIds(new Set());
       setMemberModalUser(null);
-      if (!firebaseService.subscribeUsers) loadUsers();
+      if (!firebaseService.subscribeUsersAdmin) loadUsers();
     } catch (error) {
       console.error('일괄 탈퇴 오류:', error);
       alert(error?.message || '일괄 탈퇴 처리에 실패했습니다.');

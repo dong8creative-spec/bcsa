@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icons } from './Icons';
 import { canEditRestaurantInfo, isRestaurantOwner } from '../utils/restaurantPermissions';
+import { safeExternalUrl } from '../utils';
 
 const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelete, waitForKakaoMap, openKakaoPlacesSearch }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -155,9 +156,9 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                     
                     {/* 예약 버튼 */}
                     <div className="flex gap-4 mt-6">
-                        {restaurant.naverReservationUrl ? (
+                        {safeExternalUrl(restaurant.naverReservationUrl) ? (
                             <a 
-                                href={restaurant.naverReservationUrl} 
+                                href={safeExternalUrl(restaurant.naverReservationUrl)} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="flex-1 px-6 py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 text-center"
@@ -165,9 +166,9 @@ const RestaurantDetailView = ({ restaurant, onBack, currentUser, onEdit, onDelet
                                 네이버 예약
                             </a>
                         ) : null}
-                        {restaurant.smartPlaceUrl ? (
+                        {safeExternalUrl(restaurant.smartPlaceUrl) ? (
                             <a 
-                                href={restaurant.smartPlaceUrl} 
+                                href={safeExternalUrl(restaurant.smartPlaceUrl)} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="flex-1 px-6 py-3 bg-blue-500 text-white font-bold rounded-xl hover:bg-blue-600 text-center"

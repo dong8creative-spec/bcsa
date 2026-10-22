@@ -28,7 +28,8 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // 소스맵은 운영 사이트에 공개하지 않음 (원본 소스 전체 노출 방지)
+    sourcemap: false,
     assetsDir: 'assets',
     copyPublicDir: true,
     // 빌드 시 SPA 라우팅을 위한 rollup 플러그인 설정은 불필요

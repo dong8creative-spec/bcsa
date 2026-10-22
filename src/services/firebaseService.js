@@ -26,8 +26,21 @@ import { deleteHostedImagesForPayload, requestImgbbImageDeletion } from '../util
 export const firebaseService = {
   // ==========================================
   // Users Collection
+  // users 원본은 본인·관리자만 읽을 수 있다. 회원명단 등 공개 화면은 서버가 공개 필드만 복사한
+  // publicProfiles를 읽고(getUsers/subscribeUsers), 관리자 화면은 getUsersAdmin/subscribeUsersAdmin을 쓴다.
   // ==========================================
   async getUsers() {
+    try {
+      const snapshot = await getDocs(collection(db, 'publicProfiles'));
+      return snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+    } catch (error) {
+      console.error('Error getting public profiles:', error);
+      throw error;
+    }
+  },
+
+  /** 관리자 전용: 회원 원본 전체 (개인정보 포함) */
+  async getUsersAdmin() {
     try {
       const snapshot = await getDocs(collection(db, 'users'));
       return snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
@@ -51,7 +64,7 @@ export const firebaseService = {
     }
   },
 
-  /** 이메일로 기존 회원 1명 조회 (중복 검사용, 회원 수와 무관하게 1건만 읽음) */
+  /** 이메일로 본인 회원 문서 1건 조회 (문서 id ≠ uid인 예전 가입자 로그인용 — 규칙상 본인 이메일만 조회 가능) */
   async getUserByEmail(email) {
     if (!email || typeof email !== 'string' || !email.trim()) return null;
     try {
@@ -66,37 +79,6 @@ export const firebaseService = {
       return { ...d.data(), id: d.id };
     } catch (error) {
       console.error('Error getting user by email:', error);
-      throw error;
-    }
-  },
-
-  /** 연락처(정규화된 숫자 문자열)로 기존 회원 1명 조회 (중복 검사용) */
-  async getUserByPhone(normalizedPhone) {
-    if (!normalizedPhone || typeof normalizedPhone !== 'string') return null;
-    const digits = normalizedPhone.replace(/\D/g, '');
-    if (!digits.length) return null;
-    try {
-      const q = query(
-        collection(db, 'users'),
-        where('phone', '==', digits),
-        limit(1)
-      );
-      const snapshot = await getDocs(q);
-      if (snapshot.empty) {
-        const q2 = query(
-          collection(db, 'users'),
-          where('phoneNumber', '==', digits),
-          limit(1)
-        );
-        const snap2 = await getDocs(q2);
-        if (snap2.empty) return null;
-        const d = snap2.docs[0];
-        return { ...d.data(), id: d.id };
-      }
-      const d = snapshot.docs[0];
-      return { ...d.data(), id: d.id };
-    } catch (error) {
-      console.error('Error getting user by phone:', error);
       throw error;
     }
   },
@@ -241,10 +223,34 @@ export const firebaseService = {
   },
 
   subscribeUsers(callback) {
+    return onSnapshot(collection(db, 'publicProfiles'), (snapshot) => {
+      const users = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+      callback(users);
+    }, (error) => console.error('Error subscribing public profiles:', error));
+  },
+
+  /** 관리자 전용: 회원 원본 실시간 구독 */
+  subscribeUsersAdmin(callback) {
     return onSnapshot(collection(db, 'users'), (snapshot) => {
       const users = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
       callback(users);
+    }, (error) => console.error('Error subscribing users:', error));
+  },
+
+  /**
+   * 회원가입 중복 확인 (Cloud Function, 비인증 호출 가능) — 회원 원본을 직접 읽지 않고 일치 여부만 받는다.
+   * @returns {Promise<{ emailTaken: boolean, phoneTaken: boolean, brnTaken: boolean }>}
+   */
+  async checkSignupDuplicates({ email, phone, businessRegistrationNumber } = {}) {
+    const functions = getFunctions(app, 'asia-northeast3');
+    const callable = httpsCallable(functions, 'checkSignupDuplicates');
+    const res = await callable({
+      email: email != null ? String(email).trim() : '',
+      phone: phone != null ? String(phone).replace(/\D/g, '').slice(0, 11) : '',
+      businessRegistrationNumber: businessRegistrationNumber != null ? String(businessRegistrationNumber).replace(/\D/g, '') : '',
     });
+    const d = res?.data || {};
+    return { emailTaken: d.emailTaken === true, phoneTaken: d.phoneTaken === true, brnTaken: d.brnTaken === true };
   },
 
   // ==========================================
@@ -810,18 +816,11 @@ export const firebaseService = {
     }
   },
 
-  /**
-   * 사용자(id, 이메일, 연락처) 기준으로 신청 목록 조회.
-   * 동일인이라도 userId가 다른 경우(다른 로그인 수단 등) 이메일/연락처로 연결해 '내가 신청한 모임'에 포함.
-   */
+  /** 사용자(id, uid) 기준으로 본인 신청 목록 조회 */
   async getApplicationsForUser(user) {
     if (!user) return [];
     const idSet = new Set();
     [user.id, user.uid].filter(Boolean).forEach((id) => idSet.add(String(id)));
-    const normEmail = (v) => (v && String(v).trim().toLowerCase()) || '';
-    const normPhone = (v) => (v && String(v).replace(/\D/g, '')) || '';
-    const userEmail = normEmail(user.email);
-    const userPhone = normPhone(user.phone || user.phoneNumber);
 
     const byId = [];
     for (const uid of idSet) {
@@ -833,47 +832,18 @@ export const firebaseService = {
       }
     }
 
-    if (!userEmail && !userPhone) {
-      const seen = new Set();
-      return byId.filter((app) => {
-        const k = app.id;
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
-      }).sort((a, b) => {
-        const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
-        const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
-        return bTime - aTime;
-      });
-    }
-
-    let byEmailPhone = [];
-    try {
-      const all = await this.getApplications();
-      byEmailPhone = all.filter((app) => {
-        if (idSet.has(String(app.userId))) return false;
-        if (userEmail && normEmail(app.userEmail) === userEmail) return true;
-        if (userPhone && normPhone(app.userPhone || app.userPhoneNumber) === userPhone) return true;
-        return false;
-      });
-    } catch (e) {
-      // getApplications 실패 시 id로 찾은 것만 반환
-    }
-
-    const seen = new Set(byId.map((a) => a.id).filter(Boolean));
-    const merged = [...byId];
-    byEmailPhone.forEach((app) => {
-      if (app.id && !seen.has(app.id)) {
-        seen.add(app.id);
-        merged.push(app);
-      }
-    });
-    merged.sort((a, b) => {
+    // 이메일·연락처로 남의 신청까지 찾던 보조 조회는 제거 (신청 원본은 본인 userId 문서만 읽을 수 있음)
+    const seen = new Set();
+    return byId.filter((app) => {
+      const k = app.id;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    }).sort((a, b) => {
       const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
       const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
       return bTime - aTime;
     });
-    return merged;
   },
 
   async getApplication(applicationId) {
@@ -947,6 +917,17 @@ export const firebaseService = {
     }
   },
 
+  /** 공개 신청 집계용 사본 구독 (개인정보 없음 — 정원·참가 인원 표시용) */
+  subscribePublicApplications(callback) {
+    return onSnapshot(collection(db, 'publicApplications'), (snapshot) => {
+      callback(snapshot.docs.map((d) => ({ ...d.data(), id: d.id })));
+    }, (error) => {
+      console.error('Error subscribing public applications:', error);
+      callback([]);
+    });
+  },
+
+  /** 관리자 전용: 신청 원본 실시간 구독 */
   subscribeApplications(callback) {
     const toMs = (v) => {
       if (!v) return 0;

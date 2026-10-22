@@ -297,3 +297,12 @@ const convertToCSV = (data, headers = null) => {
         return '';
     }
 };
+
+/**
+ * 외부 링크 안전 처리: http(s) 주소만 허용 (javascript: 등 스크립트 실행 링크 차단).
+ * 회원·수집 데이터처럼 사용자가 입력한 URL을 href에 넣을 때 사용. 허용되지 않으면 '' 반환.
+ */
+export const safeExternalUrl = (url) => {
+    const s = (url == null ? '' : String(url)).trim();
+    return /^https?:\/\//i.test(s) ? s : '';
+};

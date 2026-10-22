@@ -26,24 +26,44 @@ service cloud.firestore {
       );
     }
 
-    // 본인이 role/memberGrade/approvalStatus를 스스로 바꾸지 못하게 차단 (관리자만 변경 가능)
+    // 본인이 권한·계정 연결 필드를 스스로 바꾸지 못하게 차단 (관리자·서버만 변경 가능).
+    // uid/kakaoId/providers는 서버의 카카오 로그인 매칭이 신뢰하는 값이라 본인 수정도 막는다.
     function noPrivilegedFieldChange() {
       return !request.resource.data.diff(resource.data).affectedKeys()
-        .hasAny(['role', 'memberGrade', 'approvalStatus']);
+        .hasAny(['role', 'memberGrade', 'approvalStatus', 'uid', 'kakaoId', 'providers', 'kakaoLinkedAt']);
     }
 
-    // 회원가입 시 스스로 admin/마스터·운영진 권한을 심어 넣지 못하게 차단
+    // 회원가입 시 스스로 admin/마스터·운영진 권한이나 승인 상태, 남의 uid·카카오 연결을 심어 넣지 못하게 차단
     function noPrivilegedFieldsOnCreate() {
-      return !(request.resource.data.get('role', '') in ['admin', 'master'])
-        && !(request.resource.data.get('memberGrade', '') in ['마스터', '운영진']);
+      let d = request.resource.data;
+      return !(d.get('role', '') in ['admin', 'master'])
+        && !(d.get('memberGrade', '') in ['마스터', '운영진'])
+        && d.get('approvalStatus', 'pending') == 'pending'
+        && d.get('uid', request.auth.uid) == request.auth.uid
+        && (!('kakaoId' in d) || request.auth.uid == 'kakao_' + string(d.kakaoId));
     }
 
-    // 회원: 목록 공개, 본인 문서는 본인이(단, 등급/권한 필드는 관리자만) 쓰기 가능
+    // 본인 회원 문서 판정: 문서 id가 uid인 경우 + 예전 가입자(문서 id ≠ uid)의 uid/email 필드 일치
+    function isOwnUserDoc(userId) {
+      return isSelf(userId) || (isSignedIn() && (
+        resource.data.get('uid', '') == request.auth.uid ||
+        (request.auth.token.email != null && resource.data.get('email', '') == request.auth.token.email)
+      ));
+    }
+
+    // 회원 원본: 연락처·생년월일·사업자번호 등 개인정보 포함 → 본인과 관리자만 읽기.
+    // 회원명단 등 공개 화면은 서버가 공개 필드만 복사해 두는 publicProfiles를 읽는다.
     match /users/{userId} {
-      allow read: if true;
+      allow read: if isAdmin() || isOwnUserDoc(userId);
       allow create: if isSelf(userId) && noPrivilegedFieldsOnCreate();
       allow update: if isAdmin() || (isSelf(userId) && noPrivilegedFieldChange());
       allow delete: if isAdmin() || isSelf(userId);
+    }
+
+    // 공개 회원 프로필: Cloud Functions(syncPublicProfile)만 쓰기, 누구나 읽기
+    match /publicProfiles/{userId} {
+      allow read: if true;
+      allow write: if false;
     }
 
     // 회원 알림 서브컬렉션: 본인만 읽기/쓰기
@@ -97,14 +117,42 @@ service cloud.firestore {
         (isSignedIn() && resource.data.authorId == request.auth.uid);
     }
 
-    // 프로그램 신청: 읽기는 전체 허용(관리자 명단 표시용).
-    // create: 로그인 사용자 본인 uid와 userId 필드가 일치해야 함 (타인 이름 신청 방지).
-    // update/delete: 본인 신청 또는 관리자만 (관리자 명단 삭제는 대부분 Cloud Functions Admin SDK 경유 — 규칙 영향 없음).
+    // 무료 프로그램 여부: 참가비가 없거나 0인 경우만 (유료 신청은 결제 검증 후 서버가 생성)
+    function isFreeSeminar(seminarId) {
+      let fee = get(/databases/$(database)/documents/seminars/$(seminarId)).data.get('applicationFee', null);
+      return fee == null || fee == 0 || fee == '' || fee == '0';
+    }
+
+    // 프로그램 신청: 신청자 연락처 포함 → 본인과 관리자만 읽기.
+    // 정원 집계 등 공개 화면은 서버가 개인정보 없이 복사해 두는 publicApplications를 읽는다.
+    // create: 본인 uid + 무료 프로그램 + 결제 필드 없음 (유료는 /api/payment/complete·webhook만 생성).
+    // update: 본인은 신청 내용 필드만 정정 가능 (결제·소유자 필드 변경 금지).
     match /applications/{applicationId} {
-      allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAdmin() ||
+      allow read: if isAdmin() ||
         (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (
+        isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.seminarId is string
+        && isFreeSeminar(request.resource.data.seminarId)
+        && !request.resource.data.keys().hasAny(['merchant_uid', 'merchantUid', 'imp_uid', 'impUid', 'adminAddedParticipant'])
+      );
+      allow update: if isAdmin() || (
+        isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'participationPath', 'applyReason', 'preQuestions', 'mealAfter',
+          'privacyAgreed', 'reason', 'questions', 'updatedAt'
+        ])
+      );
+      allow delete: if isAdmin() ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    // 공개 신청 집계용 사본(개인정보 없음): Cloud Functions(syncPublicApplication)만 쓰기, 누구나 읽기
+    match /publicApplications/{applicationId} {
+      allow read: if true;
+      allow write: if false;
     }
 
     // 결제 대기: 구매자 PII 포함 → 클라이언트 접근 금지. 읽기/쓰기/삭제 모두 Cloud Functions(Admin SDK)에서만.
@@ -124,9 +172,10 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // 검색 로그: 로그인 사용자만 생성·조회
+    // 검색 로그: 로그인 사용자는 생성만, 조회·수정·삭제는 관리자만
     match /searchLogs/{logId} {
-      allow read, write: if isSignedIn();
+      allow create: if isSignedIn();
+      allow read, update, delete: if isAdmin();
     }
 
     // 맛집: 읽기 공개. 등록은 본인 ownerId로만, 수정은 소유자·마스터/파트너사 등급·관리자,

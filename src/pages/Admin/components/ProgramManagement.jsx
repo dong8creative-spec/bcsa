@@ -327,7 +327,7 @@ export const ProgramManagement = () => {
     setApplicantModalDataLoading(true);
     try {
       const [users, apps] = await Promise.all([
-        firebaseService.getUsers ? firebaseService.getUsers() : Promise.resolve([]),
+        firebaseService.getUsersAdmin ? firebaseService.getUsersAdmin() : Promise.resolve([]),
         firebaseService.getApplications ? firebaseService.getApplications().catch(() => []) : Promise.resolve([])
       ]);
       setApplicantModalUsers(Array.isArray(users) ? users : []);

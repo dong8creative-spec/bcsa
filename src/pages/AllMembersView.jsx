@@ -120,6 +120,14 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
             return;
         }
 
+        // 명단은 공개 프로필(publicProfiles)이라 이메일·연락처가 없다 → 관리자 권한으로 회원 원본을 다시 읽는다
+        let fullMember = member;
+        try {
+            const memberDocId = member?.id || member?.uid;
+            const full = memberDocId && firebaseService?.getUser ? await firebaseService.getUser(memberDocId) : null;
+            if (full) fullMember = { ...member, ...full };
+        } catch (_) {}
+        member = fullMember;
         const uid = member?.uid || member?.id;
         const memberId = member?.id || member?.uid;
         const email = (member?.email || '').toString().trim();

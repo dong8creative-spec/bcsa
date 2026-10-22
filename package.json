@@ -28,7 +28,8 @@
     "telemetry": "node scripts/telemetry-server.mjs",
     "close-past-seminars": "node scripts/close-past-seminars.mjs",
     "close-past-seminars:dry-run": "node scripts/close-past-seminars.mjs --dry-run",
-    "ingest-daily-feed": "node scripts/ingest-daily-feed.mjs"
+    "ingest-daily-feed": "node scripts/ingest-daily-feed.mjs",
+    "backfill-public-mirrors": "node scripts/backfill-public-mirrors.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

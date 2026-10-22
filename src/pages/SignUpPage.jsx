@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Icons } from '../components/Icons';
 import { authService } from '../services/authService';
 import { firebaseService } from '../services/firebaseService';
-import { loadUsersFromStorage } from '../utils/authUtils';
 import { openDaumPostcode } from '../utils/daumPostcode';
 
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
@@ -263,22 +262,13 @@ const SignUpPage = ({ onSignUp }) => {
 
         setSubmitting(true);
         try {
-            let existsEmail = false;
-            let existsPhone = false;
-            if (firebaseService?.getUserByEmail && firebaseService?.getUserByPhone) {
-                const [emailUser, phoneUser] = await Promise.all([
-                    firebaseService.getUserByEmail(form.email || ''),
-                    firebaseService.getUserByPhone(normalizePhone(form.phone))
-                ]);
-                existsEmail = !!emailUser;
-                existsPhone = !!phoneUser;
-            } else {
-                const allUsers = firebaseService?.getUsers ? await firebaseService.getUsers() : await loadUsersFromStorage();
-                const users = Array.isArray(allUsers) ? allUsers : [];
-                existsEmail = users.some(u => (u.email || '').toLowerCase() === form.email.trim().toLowerCase());
-                const phoneNorm = normalizePhone(form.phone);
-                existsPhone = phoneNorm ? users.some(u => normalizePhone(u.phone || u.phoneNumber) === phoneNorm) : false;
-            }
+            // 회원 원본은 직접 읽을 수 없으므로 서버(checkSignupDuplicates)에서 일치 여부만 확인
+            const dup = await firebaseService.checkSignupDuplicates({
+                email: form.email || '',
+                phone: normalizePhone(form.phone),
+            });
+            const existsEmail = dup.emailTaken;
+            const existsPhone = dup.phoneTaken;
             if (existsEmail) {
                 setError('이미 사용 중인 이메일입니다.');
                 setSubmitting(false);

@@ -26,9 +26,9 @@ export const MemberDetailView = ({ currentUser }) => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (firebaseService.subscribeUsers) {
+    if (firebaseService.subscribeUsersAdmin) {
       setIsLoading(true);
-      const unsubscribe = firebaseService.subscribeUsers((usersData) => {
+      const unsubscribe = firebaseService.subscribeUsersAdmin((usersData) => {
         setUsers(usersData || []);
         setIsLoading(false);
       });
@@ -37,7 +37,7 @@ export const MemberDetailView = ({ currentUser }) => {
     const load = async () => {
       try {
         setIsLoading(true);
-        const data = await firebaseService.getUsers();
+        const data = await firebaseService.getUsersAdmin();
         setUsers(data || []);
       } catch (e) {
         console.error(e);
@@ -103,8 +103,8 @@ export const MemberDetailView = ({ currentUser }) => {
       }
       alert('저장되었습니다.');
       setSelectedUser((prev) => (prev ? { ...prev, ...payload } : null));
-      if (!firebaseService.subscribeUsers && firebaseService.getUsers) {
-        const updated = await firebaseService.getUsers();
+      if (!firebaseService.subscribeUsersAdmin && firebaseService.getUsersAdmin) {
+        const updated = await firebaseService.getUsersAdmin();
         setUsers(updated || []);
       }
     } catch (error) {

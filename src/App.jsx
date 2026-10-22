@@ -508,26 +508,13 @@ const App = () => {
 
     const [publicApplicationsList, setPublicApplicationsList] = useState([]);
 
+    // 정원·참가 인원 표시용: 신청 원본(개인정보 포함) 대신 서버가 만든 공개 사본을 구독
     useEffect(() => {
-        if (firebaseService?.subscribeApplications) {
-            const unsub = firebaseService.subscribeApplications((list) => {
+        if (firebaseService?.subscribePublicApplications) {
+            const unsub = firebaseService.subscribePublicApplications((list) => {
                 setPublicApplicationsList(Array.isArray(list) ? list : []);
             });
             return () => unsub();
-        }
-        if (firebaseService?.getApplications) {
-            let cancelled = false;
-            (async () => {
-                try {
-                    const apps = await firebaseService.getApplications();
-                    if (!cancelled) setPublicApplicationsList(Array.isArray(apps) ? apps : []);
-                } catch {
-                    if (!cancelled) setPublicApplicationsList([]);
-                }
-            })();
-            return () => {
-                cancelled = true;
-            };
         }
         return undefined;
     }, []);
@@ -1615,25 +1602,12 @@ const App = () => {
                 throw new Error('Firebase Auth가 초기화되지 않았습니다.');
             }
             
-            // Check for existing user by email (Firebase 우선)
-            let allUsers = [];
-            if (firebaseService && firebaseService.getUsers) {
-                try {
-                    allUsers = await firebaseService.getUsers();
-                } catch (e) {
-                    allUsers = await loadUsersFromStorage();
-                }
-            } else {
-                allUsers = await loadUsersFromStorage();
-            }
-            const existingUser = Array.isArray(allUsers) ? allUsers.find(u => {
-                if (u.email === userInfo.email) return true;
-                if (userInfo.businessRegistrationNumber && u.businessRegistrationNumber && 
-                    u.businessRegistrationNumber === userInfo.businessRegistrationNumber) {
-                    return true;
-                }
-                return false;
-            }) : null;
+            // 이메일·사업자등록번호 중복 확인 (회원 원본은 직접 읽을 수 없어 서버에서 일치 여부만 확인)
+            const dup = await firebaseService.checkSignupDuplicates({
+                email: userInfo.email,
+                businessRegistrationNumber: userInfo.businessRegistrationNumber || '',
+            });
+            const existingUser = dup.emailTaken || dup.brnTaken;
             
             if (existingUser) {
                 const message = userInfo.businessRegistrationNumber 
@@ -2212,6 +2186,16 @@ const App = () => {
         // 정원 초과 자동 환불: 서버가 capacity_full 응답을 보낸 경우 신청 생성 차단
         if (paymentMeta?.pollReason === 'capacity_full') {
             alert(formatCapacityFullRefund(seminar?.title));
+            return false;
+        }
+        // 유료 결제인데 서버가 결제 확인·신청 생성을 끝내지 못한 경우: 클라이언트가 신청서를 만들지 않는다.
+        // (금액 불일치로 자동 환불된 건 등이 명단에 남는 문제 방지. 규칙상 유료 신청은 서버만 생성 가능)
+        if (paymentMeta?.merchantUid && !serverCompleted) {
+            if (paymentMeta.pollReason === 'amount_mismatch') {
+                alert('결제 금액이 참가비와 달라 결제가 자동 취소(환불)되었습니다. 다시 신청해 주세요.');
+            } else {
+                alert('결제 확인이 지연되고 있습니다. 결제가 완료되었다면 잠시 후 마이페이지에서 신청 내역을 확인해 주세요.\n계속 보이지 않으면 관리자에게 문의해 주세요.');
+            }
             return false;
         }
         if (!currentUser) { alert("로그인이 필요한 서비스입니다."); return false; }
@@ -3091,7 +3075,8 @@ END:VCALENDAR`;
             if (programApplyMatch) {
                 const programId = programApplyMatch[1];
                 const safeSeminars = Array.isArray(seminarsDataPublic) ? seminarsDataPublic : [];
-                const isTestRoute = programId === 'test';
+                // 결제 테스트용 가짜 프로그램은 로컬 개발에서만 (운영에서 실제 결제가 일어나지 않게)
+                const isTestRoute = import.meta.env.DEV && programId === 'test';
                 const program = isTestRoute
                     ? {
                         id: 'test',
@@ -3181,7 +3166,7 @@ END:VCALENDAR`;
                         </div>
                     );
                 }
-                return <MyPageView onBack={() => goTo('home')} user={currentUser} mySeminars={mySeminars} myApplications={myApplications} onUpdateApplication={handleUpdateApplication} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} onWithdrawApplicationRecord={handleWithdrawApplicationRecord} onWriteReview={handleWriteReview} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} onKakaoLink={() => authService.startKakaoLink(currentUser?.uid || currentUser?.id)} />;
+                return <MyPageView onBack={() => goTo('home')} user={currentUser} mySeminars={mySeminars} myApplications={myApplications} onUpdateApplication={handleUpdateApplication} myPosts={myPosts} onWithdraw={handleWithdraw} onUpdateProfile={handleUpdateProfile} onCancelSeminar={handleSeminarCancel} onWithdrawApplicationRecord={handleWithdrawApplicationRecord} onWriteReview={handleWriteReview} pageTitles={pageTitles} onUpdatePost={handleCommunityUpdate} onKakaoLink={() => authService.startKakaoLink()} />;
             }
         if (currentView === 'allMembers' && !currentUser) {
             return (
@@ -3935,7 +3920,7 @@ END:VCALENDAR`;
             <KakaoLinkPromptModal
                 onLink={() => {
                     setShowKakaoLinkPrompt(false);
-                    authService.startKakaoLink(currentUser.uid || currentUser.id);
+                    authService.startKakaoLink();
                 }}
                 onDismiss={() => setShowKakaoLinkPrompt(false)}
             />

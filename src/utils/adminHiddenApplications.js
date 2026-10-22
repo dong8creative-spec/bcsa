@@ -144,7 +144,8 @@ export function isRegisteredApplication(app, applicationFee) {
   const fee = Number(applicationFee) || 0;
   if (fee <= 0) return true;
   if (isAdminAddedApplication(app)) return true;
-  return !!(app?.merchant_uid || app?.merchantUid || app?.imp_uid || app?.impUid);
+  // hasPayment: 공개 사본(publicApplications)은 결제번호 대신 결제 여부만 가진다
+  return !!(app?.hasPayment || app?.merchant_uid || app?.merchantUid || app?.imp_uid || app?.impUid);
 }
 
 /**

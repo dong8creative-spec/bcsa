@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { firebaseService } from '../services/firebaseService';
 import { authService } from '../services/authService';
-import { hashPassword, loadUsersFromStorage } from '../utils/authUtils';
+import { hashPassword } from '../utils/authUtils';
 import { uploadImageToImgBB, encodeImageHalfWebpFromDataUrl, UPLOAD_WEBP_QUALITY } from '../utils/imageUtils';
 import { openDaumPostcode } from '../utils/daumPostcode';
 import { Icons } from './Icons';
@@ -117,10 +117,6 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         return cleaned.length === 11 && /^01[0-9][0-9]{8}$/.test(cleaned);
     };
 
-    const fetchAllUsers = async () => {
-        if (firebaseService?.getUsers) return await firebaseService.getUsers();
-        return await loadUsersFromStorage();
-    };
 
     const handleCheckEmailDuplicate = async () => {
         if (!formData.email?.trim()) {
@@ -133,8 +129,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         }
         setIsCheckingDuplicate(true);
         try {
-            const allUsers = await fetchAllUsers();
-            const exists = allUsers.some(u => (u.email || '').toLowerCase() === formData.email.trim().toLowerCase());
+            const { emailTaken: exists } = await firebaseService.checkSignupDuplicates({ email: formData.email.trim() });
             setEmailCheckResult(exists ? 'duplicate' : 'available');
             if (exists) showDuplicateCheckModal('이미 사용 중인 이메일(아이디)입니다.', true);
             else showDuplicateCheckModal('사용 가능한 이메일입니다.', false);
@@ -156,9 +151,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         }
         setIsCheckingDuplicate(true);
         try {
-            const allUsers = await fetchAllUsers();
-            const inputNorm = normalizePhone(formData.phone);
-            const exists = allUsers.some(u => normalizePhone(u.phone || u.phoneNumber) === inputNorm);
+            const { phoneTaken: exists } = await firebaseService.checkSignupDuplicates({ phone: normalizePhone(formData.phone) });
             setPhoneCheckResult(exists ? 'duplicate' : 'available');
             if (exists) showDuplicateCheckModal('이미 사용 중인 연락처입니다.', true);
             else showDuplicateCheckModal('사용 가능한 연락처입니다.', false);
@@ -292,22 +285,13 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
             
             setIsCreatingAccount(true);
             try {
-                let existingByEmail = null;
-                let existingByPhone = null;
-                if (firebaseService?.getUserByEmail && firebaseService?.getUserByPhone) {
-                    const [emailUser, phoneUser] = await Promise.all([
-                        firebaseService.getUserByEmail(formData.email || ''),
-                        firebaseService.getUserByPhone(normalizePhone(formData.phone))
-                    ]);
-                    existingByEmail = emailUser;
-                    existingByPhone = phoneUser;
-                } else {
-                    const raw = await loadUsersFromStorage();
-                    const allUsers = Array.isArray(raw) ? raw : [];
-                    existingByEmail = allUsers.find(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase()) || null;
-                    const phoneNorm = normalizePhone(formData.phone);
-                    existingByPhone = phoneNorm ? (allUsers.find(u => normalizePhone(u.phone || u.phoneNumber) === phoneNorm) || null) : null;
-                }
+                // 회원 원본은 직접 읽을 수 없으므로 서버(checkSignupDuplicates)에서 일치 여부만 확인
+                const dup = await firebaseService.checkSignupDuplicates({
+                    email: formData.email || '',
+                    phone: normalizePhone(formData.phone),
+                });
+                const existingByEmail = dup.emailTaken;
+                const existingByPhone = dup.phoneTaken;
                 if (existingByEmail && existingByPhone) {
                     setIsCreatingAccount(false);
                     return alert("이미 사용 중인 이메일(아이디)과 연락처입니다. 로그인을 시도해주세요.");

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icons } from './Icons';
 import ModalPortal from './ModalPortal';
+import { safeExternalUrl } from '../utils';
 
 /**
  * NewsDetailModal — 뉴스 전용 상세 모달.
@@ -123,9 +124,9 @@ export default function NewsDetailModal({ item, onClose }) {
                         >
                             닫기
                         </button>
-                        {item.externalUrl ? (
+                        {safeExternalUrl(item.externalUrl) ? (
                             <a
-                                href={item.externalUrl}
+                                href={safeExternalUrl(item.externalUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1.5 text-sm font-semibold rounded-full px-5 py-2.5 bg-brand text-white hover:bg-[#00327a] transition-colors"
