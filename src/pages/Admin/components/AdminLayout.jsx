@@ -14,6 +14,7 @@ export const AdminLayout = ({ children, activeTab, onTabChange, onLogout, curren
   const tabs = [
     { id: 'users', label: '회원 관리', icon: Icons.Users },
     { id: 'programs', label: '프로그램 관리', icon: Icons.Calendar },
+    { id: 'groups', label: '소모임·스터디', icon: Icons.Users },
     { id: 'externalPosters', label: '외부행사 포스터', icon: Icons.Image },
     { id: 'supportPrograms', label: '지원사업 피드', icon: Icons.Award },
     { id: 'news', label: '뉴스 관리', icon: Icons.FileText },

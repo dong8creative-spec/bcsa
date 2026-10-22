@@ -62,6 +62,11 @@ const PAGES = [
     description: '부산 지역 신규 지원사업과 마감이 다가온 정부·지자체 지원사업을 핵심만 요약해 보여드립니다.',
   },
   {
+    path: '/groups',
+    title: '소모임·스터디 | 부산 사업가 그룹 - 부청사',
+    description: '부청사 회원이 직접 여는 사업가 소모임과 스터디. 일정 확인, QR 출석, 참가비 결제까지 한 곳에서.',
+  },
+  {
     path: '/tools',
     title: '사업도구 | 부가세·마진·3.3%·손익분기점 계산기 - 부청사',
     description: '부가세, 마진율, 3.3% 원천징수, 손익분기점, 광고 ROAS를 바로 계산하는 사업자 도구함입니다.',
@@ -163,6 +168,7 @@ function buildSitemap(seminarIds) {
     { loc: '/news',        priority: '0.8', changefreq: 'daily' },
     { loc: '/support',     priority: '0.9', changefreq: 'daily' },
     { loc: '/tools',       priority: '0.7', changefreq: 'monthly' },
+    { loc: '/groups',      priority: '0.7', changefreq: 'weekly' },
     { loc: '/members',     priority: '0.5', changefreq: 'weekly' },
     { loc: '/privacy',     priority: '0.3', changefreq: 'yearly' },
     { loc: '/terms',       priority: '0.3', changefreq: 'yearly' },

@@ -78,6 +78,7 @@ import { MobileMenu } from './components/MobileMenu';
 
 // 자주 쓰지 않는 화면은 열 때 내려받는다 (첫 화면 번들 축소)
 const MyPageView = lazy(() => import('./pages/MyPageView'));
+const GroupsPage = lazy(() => import('./pages/groups/GroupsPage'));
 const AllMembersView = lazy(() => import('./pages/AllMembersView'));
 const SignUpPage = lazy(() => import('./pages/SignUpPage'));
 const CommunityView = lazy(() => import('./components/CommunityView'));
@@ -221,6 +222,7 @@ const App = () => {
         news: '/news',
         supportPage: '/support',
         tools: '/tools',
+        groups: '/groups',
         requests: '/requests',
         qna: '/qna',
     };
@@ -237,6 +239,7 @@ const App = () => {
         '/news': 'news',
         '/support': 'supportPage',
         '/tools': 'tools',
+        '/groups': 'groups',
         '/requests': 'requests',
         '/qna': 'qna',
     };
@@ -476,6 +479,11 @@ const App = () => {
         // /programs/:id 는 ProgramDetailPage가 처리
         if (path.match(/^\/programs\/[^/]+$/)) return;
         if (path.startsWith('/program/apply/')) return;
+        // /groups 아래(상세·QR 출석·결제 복귀)는 GroupsPage가 경로를 직접 나눈다
+        if (path === '/groups' || path.startsWith('/groups/')) {
+            setCurrentView('groups');
+            return;
+        }
 
         const restaurantDetailMatch = path.match(/^\/restaurants\/([^/]+)$/);
         const restaurantEditMatch = path.match(/^\/restaurants\/([^/]+)\/edit$/);
@@ -2983,6 +2991,9 @@ END:VCALENDAR`;
         } else if (item === '지원사업') {
             goTo('supportPage');
             scroll();
+        } else if (item === '그룹') {
+            goTo('groups');
+            scroll();
         } else if (item === '사업도구') {
             goTo('tools');
             scroll();
@@ -3012,6 +3023,7 @@ END:VCALENDAR`;
         else if (item === '뉴스' && currentView === 'news') isActive = true;
         else if (item === '지원사업' && currentView === 'supportPage') isActive = true;
         else if (item === '사업도구' && currentView === 'tools') isActive = true;
+        else if (item === '그룹' && currentView === 'groups') isActive = true;
         else if (item === '의뢰' && currentView === 'requests') isActive = true;
         else if (item === 'Q&A' && currentView === 'qna') isActive = true;
         const baseClass = "text-[12.5px] font-medium tracking-tight transition-colors";
@@ -3429,6 +3441,7 @@ END:VCALENDAR`;
         // 데이터를 동시에 보여주면 콘텐츠가 중복 노출되므로, 뉴스 페이지는 여기서 supportPrograms를 받지 않는다.
         if (currentView === 'news') return <NewsView content={content} onBack={() => goTo('home')} newsItems={newsItems} />;
         // 의뢰/Q&A: 아직 실제 수집·등록 기능이 없어 공사중 화면으로 대체.
+        if (currentView === 'groups') return <GroupsPage currentUser={currentUser} onRequireLogin={() => setShowLoginModal(true)} />;
         if (currentView === 'requests') return <UnderConstructionView eyebrow="REQUESTS" pageLabel="의뢰" onBack={() => goTo('home')} />;
         if (currentView === 'qna') return <UnderConstructionView eyebrow="EXPERT Q&A" pageLabel="Q&A" onBack={() => goTo('home')} />;
         

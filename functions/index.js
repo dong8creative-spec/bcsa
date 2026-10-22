@@ -12,6 +12,7 @@ import sharp from 'sharp';
 import { buildPasswordResetEmailHtml, buildPasswordResetEmailText } from './email/passwordResetTemplate.js';
 import { isSmtpConfigured, sendMail } from './email/mailer.js';
 import { buildPublicProfile, buildPublicApplication, isApprovedMember } from './publicMirrors.js';
+import { createGroupHandlers } from './groups.js';
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
@@ -170,11 +171,14 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'http://127.0.0.1:3000'
 ];
+// Firebase Hosting 미리보기 채널(테스트용 주소: bcsa-b190f--채널명-해시.web.app)도 허용 — 이 프로젝트 소유 주소만 해당
+const PREVIEW_ORIGIN_RE = /^https:\/\/bcsa-b190f--[a-z0-9-]+\.web\.app$/;
+const isAllowedOrigin = (origin) => !!origin && (ALLOWED_ORIGINS.includes(origin) || PREVIEW_ORIGIN_RE.test(origin));
 
 // CORS 설정 - 허용 오리진만 통과, 미허용 오리진은 CORS 헤더 없이 차단
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+    if (!origin || isAllowedOrigin(origin)) {
       cb(null, origin || ALLOWED_ORIGINS[0]);
     } else {
       cb(null, false);
@@ -824,7 +828,7 @@ app.get('/api/auth/kakao/start', (req, res) => {
     return;
   }
   const origin = (req.query.origin || '').toString();
-  const frontendUrl = ALLOWED_ORIGINS.includes(origin) ? origin : KAKAO_DEFAULT_FRONTEND;
+  const frontendUrl = isAllowedOrigin(origin) ? origin : KAKAO_DEFAULT_FRONTEND;
   const signup = req.query.signup === '1' ? '1' : '0';
   // link 모드: 서버가 발급한 연결 티켓(본인 확인 완료)에 담긴 uid만 사용
   let linkUid = '';
@@ -861,7 +865,7 @@ app.get('/api/auth/kakao/callback', async (req, res) => {
   let linkUid = ''; // link 모드: 이 uid의 계정에 카카오 연결
   const parsedState = KAKAO_STATE_SECRET ? verifyKakaoState(req.query.state || '') : null;
   if (parsedState && parsedState.purpose !== 'link') {
-    if (parsedState.o && ALLOWED_ORIGINS.includes(parsedState.o)) frontendUrl = parsedState.o;
+    if (parsedState.o && isAllowedOrigin(parsedState.o)) frontendUrl = parsedState.o;
     isSignup = parsedState.s === '1';
     linkUid = (parsedState.link_uid || '').toString().trim();
   } else {
@@ -1469,6 +1473,16 @@ app.post('/api/payment/webhook', async (req, res) => {
         await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set({ completed: true }, { merge: true });
         await db.collection('pendingPayments').doc(String(merchantUid)).delete();
         console.log('[Payment Webhook] application completed', merchantUid, 'created:', created, 'appId:', applicationId);
+      } else if ((await db.collection('groupPayments').doc(String(merchantUid)).get()).exists) {
+        // 소모임·스터디 QR 결제: 포트원 실결제 확인 후 출석+결제 기록 (결제 후 창을 닫아도 반영되도록)
+        try {
+          const r = await getGroupHandlers().finalizeGroupPayment(merchantUid);
+          console.log('[Payment Webhook] group payment', merchantUid, r.ok ? 'finalized' : r.error);
+        } catch (e) {
+          console.warn('[Payment Webhook] group payment verify unavailable', e.response?.status || e.message);
+          res.status(503).json({ received: false, error: 'verify_unavailable' });
+          return;
+        }
       } else {
         // pending이 없지만 이미 신청이 있을 수 있음 → completed 보강
         const existing = await db.collection('applications').where('merchant_uid', '==', merchantUid).limit(1).get();
@@ -1860,7 +1874,7 @@ app.use((err, req, res, next) => {
 // 전역 에러 응답 미들웨어 (5xx에도 CORS 헤더 보장)
 app.use((err, req, res, next) => {
   const origin = req.get('Origin');
-  const allowOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const allowOrigin = isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0];
   res.setHeader('Access-Control-Allow-Origin', allowOrigin);
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.status(500).json({
@@ -2200,6 +2214,27 @@ export const checkSignupDuplicates = onCall(
     return { emailTaken, phoneTaken: phoneTaken || phoneNumberTaken, brnTaken };
   }
 );
+
+// ==========================================
+// 소모임·스터디(그룹): 개설 신청, 가입, QR 출석, QR 결제 — 구현은 groups.js
+// ==========================================
+let groupHandlers = null;
+function getGroupHandlers() {
+  if (!groupHandlers) {
+    groupHandlers = createGroupHandlers({ db, admin, verifyPortOnePayment, cancelPortOnePayment, isCallerAdmin });
+  }
+  return groupHandlers;
+}
+const groupCallable = (name) => onCall(
+  { region: 'asia-northeast3', invoker: 'public' },
+  (request) => getGroupHandlers().callables[name](request)
+);
+export const createGroupRequest = groupCallable('createGroupRequest');
+export const joinGroup = groupCallable('joinGroup');
+export const getSessionQrToken = groupCallable('getSessionQrToken');
+export const issueCheckInPass = groupCallable('issueCheckInPass');
+export const checkInSession = groupCallable('checkInSession');
+export const completeGroupPayment = groupCallable('completeGroupPayment');
 
 // Express 앱을 Firebase Functions로 내보내기
 // asia-northeast3 (서울) 지역 사용

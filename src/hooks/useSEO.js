@@ -71,6 +71,11 @@ const SEO_MAP = {
         description: '부가세, 마진율, 3.3% 원천징수, 손익분기점, 광고 ROAS를 바로 계산하는 사업자 도구함입니다.',
         path: '/tools',
     },
+    groups: {
+        title: '소모임·스터디 | 부산 사업가 그룹 - 부청사',
+        description: '부청사 회원이 직접 여는 사업가 소모임과 스터디. 일정 확인, QR 출석, 참가비 결제까지 한 곳에서.',
+        path: '/groups',
+    },
     myPage: {
         title: '마이페이지 | 부청사',
         description: '내 신청 프로그램과 게시글을 확인하세요.',

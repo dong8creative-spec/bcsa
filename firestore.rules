@@ -193,6 +193,71 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isSignedIn() && resource.data.ownerId == request.auth.uid);
     }
 
+    // ===== 소모임·스터디(그룹) =====
+    // 개설 신청·가입·QR 출석·결제는 서버(functions/groups.js)가 처리하고,
+    // 그룹장은 승인된 자기 그룹의 설정·회차·멤버 승인·수동 출석만 직접 바꿀 수 있다.
+    function groupData(gid) {
+      return get(/databases/$(database)/documents/groups/$(gid)).data;
+    }
+    function isGroupLeader(gid) {
+      return isSignedIn() && groupData(gid).leaderUid == request.auth.uid;
+    }
+    function validSession() {
+      let d = request.resource.data;
+      return d.title is string && d.title.size() <= 80
+        && d.get('fee', 0) is int && d.get('fee', 0) >= 0 && d.get('fee', 0) <= 1000000;
+    }
+
+    match /groups/{gid} {
+      allow read: if resource.data.status == 'approved' || isAdmin()
+        || (isSignedIn() && resource.data.leaderUid == request.auth.uid);
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        isSignedIn() && resource.data.leaderUid == request.auth.uid && resource.data.status == 'approved'
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['title', 'description', 'region', 'mode', 'schedule', 'capacity', 'joinPolicy', 'notice', 'updatedAt'])
+        && request.resource.data.joinPolicy in ['open', 'approval']
+        && request.resource.data.mode in ['offline', 'online', 'hybrid']
+      );
+
+      match /members/{uid} {
+        allow read: if isSignedIn();
+        allow create: if isAdmin();
+        allow update: if isAdmin()
+          || (isGroupLeader(gid) && resource.data.role != 'leader'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+            && request.resource.data.status in ['active', 'rejected', 'left'])
+          || (isSelf(uid) && resource.data.role != 'leader'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+            && request.resource.data.status == 'left');
+        allow delete: if isAdmin() || (isGroupLeader(gid) && resource.data.role != 'leader');
+      }
+
+      match /sessions/{sid} {
+        allow read: if groupData(gid).status == 'approved' || isGroupLeader(gid) || isAdmin();
+        allow create, update: if isAdmin() || (isGroupLeader(gid) && validSession());
+        allow delete: if isAdmin() || isGroupLeader(gid);
+
+        // 출석: QR 출석·결제 기록(paid/paymentId/amount)은 서버만. 그룹장은 수동 출석·현장 결제(cashPaid)만
+        match /attendance/{uid} {
+          allow read: if isSelf(uid) || isGroupLeader(gid) || isAdmin();
+          allow create: if isAdmin() || (isGroupLeader(gid)
+            && request.resource.data.keys().hasOnly(['uid', 'name', 'method', 'checkedAt', 'cashPaid', 'note'])
+            && request.resource.data.method == 'manual');
+          allow update: if isAdmin() || (isGroupLeader(gid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cashPaid', 'note']));
+          allow delete: if isAdmin() || (isGroupLeader(gid) && resource.data.get('paid', false) != true);
+        }
+      }
+    }
+
+    // 그룹 QR 결제 기록(정산 장부): 서버만 쓰기. 결제자 본인·해당 그룹장·관리자만 읽기
+    match /groupPayments/{pid} {
+      allow read: if isAdmin() || (isSignedIn()
+        && (resource.data.uid == request.auth.uid || resource.data.leaderUid == request.auth.uid));
+      allow write: if false;
+    }
+
     // 강제 탈퇴 재가입 차단 목록: 클라이언트 접근 불가, Cloud Functions(Admin)에서만 사용
     match /blockedRegistrations/{docId} {
       allow read, write: if false;

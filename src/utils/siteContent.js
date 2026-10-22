@@ -7,6 +7,7 @@ const DEFAULT_MENU_ENABLED = {
   '뉴스': true,
   '지원사업': true,
   '사업도구': true,
+  '그룹': true,
   // 의뢰·Q&A는 아직 공사중 화면이라 준비될 때까지 메뉴에서 숨긴다 (관리자 메뉴 설정으로 다시 켤 수 있음)
   '의뢰': false,
   'Q&A': false,

@@ -10,8 +10,9 @@ import { MenuManagement } from './components/MenuManagement';
 import { ExternalEventPosterManagement } from './components/ExternalEventPosterManagement';
 import { SupportProgramManagement } from './components/SupportProgramManagement';
 import { NewsManagement } from './components/NewsManagement';
+import { GroupManagement } from './components/GroupManagement';
 
-const VALID_TABS = ['users', 'programs', 'externalPosters', 'supportPrograms', 'news', 'posts', 'content', 'menu'];
+const VALID_TABS = ['users', 'programs', 'groups', 'externalPosters', 'supportPrograms', 'news', 'posts', 'content', 'menu'];
 
 /**
  * 관리자 대시보드 메인 컴포넌트
@@ -61,6 +62,8 @@ export const AdminDashboard = ({ userDoc }) => {
         return <UserManagement currentUser={userDoc} />;
       case 'programs':
         return <ProgramManagement />;
+      case 'groups':
+        return <GroupManagement />;
       case 'externalPosters':
         return <ExternalEventPosterManagement />;
       case 'supportPrograms':
