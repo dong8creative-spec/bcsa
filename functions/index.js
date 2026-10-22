@@ -251,38 +251,50 @@ const PORTONE_WEBHOOK_SECRET = process.env.PORTONE_WEBHOOK_SECRET || '';
 const PORTONE_V2_SECRET = process.env.PORTONE_V2_SECRET || '';
 
 /**
- * PortOne V2 웹훅 서명 검증
- * portone-signature 헤더: t=<timestamp>,v1=<hex_hmac>
- * HMAC-SHA256("<timestamp>.<rawBody>", PORTONE_WEBHOOK_SECRET)
+ * PortOne V2 웹훅 서명 검증 (Standard Webhooks 스펙 — 공식 @portone/server-sdk Webhook.verify와 동일)
+ * 헤더: webhook-id, webhook-timestamp(초), webhook-signature("v1,<base64>" 공백 구분 여러 개 가능)
+ * 서명: HMAC-SHA256(key, "<id>.<timestamp>.<rawBody>"), key = base64decode(시크릿에서 "whsec_" 제거)
+ * 타임스탬프는 ±5분 이내만 허용(재전송 공격 방지).
  */
+const PORTONE_WEBHOOK_TOLERANCE_SEC = 5 * 60;
 const verifyPortOneWebhookSignature = (req) => {
   if (!PORTONE_WEBHOOK_SECRET) {
     console.error('[Payment Webhook] PORTONE_WEBHOOK_SECRET 미설정 — 웹훅을 신뢰할 수 없어 거부');
     return false;
   }
-  const sigHeader = (req.headers['portone-signature'] || '').toString();
-  if (!sigHeader) return false;
-  const parts = {};
-  sigHeader.split(',').forEach((pair) => {
-    const idx = pair.indexOf('=');
-    if (idx > 0) parts[pair.slice(0, idx).trim()] = pair.slice(idx + 1).trim();
-  });
-  const timestamp = parts['t'];
-  const receivedSig = parts['v1'];
-  if (!timestamp || !receivedSig) return false;
-  const rawBody = req.rawBody || '';
-  const expected = crypto
-    .createHmac('sha256', PORTONE_WEBHOOK_SECRET)
-    .update(`${timestamp}.${rawBody}`)
-    .digest('hex');
+  const msgId = (req.headers['webhook-id'] || '').toString();
+  const msgTimestamp = (req.headers['webhook-timestamp'] || '').toString();
+  const msgSignature = (req.headers['webhook-signature'] || '').toString();
+  if (!msgId || !msgTimestamp || !msgSignature) return false;
+  const ts = parseInt(msgTimestamp, 10);
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(ts) || Math.abs(nowSec - ts) > PORTONE_WEBHOOK_TOLERANCE_SEC) return false;
+  let key;
   try {
-    const a = Buffer.from(receivedSig.toLowerCase(), 'hex');
-    const b = Buffer.from(expected, 'hex');
-    if (a.length !== b.length) return false;
-    return crypto.timingSafeEqual(a, b);
+    const secretB64 = PORTONE_WEBHOOK_SECRET.startsWith('whsec_')
+      ? PORTONE_WEBHOOK_SECRET.slice('whsec_'.length)
+      : PORTONE_WEBHOOK_SECRET;
+    key = Buffer.from(secretB64, 'base64');
   } catch {
     return false;
   }
+  if (!key.length) return false;
+  const expected = crypto
+    .createHmac('sha256', key)
+    .update(`${msgId}.${msgTimestamp}.${req.rawBody || ''}`)
+    .digest();
+  for (const versioned of msgSignature.split(' ')) {
+    const [version, sig] = versioned.split(',');
+    if (version !== 'v1' || !sig) continue;
+    let received;
+    try {
+      received = Buffer.from(sig, 'base64');
+    } catch {
+      continue;
+    }
+    if (received.length === expected.length && crypto.timingSafeEqual(received, expected)) return true;
+  }
+  return false;
 };
 
 /**
@@ -1334,7 +1346,7 @@ app.post('/api/payment/webhook', async (req, res) => {
   try {
     const body = req.body || {};
 
-    // ① 웹훅 서명 검증 (portone-signature 헤더). 형식과 관계없이 서명 없는 요청은 모두 무시한다.
+    // ① 웹훅 서명 검증 (Standard Webhooks 헤더). 형식과 관계없이 서명 없는 요청은 모두 무시한다.
     // (예전에는 body에 type이 없으면 V1으로 보고 서명 검증을 건너뛰어 위조 웹훅이 가능했다.)
     if (!verifyPortOneWebhookSignature(req)) {
       console.error('[Payment Webhook] 서명 검증 실패 — 요청 무시');
@@ -2121,7 +2133,8 @@ export const checkSignupDuplicates = onCall(
   async (request) => {
     const email = normalizeEmail(request.data?.email || '');
     const phone = normalizePhone(request.data?.phone || '');
-    const brn = String(request.data?.businessRegistrationNumber || '').replace(/\D/g, '');
+    const brnRaw = String(request.data?.businessRegistrationNumber || '').trim();
+    const brn = brnRaw.replace(/\D/g, '');
     const users = db.collection('users');
     const anyMatch = async (field, value) => {
       if (!value) return false;
@@ -2136,7 +2149,11 @@ export const checkSignupDuplicates = onCall(
       }) : false,
       phone.length >= 10 ? anyMatch('phone', phone) : false,
       phone.length >= 10 ? anyMatch('phoneNumber', phone) : false,
-      brn.length === 10 ? anyMatch('businessRegistrationNumber', brn) : false,
+      // 사업자번호는 숫자만·하이픈 형식(123-45-67890)·입력 그대로 저장된 경우가 섞여 있어 모두 확인
+      brn.length === 10
+        ? Promise.all([...new Set([brn, `${brn.slice(0, 3)}-${brn.slice(3, 5)}-${brn.slice(5)}`, brnRaw])]
+          .map((v) => anyMatch('businessRegistrationNumber', v))).then((hits) => hits.some(Boolean))
+        : false,
     ]);
     return { emailTaken, phoneTaken: phoneTaken || phoneNumberTaken, brnTaken };
   }

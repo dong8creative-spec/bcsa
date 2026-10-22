@@ -57,6 +57,8 @@ export async function pollPaymentUntilComplete({ apiBaseUrl, paymentId, userId, 
     const first = await tryComplete();
     if (first.ok === true) return { completed: true, ...lastMeta };
     if (first.error === 'capacity_full') return { completed: false, reason: 'capacity_full', ...lastMeta };
+    // 금액 불일치: 서버가 이미 자동 환불하고 pending을 지웠으므로 재시도 없이 즉시 종료
+    if (first.error === 'amount_mismatch') return { completed: false, reason: 'amount_mismatch', ...lastMeta };
     if (typeof first.error === 'string' && first.error.startsWith('global_recruitment_')) {
         return { completed: false, reason: first.error, ...lastMeta };
     }
@@ -83,6 +85,7 @@ export async function pollPaymentUntilComplete({ apiBaseUrl, paymentId, userId, 
             const c = await tryComplete();
             if (c.ok === true) return { completed: true, ...lastMeta };
             if (c.error === 'capacity_full') return { completed: false, reason: 'capacity_full', ...lastMeta };
+            if (c.error === 'amount_mismatch') return { completed: false, reason: 'amount_mismatch', ...lastMeta };
             if (typeof c.error === 'string' && c.error.startsWith('global_recruitment_')) {
                 return { completed: false, reason: c.error, ...lastMeta };
             }

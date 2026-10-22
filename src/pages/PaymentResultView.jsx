@@ -99,6 +99,13 @@ export function PaymentResultView({ onComplete, onGoMyPage }) {
                     return;
                 }
 
+                if (reason === 'amount_mismatch') {
+                    clearPaymentPending(merchantUid);
+                    setStatus('fail');
+                    setMessage('결제 금액이 참가비와 달라 결제가 자동 취소(환불)되었습니다.\n프로그램 신청은 진행되지 않았으며, 다시 신청해 주세요.');
+                    return;
+                }
+
                 if (reason === 'payment_not_verified') {
                     clearPaymentPending(merchantUid);
                     setStatus('fail');
