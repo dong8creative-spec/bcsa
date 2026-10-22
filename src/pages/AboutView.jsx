@@ -168,37 +168,35 @@ const AboutView = ({ onBack, content, pageTitles }) => {
                 </div>
             </section>
 
-            {/* 6. Moments */}
-            <section className="px-6 py-14 md:py-20 bg-soft">
-                <div className="container mx-auto max-w-7xl">
-                    <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-2">MOMENTS</p>
-                    <h2 className="text-2xl md:text-[32px] font-semibold tracking-tight text-dark mb-8 break-keep">현장의 순간</h2>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="rounded-[24px] overflow-hidden aspect-[16/10] bg-white">
-                            {(content.about_moment_1_image || content.about_hero_image) ? (
-                                <img
-                                    src={content.about_moment_1_image || content.about_hero_image}
-                                    alt="비즈니스 세미나 현장"
-                                    className="w-full h-full object-cover"
-                                    loading="lazy"
-                                    decoding="async"
-                                />
-                            ) : null}
+            {/* 6. Moments — 전용 사진이 등록된 경우에만 표시 (대표 사진을 반복해 채우지 않음) */}
+            {(() => {
+                const moments = [
+                    { src: content.about_moment_1_image, alt: '비즈니스 세미나 현장' },
+                    { src: content.about_moment_2_image, alt: '사업가 네트워킹 현장' },
+                ].filter((m) => m.src && m.src !== content.about_hero_image);
+                if (moments.length === 0) return null;
+                return (
+                    <section className="px-6 py-14 md:py-20 bg-soft">
+                        <div className="container mx-auto max-w-7xl">
+                            <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-2">MOMENTS</p>
+                            <h2 className="text-2xl md:text-[32px] font-semibold tracking-tight text-dark mb-8 break-keep">현장의 순간</h2>
+                            <div className={`grid gap-4 ${moments.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+                                {moments.map((m) => (
+                                    <div key={m.src} className="rounded-[24px] overflow-hidden aspect-[16/10] bg-white">
+                                        <img
+                                            src={m.src}
+                                            alt={m.alt}
+                                            className="w-full h-full object-cover"
+                                            loading="lazy"
+                                            decoding="async"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <div className="rounded-[24px] overflow-hidden aspect-[16/10] bg-white">
-                            {(content.about_moment_2_image || content.about_hero_image) ? (
-                                <img
-                                    src={content.about_moment_2_image || content.about_hero_image}
-                                    alt="사업가 네트워킹 현장"
-                                    className="w-full h-full object-cover"
-                                    loading="lazy"
-                                    decoding="async"
-                                />
-                            ) : null}
-                        </div>
-                    </div>
-                </div>
-            </section>
+                    </section>
+                );
+            })()}
 
             {/* 7. Future Plans */}
             <section className="px-6 py-14 md:py-20 text-white" style={{ backgroundColor: '#0b0b0c' }}>

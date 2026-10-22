@@ -1,6 +1,14 @@
 import { useEffect } from 'react';
 
 const BASE_URL = 'https://bcsa.co.kr';
+// 기본 공유 이미지 (카카오톡·SNS 미리보기). 프로그램 상세 등은 각자 이미지를 넘긴다.
+export const DEFAULT_OG_IMAGE = `${BASE_URL}/assets/images/og-image.png`;
+
+// GitHub Pages는 /about 요청을 /about/ 로 301 이동시키므로 canonical도 실제 200 주소(끝 슬래시)로 맞춘다.
+export const toCanonicalPath = (path) => {
+    const p = path || '/';
+    return p === '/' ? '/' : p.replace(/\/?$/, '/');
+};
 
 const SEO_MAP = {
     home: {
@@ -47,6 +55,21 @@ const SEO_MAP = {
         title: '후원 | 부청사를 함께 만들어가세요',
         description: '부산 청년 사업가들의 성장을 응원하는 부청사 후원 프로그램입니다.',
         path: '/donation',
+    },
+    news: {
+        title: '뉴스 | 부산 창업·소상공인 경제 소식 - 부청사',
+        description: '부산 창업가·소상공인이 놓치기 쉬운 지원·상권·판로 소식을 매일 모아 보여드립니다.',
+        path: '/news',
+    },
+    supportPage: {
+        title: '지원사업 | 부산 신규·마감임박 정부 지원사업 - 부청사',
+        description: '부산 지역 신규 지원사업과 마감이 다가온 정부·지자체 지원사업을 핵심만 요약해 보여드립니다.',
+        path: '/support',
+    },
+    tools: {
+        title: '사업도구 | 부가세·마진·3.3%·손익분기점 계산기 - 부청사',
+        description: '부가세, 마진율, 3.3% 원천징수, 손익분기점, 광고 ROAS를 바로 계산하는 사업자 도구함입니다.',
+        path: '/tools',
     },
     myPage: {
         title: '마이페이지 | 부청사',
@@ -96,8 +119,9 @@ export const useSEO = ({ view, ogImage, overrideTitle, overrideDescription, over
         const seo = SEO_MAP[view] || SEO_MAP.home;
         const title = overrideTitle || seo.title;
         const description = overrideDescription || seo.description;
-        const canonicalPath = overridePath || seo.path;
+        const canonicalPath = toCanonicalPath(overridePath || seo.path);
         const canonicalUrl = BASE_URL + canonicalPath;
+        const image = ogImage || DEFAULT_OG_IMAGE;
 
         document.title = title;
 
@@ -112,18 +136,16 @@ export const useSEO = ({ view, ogImage, overrideTitle, overrideDescription, over
         setMeta('property', 'og:type', 'website');
         setMeta('property', 'og:site_name', '부청사 | 부산청년사업가들');
         setMeta('property', 'og:locale', 'ko_KR');
-        if (ogImage) {
-            setMeta('property', 'og:image', ogImage);
-            setMeta('property', 'og:image:width', '1200');
-            setMeta('property', 'og:image:height', '630');
-            setMeta('property', 'og:image:alt', title);
-        }
+        setMeta('property', 'og:image', image);
+        setMeta('property', 'og:image:width', '1200');
+        setMeta('property', 'og:image:height', '630');
+        setMeta('property', 'og:image:alt', title);
 
         // Twitter Card
-        setMeta('name', 'twitter:card', ogImage ? 'summary_large_image' : 'summary');
+        setMeta('name', 'twitter:card', 'summary_large_image');
         setMeta('name', 'twitter:title', title);
         setMeta('name', 'twitter:description', description);
-        if (ogImage) setMeta('name', 'twitter:image', ogImage);
+        setMeta('name', 'twitter:image', image);
 
         // JSON-LD
         if (jsonLd) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, Fragment, lazy } from 'react';
 import { useSEO } from './hooks/useSEO';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { firebaseService } from './services/firebaseService';
@@ -36,23 +36,11 @@ import NewsView from './pages/NewsView';
 import RequestsView from './pages/RequestsView';
 import QnaView from './pages/QnaView';
 import UnderConstructionView from './pages/UnderConstructionView';
-import MyPageView from './pages/MyPageView';
-import AllMembersView from './pages/AllMembersView';
 import AllSeminarsView from './pages/AllSeminarsView';
-import SignUpPage from './pages/SignUpPage';
 import CalendarSection from './components/CalendarSection';
 import { Icons } from './components/Icons';
-import CommunityView from './components/CommunityView';
 import SignUpModal from './components/SignUpModal';
-import RestaurantsListView from './components/RestaurantsListView';
-import RestaurantDetailView from './components/RestaurantDetailView';
-import RestaurantFormView from './components/RestaurantFormView';
 import InquiryModal from './components/InquiryModal';
-import DonationView from './components/DonationView';
-import ProgramApplyView from './pages/ProgramApplyView';
-import PrivacyPolicyView from './pages/PrivacyPolicyView';
-import TermsOfServiceView from './pages/TermsOfServiceView';
-import RefundPolicyView from './pages/RefundPolicyView';
 import ProgramPopupWindowView from './pages/ProgramPopupWindowView';
 import AppLayout from './components/AppLayout';
 import ModalPortal from './components/ModalPortal';
@@ -64,7 +52,7 @@ import {
     PARTNER_LOGOS,
     PARTNER_NAMES
 } from './constants/appConstants';
-import { filterApprovedMembers, getCategoryColor, buildProgramPopupItems, firestoreLikeToMillis, getSupportProgramDdayInfo } from './appHelpers';
+import { filterApprovedMembers, getCategoryColor, buildProgramPopupItems, firestoreLikeToMillis, getSupportProgramDdayInfo, bucketSupportPrograms } from './appHelpers';
 import {
     ADMIN_HIDDEN_APPLICATIONS_KEY,
     ADMIN_HIDDEN_APPLICATIONS_CHANGED,
@@ -87,6 +75,20 @@ import { applyProgramRecruitmentState, getProgramRecruitmentState } from './util
 import { LoginModal } from './components/LoginModal';
 import KakaoLinkPromptModal from './components/KakaoLinkPromptModal';
 import { MobileMenu } from './components/MobileMenu';
+
+// 자주 쓰지 않는 화면은 열 때 내려받는다 (첫 화면 번들 축소)
+const MyPageView = lazy(() => import('./pages/MyPageView'));
+const AllMembersView = lazy(() => import('./pages/AllMembersView'));
+const SignUpPage = lazy(() => import('./pages/SignUpPage'));
+const CommunityView = lazy(() => import('./components/CommunityView'));
+const RestaurantsListView = lazy(() => import('./components/RestaurantsListView'));
+const RestaurantDetailView = lazy(() => import('./components/RestaurantDetailView'));
+const RestaurantFormView = lazy(() => import('./components/RestaurantFormView'));
+const DonationView = lazy(() => import('./components/DonationView'));
+const ProgramApplyView = lazy(() => import('./pages/ProgramApplyView'));
+const PrivacyPolicyView = lazy(() => import('./pages/PrivacyPolicyView'));
+const TermsOfServiceView = lazy(() => import('./pages/TermsOfServiceView'));
+const RefundPolicyView = lazy(() => import('./pages/RefundPolicyView'));
 
 const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
 const RESTAURANTS_CACHE_KEY = 'bcsa_restaurants_cache_v1';
@@ -558,6 +560,9 @@ const App = () => {
         rolling.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
         return [...dated, ...rolling].slice(0, 8);
     }, [supportPrograms]);
+
+    // 홈 카드 숫자: 지원사업 페이지 탭과 같은 기준으로 전체 목록에서 센다 (위 목록은 8개로 잘려 있어 쓰면 안 됨)
+    const supportBuckets = useMemo(() => bucketSupportPrograms(supportPrograms), [supportPrograms]);
 
     const seoJsonLd = useMemo(() => {
         if (currentView === 'home' || currentView === 'about') {
@@ -3547,30 +3552,30 @@ END:VCALENDAR`;
                                 <h3 className="text-2xl md:text-[32px] font-semibold leading-tight break-keep">지금 신청할 수 있는<br/>지원사업</h3>
                             </div>
                             <div className="mt-6 space-y-2.5">
-                                {(supportProgramsPublic.length > 0 ? supportProgramsPublic.slice(0, 2).map((p) => {
+                                {supportProgramsPublic.length > 0 ? supportProgramsPublic.slice(0, 2).map((p) => {
                                     const { label } = getSupportProgramDdayInfo(p);
-                                    return { id: p.id, title: p.title, label };
-                                }) : [
-                                    { id: 'sample-1', title: '부산 소상공인 디지털 전환 지원', label: 'D-3' },
-                                    { id: 'sample-2', title: '청년 창업기업 성장지원 프로그램', label: 'D-12' },
-                                ]).map((p) => (
-                                    <div key={p.id} className="flex items-center justify-between bg-white/10 rounded-2xl px-4 py-3 text-sm">
-                                        <span className="truncate">{p.title}</span>
-                                        {p.label ? <span className="font-bold text-white bg-white/15 rounded-full px-2.5 py-1 text-xs whitespace-nowrap ml-3">{p.label}</span> : null}
-                                    </div>
-                                ))}
+                                    return (
+                                        <div key={p.id} className="flex items-center justify-between bg-white/10 rounded-2xl px-4 py-3 text-sm">
+                                            <span className="truncate">{p.title}</span>
+                                            {label ? <span className="font-bold text-white bg-white/15 rounded-full px-2.5 py-1 text-xs whitespace-nowrap ml-3">{label}</span> : null}
+                                        </div>
+                                    );
+                                }) : (
+                                    <div className="bg-white/10 rounded-2xl px-4 py-3 text-sm text-white/80">새 공고를 모으고 있어요. 매일 아침 업데이트됩니다.</div>
+                                )}
                             </div>
                             <span className="mt-6 text-sm font-semibold text-white/90">전체 지원사업 보기 →</span>
                         </button>
 
-                        <div className="area-b rounded-[32px] p-7 md:p-8 bg-white flex flex-col justify-between">
-                            <p className="text-[12px] font-semibold text-gray-500 tracking-wide">마감임박</p>
-                            <div><span className="text-4xl md:text-5xl font-semibold text-dark">{supportProgramsPublic.filter((p) => getSupportProgramDdayInfo(p).isUrgent).length || 13}</span><span className="text-gray-500 text-sm ml-1">건</span></div>
-                        </div>
+                        {/* 숫자는 지원사업 페이지 탭과 같은 기준(bucketSupportPrograms) — 가짜 기본값 없이 실제 건수만 표시 */}
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="area-b rounded-[32px] p-7 md:p-8 bg-white flex flex-col justify-between text-left hover:bg-[#eceef2] transition-colors">
+                            <p className="text-[12px] font-semibold text-gray-500 tracking-wide">마감임박 · 10일 이내</p>
+                            <div><span className="text-4xl md:text-5xl font-semibold text-dark">{supportBuckets.urgentAll.length}</span><span className="text-gray-500 text-sm ml-1">건</span></div>
+                        </button>
 
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('requests'); }} className="area-c rounded-[32px] p-7 md:p-8 bg-brand text-white flex flex-col justify-between text-left hover:bg-[#00327a] transition-colors">
-                            <p className="text-[12px] font-semibold text-blue-100 tracking-wide flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>의뢰 · LIVE</p>
-                            <div><span className="text-4xl md:text-5xl font-semibold">14</span><span className="text-blue-100 text-sm ml-1">건</span></div>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="area-c rounded-[32px] p-7 md:p-8 bg-brand text-white flex flex-col justify-between text-left hover:bg-[#00327a] transition-colors">
+                            <p className="text-[12px] font-semibold text-blue-100 tracking-wide flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>부산 신규 · 7일</p>
+                            <div><span className="text-4xl md:text-5xl font-semibold">{supportBuckets.busanFreshAll.length}</span><span className="text-blue-100 text-sm ml-1">건</span></div>
                         </button>
 
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('tools'); }} className="area-d rounded-[32px] p-7 md:p-8 bg-[#0b0b0c] text-white flex flex-col justify-between text-left">
@@ -3592,35 +3597,20 @@ END:VCALENDAR`;
                     </div>
                     <AdSlot slotId="home-bento-divider" content={content} className="max-w-[1240px] mx-auto mt-[18px]" />
                     <div className="max-w-[1240px] mx-auto bento-bottom mt-[18px]">
-                        <div className="area-e rounded-[32px] p-7 md:p-8 bg-white flex flex-col justify-between">
-                            <p className="text-[12px] font-semibold text-gray-500 tracking-wide">신규 지원사업</p>
-                            <div><span className="text-4xl md:text-5xl font-semibold text-dark">{supportProgramsPublic.filter((p) => { const cMs = firestoreLikeToMillis(p.createdAt); return cMs != null && (Date.now() - cMs) <= 7 * 86400000; }).length || 7}</span><span className="text-mint text-xs font-bold ml-2 align-top">NEW</span></div>
-                        </div>
-
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('qna'); }} className="area-f rounded-[32px] p-7 md:p-8 text-white relative overflow-hidden flex flex-col justify-between text-left" style={{ background: 'linear-gradient(160deg,#0b0b0c,#071a37 90%)' }}>
-                            <span className="absolute -right-4 -bottom-14 text-[190px] font-bold text-white/[0.05] select-none leading-none">?</span>
-                            <p className="text-[12px] font-semibold text-white/50 tracking-wide relative z-10">EXPERT Q&amp;A</p>
-                            <div className="relative z-10">
-                                <h3 className="text-2xl md:text-[28px] font-semibold leading-tight break-keep mb-2">사업하면서<br/>막힌 게 있나요?</h3>
-                                <p className="text-sm text-white/60 break-keep">지역 전문가와 선배 사업자에게 바로 물어보세요.</p>
-                            </div>
-                            <span className="relative z-10 text-sm font-semibold text-white/90">질문하러 가기 →</span>
-                        </button>
-
+                        {/* 회원명단은 로그인 회원 전용이라 홈에는 이름 없이 인원만 보여준다 */}
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allMembers'); }} className="area-g rounded-[32px] p-7 md:p-8 bg-white flex flex-col justify-between text-left hover:bg-[#eceef2] transition-colors">
                             <div className="flex items-end justify-between gap-4 flex-wrap">
                                 <div>
                                     <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-2">BUSAN PARTNERS</p>
-                                    <h3 className="text-2xl md:text-[28px] font-semibold text-dark">추천 부산 사업자</h3>
+                                    <h3 className="text-2xl md:text-[28px] font-semibold text-dark break-keep">함께하는 부산 사업가</h3>
                                 </div>
-                                <span className="text-sm font-semibold text-brand whitespace-nowrap">더보기 →</span>
+                                <span className="text-sm font-semibold text-brand whitespace-nowrap">회원명단 →</span>
                             </div>
-                            <div className="flex flex-wrap gap-2.5 mt-6">
-                                <span className="flex items-center gap-2.5 bg-white rounded-full pl-2 pr-4 py-2 shadow-sm"><span className="w-7 h-7 rounded-full bg-brand/10 text-brand font-bold text-xs grid place-items-center">V</span><span className="text-sm font-medium">VCML</span></span>
-                                <span className="flex items-center gap-2.5 bg-white rounded-full pl-2 pr-4 py-2 shadow-sm"><span className="w-7 h-7 rounded-full bg-brand/10 text-brand font-bold text-xs grid place-items-center">T</span><span className="text-sm font-medium">부산 세무 파트너</span></span>
-                                <span className="flex items-center gap-2.5 bg-white rounded-full pl-2 pr-4 py-2 shadow-sm"><span className="w-7 h-7 rounded-full bg-brand/10 text-brand font-bold text-xs grid place-items-center">D</span><span className="text-sm font-medium">로컬 디자인 스튜디오</span></span>
-                                <span className="flex items-center gap-2.5 bg-white rounded-full pl-2 pr-4 py-2 shadow-sm"><span className="w-7 h-7 rounded-full bg-brand/10 text-brand font-bold text-xs grid place-items-center">P</span><span className="text-sm font-medium">부산 인쇄 파트너</span></span>
-                            </div>
+                            {membersData.length > 0 ? (
+                                <div className="mt-6"><span className="text-4xl md:text-5xl font-semibold text-dark">{membersData.length}</span><span className="text-gray-500 text-sm ml-1">명</span></div>
+                            ) : (
+                                <p className="mt-6 text-sm text-gray-500 break-keep">업종별 부산 사업가를 회원명단에서 만나보세요.</p>
+                            )}
                         </button>
 
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSignUpChoiceModal(true); }} className="area-h rounded-[32px] p-7 md:p-8 bg-dark text-white flex flex-col justify-between text-left">
@@ -3634,7 +3624,13 @@ END:VCALENDAR`;
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="area-i rounded-[32px] p-7 md:p-8 bg-white flex items-center justify-between gap-4 flex-wrap text-left hover:bg-[#eceef2] transition-colors">
                             <div>
                                 <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-2">지금 모집 중인 프로그램</p>
-                                <div><span className="text-4xl md:text-5xl font-semibold text-dark">{seminarsDataPublic.filter((s) => s.status === '모집중').length}</span><span className="text-gray-500 text-sm ml-1">건 진행중</span></div>
+                                {/* 0건을 큰 숫자로 보여주면 "활동이 없다"는 인상을 줘서 모집 공백일 땐 문장으로 안내 */}
+                                {(() => {
+                                    const openCount = seminarsDataPublic.filter((s) => s.status === '모집중').length;
+                                    return openCount > 0
+                                        ? <div><span className="text-4xl md:text-5xl font-semibold text-dark">{openCount}</span><span className="text-gray-500 text-sm ml-1">건 진행중</span></div>
+                                        : <p className="text-xl md:text-2xl font-semibold text-dark break-keep">다음 모임을 준비하고 있어요</p>;
+                                })()}
                             </div>
                             <span className="text-sm font-semibold text-brand whitespace-nowrap">프로그램 보기 →</span>
                         </button>

@@ -306,3 +306,13 @@ export const safeExternalUrl = (url) => {
     const s = (url == null ? '' : String(url)).trim();
     return /^https?:\/\//i.test(s) ? s : '';
 };
+
+/**
+ * 목록 카드 미리보기용 설명: URL과 "[신청 URL]" 같은 링크 안내 문구를 빼고 공백을 정리한다.
+ * (상세 화면은 원문 그대로 보여준다)
+ */
+export const toCardPreviewText = (text) => (text == null ? '' : String(text))
+    .replace(/\[?\s*신청\s*(?:URL|링크|주소)\s*\]?\s*[:：]?/gi, ' ')
+    .replace(/https?:\/\/\S+/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();

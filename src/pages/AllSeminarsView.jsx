@@ -7,6 +7,7 @@ import { ProgramAddModal } from '../components/ProgramAddModal';
 import { useMediaQuery, MOBILE_QUERY } from '../hooks/useMediaQuery';
 import { getParticipantCountDisplay, getSeminarCapacity, getDisplayedParticipantCurrent, is정모 } from '../utils/seminarDisplay';
 import { getEffectiveCapacityLimit } from '../utils/adminHiddenApplications';
+import { toCardPreviewText } from '../utils';
 
 const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, currentUser, menuNames = {}, waitForKakaoMap, openKakaoPlacesSearch, pageTitles = {}, onWriteReview, applications = [], communityPosts = [], onProgramAdded, currentPage: currentPageProp, onPageChange }) => {
     /** 운영진 또는 관리자 권한: 프로그램 등록 가능 (admin 채널 없이 바로 등록) */
@@ -395,7 +396,7 @@ const AllSeminarsView = ({ onBack, seminars = [], onApply, onNavigateToApply, cu
                                         </span>
                                     </div>
                                     <h3 className="text-lg font-bold text-dark mb-2 line-clamp-2">{seminar.title}</h3>
-                                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">{seminar.desc}</p>
+                                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">{toCardPreviewText(seminar.desc)}</p>
                                     <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
                                         <span className="flex items-center gap-1"><Icons.Calendar size={14} /> {seminar.date}</span>
                                         {seminar.location && <span className="flex items-center gap-1"><Icons.MapPin size={14} /> {seminar.location}</span>}
