@@ -5,6 +5,8 @@ import { uploadImage, uploadImageWithMeta, getDisplayImageUrl } from '../utils/i
 import { firebaseService } from '../services/firebaseService';
 import ModalPortal from '../components/ModalPortal';
 import { openDaumPostcode } from '../utils/daumPostcode';
+import { useNavigate } from 'react-router-dom';
+import { groupService, GROUP_TYPE_LABEL, GROUP_STATUS_LABEL, groupCoverUrl } from '../services/groupService';
 
 // 회원가입 페이지와 동일한 상수·헬퍼 (회원정보 수정 폼 일치용)
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
@@ -108,7 +110,14 @@ const getTodayStart = () => {
 };
 
 const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApplication, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, onWithdrawApplicationRecord, onWriteReview, pageTitles, onUpdatePost, onKakaoLink }) => {
-    const [activeTab, setActiveTab] = useState('seminars');
+    const [activeTab, setActiveTab] = useState(() => (new URLSearchParams(window.location.search).get('tab') === 'groups' ? 'groups' : 'seminars'));
+    const navigate = useNavigate();
+    const [ledGroups, setLedGroups] = useState(null);
+    useEffect(() => {
+        const uid = user?.uid || user?.id;
+        if (!uid) { setLedGroups([]); return; }
+        groupService.getMyLedGroups(uid).then(setLedGroups).catch(() => setLedGroups([]));
+    }, [user?.uid, user?.id]);
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingPost, setEditingPost] = useState(null);
@@ -569,6 +578,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                 <div className="border-t border-black/[0.06] mb-16">
                     <div className="flex gap-8 overflow-x-auto">
                         <button onClick={() => setActiveTab('seminars')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'seminars' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>신청한 모임</button>
+                        <button onClick={() => setActiveTab('groups')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'groups' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>운영하는 모임{ledGroups?.length ? ` ${ledGroups.length}` : ''}</button>
                         <button onClick={() => setActiveTab('posts')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'posts' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>내 게시글</button>
                         <button onClick={() => setActiveTab('verification')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'verification' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>본인인증 정보</button>
                     </div>
@@ -664,6 +674,40 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                             </div>
                         );
                     })()}
+                    {activeTab === 'groups' && (
+                        <div>
+                            <div className="flex items-center justify-between gap-3 mb-5">
+                                <p className="text-sm text-gray-500 break-keep">내가 그룹장인 소모임·스터디예요. 관리하기를 누르면 회차·출석, 멤버, 결제·정산을 볼 수 있어요.</p>
+                                <button type="button" onClick={() => navigate('/groups/new')} className="shrink-0 px-4 py-2 rounded-full bg-brand text-white text-sm font-semibold">그룹 만들기</button>
+                            </div>
+                            {ledGroups === null ? (
+                                <p className="text-sm text-gray-400">불러오는 중…</p>
+                            ) : ledGroups.length === 0 ? (
+                                <div className="p-10 rounded-2xl bg-soft text-center text-sm text-gray-500 break-keep">아직 운영하는 모임이 없어요. 그룹을 만들면 운영진 승인 후 여기서 관리할 수 있어요.</div>
+                            ) : (
+                                <ul className="space-y-3">
+                                    {ledGroups.map((g) => (
+                                        <li key={g.id} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-black/[0.06]">
+                                            <img src={groupCoverUrl(g)} alt="" className="w-20 h-14 md:w-28 md:h-[72px] rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2 text-xs mb-1">
+                                                    <span className="font-semibold text-gray-500">{GROUP_TYPE_LABEL[g.type] || ''}</span>
+                                                    <span className={`font-bold ${g.status === 'approved' ? 'text-emerald-700' : g.status === 'pending' ? 'text-amber-700' : 'text-gray-500'}`}>{GROUP_STATUS_LABEL[g.status] || g.status}</span>
+                                                </div>
+                                                <div className="font-medium text-gray-900 truncate">{g.title}</div>
+                                                {g.status === 'rejected' && g.rejectReason ? <div className="text-xs text-red-600 mt-0.5 truncate">반려 사유: {g.rejectReason}</div> : null}
+                                            </div>
+                                            <button type="button" onClick={() => navigate(`/groups/${g.id}${g.status === 'approved' ? '?tab=sessions' : ''}`)}
+                                                className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${g.status === 'approved' ? 'bg-dark text-white' : 'bg-soft text-gray-700'}`}>
+                                                {g.status === 'approved' ? '관리하기' : '보기'}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+
                     {activeTab === 'posts' && (
                         <ul className="space-y-3">
                             {myPosts.length > 0 ? myPosts.map((p, idx) => (

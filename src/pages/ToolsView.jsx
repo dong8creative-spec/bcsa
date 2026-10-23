@@ -300,7 +300,7 @@ const ToolsView = ({ onBack }) => {
                     </p>
                     <p className="text-[13px] font-bold text-brand tracking-wide mb-4">DAILY TOOLS</p>
                     <h1 className="text-[32px] leading-[1.15] md:text-[52px] md:leading-[1.1] font-semibold tracking-tight text-dark break-keep max-w-2xl">매일 쓰는 계산,<br/>가장 빠르게</h1>
-                    <p className="mt-5 text-base md:text-lg text-gray-500 max-w-lg break-keep">검색할 때마다 다른 사이트를 돌아다니지 않아도 됩니다. 카드를 눌러 바로 계산해보세요.</p>
+                    <p className="mt-5 text-base md:text-lg text-gray-500 max-w-lg break-keep">이 계산 저 계산, 여기저기 찾아다니지 마세요. 카드만 누르면 바로 계산돼요.</p>
                 </div>
             </section>
 

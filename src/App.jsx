@@ -25,7 +25,7 @@ import { waitForKakaoMapsCoreReady, invokeKakaoMapsLoad, KAKAO_MAP_SDK_URL } fro
 import { requestPayment as paymentServiceRequestPayment } from './services/paymentService';
 import { PaymentResultView } from './pages/PaymentResultView';
 import { defaultContent, defaultMenuOrder, defaultMenuNames } from './constants/content';
-import { buildSiteContent, getMenuStateFromSiteContent } from './utils/siteContent';
+import { buildSiteContent, getMenuStateFromSiteContent, mergeLiveContent } from './utils/siteContent';
 import PageTitle from './components/PageTitle';
 import NoticeView from './pages/NoticeView';
 import AboutView from './pages/AboutView';
@@ -1293,6 +1293,25 @@ const App = () => {
         ...menuEnabled,
         ...(DONATION_FEATURE_DISABLED ? { '후원': false } : {}),
     }), [menuEnabled]);
+
+    // 관리자가 저장한 문구·메뉴·전체 모집 중단을 새로 배포하지 않아도 바로 반영 (배포본 위에 덮어씀)
+    useEffect(() => {
+        if (!firebaseService?.subscribeContent) return undefined;
+        try {
+            return firebaseService.subscribeContent((live) => {
+                if (!live || typeof live !== 'object' || Object.keys(live).length === 0) return;
+                const merged = mergeLiveContent(initialSiteContent, live);
+                setContent(merged);
+                const menu = getMenuStateFromSiteContent(merged);
+                setMenuEnabled(menu.menuEnabled);
+                setMenuNames(menu.menuNames);
+                setMenuOrder(menu.menuOrder);
+            });
+        } catch (error) {
+            console.error('사이트 콘텐츠 구독 오류:', error);
+            return undefined;
+        }
+    }, []);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -3487,7 +3506,7 @@ END:VCALENDAR`;
                 {/* ============================================
                     HERO & SEARCH (bento redesign: minimal hero + simple search)
                     ============================================ */}
-                <section className="pt-[130px] pb-20 md:pt-[168px] md:pb-24 px-6 text-center" style={{ background: 'linear-gradient(to bottom, #ffffff 0%, #ffffff 60%, #f5f5f7 100%)' }}>
+                <section className="pt-[130px] pb-12 md:pt-[168px] md:pb-16 px-6 text-center" style={{ background: 'linear-gradient(to bottom, #ffffff 0%, #ffffff 60%, #f5f5f7 100%)' }}>
                     <div className="container mx-auto max-w-3xl">
                         <p className="text-[13px] font-semibold text-brand tracking-wide mb-4">BCSA BUSINESS HUB</p>
                         <h1 className="text-[42px] leading-[1.08] md:text-[76px] md:leading-[1.05] font-semibold tracking-tight text-dark break-keep whitespace-pre-line">
@@ -3500,7 +3519,7 @@ END:VCALENDAR`;
                                     )}
                                 </span>
                             )) : (
-                                <Fragment>부산에서 사업하기,<br/><span className="text-gray-400">함께, 제대로</span></Fragment>
+                                <Fragment>부산에서 사업하기<br/><span className="text-gray-400">서로 함께, 단디</span></Fragment>
                             )}
                         </h1>
                         <p className="mt-6 text-base md:text-xl text-gray-500 max-w-xl mx-auto break-keep">{content.hero_desc || '흩어진 정보를 BCSA 하나로 — 지원사업, 실무, 부산 B2B까지'}</p>
@@ -3555,99 +3574,101 @@ END:VCALENDAR`;
                 </section>
 
                 {/* ============================================
-                    BENTO QUICK-LINK GRID (real routes/data only)
+                    HOME CARDS — 12칸 격자 + 간격 규칙 (index.css의 .home-card 참고)
+                    규칙: 간격 8px 배수, 카드 사이 16px, 카드 안 여백 32px(모바일 24px),
+                    라벨 → 8px → 제목, 숫자·링크는 항상 카드 바닥에 정렬, 같은 줄 카드는 같은 높이
                     ============================================ */}
-                <section className="px-6 pb-6" style={{ backgroundColor: '#f5f5f7' }}>
-                    <div className="max-w-[1240px] mx-auto bento-top">
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="area-a rounded-[32px] p-7 md:p-8 flex flex-col justify-between text-left text-white relative overflow-hidden" style={{ background: 'linear-gradient(150deg,#071a37,#0046a5 85%)' }}>
-                            <div>
-                                <p className="text-[12px] font-semibold text-blue-200 tracking-wide mb-3">SUPPORT PROGRAMS</p>
-                                <h3 className="text-2xl md:text-[32px] font-semibold leading-tight break-keep">지금 신청할 수 있는<br/>지원사업</h3>
-                            </div>
-                            <div className="mt-6 space-y-2.5">
-                                {supportProgramsPublic.length > 0 ? supportProgramsPublic.slice(0, 2).map((p) => {
+                <section className="px-5 md:px-6 pt-0 pb-16 md:pb-24" style={{ backgroundColor: '#f5f5f7' }}>
+                    <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-4">
+                        {/* 1줄: 지원사업 목록(8) + 숫자 카드 2개(4) */}
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="home-card md:col-span-8 md:min-h-[392px] min-w-0 text-white" style={{ background: 'linear-gradient(150deg,#071a37,#0046a5 85%)' }}>
+                            <p className="home-eyebrow text-blue-200">SUPPORT PROGRAMS</p>
+                            <h3 className="home-title">지금 신청해 볼 만한 지원사업</h3>
+                            <ul className="mt-6 w-full space-y-2">
+                                {supportProgramsPublic.length > 0 ? supportProgramsPublic.slice(0, 3).map((p) => {
                                     const { label } = getSupportProgramDdayInfo(p);
                                     return (
-                                        <div key={p.id} className="flex items-center justify-between bg-white/10 rounded-2xl px-4 py-3 text-sm">
-                                            <span className="truncate">{p.title}</span>
-                                            {label ? <span className="font-bold text-white bg-white/15 rounded-full px-2.5 py-1 text-xs whitespace-nowrap ml-3">{label}</span> : null}
-                                        </div>
+                                        <li key={p.id} className="flex w-full min-w-0 items-center justify-between gap-4 rounded-2xl bg-white/10 px-4 h-12 text-sm">
+                                            <span className="min-w-0 flex-1 truncate">{p.title}</span>
+                                            {label ? <span className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">{label}</span> : null}
+                                        </li>
                                     );
                                 }) : (
-                                    <div className="bg-white/10 rounded-2xl px-4 py-3 text-sm text-white/80">새 공고를 모으고 있어요. 매일 아침 업데이트됩니다.</div>
+                                    <li className="rounded-2xl bg-white/10 px-4 h-12 flex items-center text-sm text-white/80">새 공고를 모으는 중이에요. 매일 아침 채워 둘게요.</li>
                                 )}
-                            </div>
-                            <span className="mt-6 text-sm font-semibold text-white/90">전체 지원사업 보기 →</span>
+                            </ul>
+                            <span className="home-link mt-auto pt-6 text-white">지원사업 더 보러 가기 →</span>
                         </button>
 
-                        {/* 숫자는 지원사업 페이지 탭과 같은 기준(bucketSupportPrograms) — 가짜 기본값 없이 실제 건수만 표시 */}
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="area-b rounded-[32px] p-7 md:p-8 bg-white flex flex-col justify-between text-left hover:bg-[#eceef2] transition-colors">
-                            <p className="text-[12px] font-semibold text-gray-500 tracking-wide">마감임박 · 10일 이내</p>
-                            <div><span className="text-4xl md:text-5xl font-semibold text-dark">{supportBuckets.urgentAll.length}</span><span className="text-gray-500 text-sm ml-1">건</span></div>
-                        </button>
+                        <div className="md:col-span-4 grid grid-cols-2 md:grid-cols-1 gap-4">
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="home-card bg-white text-left hover:bg-[#eceef2]">
+                                <p className="home-eyebrow text-gray-500">마감임박 · 10일 이내</p>
+                                <p className="home-stat mt-auto pt-6 text-dark">{supportBuckets.urgentAll.length}<span className="home-unit text-gray-500">건</span></p>
+                            </button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="home-card bg-brand text-white text-left hover:bg-[#00327a]">
+                                <p className="home-eyebrow text-blue-100">부산 신규 · 7일</p>
+                                <p className="home-stat mt-auto pt-6">{supportBuckets.busanFreshAll.length}<span className="home-unit text-blue-100">건</span></p>
+                            </button>
+                        </div>
 
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="area-c rounded-[32px] p-7 md:p-8 bg-brand text-white flex flex-col justify-between text-left hover:bg-[#00327a] transition-colors">
-                            <p className="text-[12px] font-semibold text-blue-100 tracking-wide flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>부산 신규 · 7일</p>
-                            <div><span className="text-4xl md:text-5xl font-semibold">{supportBuckets.busanFreshAll.length}</span><span className="text-blue-100 text-sm ml-1">건</span></div>
-                        </button>
-
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('tools'); }} className="area-d rounded-[32px] p-7 md:p-8 bg-[#0b0b0c] text-white flex flex-col justify-between text-left">
-                            <div className="flex items-end justify-between gap-4 flex-wrap">
-                                <div>
-                                    <p className="text-[12px] font-semibold text-white/50 tracking-wide mb-2">DAILY TOOLS</p>
-                                    <h3 className="text-2xl md:text-[28px] font-semibold">매일 쓰는 사업자 도구함</h3>
+                        {/* 2줄: 소모임·스터디(6) + 사업자 도구함(6) */}
+                        {menuEnabled['그룹'] ? (
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('groups'); }} className="home-card md:col-span-6 md:min-h-[320px] bg-white text-left hover:bg-[#eceef2] !p-0 overflow-hidden">
+                                <img src="/assets/images/groups/cover-meetup.jpg" alt="" className="w-full h-40 md:h-44 object-cover" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                <div className="flex flex-col flex-1 w-full p-6 md:p-8">
+                                    <p className="home-eyebrow text-gray-500">SMALL GROUPS</p>
+                                    <h3 className="home-title text-dark">소모임·스터디</h3>
+                                    <span className="home-link mt-auto pt-6 text-brand">같이 할 모임 찾아보기 →</span>
                                 </div>
-                                <span className="text-sm font-semibold text-white/70 whitespace-nowrap">전체 도구 보기 →</span>
+                            </button>
+                        ) : null}
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('tools'); }} className={`home-card ${menuEnabled['그룹'] ? 'md:col-span-6' : 'md:col-span-12'} md:min-h-[320px] bg-[#0b0b0c] text-white text-left`}>
+                            <p className="home-eyebrow text-white/50">DAILY TOOLS</p>
+                            <h3 className="home-title">매일 꺼내 쓰는 사업자 도구함</h3>
+                            <div className="mt-6 flex flex-wrap gap-2">
+                                {[['🧾', '부가세'], ['📈', '마진'], ['💸', '3.3%'], ['⚖️', '손익분기점'], ['📣', 'ROAS']].map(([icon, label]) => (
+                                    <span key={label} className="inline-flex items-center gap-2 h-10 rounded-full bg-white/10 px-4 text-sm"><span aria-hidden="true">{icon}</span>{label}</span>
+                                ))}
                             </div>
-                            <div className="flex flex-wrap gap-2.5 mt-6">
-                                <span className="flex items-center gap-2 bg-white/10 rounded-full pl-3 pr-4 py-2 text-sm"><span>🧾</span>부가세</span>
-                                <span className="flex items-center gap-2 bg-white/10 rounded-full pl-3 pr-4 py-2 text-sm"><span>📈</span>마진</span>
-                                <span className="flex items-center gap-2 bg-white/10 rounded-full pl-3 pr-4 py-2 text-sm"><span>💸</span>3.3%</span>
-                                <span className="flex items-center gap-2 bg-white/10 rounded-full pl-3 pr-4 py-2 text-sm"><span>⚖️</span>손익분기점</span>
-                                <span className="flex items-center gap-2 bg-white/10 rounded-full pl-3 pr-4 py-2 text-sm"><span>📣</span>ROAS</span>
-                            </div>
+                            <span className="home-link mt-auto pt-6 text-white/80">도구 써 보기 →</span>
                         </button>
-                    </div>
-                    <AdSlot slotId="home-bento-divider" content={content} className="max-w-[1240px] mx-auto mt-[18px]" />
-                    <div className="max-w-[1240px] mx-auto bento-bottom mt-[18px]">
-                        {/* 회원명단은 로그인 회원 전용이라 홈에는 이름 없이 인원만 보여준다 */}
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allMembers'); }} className="area-g rounded-[32px] p-7 md:p-8 bg-white flex flex-col justify-between text-left hover:bg-[#eceef2] transition-colors">
-                            <div className="flex items-end justify-between gap-4 flex-wrap">
-                                <div>
-                                    <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-2">BUSAN PARTNERS</p>
-                                    <h3 className="text-2xl md:text-[28px] font-semibold text-dark break-keep">함께하는 부산 사업가</h3>
-                                </div>
-                                <span className="text-sm font-semibold text-brand whitespace-nowrap">회원명단 →</span>
-                            </div>
+
+                        {/* 3줄: 회원(4) + 프로그램(4) + 가입(4) */}
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allMembers'); }} className="home-card md:col-span-4 md:min-h-[240px] bg-white text-left hover:bg-[#eceef2]">
+                            <p className="home-eyebrow text-gray-500">BUSAN PARTNERS</p>
+                            <h3 className="home-title text-dark">함께하는 부산 사업가</h3>
                             {membersData.length > 0 ? (
-                                <div className="mt-6"><span className="text-4xl md:text-5xl font-semibold text-dark">{membersData.length}</span><span className="text-gray-500 text-sm ml-1">명</span></div>
+                                <p className="home-stat mt-auto pt-6 text-dark">{membersData.length}<span className="home-unit text-gray-500">명</span></p>
                             ) : (
-                                <p className="mt-6 text-sm text-gray-500 break-keep">업종별 부산 사업가를 회원명단에서 만나보세요.</p>
+                                <span className="home-link mt-auto pt-6 text-brand">회원명단 →</span>
                             )}
                         </button>
-
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSignUpChoiceModal(true); }} className="area-h rounded-[32px] p-7 md:p-8 bg-dark text-white flex flex-col justify-between text-left">
-                            <p className="text-[12px] font-semibold text-white/50 tracking-wide">JOIN US</p>
-                            <div className="flex items-center justify-between">
-                                <span className="text-lg font-semibold">BCSA 가입하기</span>
-                                <span className="text-xl">→</span>
-                            </div>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="home-card md:col-span-4 md:min-h-[240px] bg-white text-left hover:bg-[#eceef2]">
+                            <p className="home-eyebrow text-gray-500">PROGRAMS</p>
+                            {/* 0건을 큰 숫자로 보여주면 "활동이 없다"는 인상을 줘서 모집 공백일 땐 문장으로 안내 */}
+                            {(() => {
+                                const openCount = seminarsDataPublic.filter((s) => s.status === '모집중').length;
+                                return openCount > 0 ? (
+                                    <>
+                                        <h3 className="home-title text-dark">지금 모집 중인 프로그램</h3>
+                                        <p className="home-stat mt-auto pt-6 text-dark">{openCount}<span className="home-unit text-gray-500">건</span></p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h3 className="home-title text-dark">다음 모임을 준비하고 있어요</h3>
+                                        <span className="home-link mt-auto pt-6 text-brand">지난 프로그램 보기 →</span>
+                                    </>
+                                );
+                            })()}
                         </button>
-
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="area-i rounded-[32px] p-7 md:p-8 bg-white flex items-center justify-between gap-4 flex-wrap text-left hover:bg-[#eceef2] transition-colors">
-                            <div>
-                                <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-2">지금 모집 중인 프로그램</p>
-                                {/* 0건을 큰 숫자로 보여주면 "활동이 없다"는 인상을 줘서 모집 공백일 땐 문장으로 안내 */}
-                                {(() => {
-                                    const openCount = seminarsDataPublic.filter((s) => s.status === '모집중').length;
-                                    return openCount > 0
-                                        ? <div><span className="text-4xl md:text-5xl font-semibold text-dark">{openCount}</span><span className="text-gray-500 text-sm ml-1">건 진행중</span></div>
-                                        : <p className="text-xl md:text-2xl font-semibold text-dark break-keep">다음 모임을 준비하고 있어요</p>;
-                                })()}
-                            </div>
-                            <span className="text-sm font-semibold text-brand whitespace-nowrap">프로그램 보기 →</span>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSignUpChoiceModal(true); }} className="home-card md:col-span-4 md:min-h-[240px] bg-dark text-white text-left">
+                            <p className="home-eyebrow text-white/50">JOIN US</p>
+                            <h3 className="home-title">부산 사업가들과 함께하기</h3>
+                            <p className="mt-2 text-sm text-white/60 break-keep">가입하면 세미나·소모임에 참여하고, 회원명단도 볼 수 있어요.</p>
+                            <span className="home-link mt-auto pt-6 text-white">같이 하기 →</span>
                         </button>
                     </div>
+                    <AdSlot slotId="home-bento-divider" content={content} className="max-w-[1200px] mx-auto mt-4" />
                 </section>
 
                 {/* 협력기관 */}

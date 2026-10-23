@@ -5,7 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { firebaseService } from '../../../services/firebaseService';
 import { authService } from '../../../services/authService';
 import { defaultMenuOrder, defaultMenuNames } from '../../../constants/content';
-import { downloadPublishedContentJson } from '../../../utils/siteContent';
+import { buildSiteContent, getMenuStateFromSiteContent, mergeLiveContent } from '../../../utils/siteContent';
 import { Icons } from '../../../components/Icons';
 
 /**
@@ -119,42 +119,12 @@ export const MenuManagement = () => {
     try {
       setIsLoading(true);
       
-      // Firebase에서 콘텐츠 로드
-      const contentData = await firebaseService.getContent();
-      
-      // menuOrder 로드
-      if (contentData.menuOrder && Array.isArray(contentData.menuOrder)) {
-        setMenuOrder(contentData.menuOrder);
-      } else if (localStorage.getItem('busan_ycc_menu_order')) {
-        const stored = JSON.parse(localStorage.getItem('busan_ycc_menu_order'));
-        setMenuOrder(stored);
-      }
-      
-      // menuEnabled 로드
-      if (contentData.menuEnabled) {
-        setMenuEnabled(contentData.menuEnabled);
-      } else if (localStorage.getItem('busan_ycc_menu_enabled')) {
-        const stored = JSON.parse(localStorage.getItem('busan_ycc_menu_enabled'));
-        setMenuEnabled(stored);
-      } else {
-        // 기본값: 모두 활성화
-        const defaultEnabled = {};
-        defaultMenuOrder.forEach(menu => {
-          defaultEnabled[menu] = true;
-        });
-        setMenuEnabled(defaultEnabled);
-      }
-      
-      // menuNames 로드
-      if (contentData.menuNames) {
-        setMenuNames(contentData.menuNames);
-      } else if (localStorage.getItem('busan_ycc_menu_names')) {
-        const stored = JSON.parse(localStorage.getItem('busan_ycc_menu_names'));
-        setMenuNames(stored);
-      } else {
-        // 기본값: index와 동일 (공통 상수)
-        setMenuNames({ ...defaultMenuNames });
-      }
+      // 실제 사이트와 같은 순서로 병합(코드 기본값 → 배포본 → 관리자 저장값)해 지금 보이는 메뉴를 그대로 보여준다.
+      const saved = await firebaseService.getContent();
+      const live = getMenuStateFromSiteContent(mergeLiveContent(buildSiteContent(), saved));
+      setMenuOrder(live.menuOrder);
+      setMenuEnabled(live.menuEnabled);
+      setMenuNames(live.menuNames);
     } catch (error) {
       console.error('데이터 로드 오류:', error);
       alert('데이터를 불러오는 데 실패했습니다.');
@@ -197,24 +167,15 @@ export const MenuManagement = () => {
       // Firebase에 저장
       const contentData = await firebaseService.getContent();
       const payload = {
-        ...contentData,
+        ...mergeLiveContent(buildSiteContent(), contentData),
+        liveSync: true,
         menuOrder,
         menuEnabled,
         menuNames
       };
       await firebaseService.updateContent(payload, currentUser?.uid);
-      downloadPublishedContentJson(payload);
 
-      // localStorage에도 저장 (폴백용)
-      localStorage.setItem('busan_ycc_menu_order', JSON.stringify(menuOrder));
-      localStorage.setItem('busan_ycc_menu_enabled', JSON.stringify(menuEnabled));
-      localStorage.setItem('busan_ycc_menu_names', JSON.stringify(menuNames));
-
-      // 커스텀 이벤트 발생 (App.jsx에서 감지)
-      window.dispatchEvent(new Event('menuNamesUpdated'));
-      window.dispatchEvent(new Event('storage'));
-
-      alert('메뉴 설정이 저장되었습니다.\n\n배포용 JSON이 다운로드되었습니다. src/constants/publishedContent.json 에 반영 후 빌드·배포해 주세요.');
+      alert('저장했어요. 사이트 메뉴에 바로 반영돼요.');
     } catch (error) {
       console.error('저장 오류:', error);
       alert('메뉴 설정 저장에 실패했습니다.');

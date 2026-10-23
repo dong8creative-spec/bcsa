@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Icons } from '../../components/Icons';
-import { groupService, GROUP_TYPE_LABEL, GROUP_MODE_LABEL, GROUP_STATUS_LABEL } from '../../services/groupService';
+import { groupService, GROUP_TYPE_LABEL, GROUP_MODE_LABEL, GROUP_STATUS_LABEL, GROUP_COVERS, groupCoverUrl } from '../../services/groupService';
 
 const GroupDetail = lazy(() => import('./GroupDetail'));
 const GroupCheckIn = lazy(() => import('./GroupCheckIn'));
@@ -14,10 +14,11 @@ export const TypeBadge = ({ type }) => (
     </span>
 );
 
-export const PageShell = ({ eyebrow, title, desc, crumbs, children }) => (
+// narrow: 입력 폼처럼 한 줄 읽기 폭이 좋은 화면은 제목과 본문을 같은 좁은 폭으로 가운데 정렬
+export const PageShell = ({ eyebrow, title, desc, crumbs, children, narrow = false }) => (
     <div className="min-h-screen bg-white">
         <section className="pt-32 pb-10 md:pt-40 md:pb-14 px-6" style={{ background: 'radial-gradient(circle at 82% 0%, rgba(0,70,165,.12), transparent 55%), #ffffff' }}>
-            <div className="container mx-auto max-w-5xl">
+            <div className={`container mx-auto ${narrow ? 'max-w-2xl' : 'max-w-5xl'}`}>
                 {crumbs}
                 {eyebrow ? <p className="text-[13px] font-bold text-brand tracking-wide mb-3">{eyebrow}</p> : null}
                 <h1 className="text-[28px] leading-[1.2] md:text-[44px] md:leading-[1.15] font-semibold tracking-tight text-dark break-keep">{title}</h1>
@@ -25,7 +26,7 @@ export const PageShell = ({ eyebrow, title, desc, crumbs, children }) => (
             </div>
         </section>
         <section className="pb-20 px-6">
-            <div className="container mx-auto max-w-5xl">{children}</div>
+            <div className={`container mx-auto ${narrow ? 'max-w-2xl' : 'max-w-5xl'}`}>{children}</div>
         </section>
     </div>
 );
@@ -33,10 +34,27 @@ export const PageShell = ({ eyebrow, title, desc, crumbs, children }) => (
 export const Field = ({ label, hint, children }) => (
     <label className="block">
         <span className="text-sm font-semibold text-dark">{label}</span>
-        {hint ? <span className="block text-xs text-gray-500 mt-0.5 break-keep">{hint}</span> : null}
         <div className="mt-2">{children}</div>
+        {/* 도움말은 입력칸 아래에 둬서 나란히 놓인 칸끼리 높이가 어긋나지 않게 한다 */}
+        {hint ? <span className="block text-xs text-gray-500 mt-1.5 break-keep">{hint}</span> : null}
     </label>
 );
+
+/** 커버 이미지 선택 (그룹 만들기·설정 공용) */
+export const CoverPicker = ({ value, type, onChange }) => {
+    const current = value || (type === 'study' ? 'study' : 'meetup');
+    return (
+        <div className="grid grid-cols-3 gap-2">
+            {GROUP_COVERS.map(([key, label]) => (
+                <button key={key} type="button" onClick={() => onChange(key)}
+                    className={`relative rounded-xl overflow-hidden border-2 transition-colors ${current === key ? 'border-brand' : 'border-transparent'}`}>
+                    <img src={`/assets/images/groups/cover-${key}.jpg`} alt="" className="w-full aspect-[16/10] object-cover" loading="lazy" />
+                    <span className="absolute bottom-1 left-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-semibold text-white">{label}</span>
+                </button>
+            ))}
+        </div>
+    );
+};
 
 export const inputClass = 'w-full border border-black/10 bg-soft text-dark rounded-xl px-3.5 py-3 text-[15px] outline-none focus:border-brand';
 
@@ -86,7 +104,7 @@ function GroupList({ currentUser, onRequireLogin }) {
         <PageShell
             eyebrow="SMALL GROUPS"
             title={<>함께 모이고,<br className="md:hidden" /> 같이 배우는 사업가들</>}
-            desc="부청사 회원이 직접 여는 소모임과 스터디입니다. 운영진 승인을 거쳐 열리고, 운영은 그룹장이 자유롭게 정합니다."
+            desc="부청사 회원이 직접 여는 소모임과 스터디예요. 마음 맞는 사장님들과 가볍게 시작해 보세요."
         >
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                 <div className="flex gap-2">
@@ -125,17 +143,20 @@ function GroupList({ currentUser, onRequireLogin }) {
                 <div className="grid gap-4 sm:grid-cols-2">
                     {visible.map((g) => (
                         <button key={g.id} type="button" onClick={() => navigate(`/groups/${g.id}`)}
-                            className="text-left rounded-[24px] border border-black/[0.06] bg-white p-6 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                            <div className="flex items-center gap-2 mb-3">
+                            className="text-left rounded-[24px] border border-black/[0.06] bg-white overflow-hidden flex flex-col hover:shadow-md hover:-translate-y-0.5 transition-all">
+                            <img src={groupCoverUrl(g)} alt="" className="w-full aspect-[16/9] object-cover" loading="lazy" decoding="async" />
+                            <div className="flex flex-col flex-1 p-6">
+                            <div className="flex items-center gap-2 mb-2">
                                 <TypeBadge type={g.type} />
                                 <span className="text-xs text-gray-500">{[g.region, GROUP_MODE_LABEL[g.mode]].filter(Boolean).join(' · ')}</span>
                             </div>
-                            <h3 className="text-lg font-semibold text-dark break-keep">{g.title}</h3>
-                            <p className="mt-2 text-sm text-gray-600 line-clamp-2 break-keep">{g.description}</p>
-                            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                            <h3 className="text-lg font-semibold leading-snug text-dark break-keep">{g.title}</h3>
+                            <p className="mt-2 text-sm leading-6 text-gray-600 line-clamp-2 break-keep">{g.description}</p>
+                            <div className="mt-auto pt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
                                 {g.schedule ? <span className="inline-flex items-center gap-1"><Icons.Calendar size={13} />{g.schedule}</span> : null}
                                 <span className="inline-flex items-center gap-1"><Icons.User size={13} />그룹장 {g.leaderName || '-'}</span>
                                 {Number(g.capacity) > 0 ? <span className="inline-flex items-center gap-1"><Icons.Users size={13} />정원 {g.capacity}명</span> : null}
+                            </div>
                             </div>
                         </button>
                     ))}
@@ -154,7 +175,7 @@ function GroupCreate({ currentUser, onRequireLogin }) {
 
     if (!currentUser) {
         return (
-            <PageShell eyebrow="NEW GROUP" title="그룹 만들기">
+            <PageShell narrow eyebrow="NEW GROUP" title="그룹 만들기">
                 <div className="rounded-[24px] bg-soft p-8 text-center">
                     <p className="text-dark font-semibold">로그인한 회원만 그룹을 만들 수 있어요.</p>
                     <button type="button" onClick={onRequireLogin} className="mt-4 px-6 py-3 rounded-full bg-brand text-white font-semibold">로그인</button>
@@ -181,10 +202,10 @@ function GroupCreate({ currentUser, onRequireLogin }) {
     };
 
     const choice = (k, options) => (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className={`grid gap-2 ${options.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
             {options.map(([v, label]) => (
                 <button key={v} type="button" onClick={() => setForm((f) => ({ ...f, [k]: v }))}
-                    className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors ${form[k] === v ? 'bg-brand text-white border-brand' : 'bg-soft text-gray-600 border-black/10'}`}>
+                    className={`rounded-xl border px-3 py-3 text-sm font-semibold transition-colors break-keep ${form[k] === v ? 'bg-brand text-white border-brand' : 'bg-soft text-gray-600 border-black/10'}`}>
                     {label}
                 </button>
             ))}
@@ -192,8 +213,8 @@ function GroupCreate({ currentUser, onRequireLogin }) {
     );
 
     return (
-        <PageShell eyebrow="NEW GROUP" title="그룹 만들기" desc="운영진이 확인한 뒤 공개됩니다. 일정·참가비·출석 방식은 개설 후 그룹장이 직접 정할 수 있어요.">
-            <form onSubmit={submit} className="max-w-2xl space-y-6">
+        <PageShell narrow eyebrow="NEW GROUP" title="그룹 만들기" desc="운영진이 확인한 뒤 공개됩니다. 일정·참가비·출석 방식은 개설 후 그룹장이 직접 정할 수 있어요.">
+            <form onSubmit={submit} className="space-y-7">
                 <Field label="종류">{choice('type', [['meetup', '소모임'], ['study', '스터디']])}</Field>
                 <Field label="그룹 이름"><input className={inputClass} value={form.title} onChange={set('title')} maxLength={60} placeholder="예: 부산 1인 사장 마케팅 스터디" /></Field>
                 <Field label="소개" hint="어떤 사람들이 모여 무엇을 하는지 적어 주세요.">
@@ -212,8 +233,11 @@ function GroupCreate({ currentUser, onRequireLogin }) {
                     <input className={inputClass} value={form.schedule} onChange={set('schedule')} maxLength={200} />
                 </Field>
                 <Field label="가입 방식">{choice('joinPolicy', [['approval', '그룹장 승인 후 가입'], ['open', '바로 가입']])}</Field>
+                <Field label="커버 이미지" hint="목록과 그룹 화면 맨 위에 보여요. 나중에 설정에서 바꿀 수 있어요.">
+                    <CoverPicker value={form.cover} type={form.type} onChange={(cover) => setForm((f) => ({ ...f, cover }))} />
+                </Field>
                 {error ? <p className="text-sm font-semibold text-red-600">{error}</p> : null}
-                <button type="submit" disabled={submitting} className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-brand text-white font-semibold disabled:opacity-60">
+                <button type="submit" disabled={submitting} className="w-full px-8 py-3.5 rounded-full bg-brand text-white font-semibold disabled:opacity-60">
                     {submitting ? '신청 중…' : '개설 신청하기'}
                 </button>
             </form>

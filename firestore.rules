@@ -69,6 +69,8 @@ service cloud.firestore {
     // 회원 알림 서브컬렉션: 본인만 읽기/쓰기
     match /users/{userId}/notifications/{notificationId} {
       allow read, write: if isSelf(userId);
+      // 관리자는 회원 정보 정정 알림 등을 남길 수 있음 (읽기·수정은 본인만)
+      allow create: if isAdmin();
     }
 
     // 프로그램/세미나: 읽기 공개, 쓰기는 관리자만
@@ -215,9 +217,10 @@ service cloud.firestore {
       allow update: if isAdmin() || (
         isSignedIn() && resource.data.leaderUid == request.auth.uid && resource.data.status == 'approved'
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['title', 'description', 'region', 'mode', 'schedule', 'capacity', 'joinPolicy', 'notice', 'updatedAt'])
+          .hasOnly(['title', 'description', 'region', 'mode', 'schedule', 'capacity', 'joinPolicy', 'notice', 'cover', 'updatedAt'])
         && request.resource.data.joinPolicy in ['open', 'approval']
         && request.resource.data.mode in ['offline', 'online', 'hybrid']
+        && request.resource.data.get('cover', 'meetup') in ['study', 'meetup', 'networking', 'workshop', 'online', 'busan']
       );
 
       match /members/{uid} {
@@ -249,6 +252,18 @@ service cloud.firestore {
           allow delete: if isAdmin() || (isGroupLeader(gid) && resource.data.get('paid', false) != true);
         }
       }
+    }
+
+    // 신고: 로그인 회원은 본인 이름으로 접수만, 열람·처리는 관리자만
+    match /reports/{reportId} {
+      allow create: if isSignedIn()
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.status == 'open'
+        && request.resource.data.targetType in ['group', 'member']
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0 && request.resource.data.reason.size() <= 1000
+        && request.resource.data.keys().hasOnly(['targetType', 'targetId', 'targetTitle', 'reason', 'reporterUid', 'reporterName', 'status', 'createdAt']);
+      allow read, update, delete: if isAdmin();
     }
 
     // 그룹 QR 결제 기록(정산 장부): 서버만 쓰기. 결제자 본인·해당 그룹장·관리자만 읽기

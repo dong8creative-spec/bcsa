@@ -24,6 +24,19 @@ export function buildSiteContent() {
   return { ...defaultContent, ...publishedContent };
 }
 
+/**
+ * 배포본 위에 관리자 저장값(siteContent/main)을 덮어쓴다.
+ * liveSync 표시가 없는 예전 저장값은 옛 문구가 섞여 있어 모집 설정만 반영한다.
+ */
+export function mergeLiveContent(base, saved) {
+  if (!saved || typeof saved !== 'object') return base;
+  if (saved.liveSync === true) return { ...base, ...saved };
+  const recruitment = Object.fromEntries(
+    Object.entries(saved).filter(([key]) => key.startsWith('programRecruitment'))
+  );
+  return { ...base, ...recruitment };
+}
+
 export function getMenuStateFromSiteContent(content = buildSiteContent()) {
   const menuEnabled = { ...DEFAULT_MENU_ENABLED, ...(content.menuEnabled || {}) };
   const menuNames = { ...defaultMenuNames, ...(content.menuNames || {}) };

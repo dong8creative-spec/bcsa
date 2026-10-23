@@ -2235,6 +2235,7 @@ export const getSessionQrToken = groupCallable('getSessionQrToken');
 export const issueCheckInPass = groupCallable('issueCheckInPass');
 export const checkInSession = groupCallable('checkInSession');
 export const completeGroupPayment = groupCallable('completeGroupPayment');
+export const refundGroupPayment = groupCallable('refundGroupPayment');
 
 // Express 앱을 Firebase Functions로 내보내기
 // asia-northeast3 (서울) 지역 사용

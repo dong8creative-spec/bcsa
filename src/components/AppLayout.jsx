@@ -6,6 +6,17 @@ import ModalPortal from './ModalPortal';
 import { useMediaQuery, MOBILE_QUERY } from '../hooks/useMediaQuery';
 import { defaultContent } from '../constants/content';
 import { isAdminUser } from '../utils/adminAccess';
+import { BUSINESS_INFO, bizInfoCheckUrl } from '../constants/legal';
+
+/** 전자상거래법 사업자 정보 표시: 상호·대표·사업자번호(정보 확인 링크)·통신판매업 신고·주소·호스팅 제공자 */
+const BusinessInfoLines = ({ className }) => (
+    <div className={className}>
+        <p>상호 {BUSINESS_INFO.legalName} | 대표 {BUSINESS_INFO.ceo} | 사업자등록번호{' '}
+            <a href={bizInfoCheckUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-white">{BUSINESS_INFO.bizNo}</a>
+            {' '}| 통신판매업 신고 {BUSINESS_INFO.mailOrderNo}</p>
+        <p>{BUSINESS_INFO.address} | 호스팅서비스 제공 {BUSINESS_INFO.hosting}</p>
+    </div>
+);
 
 const FAB_GAP_PX = 16;
 const FAB_ESTIMATE_HEIGHT_PX = 152;
@@ -444,20 +455,7 @@ const AppLayout = (props) => {
                         <p className="text-[26px] text-white font-bold mb-8">
                             <span className="mr-2" aria-hidden="true">✉</span><a href={`mailto:${content?.footer_email || defaultContent.footer_email}`} className="hover:text-white/90 transition-colors">{content?.footer_email || defaultContent.footer_email}</a>
                         </p>
-                        {(() => {
-                            const line2Raw = content?.footer_line2 || '부산광역시 연제구 법원남로9번길 17(거제동) | 대표 정은지 | 사업자등록번호 792-72-00616';
-                            const address = line2Raw.split(/\s*\|\s*/)[0]?.trim() || '';
-                            const businessNum = '792-72-00616';
-                            return (
-                                <>
-                                    {address && <p className="text-[10px] text-white/90 mb-2">{address}</p>}
-                                    <p className="text-[10px] text-white/90 mb-2">
-                                        대표 정은지 | 사업자등록번호{' '}
-                                        <a href="http://www.ftc.go.kr/bizCommPop.do?wrkr_no=7927200616" target="_blank" rel="noopener noreferrer" className="hover:text-white/90 underline">792-72-00616</a>
-                                    </p>
-                                </>
-                            );
-                        })()}
+                        <BusinessInfoLines className="text-[11px] text-white/90 mb-4 space-y-1" />
                         <p className="text-[8px] text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가들 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
                         <p className="text-[8px] text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
@@ -482,10 +480,7 @@ const AppLayout = (props) => {
                     </div>
                     <div className="hidden md:block text-left">
                         <h3 className="text-lg font-bold text-white mb-4">{content?.footer_title || '부산청년사업가들'}</h3>
-                        <p className="text-[10px] md:text-sm text-white/90 mb-2">
-                            부산광역시 연제구 법원남로9번길 17(거제동) | 대표 정은지 | 사업자등록번호{' '}
-                            <a href="http://www.ftc.go.kr/bizCommPop.do?wrkr_no=7927200616" target="_blank" rel="noopener noreferrer" className="hover:text-white underline">792-72-00616</a>
-                        </p>
+                        <BusinessInfoLines className="text-sm text-white/90 mb-2 space-y-1" />
                         <p className="text-[10px] md:text-sm text-white/90 mb-2">
                             대표번호 <a href={`tel:${(content?.footer_phone || defaultContent.footer_phone).replace(/\s/g, '')}`} className="hover:text-white transition-colors font-bold">{content?.footer_phone || defaultContent.footer_phone}</a>
                             {content?.footer_hours ? ` (${content.footer_hours})` : ' (평일 09:00–18:00 / 주말·공휴일 휴무)'} | 대표 메일 <a href={`mailto:${content?.footer_email || defaultContent.footer_email}`} className="hover:text-white transition-colors font-bold">{content?.footer_email || defaultContent.footer_email}</a>

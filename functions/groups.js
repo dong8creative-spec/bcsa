@@ -24,6 +24,7 @@ const PASS_TTL_MS = 10 * 60 * 1000;
 const GROUP_TYPES = ['meetup', 'study'];
 const GROUP_MODES = ['offline', 'online', 'hybrid'];
 const JOIN_POLICIES = ['open', 'approval'];
+const GROUP_COVERS = ['study', 'meetup', 'networking', 'workshop', 'online', 'busan'];
 
 const b64url = (buf) => Buffer.from(buf).toString('base64url');
 const str = (v, max) => String(v ?? '').trim().slice(0, max);
@@ -155,6 +156,7 @@ export function createGroupHandlers({ db, admin, verifyPortOnePayment, cancelPor
       schedule: str(d.schedule, 200),
       capacity: Math.max(0, Math.min(500, Math.floor(Number(d.capacity) || 0))),
       joinPolicy: JOIN_POLICIES.includes(d.joinPolicy) ? d.joinPolicy : 'approval',
+      cover: GROUP_COVERS.includes(d.cover) ? d.cover : (type === 'study' ? 'study' : 'meetup'),
       leaderUid: uid,
       leaderName: profile.name,
       status: 'pending',
@@ -300,8 +302,35 @@ export function createGroupHandlers({ db, admin, verifyPortOnePayment, cancelPor
     }
   }
 
+  /** 그룹 참가비 환불 (그룹장 또는 운영진). 전액 환불 후 출석 기록의 결제 표시를 지운다 */
+  async function refundGroupPayment(request) {
+    const uid = requireAuth(request);
+    const paymentId = str(request.data?.paymentId, 80);
+    const reason = str(request.data?.reason, 200) || '그룹 참가비 환불';
+    const payRef = db.collection('groupPayments').doc(paymentId);
+    const snap = await payRef.get();
+    if (!snap.exists) throw new HttpsError('not-found', '결제 정보를 찾을 수 없습니다.');
+    const pay = snap.data();
+    const isAdmin = await isCallerAdmin({ uid, admin: request.auth.token?.admin });
+    if (pay.leaderUid !== uid && !isAdmin) throw new HttpsError('permission-denied', '그룹장 또는 운영진만 환불할 수 있습니다.');
+    if (pay.status !== 'paid') throw new HttpsError('failed-precondition', '결제 완료 상태인 건만 환불할 수 있습니다.');
+    if (pay.settled === true && !isAdmin) throw new HttpsError('failed-precondition', '이미 정산된 건은 운영진에게 환불을 요청해 주세요.');
+    const amount = Number(pay.amount) || 0;
+    const r = await cancelPortOnePayment({ paymentId, reason, paidAmount: amount, refundAmount: amount, cancellableAmount: amount });
+    if (!r.ok) throw new HttpsError('internal', r.message || '환불하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    await payRef.set({
+      status: 'refunded', refundedAt: admin.firestore.FieldValue.serverTimestamp(), refundedBy: uid, refundReason: reason,
+    }, { merge: true });
+    const attRef = attendanceRef(pay.groupId, pay.sessionId, pay.uid);
+    const att = await attRef.get();
+    if (att.exists && att.data().paymentId === paymentId) {
+      await attRef.set({ paid: false, refunded: true }, { merge: true });
+    }
+    return { ok: true };
+  }
+
   return {
     finalizeGroupPayment,
-    callables: { createGroupRequest, joinGroup, getSessionQrToken, issueCheckInPass, checkInSession, completeGroupPayment },
+    callables: { createGroupRequest, joinGroup, getSessionQrToken, issueCheckInPass, checkInSession, completeGroupPayment, refundGroupPayment },
   };
 }

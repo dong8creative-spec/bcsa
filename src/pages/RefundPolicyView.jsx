@@ -1,12 +1,13 @@
 import React from 'react';
 import { Icons } from '../components/Icons';
+import { GROUP_REFUND_SECTION } from '../constants/legal';
 
 const TITLE = '[부산청년사업가 포럼] 취소 및 환불 규정';
 
 const SECTIONS = [
   {
     title: '제1조 (목적)',
-    body: `본 규정은 '부산청년사업가 포럼'(이하 "포럼")이 제공하는 유료 세미나 및 교육 프로그램의 취소 및 환불에 관한 사항을 규정함을 목적으로 합니다.`,
+    body: `본 규정은 '부산청년사업가 포럼'(이하 "포럼")이 제공하는 유료 세미나·교육 프로그램과 회원 그룹(소모임·스터디) 회차 참가비의 취소 및 환불에 관한 사항을 규정함을 목적으로 합니다.`,
   },
   {
     title: '제2조 (환불 기준)',
@@ -31,6 +32,7 @@ const SECTIONS = [
     body: `1. 천재지변, 강사 부재, 최소 인원 미달 등 포럼 측의 사정으로 세미나가 취소될 경우, 시점과 관계없이 결제 금액 100%를 전액 환불합니다.
 2. 환불 처리는 취소 확정일로부터 영업일 기준 3~5일 이내에 진행됩니다.`,
   },
+  GROUP_REFUND_SECTION,
 ];
 
 const FOOTER_EMAIL = 'pujar@naver.com';

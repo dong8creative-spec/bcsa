@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { authService } from '../../../services/authService';
 import { defaultContent } from '../../../constants/content';
-import { downloadPublishedContentJson } from '../../../utils/siteContent';
+import { buildSiteContent, mergeLiveContent } from '../../../utils/siteContent';
 import { imageMetadata } from '../../../constants/imageMetadata';
 import { Icons } from '../../../components/Icons';
 import { ImageCropModal } from '../../../components/ImageCropModal';
@@ -43,8 +43,8 @@ export const ContentManagement = () => {
     try {
       setIsLoading(true);
       const contentData = await firebaseService.getContent();
-      // Firestore에서 가져온 데이터와 defaultContent 병합
-      setContent({ ...defaultContent, ...contentData });
+      // 사이트와 같은 순서로 병합: 코드 기본값 → 배포본 → 관리자 저장값
+      setContent(mergeLiveContent(buildSiteContent(), contentData));
     } catch (error) {
       console.error('콘텐츠 로드 오류:', error);
       alert('콘텐츠를 불러오는 데 실패했습니다.');
@@ -58,9 +58,8 @@ export const ContentManagement = () => {
 
     try {
       setIsSaving(true);
-      await firebaseService.updateContent(content, currentUser?.uid);
-      downloadPublishedContentJson(content);
-      alert('콘텐츠가 저장되었습니다.\n\n배포용 JSON이 다운로드되었습니다. 파일을 src/constants/publishedContent.json 에 덮어쓴 뒤 빌드·배포해 주세요.\n(또는 터미널에서 npm run sync-content 실행)');
+      await firebaseService.updateContent({ ...content, liveSync: true }, currentUser?.uid);
+      alert('저장했어요. 사이트에 바로 반영돼요.');
     } catch (error) {
       console.error('콘텐츠 저장 오류:', error);
       alert('콘텐츠 저장에 실패했습니다.');

@@ -6,7 +6,7 @@ export const defaultContent = {
     programRecruitmentPaused: false,
     programRecruitmentStartAt: '',
     programRecruitmentEndAt: '',
-    hero_title: "부산에서 사업하기,\n함께, 제대로",
+    hero_title: "부산에서 사업하기\n서로 함께, 단디",
     hero_desc: "흩어진 정보를 BCSA 하나로 — 지원사업, 실무, 부산 B2B까지",
     hero_bg: "", // 히어로 섹션 배경 이미지
     hero_image: "", // 히어로 섹션 메인 이미지

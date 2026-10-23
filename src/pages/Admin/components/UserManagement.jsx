@@ -135,6 +135,14 @@ export const UserManagement = ({ currentUser }) => {
     }
     const grade = (value || '').trim();
     const role = (grade === '마스터' || grade === '운영진') ? 'admin' : 'user';
+    // 드롭다운을 바꾸는 즉시 저장되므로 반드시 확인을 거친다 (마스터·운영진은 관리자 권한이 생김)
+    const target = users.find((u) => String(u.id) === id || String(u.uid) === id);
+    const who = target?.name ? `${target.name}님` : '이 회원';
+    const label = MEMBER_GRADE_OPTIONS.find((o) => o.value === grade)?.label || grade || '등급 없음';
+    const warn = role === 'admin'
+      ? `\n\n⚠️ ${label}은(는) 관리자 권한이 생겨요. 회원 정보·결제·설정을 모두 바꿀 수 있게 됩니다.`
+      : '';
+    if (!confirm(`${who}의 등급을 "${label}"(으)로 바꾸고 가입을 승인할까요?${warn}`)) return;
     const payload = { memberGrade: grade, approvalStatus: 'approved', role };
     try {
       await firebaseService.updateUser(id, payload);
@@ -146,6 +154,38 @@ export const UserManagement = ({ currentUser }) => {
     } catch (error) {
       console.error('회원등급 변경 오류:', error);
       alert(`회원등급 변경에 실패했습니다. ${error?.message || ''}`);
+    }
+  };
+
+  /**
+   * 사업자등록증 사본 보기. 회원이 직접 넣는 값이라 이미지/PDF data URL 형식만 허용하고,
+   * HTML 문자열을 쓰지 않고 요소를 만들어 src만 지정한다 (관리자 화면 스크립트 삽입 방지).
+   */
+  const openBusinessDoc = (value) => {
+    const v = String(value || '');
+    const m = v.match(/^data:(image\/(?:png|jpeg|jpg|webp|gif)|application\/pdf);base64,[A-Za-z0-9+/=]+$/);
+    if (!m) { alert('지원하지 않는 형식의 파일입니다.'); return; }
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.title = '사업자등록증';
+    const el = w.document.createElement(m[1] === 'application/pdf' ? 'iframe' : 'img');
+    el.src = v;
+    el.style.cssText = m[1] === 'application/pdf' ? 'width:100%;height:100vh;border:0' : 'max-width:100%';
+    w.document.body.appendChild(el);
+  };
+
+  /** 사업자등록증 확인 완료: 사본 이미지를 지우고 확인 시각만 남긴다 */
+  const handleBusinessDocVerified = async () => {
+    if (!memberModalUser) return;
+    if (!confirm('사업자등록증 내용을 확인하셨나요? 확인 완료로 표시하고 사본 이미지는 삭제합니다.')) return;
+    const id = memberModalUser.id || memberModalUser.uid;
+    const payload = { businessRegistrationDoc: '', businessRegistrationFileName: '', businessVerified: true, businessDocVerifiedAt: new Date().toISOString() };
+    try {
+      await firebaseService.updateUser(id, payload);
+      setMemberModalUser((prev) => (prev ? { ...prev, ...payload } : prev));
+      setUsers((prev) => prev.map((u) => (String(u.id) === String(id) ? { ...u, ...payload } : u)));
+    } catch (error) {
+      alert(`처리하지 못했습니다. ${error?.message || ''}`);
     }
   };
 
@@ -193,10 +233,17 @@ export const UserManagement = ({ currentUser }) => {
       const message = correctedFields.length > 0
         ? `${correctedFields.map(f => EDITABLE_FIELD_LABELS[f] || f).join(', ')}가 정정되었습니다.`
         : '회원정보가 정정되었습니다.';
+      // 회원 정보는 이미 저장됨. 정정 알림은 부가 기능이라 실패해도 저장 실패로 보이지 않게 따로 처리
+      let notified = false;
       if (firebaseService.addUserNotification) {
-        await firebaseService.addUserNotification(userId, { type: 'profile_corrected', message, correctedFields });
+        try {
+          await firebaseService.addUserNotification(userId, { type: 'profile_corrected', message, correctedFields });
+          notified = true;
+        } catch (notifyError) {
+          console.warn('정정 알림 전달 실패(정보는 저장됨):', notifyError);
+        }
       }
-      alert('저장되었습니다. 해당 회원에게 정정 알림이 전달됩니다.');
+      alert(notified ? '저장했어요. 회원에게 정정 알림도 보냈어요.' : '저장했어요. (회원 알림은 보내지 못했어요)');
       setMemberModalEditing(false);
       setMemberModalUser(prev => prev ? { ...prev, ...payload } : null);
       if (!firebaseService.subscribeUsersAdmin) loadUsers();
@@ -702,6 +749,18 @@ export const UserManagement = ({ currentUser }) => {
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사명</span><span className="text-dark">{memberModalUser.company || '-'}</span></div>
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사 전화</span><span className="text-dark">{memberModalUser.companyPhone || '-'}</span></div>
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사 사이트</span><span className="text-dark">{memberModalUser.companyWebsite ? <a href={memberModalUser.companyWebsite.startsWith('http') ? memberModalUser.companyWebsite : `https://${memberModalUser.companyWebsite}`} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">{memberModalUser.companyWebsite}</a> : '-'}</span></div>
+
+                    {/* 사업자등록증: 확인 후 사본은 지우고 확인 여부만 남긴다 (개인정보 최소 보관) */}
+                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">사업자등록증</span><span className="text-dark flex flex-wrap items-center gap-2">
+                      {memberModalUser.businessRegistrationDoc ? (
+                        <>
+                          <button type="button" onClick={() => openBusinessDoc(memberModalUser.businessRegistrationDoc)} className="text-brand hover:underline">등록증 보기</button>
+                          <button type="button" onClick={handleBusinessDocVerified} className="px-2.5 py-1 rounded-lg bg-brand text-white text-xs font-semibold">확인 완료 · 사본 삭제</button>
+                        </>
+                      ) : memberModalUser.businessDocVerifiedAt ? (
+                        <span className="text-emerald-700 text-sm">확인 완료 ({String(memberModalUser.businessDocVerifiedAt).slice(0, 10)}) · 사본 삭제됨</span>
+                      ) : '-'}
+                    </span></div>
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">업종/업태</span><span className="text-dark">{memberModalUser.businessCategory || memberModalUser.industry || '-'}</span></div>
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">직책</span><span className="text-dark">{memberModalUser.position || '-'}</span></div>
                     <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">협업 업종</span><span className="text-dark">{memberModalUser.collaborationIndustry || '-'}</span></div>

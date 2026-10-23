@@ -273,7 +273,7 @@ export default function NewsView({ content, onBack, newsItems }) {
                     </p>
                     <p className="text-[13px] font-bold text-brand tracking-wide mb-4">NEWS</p>
                     <h1 className="text-[32px] leading-[1.15] md:text-[52px] md:leading-[1.1] font-semibold tracking-tight text-dark break-keep max-w-2xl">뉴스</h1>
-                    <p className="mt-5 text-base md:text-lg text-gray-500 max-w-lg break-keep">부산 창업가들이 놓치기 쉬운 소식을 한곳에 모았습니다.</p>
+                    <p className="mt-5 text-base md:text-lg text-gray-500 max-w-lg break-keep">바쁜 하루, 놓치기 쉬운 사업 소식을 대신 모아 두었어요.</p>
                 </div>
             </section>
 

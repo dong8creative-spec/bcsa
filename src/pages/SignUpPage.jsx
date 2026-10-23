@@ -4,6 +4,7 @@ import { Icons } from '../components/Icons';
 import { authService } from '../services/authService';
 import { firebaseService } from '../services/firebaseService';
 import { openDaumPostcode } from '../utils/daumPostcode';
+import { TERMS_SECTIONS, sectionsToText } from '../constants/legal';
 
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 
@@ -27,17 +28,16 @@ const BUSINESS_CATEGORIES = [
 ];
 
 /** PIPA 준수: 이용약관 / 개인정보 수집·이용 / 마케팅 안내 문구 (내용보기용) */
-const TERMS_SERVICE = `제1조 (목적) 이 약관은 부청사 사업자 전용 커뮤니티 서비스(이하 "서비스")의 이용 조건 및 절차, 회원과 운영자 간의 권리·의무를 규정함을 목적으로 합니다.
-제2조 (정의) "회원"이란 서비스에 가입하여 이용자 인증을 완료한 자를 말합니다. "사업자"란 사업자등록을 보유한 회원을 말합니다.
-제3조 (약관의 효력) 약관은 서비스 화면에 공지하거나 전자우편 등으로 통지함으로써 효력이 발생합니다. 회원은 가입 시 본 약관에 동의한 것으로 간주됩니다.
-(이하 생략 - 실제 서비스에서는 전문을 게시해 주세요.)`;
+// 가입 화면에서도 사이트 약관 전문을 그대로 보여준다 (예전에는 "이하 생략" 미완성본이었다)
+const TERMS_SERVICE = sectionsToText(TERMS_SECTIONS);
 
 const TERMS_PRIVACY = `개인정보 수집 및 이용 동의
-수집 항목: 이름, 생년월일(청년 확인용), 연락처, 이메일, 비밀번호(암호화 저장), 상호명·사업자등록번호·직책(사업자 한함)
-수집 목적: 회원 식별, 서비스 제공, 사업자 신원 확인, 청년 정책 대상 확인
-보관 기간: 회원 탈퇴 시까지 (관련 법령에 따라 보관이 필요한 경우 해당 기간)
-귀하는 동의를 거부할 권리가 있으며, 거부 시 회원가입 및 서비스 이용이 제한됩니다.
-(전문은 개인정보처리방침에서 확인하실 수 있습니다.)`;
+수집 항목: 이름, 생년월일, 성별, 연락처, 이메일, 비밀번호(암호화 저장), 주소 / 사업자 회원: 상호, 사업자등록번호, 업종, 사업자등록증 사본(사업자 확인 후 삭제)
+수집 목적: 회원 식별과 사업자 확인, 만 14세 이상 확인, 프로그램·그룹 운영, 결제·환불
+보관 기간: 회원 탈퇴 시까지 (법령상 보관 의무가 있는 정보는 해당 기간)
+회원명단에는 이름·회사·업종·지역(구 단위)이 로그인 회원에게 보이며, 연락처는 공개를 선택한 경우에만 보입니다.
+귀하는 동의를 거부할 권리가 있으며, 거부 시 회원가입이 제한됩니다.
+위탁·국외 이전 등 자세한 내용은 개인정보처리방침에서 확인하실 수 있습니다.`;
 
 const TERMS_MARKETING = `마케팅 정보 수신 및 활용 동의 (선택)
 부청사 및 제휴사의 이벤트, 혜택, 사업자 지원 프로그램 등 마케팅 정보를 이메일·문자·앱 푸시로 수신하는 것에 동의합니다. 미동의 시에도 회원가입 및 서비스 이용에 제한이 없습니다.`;
@@ -149,6 +149,16 @@ const SignUpPage = ({ onSignUp }) => {
         return cleaned.length === 11 && /^01[0-9][0-9]{8}$/.test(cleaned);
     };
 
+    /** 만 나이 14세 미만 여부 (약관 제4조·개인정보보호법상 법정대리인 동의 대상은 가입 제한) */
+    const isUnder14 = (ymd) => {
+        const [y, m, d] = String(ymd || '').split('-').map(Number);
+        if (!y || !m || !d) return false;
+        const today = new Date();
+        let age = today.getFullYear() - y;
+        if (today.getMonth() + 1 < m || (today.getMonth() + 1 === m && today.getDate() < d)) age -= 1;
+        return age < 14;
+    };
+
     /** 생년월일 입력 파싱: "19870625" 또는 "1987-06-25" → "1987-06-25" (유효할 때만) */
     const parseBirthdateInput = (value) => {
         if (!value || typeof value !== 'string') return '';
@@ -207,6 +217,7 @@ const SignUpPage = ({ onSignUp }) => {
         if (!(form.name || '').trim()) missing.push('이름');
         if (!(form.birthdate || '').trim()) missing.push('생년월일');
         else if (!parseBirthdateInput(form.birthdate)) missing.push('생년월일(YYYY-MM-DD 형식)');
+        else if (isUnder14(parseBirthdateInput(form.birthdate))) missing.push('만 14세 이상만 가입할 수 있습니다');
         if (!form.gender) missing.push('성별');
         if (!(form.phone || '').trim()) missing.push('연락처');
         else if (!validatePhone(form.phone)) missing.push('연락처(숫자 11자리)');

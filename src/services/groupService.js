@@ -16,6 +16,15 @@ export const GROUP_TYPE_LABEL = { meetup: '소모임', study: '스터디' };
 export const GROUP_MODE_LABEL = { offline: '오프라인', online: '온라인', hybrid: '온·오프라인' };
 export const JOIN_POLICY_LABEL = { open: '바로 가입', approval: '그룹장 승인 후 가입' };
 export const GROUP_STATUS_LABEL = { pending: '승인 대기', approved: '운영 중', rejected: '반려', closed: '종료' };
+/** 그룹 커버 이미지 (public/assets/images/groups, Codex 생성 원본은 1584×990 → 1200×750 JPG) */
+export const GROUP_COVERS = [
+  ['study', '스터디 테이블'], ['meetup', '저녁 모임'], ['networking', '네트워킹'],
+  ['workshop', '워크숍'], ['online', '온라인'], ['busan', '부산 동네'],
+];
+export const groupCoverUrl = (group) => {
+  const key = GROUP_COVERS.some(([k]) => k === group?.cover) ? group.cover : (group?.type === 'study' ? 'study' : 'meetup');
+  return `/assets/images/groups/cover-${key}.jpg`;
+};
 
 const call = async (name, data) => {
   const fn = httpsCallable(getFunctions(app, 'asia-northeast3'), name);
@@ -115,6 +124,21 @@ export const groupService = {
   issueCheckInPass: (groupId, sessionId, token) => call('issueCheckInPass', { groupId, sessionId, token }),
   checkInSession: (pass) => call('checkInSession', { pass }),
   completeGroupPayment: (paymentId) => call('completeGroupPayment', { paymentId }),
+  refundGroupPayment: (paymentId, reason) => call('refundGroupPayment', { paymentId, reason }),
+
+  // ── 신고 ──
+  createReport({ targetType, targetId, targetTitle, reason, reporter }) {
+    return addDoc(collection(db, 'reports'), {
+      targetType, targetId, targetTitle: String(targetTitle || '').slice(0, 100), reason: String(reason || '').slice(0, 1000),
+      reporterUid: reporter.uid, reporterName: reporter.name || '', status: 'open', createdAt: serverTimestamp(),
+    });
+  },
+  subscribeOpenReports(callback) {
+    return onSnapshot(query(collection(db, 'reports'), where('status', '==', 'open')), (snap) => callback(snap.docs.map(withId)), () => callback([]));
+  },
+  resolveReport(reportId) {
+    return updateDoc(doc(db, 'reports', reportId), { status: 'resolved' });
+  },
   /** 그룹장: 내 그룹 결제 내역(정산 장부) */
   async getGroupPayments(groupId, leaderUid) {
     const snap = await getDocs(query(collection(db, 'groupPayments'), where('leaderUid', '==', leaderUid), where('groupId', '==', groupId)));

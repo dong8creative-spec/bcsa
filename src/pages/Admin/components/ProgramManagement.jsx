@@ -679,7 +679,14 @@ export const ProgramManagement = () => {
   };
 
   const handleDelete = async (programId) => {
-    if (!confirm('정말 이 프로그램을 삭제하시겠습니까?')) return;
+    const program = programs.find((p) => String(p.id) === String(programId));
+    const appCount = applicationCountByProgramId[String(programId)] ?? 0;
+    const title = program?.title ? `「${program.title}」` : '이 프로그램';
+    const warn = appCount > 0
+      ? `\n\n⚠️ 신청자가 ${appCount}명 있어요. 삭제해도 신청·결제 기록은 남고 환불은 되지 않으니, 먼저 신청자 명단에서 정리해 주세요.`
+      : '';
+    if (!confirm(`${title}을(를) 삭제할까요? 되돌릴 수 없어요.${warn}`)) return;
+    if (appCount > 0 && prompt('정말 삭제하려면 "삭제"라고 입력해 주세요.') !== '삭제') return;
 
     try {
       await firebaseService.deleteSeminar(programId);

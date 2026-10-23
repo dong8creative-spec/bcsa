@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Icons } from '../../components/Icons';
 import { isAdminUser } from '../../utils/adminAccess';
 import {
-    groupService, GROUP_MODE_LABEL, GROUP_STATUS_LABEL, JOIN_POLICY_LABEL,
+    groupService, GROUP_MODE_LABEL, GROUP_STATUS_LABEL, JOIN_POLICY_LABEL, groupCoverUrl,
 } from '../../services/groupService';
-import { PageShell, TypeBadge, Field, inputClass, REGIONS } from './GroupsPage';
+import { PageShell, TypeBadge, Field, inputClass, REGIONS, CoverPicker } from './GroupsPage';
 import GroupQrModal from './GroupQrModal';
+import GroupReportModal from './GroupReportModal';
 
 const won = (n) => `${(Number(n) || 0).toLocaleString()}원`;
 const fmtDate = (s) => {
@@ -22,8 +23,10 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
     const [group, setGroup] = useState(undefined);
     const [members, setMembers] = useState([]);
     const [sessions, setSessions] = useState([]);
-    const [tab, setTab] = useState('info');
+    // 마이페이지 '운영하는 모임'에서 ?tab=sessions 처럼 관리 탭으로 바로 들어올 수 있다
+    const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') || 'info');
     const [busy, setBusy] = useState(false);
+    const [reportOpen, setReportOpen] = useState(false);
 
     useEffect(() => groupService.subscribeGroup(groupId, setGroup), [groupId]);
     useEffect(() => (currentUser ? groupService.subscribeMembers(groupId, setMembers) : undefined), [groupId, currentUser]);
@@ -58,6 +61,8 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
     };
 
     const tabs = [['info', '소개·일정'], ...(canManage ? [['sessions', '회차·출석'], ['members', `멤버${pendingMembers.length ? ` (${pendingMembers.length})` : ''}`], ['payments', '결제·정산'], ['settings', '설정']] : [])];
+    // 로그인 정보가 늦게 오면 관리 탭이 잠시 없으므로 state는 그대로 두고 보이는 탭만 소개로 대체
+    const shownTab = tabs.some(([k]) => k === tab) ? tab : 'info';
 
     return (
         <PageShell
@@ -66,6 +71,7 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
             title={group.title}
             desc={[group.region, GROUP_MODE_LABEL[group.mode], group.schedule, `그룹장 ${group.leaderName || ''}`].filter(Boolean).join(' · ')}
         >
+            <img src={groupCoverUrl(group)} alt="" className="w-full aspect-[16/9] md:aspect-[21/8] object-cover rounded-[24px] mb-8" decoding="async" />
             {group.status === 'pending' ? (
                 <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 break-keep">
                     운영진 승인을 기다리고 있어요. 승인되면 목록에 공개되고 가입·출석을 받을 수 있습니다.
@@ -80,20 +86,20 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
             <div className="flex gap-2 overflow-x-auto pb-2 mb-6 -mx-1 px-1">
                 {tabs.map(([k, label]) => (
                     <button key={k} type="button" onClick={() => setTab(k)}
-                        className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${tab === k ? 'bg-dark text-white' : 'bg-soft text-gray-600'}`}>{label}</button>
+                        className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${shownTab === k ? 'bg-dark text-white' : 'bg-soft text-gray-600'}`}>{label}</button>
                 ))}
             </div>
 
-            {tab === 'info' ? (
+            {shownTab === 'info' ? (
                 <InfoTab
                     group={group} sessions={sessions} me={me} isLeader={isLeader} uid={uid}
                     activeCount={activeMembers.length} onJoin={join} onLeave={leave} busy={busy} currentUser={currentUser}
                 />
             ) : null}
-            {tab === 'sessions' && canManage ? <SessionsTab group={group} sessions={sessions} members={activeMembers} /> : null}
-            {tab === 'members' && canManage ? <MembersTab group={group} members={members} /> : null}
-            {tab === 'payments' && canManage ? <PaymentsTab group={group} sessions={sessions} /> : null}
-            {tab === 'settings' && canManage ? <SettingsTab group={group} /> : null}
+            {shownTab === 'sessions' && canManage ? <SessionsTab group={group} sessions={sessions} members={activeMembers} /> : null}
+            {shownTab === 'members' && canManage ? <MembersTab group={group} members={members} /> : null}
+            {shownTab === 'payments' && canManage ? <PaymentsTab group={group} sessions={sessions} /> : null}
+            {shownTab === 'settings' && canManage ? <SettingsTab group={group} /> : null}
         </PageShell>
     );
 }
@@ -163,7 +169,11 @@ function InfoTab({ group, sessions, me, isLeader, uid, activeCount, onJoin, onLe
                     )
                 ) : null}
                 <p className="text-xs text-gray-500 break-keep">모임 현장에서는 그룹장 화면의 QR을 휴대폰 카메라로 찍으면 출석(참가비가 있으면 결제까지)이 됩니다.</p>
+                {currentUser && !isLeader ? (
+                    <button type="button" onClick={() => setReportOpen(true)} className="text-xs text-gray-400 underline">이 그룹 신고하기</button>
+                ) : null}
             </aside>
+            {reportOpen ? <GroupReportModal group={group} currentUser={currentUser} uid={uid} onClose={() => setReportOpen(false)} /> : null}
         </div>
     );
 }
@@ -335,6 +345,17 @@ function PaymentsTab({ group, sessions }) {
                                 <b>{won(r.amount)}</b>{' '}
                                 <span className={r.status === 'paid' ? 'text-brand' : 'text-gray-400'}>{({ paid: '결제', pending: '미결제', refunded: '환불' })[r.status] || r.status}</span>
                                 {r.status === 'paid' ? <span className="text-gray-400"> · {r.settled ? '정산 완료' : '정산 전'}</span> : null}
+                                {r.status === 'paid' && !r.settled ? (
+                                    <button type="button" onClick={async () => {
+                                        const reason = prompt(`${r.name}님의 ${won(r.amount)}을 전액 환불할까요? 환불 사유를 적어 주세요.`, '회차 취소');
+                                        if (reason === null) return;
+                                        try {
+                                            await groupService.refundGroupPayment(r.id, reason);
+                                            setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, status: 'refunded' } : x)));
+                                            alert('환불했습니다. 카드사에 따라 3~5영업일 걸릴 수 있어요.');
+                                        } catch (e) { alert(e.message); }
+                                    }} className="ml-2 rounded-full bg-soft px-2.5 py-0.5 font-semibold text-red-600">환불</button>
+                                ) : null}
                             </span>
                         </li>
                     ))}
@@ -348,6 +369,7 @@ function SettingsTab({ group }) {
     const [form, setForm] = useState({
         title: group.title || '', description: group.description || '', notice: group.notice || '', region: group.region || '부산',
         mode: group.mode || 'offline', schedule: group.schedule || '', capacity: group.capacity || 0, joinPolicy: group.joinPolicy || 'approval',
+        cover: group.cover || (group.type === 'study' ? 'study' : 'meetup'),
     });
     const [saving, setSaving] = useState(false);
     const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -360,6 +382,7 @@ function SettingsTab({ group }) {
                 title: form.title.trim().slice(0, 60), description: form.description.trim().slice(0, 3000), notice: form.notice.trim().slice(0, 1000),
                 region: form.region, mode: form.mode, schedule: form.schedule.trim().slice(0, 200),
                 capacity: Math.max(0, Math.min(500, Math.floor(Number(form.capacity) || 0))), joinPolicy: form.joinPolicy,
+                cover: form.cover,
             });
             alert('저장했어요.');
         } catch (err) { alert(`저장하지 못했어요: ${err.message}`); } finally { setSaving(false); }
@@ -377,6 +400,7 @@ function SettingsTab({ group }) {
                 <Field label="가입 방식"><select className={inputClass} value={form.joinPolicy} onChange={set('joinPolicy')}>{Object.entries(JOIN_POLICY_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
             </div>
             <Field label="모임 주기"><input className={inputClass} value={form.schedule} onChange={set('schedule')} /></Field>
+            <Field label="커버 이미지"><CoverPicker value={form.cover} type={group.type} onChange={(cover) => setForm((f) => ({ ...f, cover }))} /></Field>
             <button type="submit" disabled={!approved || saving} className="px-8 py-3 rounded-full bg-brand text-white font-semibold disabled:opacity-50">{saving ? '저장 중…' : '저장'}</button>
         </form>
     );

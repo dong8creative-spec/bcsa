@@ -471,10 +471,10 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
                             </p>
                             <p className="text-[13px] font-bold text-brand tracking-wide mb-4">SUPPORT PROGRAMS</p>
                             <h1 className="text-[32px] leading-[1.15] md:text-[52px] md:leading-[1.1] font-semibold tracking-tight text-dark break-keep max-w-2xl">
-                                지금, 가장 뜨거운<br />지원사업
+                                놓치면 아까운<br />지원사업
                             </h1>
                             <p className="mt-5 text-base md:text-lg text-gray-500 max-w-lg break-keep">
-                                긴 공고문 대신, 핵심만 요약해서 보여드립니다.
+                                긴 공고문은 저희가 읽을게요. 대표님은 핵심만 보세요.
                             </p>
 
                             {/* 화면 맨 위 탭 3개 — 한 번에 하나만 보여준다. 기본은 "부산 신규사업".

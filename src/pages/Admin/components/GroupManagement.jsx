@@ -18,7 +18,9 @@ export const GroupManagement = () => {
   const [groups, setGroups] = useState(null);
   const [filter, setFilter] = useState('pending');
 
+  const [reports, setReports] = useState([]);
   useEffect(() => groupService.subscribeAllGroupsAdmin(setGroups), []);
+  useEffect(() => groupService.subscribeOpenReports(setReports), []);
 
   const setStatus = async (g, status) => {
     const labels = { approved: '승인', rejected: '반려', closed: '운영 종료' };
@@ -56,6 +58,26 @@ export const GroupManagement = () => {
           ))}
         </div>
       </div>
+
+      {reports.length > 0 ? (
+        <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
+          <h3 className="font-bold text-red-700 mb-3">처리하지 않은 신고 {reports.length}건</h3>
+          <ul className="space-y-2">
+            {reports.map((r) => (
+              <li key={r.id} className="bg-white rounded-xl p-3 flex flex-wrap items-start justify-between gap-3 text-sm">
+                <div className="min-w-0">
+                  <p className="font-semibold text-dark">{r.targetTitle || r.targetId} <span className="text-xs text-gray-400">· 신고자 {r.reporterName || '-'}</span></p>
+                  <p className="text-gray-700 whitespace-pre-wrap break-keep">{r.reason}</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  {r.targetType === 'group' ? <a href={`/groups/${r.targetId}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-soft text-xs font-semibold">그룹 보기</a> : null}
+                  <button type="button" onClick={() => groupService.resolveReport(r.id).catch((e) => alert(e.message))} className="px-3 py-1.5 rounded-lg bg-dark text-white text-xs font-semibold">처리 완료</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {groups === null ? <p className="text-gray-400">불러오는 중…</p> : list.length === 0 ? (
         <div className="bg-white rounded-2xl p-10 text-center text-gray-500">해당하는 그룹이 없습니다.</div>
