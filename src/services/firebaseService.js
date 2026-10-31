@@ -222,11 +222,26 @@ export const firebaseService = {
     }
   },
 
+  /**
+   * 회원명단(publicProfiles) 실시간 구독 — 로그인한 승인 회원·관리자만 읽을 수 있다(firestore.rules).
+   * 권한이 없으면(승인 대기 등) 빈 목록을 한 번 돌려주고 끝낸다.
+   */
   subscribeUsers(callback) {
     return onSnapshot(collection(db, 'publicProfiles'), (snapshot) => {
       const users = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
       callback(users);
-    }, (error) => console.error('Error subscribing public profiles:', error));
+    }, (error) => {
+      if (error?.code !== 'permission-denied') console.error('Error subscribing public profiles:', error);
+      callback([]);
+    });
+  },
+
+  /** 홈 화면 회원 수(비로그인 포함): 서버가 집계해 두는 publicStats/members (개인정보 없음) */
+  subscribePublicMemberCount(callback) {
+    return onSnapshot(doc(db, 'publicStats', 'members'), (d) => {
+      const n = d.exists() ? Number(d.data()?.approvedMemberCount) : NaN;
+      callback(Number.isFinite(n) ? n : null);
+    }, () => callback(null));
   },
 
   /** 관리자 전용: 회원 원본 실시간 구독 */
@@ -631,8 +646,11 @@ export const firebaseService = {
   },
 
   /**
-   * 회원 탈퇴·강제 탈퇴: 신청·게시글(이미지 호스팅 포함)·본인 맛집·알림·결제대기 문서 정리
-   * 이후 deleteUser / deleteAuthUser 호출
+   * 회원 탈퇴·강제 탈퇴 정리. 이후 deleteUser / deleteAuthUser 호출.
+   * 1) 서버(purgeUserData): 세미나 신청·결제대기·모임 멤버·출석·그룹 결제 장부·신고·알림 정리.
+   *    결제·신고 기록은 법정 보존 기록(legalRetention)으로 필요한 항목만 따로 남긴 뒤 지운다.
+   *    운영 중 모임의 그룹장이면 서버가 막는다 → 오류 메시지(error.message)를 그대로 보여 주면 된다.
+   * 2) 클라이언트: 게시글·맛집(호스팅 이미지 포함)·알림 삭제.
    */
   async purgeUserRelatedData(userProfile) {
     if (!userProfile) return;
@@ -641,16 +659,15 @@ export const firebaseService = {
     const idSet = new Set([uidA, uidB].filter(Boolean));
     if (idSet.size === 0) return;
 
-    const uForApps = { ...userProfile, id: uidA || uidB, uid: uidB || uidA };
-    const apps = await this.getApplicationsForUser(uForApps);
-    for (const a of apps) {
-      if (a.id) {
-        try {
-          await deleteDoc(doc(db, 'applications', a.id));
-        } catch (e) {
-          console.warn('purge application', a.id, e);
-        }
-      }
+    try {
+      const functions = getFunctions(app, 'asia-northeast3');
+      await httpsCallable(functions, 'purgeUserData')({ docId: uidA || uidB, uid: uidB || uidA });
+    } catch (error) {
+      console.error('purgeUserData failed:', error);
+      const msg = (error?.message || '').replace(/^(FirebaseError:\s*)/, '').trim();
+      const e = new Error(msg && !/^(internal|INTERNAL)$/.test(msg) ? msg : '회원 데이터 정리에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+      e.serverCode = error?.code; // code를 그대로 두면 오류 번역기가 안내 문구를 일반 문구로 바꿔 버린다
+      throw e;
     }
 
     const posts = await this.getPostsByUserForPurge(userProfile);
@@ -701,23 +718,6 @@ export const firebaseService = {
       } catch (e) {
         console.warn('purge notifications', idUser, e);
       }
-    }
-
-    try {
-      const pps = await getDocs(collection(db, 'pendingPayments'));
-      for (const d of pps.docs) {
-        const x = d.data() || {};
-        const pu = String(x.user_id ?? x.userId ?? '').trim();
-        if (pu && idSet.has(pu)) {
-          try {
-            await deleteDoc(d.ref);
-          } catch (e) {
-            console.warn('purge pending', d.id, e);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('purge pendingPayments', e);
     }
   },
 
