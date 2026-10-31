@@ -77,8 +77,14 @@ export const groupService = {
   },
 
   // ── 멤버 ──
+  /** 멤버 전체 명단 — 그룹장·운영진만 읽을 수 있다(firestore.rules). 다른 회원은 subscribeMyMembership */
   subscribeMembers(groupId, callback) {
     return onSnapshot(collection(db, 'groups', groupId, 'members'), (snap) => callback(snap.docs.map(withId)), () => callback([]));
+  },
+  /** 내 멤버 문서 하나만 구독 (가입 상태 확인용). 인원수는 그룹 문서의 memberCount(서버 집계)를 쓴다 */
+  subscribeMyMembership(groupId, uid, callback) {
+    if (!groupId || !uid) { callback(null); return () => {}; }
+    return onSnapshot(doc(db, 'groups', groupId, 'members', uid), (d) => callback(d.exists() ? withId(d) : null), () => callback(null));
   },
   joinGroup: (groupId) => call('joinGroup', { groupId }),
   setMemberStatus(groupId, uid, status) {

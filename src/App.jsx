@@ -293,8 +293,22 @@ const App = () => {
     const [currentUser, setCurrentUser] = useState(null);
     const [users, setUsers] = useState([]);
 
-    // 사용자 데이터 로드 (페이지 로드 시)
+    // ── [legal-server-1031] 회원명단(publicProfiles)은 로그인한 승인 회원·관리자만 읽을 수 있다 (firestore.rules) ──
+    // 비로그인·승인 대기 회원은 구독하지 않고, 홈의 회원 수는 서버 집계(publicStats/members)로 보여 준다.
+    const memberDirectoryUid = currentUser && (isAdminUser(currentUser) || !currentUser.approvalStatus || currentUser.approvalStatus === 'approved')
+        ? String(currentUser.uid || currentUser.id || '')
+        : '';
+    const [publicMemberCount, setPublicMemberCount] = useState(null);
+    useEffect(() => (firebaseService?.subscribePublicMemberCount ? firebaseService.subscribePublicMemberCount(setPublicMemberCount) : undefined), []);
+    // ── [legal-server-1031] 끝 ──
+
+    // 사용자 데이터 로드 (로그인한 승인 회원·관리자일 때만)
     useEffect(() => {
+        if (!memberDirectoryUid) {
+            setUsers([]);
+            setMembersData([]);
+            return undefined;
+        }
         // Load users from Firebase (우선 사용)
         if (firebaseService && firebaseService.subscribeUsers) {
             const unsubscribe = firebaseService.subscribeUsers((users) => {
@@ -320,7 +334,7 @@ const App = () => {
                 }
             })();
         }
-    }, []);
+    }, [memberDirectoryUid]);
     
     // pageTitles 상태 관리 (content에서 분리)
     const [pageTitles, setPageTitles] = useState(() => ({
@@ -889,29 +903,7 @@ const App = () => {
         }
     }, [currentView, seminarsData, externalEventPosters, location.pathname]);
     
-    // Load members from Firebase (우선 사용 - 애드민과 동기화)
-    useEffect(() => {
-        if (firebaseService && firebaseService.subscribeUsers) {
-            const unsubscribe = firebaseService.subscribeUsers((users) => {
-                const members = filterApprovedMembers(users);
-                // Firebase 데이터를 우선적으로 사용하여 애드민과 동기화
-                setMembersData(members);
-            });
-            return () => unsubscribe();
-        } else {
-            if (firebaseService && firebaseService.getUsers) {
-                (async () => {
-                    try {
-                        const users = await firebaseService.getUsers();
-                        const members = filterApprovedMembers(users);
-                        setMembersData(members);
-                    } catch (error) {
-                        console.error('사용자 로드 오류:', error);
-                    }
-                })();
-            }
-        }
-    }, []);
+    // [legal-server-1031] 회원명단 두 번째 구독(중복)은 제거 — 위의 승인 회원 전용 구독이 membersData도 채운다.
     
     // 프로그램 알람 체크 함수 (시작 3일 전) - useEffect 이전에 정의
     const checkProgramAlerts = (appliedSeminars, userId) => {
@@ -2091,7 +2083,8 @@ const App = () => {
                  });
              } catch (err) {
                  console.error('연관 데이터 삭제 오류:', err);
-                 alert('회원 데이터 정리에 실패했습니다. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요.');
+                 // [legal-server-1031] 운영 중 모임의 모임장이면 서버가 탈퇴를 막고 안내 문구를 보낸다
+                 alert(err?.message || '회원 데이터 정리에 실패했습니다. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요.');
                  return;
              }
          }
@@ -2729,7 +2722,7 @@ END:VCALENDAR`;
                     alert(data.message || '결제는 이미 취소된 상태입니다. 신청 기록을 정리했습니다.');
                 } else {
                     const refundMsg = data.refund_message ? `\n${data.refund_message}` : '';
-                    alert(`세미나 신청이 취소되었습니다. 환불은 영업일 기준 3~5일 내 처리됩니다.${refundMsg}`);
+                    alert(`세미나 신청이 취소되었습니다. 결제 취소는 3영업일 이내에 진행되며, 카드사 사정에 따라 실제 반영은 며칠 더 걸릴 수 있습니다.${refundMsg}`);
                 }
                 return;
             }
@@ -3641,8 +3634,9 @@ END:VCALENDAR`;
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allMembers'); }} className="home-card md:col-span-4 md:min-h-[240px] bg-white text-left hover:bg-[#eceef2]">
                             <p className="home-eyebrow text-gray-500">BUSAN PARTNERS</p>
                             <h3 className="home-title text-dark">함께하는 부산 사업가</h3>
-                            {membersData.length > 0 ? (
-                                <p className="home-stat mt-auto pt-6 text-dark">{membersData.length}<span className="home-unit text-gray-500">명</span></p>
+                            {/* [legal-server-1031] 회원 수는 서버 집계(publicStats) 우선 — 비로그인도 명단 없이 숫자만 */}
+                            {(publicMemberCount ?? membersData.length) > 0 ? (
+                                <p className="home-stat mt-auto pt-6 text-dark">{publicMemberCount ?? membersData.length}<span className="home-unit text-gray-500">명</span></p>
                             ) : (
                                 <span className="home-link mt-auto pt-6 text-brand">회원명단 →</span>
                             )}

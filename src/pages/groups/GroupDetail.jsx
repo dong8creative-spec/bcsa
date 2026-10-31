@@ -28,14 +28,22 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
     const [busy, setBusy] = useState(false);
     const [reportOpen, setReportOpen] = useState(false);
 
-    useEffect(() => groupService.subscribeGroup(groupId, setGroup), [groupId]);
-    useEffect(() => (currentUser ? groupService.subscribeMembers(groupId, setMembers) : undefined), [groupId, currentUser]);
-    useEffect(() => groupService.subscribeSessions(groupId, setSessions), [groupId]);
-
     const isLeader = !!group && group.leaderUid === uid;
     const canManage = isLeader || isAdminUser(currentUser);
+
+    useEffect(() => groupService.subscribeGroup(groupId, setGroup), [groupId]);
+    // 멤버 명단(이름·사진)은 그룹장·운영진만 전체를 구독하고, 다른 회원은 내 멤버 문서만 읽는다 (firestore.rules)
+    useEffect(() => {
+        if (!currentUser || !uid) { setMembers([]); return undefined; }
+        if (canManage) return groupService.subscribeMembers(groupId, setMembers);
+        return groupService.subscribeMyMembership(groupId, uid, (m) => setMembers(m ? [m] : []));
+    }, [groupId, currentUser, uid, canManage]);
+    useEffect(() => groupService.subscribeSessions(groupId, setSessions), [groupId]);
+
     const me = members.find((m) => m.uid === uid);
     const activeMembers = members.filter((m) => m.status === 'active');
+    // 인원수: 관리 화면은 명단 기준, 그 밖(방문자 포함)은 서버가 집계한 그룹 문서의 memberCount
+    const activeCount = canManage ? activeMembers.length : (Number.isFinite(group?.memberCount) ? group.memberCount : null);
     const pendingMembers = members.filter((m) => m.status === 'pending');
 
     if (group === undefined) return <div className="min-h-[60vh] pt-40 text-center text-gray-400 text-sm">불러오는 중…</div>;
@@ -93,7 +101,7 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
             {shownTab === 'info' ? (
                 <InfoTab
                     group={group} sessions={sessions} me={me} isLeader={isLeader} uid={uid}
-                    activeCount={activeMembers.length} onJoin={join} onLeave={leave} busy={busy} currentUser={currentUser}
+                    activeCount={activeCount} onJoin={join} onLeave={leave} busy={busy} currentUser={currentUser}
                 />
             ) : null}
             {shownTab === 'sessions' && canManage ? <SessionsTab group={group} sessions={sessions} members={activeMembers} /> : null}
@@ -152,7 +160,7 @@ function InfoTab({ group, sessions, me, isLeader, uid, activeCount, onJoin, onLe
             <aside className="space-y-4">
                 <div className="rounded-[24px] bg-soft p-5 space-y-2 text-sm">
                     <p><span className="text-gray-500">가입 방식</span> · <b>{JOIN_POLICY_LABEL[group.joinPolicy]}</b></p>
-                    <p><span className="text-gray-500">멤버</span> · <b>{currentUser ? `${activeCount}명` : '로그인 후 확인'}</b>{Number(group.capacity) > 0 ? ` / 정원 ${group.capacity}명` : ''}</p>
+                    <p><span className="text-gray-500">멤버</span> · <b>{activeCount != null ? `${activeCount}명` : '집계 중'}</b>{Number(group.capacity) > 0 ? ` / 정원 ${group.capacity}명` : ''}</p>
                     {group.type === 'study' && me?.status === 'active' ? (
                         <p><span className="text-gray-500">내 출석</span> · <b>{attendedCount}</b> / {pastCount || sessions.length}회</p>
                     ) : null}
