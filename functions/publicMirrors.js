@@ -17,6 +17,12 @@ export const extractDistrict = (u) => {
   return m ? m[1] : '';
 };
 
+/** 프로필 사진 주소 정리: 이름을 외부(ui-avatars.com)로 보내던 예전 기본 그림은 빈 값으로 (화면이 이름 첫 글자로 그림) */
+export const sanitizeProfileImg = (img) => {
+  if (typeof img !== 'string' || !img.trim()) return null;
+  return /^https?:\/\/(www\.)?ui-avatars\.com\//i.test(img.trim()) ? '' : img;
+};
+
 /** 회원 문서 → 공개 프로필 (생년월일·성별·이메일·사업자번호·주소 원문·본인인증 고유번호 제외) */
 export const buildPublicProfile = (docId, u) => {
   const pick = (k) => (u[k] === undefined ? null : u[k]);
@@ -25,7 +31,7 @@ export const buildPublicProfile = (docId, u) => {
     uid: u.uid || docId,
     name: pick('name'),
     nickname: pick('nickname'),
-    img: pick('img'),
+    img: sanitizeProfileImg(u.img),
     company: pick('company'),
     role: pick('role'),
     position: pick('position'),
