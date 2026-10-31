@@ -64,6 +64,8 @@ beforeEach(async () => {
     await setDoc(doc(db, 'blockedRegistrations/h1'), { uidHash: 'h1' });
 
     await setDoc(doc(db, 'seminars/free'), { title: '무료', applicationFee: 0 });
+    await setDoc(doc(db, 'seminars/freeCancelled'), { title: '취소된 무료', applicationFee: 0, cancelledByOrganizer: true, recruitmentClosedByAdmin: true });
+    await setDoc(doc(db, 'seminars/freeClosed'), { title: '모집 중단 무료', applicationFee: 0, recruitmentClosedByAdmin: true });
     await setDoc(doc(db, 'applications/a_free'), { userId: 'u_ok', seminarId: 'free' });
     await setDoc(doc(db, 'applications/a_paid'), { userId: 'u_ok', seminarId: 'paid', merchant_uid: 'p_1' });
 
@@ -186,6 +188,13 @@ describe('users 동의 기록: 서버 시각·본인 수정 금지', () => {
     await assertFails(updateDoc(doc(ctx.as('u_ok'), 'users/u_ok'), { ageRestricted: false }));
     await assertFails(updateDoc(doc(ctx.as('u_ok'), 'users/u_ok'), { blockedRegistration: false }));
   });
+});
+
+describe('applications: 무료 신청 생성', () => {
+  const apply = (sid) => addDoc(collection(ctx.as('u_ok'), 'applications'), { userId: 'u_ok', seminarId: sid });
+  test('모집 중 무료 프로그램 신청 허용', async () => { await assertSucceeds(apply('free')); });
+  test('회사 사정 취소된 프로그램 신청 거부', async () => { await assertFails(apply('freeCancelled')); });
+  test('관리자 모집 중단 프로그램 신청 거부', async () => { await assertFails(apply('freeClosed')); });
 });
 
 describe('applications: 결제 건은 서버만 삭제', () => {

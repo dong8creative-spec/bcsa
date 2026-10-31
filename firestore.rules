@@ -207,6 +207,12 @@ service cloud.firestore {
     }
 
     // 무료 프로그램 여부: 참가비가 없거나 0인 경우만 (유료 신청은 결제 검증 후 서버가 생성)
+    // 새 신청을 받는 세미나: 회사 사정 취소(cancelledByOrganizer)·관리자 모집 중단(recruitmentClosedByAdmin)이 아님
+    function seminarOpenForApplications(seminarId) {
+      let s = get(/databases/$(database)/documents/seminars/$(seminarId)).data;
+      return s.get('cancelledByOrganizer', false) != true && s.get('recruitmentClosedByAdmin', false) != true;
+    }
+
     function isFreeSeminar(seminarId) {
       let fee = get(/databases/$(database)/documents/seminars/$(seminarId)).data.get('applicationFee', null);
       return fee == null || fee == 0 || fee == '' || fee == '0';
@@ -224,6 +230,7 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.seminarId is string
         && isFreeSeminar(request.resource.data.seminarId)
+        && seminarOpenForApplications(request.resource.data.seminarId)
         && !request.resource.data.keys().hasAny(['merchant_uid', 'merchantUid', 'imp_uid', 'impUid', 'adminAddedParticipant'])
       );
       allow update: if isAdmin() || (
