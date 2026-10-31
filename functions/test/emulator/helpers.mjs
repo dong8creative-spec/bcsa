@@ -5,7 +5,8 @@ export const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-bcsa';
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
   throw new Error('FIRESTORE_EMULATOR_HOST가 없습니다. npm run test:functions 로 실행하세요(운영 DB 보호).');
 }
-if (!admin.apps.length) admin.initializeApp({ projectId: PROJECT_ID });
+export const BUCKET = `${PROJECT_ID}.appspot.com`;
+if (!admin.apps.length) admin.initializeApp({ projectId: PROJECT_ID, storageBucket: BUCKET });
 export const db = admin.firestore();
 export { admin };
 

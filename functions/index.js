@@ -539,6 +539,18 @@ const toFirestoreTimestampOrNow = (v) => {
     : admin.firestore.FieldValue.serverTimestamp();
 };
 
+/** 신청 동의 기록 정리: 정해진 항목만 남기고 서버 시각(serverAgreedAt)을 붙인다. 동의 기록이 없으면 null */
+const buildServerPrivacyConsent = (c) => {
+  if (!c || typeof c !== 'object') return null;
+  return {
+    agreed: c.agreed === true,
+    version: String(c.version || '').slice(0, 40),
+    agreedAt: String(c.agreedAt || '').slice(0, 40),
+    noticeShown: c.noticeShown === true,
+    serverAgreedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+};
+
 /** 법정 보존 기록 쓰기 — 실패해도 결제 처리 흐름은 막지 않되 오류는 남긴다 */
 const retainSafely = async (record, label) => {
   try {
@@ -635,6 +647,8 @@ async function createApplicationFromPending(paymentId, pending, { payment = null
     preQuestions: appData.preQuestions || '',
     mealAfter: appData.mealAfter || '',
     privacyAgreed: appData.privacyAgreed === true,
+    // 신청 개인정보 수집·이용 동의 기록 (화면이 보낸 내용 + 서버 시각). 개인정보 보호법 제22조 입증용
+    privacyConsent: buildServerPrivacyConsent(appData.privacyConsent),
     reason,
     questions,
     appliedAt: new Date().toISOString(),
@@ -2231,7 +2245,9 @@ export const syncPublicProfile = onDocumentWritten(
     const userId = event.params.userId;
     const ref = db.collection('publicProfiles').doc(userId);
     const before = event.data?.before?.exists ? event.data.before.data() || {} : null;
-    const after = event.data?.after?.exists ? event.data.after.data() || {} : null;
+    // 이벤트가 순서 없이 올 수 있어(예: 승인 직후 guardUserDoc이 승인 대기로 되돌림) 지금 문서를 다시 읽어 기준으로 삼는다
+    const fresh = await db.collection('users').doc(userId).get();
+    const after = fresh.exists ? fresh.data() || {} : null;
     const approved = !!after && isApprovedMember(after);
     const beforeAuthUid = before ? String(before.uid || userId) : '';
     const afterAuthUid = after ? String(after.uid || userId) : '';
@@ -2335,7 +2351,20 @@ export const checkSignupDuplicates = onCall(
 // 회원 탈퇴·강제 탈퇴 서버 정리 + 기한 지난 정보 예약 파기
 // (2026-10-31 약관 검토 ①-7: 법정 보존 기록은 legalRetention에 분리 보관, 나머지는 지체 없이 파기)
 // ==========================================
-const userPurge = createUserPurge({ db, admin, getPortOneV2PaymentInfo });
+let storageBucket = null;
+try {
+  storageBucket = admin.storage().bucket();
+} catch (e) {
+  console.warn('[purgeUserData] 기본 Storage 버킷을 찾지 못해 이미지 삭제는 건너뜁니다', e.message);
+}
+const userPurge = createUserPurge({
+  db,
+  admin,
+  getPortOneV2PaymentInfo,
+  bucket: storageBucket,
+  // 시작 전 세미나 신청이 지워지면 예전 방식 참가 인원(currentParticipants)도 줄인다
+  onSeatReleased: (seminarId) => decrementSeminarParticipantsIfLegacy(db.collection('seminars').doc(String(seminarId)), 1),
+});
 
 /**
  * 탈퇴 정리 (본인 또는 관리자). data: { docId?, uid? } — 비우면 본인.
@@ -2354,7 +2383,8 @@ export const purgeUserData = onCall(
     let userDoc = null;
     if (isSelf) {
       userDoc = await getCallerUserDoc(callerUid);
-      if (!userDoc && request.auth.token?.email) {
+      // 이메일로 찾는 예전 가입자 경로는 이메일 인증이 끝난 계정만 (남의 이메일로 만든 계정이 남의 정보를 지우지 못하게)
+      if (!userDoc && request.auth.token?.email && request.auth.token?.email_verified === true) {
         const byEmail = await db.collection('users').where('email', '==', request.auth.token.email).limit(1).get();
         if (!byEmail.empty) userDoc = byEmail.docs[0];
       }
@@ -2377,6 +2407,7 @@ export const purgeUserData = onCall(
       docId,
       authUid,
       profile: { name: u.name || '', email: u.email || '', phone: u.phone || u.phoneNumber || '' },
+      userData: u,
       reason: isSelf ? 'withdrawal' : 'admin_forced',
     });
     console.log('[purgeUserData]', isSelf ? 'self' : `admin:${callerUid}`, docId, JSON.stringify(summary));

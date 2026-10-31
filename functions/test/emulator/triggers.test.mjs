@@ -15,25 +15,38 @@ describe('syncPublicProfile: 공개 프로필·승인 표시·홈 회원 수', (
   beforeEach(clearFirestore);
 
   test('승인 회원: 공개 프로필 + memberAccess(로그인 uid 기준) + 회원 수', async () => {
-    const u = { uid: 'authA', name: '김회원', email: 'a@x.com', birthdate: '1990-01-01', approvalStatus: 'approved' };
+    const u = { uid: 'authA', name: '김회원', email: 'a@x.com', birthdate: '1990-01-01', approvalStatus: 'approved', img: 'https://ui-avatars.com/api/?name=%EA%B9%80' };
+    await db.doc('users/docA').set(u);
     await fns.syncPublicProfile.run(userEvent('docA', null, u));
     const p = (await db.doc('publicProfiles/docA').get()).data();
     assert.equal(p.name, '김회원');
     assert.equal(p.email, undefined);
     assert.equal(p.birthdate, undefined);
+    assert.equal(p.img, '', '외부 아바타 주소(이름 포함)는 공개 프로필에 복사하지 않음');
     assert.deepEqual((await db.doc('memberAccess/authA').get()).data(), { docId: 'docA', approved: true });
     assert.equal((await db.doc('publicStats/members').get()).data().approvedMemberCount, 1);
   });
 
   test('승인 취소·탈퇴: 공개 프로필·승인 표시 삭제, 회원 수 감소', async () => {
     const u = { uid: 'authB', name: '박회원', approvalStatus: 'approved' };
+    await db.doc('users/authB').set(u);
     await fns.syncPublicProfile.run(userEvent('authB', null, u));
+    await db.doc('users/authB').set({ ...u, approvalStatus: 'pending' });
     await fns.syncPublicProfile.run(userEvent('authB', u, { ...u, approvalStatus: 'pending' }));
     assert.equal((await db.doc('publicProfiles/authB').get()).exists, false);
     assert.equal((await db.doc('memberAccess/authB').get()).exists, false);
     assert.equal((await db.doc('publicStats/members').get()).data().approvedMemberCount, 0);
+    await db.doc('users/authB').delete();
     await fns.syncPublicProfile.run(userEvent('authB', { ...u, approvalStatus: 'pending' }, null));
     assert.equal((await db.doc('memberAccess/authB').get()).exists, false);
+  });
+
+  test('늦게 도착한 "승인" 이벤트도 지금 문서(승인 대기) 기준으로 처리', async () => {
+    const u = { uid: 'authC', name: '최회원', approvalStatus: 'pending', ageRestricted: true };
+    await db.doc('users/authC').set(u);
+    await fns.syncPublicProfile.run(userEvent('authC', { ...u, approvalStatus: 'pending' }, { ...u, approvalStatus: 'approved' }));
+    assert.equal((await db.doc('publicProfiles/authC').get()).exists, false);
+    assert.equal((await db.doc('memberAccess/authC').get()).exists, false);
   });
 });
 
@@ -84,6 +97,13 @@ describe('purgeUserData callable: 본인·관리자 권한', () => {
     assert.equal(rec[0].reason, 'withdrawal');
     assert.equal(rec[0].phone, '01012345678');
     assert.equal((await db.doc('applications/m1').get()).exists, false);
+  });
+
+  test('회원 문서가 없는 계정은 인증 안 된 이메일로 남의 문서를 찾지 않는다', async () => {
+    await db.doc('users/victim2').set({ uid: 'other', name: '피해자', email: 'v@x.com' });
+    await db.doc('applications/v2').set({ userId: 'other', seminarId: 'free' });
+    await call({ uid: 'attacker2', token: { email: 'v@x.com', email_verified: false } });
+    assert.equal((await db.doc('applications/v2').get()).exists, true);
   });
 
   test('관리자 강제 탈퇴 정리: 사유 admin_forced, 예전 가입자 문서 id로도 처리', async () => {

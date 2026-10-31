@@ -17,6 +17,7 @@
  */
 import crypto from 'crypto';
 import { HttpsError } from 'firebase-functions/v2/https';
+import { sanitizeProfileImg } from './publicMirrors.js';
 
 const QR_WINDOW_MS = 30 * 1000;
 const QR_GRACE_WINDOWS = 2; // 현재 + 직전 2개 창(최대 약 90초)까지 인정
@@ -55,7 +56,7 @@ export function createGroupHandlers({ db, admin, verifyPortOnePayment, cancelPor
   async function getProfile(uid) {
     const snap = await db.collection('users').doc(uid).get();
     const u = snap.exists ? snap.data() || {} : {};
-    return { name: str(u.name || u.nickname || '회원', 40), img: str(u.img, 500), approved: !u.approvalStatus || u.approvalStatus === 'approved' };
+    return { name: str(u.name || u.nickname || '회원', 40), img: str(sanitizeProfileImg(u.img), 500), approved: !u.approvalStatus || u.approvalStatus === 'approved' };
   }
 
   const requireAuth = (request) => {

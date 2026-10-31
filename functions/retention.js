@@ -5,7 +5,9 @@
  * 탈퇴·취소로 원본(신청서·결제 장부·신고)을 지우기 전에 꼭 필요한 항목만 복사해 둔다.
  *   - category 'payment' : 대금결제·재화등의 공급 및 계약·청약철회 기록 → 5년 (시행령 제6조 제1항 제2호·제3호)
  *   - category 'dispute' : 소비자 불만·분쟁(신고) 처리 기록 → 3년 (시행령 제6조 제1항 제4호)
- * 보존 기간은 보관을 시작한 날(탈퇴·취소 처리일)부터 센다. 기간이 지나면 dailyLegalPurge가 지운다.
+ * 보존 기간의 기준일(retainFrom): 결제 기록은 마지막 거래 시점(결제·취소·환불 중 가장 늦은 때), 신고는 처리를 마친 날.
+ * 기준일을 알 수 없으면 보관을 시작한 날(탈퇴·취소 처리일). 기간이 지나면 dailyLegalPurge가 지운다
+ * (처리 중인 신고의 기록은 처리를 마친 날부터 다시 3년이 되도록 늘린다).
  *
  * 남기는 항목(이 목록 밖의 값은 복사하지 않는다):
  *   공통: category, source, reason, subjectUid, name, phone, email, retainedAt, retainUntil, legalBasis
@@ -44,8 +46,19 @@ const asDate = (v) => {
   return Number.isNaN(d.getTime()) ? null : d;
 };
 
+const latestDate = (...vals) => {
+  const ds = vals.map((v) => asDate(v)).filter(Boolean);
+  return ds.length ? new Date(Math.max(...ds.map((d) => d.getTime()))) : null;
+};
+
+/** 기록에 기준일(retainFrom)을 붙인다: 결제·취소·환불 시각 중 가장 늦은 때 */
+const withPaymentBase = (rec) => ({ ...rec, retainFrom: latestDate(rec.paidAt, rec.cancelledAt, rec.refundedAt) });
+
 /** 세미나 신청(결제 건) → 보존 기록 필드 */
-export function buildSeminarPaymentRecord({ application, seminar, seminarId, payInfo, reason, cancel = {}, profile = {} }) {
+export function buildSeminarPaymentRecord(args) {
+  return withPaymentBase(seminarPaymentFields(args));
+}
+function seminarPaymentFields({ application, seminar, seminarId, payInfo, reason, cancel = {}, profile = {} }) {
   const a = application || {};
   const paymentId = str(a.merchant_uid || a.merchantUid || a.imp_uid || a.impUid, 120);
   const fromPortone = num(payInfo?.paidTotal);
@@ -80,7 +93,7 @@ export function buildSeminarPaymentRecord({ application, seminar, seminarId, pay
 /** 결제 대기 문서(자동 환불 등 신청이 만들어지지 않은 결제) → 보존 기록 */
 export function buildPendingPaymentRecord({ merchantUid, pending, seminar, reason, amount, note }) {
   const p = pending || {};
-  return {
+  return withPaymentBase({
     category: 'payment',
     source: 'seminarPendingPayment',
     reason: str(reason, 40),
@@ -102,13 +115,13 @@ export function buildPendingPaymentRecord({ merchantUid, pending, seminar, reaso
     itemTitle: str(seminar?.title, 120),
     itemDate: str(seminar?.date, 40),
     note: str(note, 300),
-  };
+  });
 }
 
 /** 그룹 회차 QR 결제(정산 장부) → 보존 기록 */
 export function buildGroupPaymentRecord({ paymentId, pay, reason, profile = {} }) {
   const g = pay || {};
-  return {
+  return withPaymentBase({
     category: 'payment',
     source: 'groupPayment',
     reason: str(reason, 40),
@@ -133,7 +146,7 @@ export function buildGroupPaymentRecord({ paymentId, pay, reason, profile = {} }
     sessionId: str(g.sessionId, 128),
     sessionTitle: str(g.sessionTitle, 120),
     note: str([g.refundReason, g.failReason].filter(Boolean).join(' / '), 300),
-  };
+  });
 }
 
 /** 신고 → 분쟁(신고) 처리 기록 */
@@ -155,21 +168,27 @@ export function buildReportRecord({ reportId, report, reason, role, profile = {}
     reportReason: str(r.reason, 1000),
     reportStatus: str(r.status, 20),
     reportCreatedAt: asDate(r.createdAt),
+    reportResolvedAt: r.status === 'resolved' ? asDate(r.resolvedAt) : null,
     note: str(r.resolutionNote || r.note, 300),
+    // 처리를 마친 신고는 처리일부터 3년, 처리 중이면 지금부터(처리가 끝나면 예약 파기 작업이 기한을 늘림)
+    retainFrom: r.status === 'resolved' ? asDate(r.resolvedAt) : null,
   };
 }
 
 /** 보존 기록 쓰기 (tx·batch가 있으면 그 안에서) */
 export function writeRetention({ db, admin, record, writer = null, now = new Date() }) {
   const ref = db.collection(LEGAL_RETENTION).doc();
-  const clean = Object.fromEntries(Object.entries(record).filter(([, v]) => v !== undefined));
+  const { retainFrom, ...rest } = record;
+  const clean = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined));
+  const base = retainFrom instanceof Date && !Number.isNaN(retainFrom.getTime()) ? retainFrom : now;
   const data = {
     ...clean,
     legalBasis: LEGAL_BASIS[record.category],
     retainedAt: admin.firestore.Timestamp.fromDate(now),
-    retainUntil: admin.firestore.Timestamp.fromDate(retainUntilDate(record.category, now)),
+    retainFrom: admin.firestore.Timestamp.fromDate(base),
+    retainUntil: admin.firestore.Timestamp.fromDate(retainUntilDate(record.category, base)),
   };
-  for (const k of ['paidAt', 'cancelledAt', 'refundedAt', 'reportCreatedAt']) {
+  for (const k of ['paidAt', 'cancelledAt', 'refundedAt', 'reportCreatedAt', 'reportResolvedAt']) {
     if (data[k] instanceof Date) data[k] = admin.firestore.Timestamp.fromDate(data[k]);
   }
   if (writer) {
