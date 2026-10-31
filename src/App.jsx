@@ -39,6 +39,7 @@ import {
     PARTNER_NAMES
 } from './constants/appConstants';
 import { filterApprovedMembers, getCategoryColor, buildProgramPopupItems, firestoreLikeToMillis, getSupportProgramDdayInfo, bucketSupportPrograms } from './appHelpers';
+import { isBusanOrNationwideProgram, isBusanProgram } from './utils/supportRegion';
 import {
     ADMIN_HIDDEN_APPLICATIONS_KEY,
     ADMIN_HIDDEN_APPLICATIONS_CHANGED,
@@ -544,11 +545,12 @@ const App = () => {
         [seminarsData, publicApplicationsList, adminHiddenEntries, applicationsByIdForDisplay]
     );
 
-    // 지원사업 자동 수집 피드: 홈 화면 노출용(활성+공개 상태만, 마감 임박순 → 상시 뒤로)
+    // 지원사업 자동 수집 피드: 홈 화면 노출용(활성+공개 상태 + 부산·전국 공고만, 마감 임박순 → 상시 뒤로)
+    // 다른 시·도 전용 공고(예: "[인천] …", 경기도 소관)는 부산 사업자가 신청할 수 없어 홈에서 뺀다.
     const supportProgramsPublic = useMemo(() => {
         const rows = Array.isArray(supportPrograms) ? supportPrograms : [];
         const nowMs = Date.now();
-        const visible = rows.filter((p) => p && p.enabled !== false && p.status === 'published');
+        const visible = rows.filter((p) => p && p.enabled !== false && p.status === 'published' && isBusanOrNationwideProgram(p));
         const dated = [];
         const rolling = [];
         visible.forEach((p) => {
@@ -562,7 +564,11 @@ const App = () => {
         });
         dated.sort((a, b) => firestoreLikeToMillis(a.deadlineAt) - firestoreLikeToMillis(b.deadlineAt));
         rolling.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
-        return [...dated, ...rolling].slice(0, 8);
+        // 마감순으로만 자르면 전국 공고가 앞자리를 다 차지해서, 부산 공고 2개 + 전국 공고 1개를 먼저 보여 준다
+        const ordered = [...dated, ...rolling];
+        const busan = ordered.filter((p) => isBusanProgram(p));
+        const nationwide = ordered.filter((p) => !isBusanProgram(p));
+        return [...busan.slice(0, 2), ...nationwide.slice(0, 1), ...busan.slice(2), ...nationwide.slice(1)].slice(0, 8);
     }, [supportPrograms]);
 
     // 홈 카드 숫자: 지원사업 페이지 탭과 같은 기준으로 전체 목록에서 센다 (위 목록은 8개로 잘려 있어 쓰면 안 됨)
@@ -3580,12 +3586,14 @@ END:VCALENDAR`;
                         <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="home-card md:col-span-8 md:min-h-[392px] min-w-0 text-white" style={{ background: 'linear-gradient(150deg,#071a37,#0046a5 85%)' }}>
                             <p className="home-eyebrow text-blue-200">SUPPORT PROGRAMS</p>
                             <h3 className="home-title">지금 신청해 볼 만한 지원사업</h3>
-                            <ul className="mt-6 w-full space-y-2">
+                            <p className="mt-2 text-sm text-blue-100/80">부산과 전국 공고만 골랐어요</p>
+                            <ul className="mt-5 w-full space-y-2">
                                 {supportProgramsPublic.length > 0 ? supportProgramsPublic.slice(0, 3).map((p) => {
                                     const { label } = getSupportProgramDdayInfo(p);
                                     return (
                                         <li key={p.id} className="flex w-full min-w-0 items-center justify-between gap-4 rounded-2xl bg-white/10 px-4 h-12 text-sm">
-                                            <span className="min-w-0 flex-1 truncate">{p.title}</span>
+                                            <span className="shrink-0 rounded-full bg-white/15 px-2 py-0.5 text-[12px] font-semibold text-blue-100">{isBusanProgram(p) ? '부산' : '전국'}</span>
+                                            <span className="min-w-0 flex-1 truncate">{isBusanProgram(p) ? String(p.title || '').replace(/^\s*\[[^\]]*부산[^\]]*\]\s*/, '') : p.title}</span>
                                             {label ? <span className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">{label}</span> : null}
                                         </li>
                                     );
