@@ -7,6 +7,9 @@ import ModalPortal from '../components/ModalPortal';
 import { openDaumPostcode } from '../utils/daumPostcode';
 import { useNavigate } from 'react-router-dom';
 import { groupService, GROUP_TYPE_LABEL, GROUP_STATUS_LABEL, groupCoverUrl } from '../services/groupService';
+import MarketingConsentSection from '../components/MarketingConsentSection';
+import { getProfileImageUrl, stripExternalAvatar } from '../utils/avatar';
+import { REJOIN_LIMIT_ARTICLE, MYPAGE_MENU } from '../constants/legal';
 
 // 회원가입 페이지와 동일한 상수·헬퍼 (회원정보 수정 폼 일치용)
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
@@ -149,7 +152,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
     }, [user?.id, user?.uid, isEditingProfile]);
 
     const handleWithdrawClick = () => {
-        if(confirm("정말로 탈퇴하시겠습니까? 모든 정보가 삭제됩니다.")) {
+        if(confirm("정말로 탈퇴하시겠습니까?\n회원 정보는 바로 삭제됩니다. 법령에 따라 보관해야 하는 결제·취소 기록 등은 다른 정보와 분리해 정해진 기간 동안 보관한 뒤 삭제합니다.")) {
             onWithdraw();
         }
     };
@@ -181,20 +184,12 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
             setProfileEditError('생년월일을 YYYY-MM-DD 형식으로 입력해주세요.');
             return;
         }
-        if (!editFormData.gender) {
-            setProfileEditError('성별을 선택해주세요.');
-            return;
-        }
         if (!validatePhone(editFormData.phone)) {
             setProfileEditError('연락처는 010 등 11자리 숫자로 입력해주세요.');
             return;
         }
         if (!validateEmail(email)) {
             setProfileEditError('올바른 이메일 형식을 입력해주세요.');
-            return;
-        }
-        if (!(editFormData.roadAddress || '').trim()) {
-            setProfileEditError('주소를 입력해주세요. 주소 검색 버튼으로 도로명 주소를 선택해주세요.');
             return;
         }
         if (editUserType === '사업자') {
@@ -208,14 +203,6 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
             }
             if (!editFormData.businessCategory) {
                 setProfileEditError('업종/업태를 선택해주세요.');
-                return;
-            }
-            if (!editFormData.collaborationIndustry?.trim()) {
-                setProfileEditError('협업 업종을 입력해주세요.');
-                return;
-            }
-            if (!editFormData.keyCustomers?.trim()) {
-                setProfileEditError('핵심고객을 입력해주세요.');
                 return;
             }
         }
@@ -233,7 +220,8 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
             phonePublic: !!editFormData.phonePublic,
             email: email.trim(),
             userType: editUserType,
-            img: editFormData.img || user?.img || '',
+            // 예전 ui-avatars 주소는 지운다 (빈 값이면 화면에서 이름 첫 글자 그림을 그림)
+            img: stripExternalAvatar(editFormData.img || user?.img || ''),
             company: editUserType === '사업자' ? (editFormData.company || '').trim() : '',
             companyPhone: editUserType === '사업자' ? (editFormData.companyPhone || '').trim() : '',
             companyWebsite: editUserType === '사업자' ? (editFormData.companyWebsite || '').trim() : '',
@@ -335,10 +323,8 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                             <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-5xl overflow-hidden border border-black/10">
                                 {profileImageUploading ? (
                                     <span className="text-xs text-gray-500 px-2 text-center">업로드 중...</span>
-                                ) : editFormData.img ? (
-                                    <img src={editFormData.img} className="w-full h-full object-cover" loading="lazy" decoding="async" alt="프로필" />
                                 ) : (
-                                    "👤"
+                                    <img src={getProfileImageUrl(editFormData.img, editFormData.name || user?.name)} className="w-full h-full object-cover" loading="lazy" decoding="async" alt="프로필" />
                                 )}
                             </div>
                             {isEditingProfile && !profileImageUploading && (
@@ -387,8 +373,8 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                         <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD (예: 1990-01-15)" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.birthdate} onChange={e => { const v = e.target.value; const parsed = parseBirthdateInput(v); setEditFormData(f => ({ ...f, birthdate: parsed || v })); }} />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">성별 <span className="text-red-500">*</span></label>
-                                                        <select required className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none bg-white" value={editFormData.gender} onChange={e => setEditFormData(f => ({ ...f, gender: e.target.value }))}>
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">성별 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                                        <select className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none bg-white" value={editFormData.gender} onChange={e => setEditFormData(f => ({ ...f, gender: e.target.value }))}>
                                                             <option value="">선택</option>
                                                             <option value="남성">남성</option>
                                                             <option value="여성">여성</option>
@@ -418,7 +404,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                         </div>
                                                     </div>
                                                     <div className="md:col-span-2">
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">주소 <span className="text-red-500">*</span></label>
+                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">주소 <span className="text-gray-400 text-xs">(선택, 회원명단에는 구 단위 지역만 보여요)</span></label>
                                                         <div className="space-y-2">
                                                             <div className="flex gap-2">
                                                                 <input type="text" readOnly placeholder="도로명 주소 검색" className="flex-1 p-3 border border-black/[0.06] rounded-2xl bg-gray-50 text-sm cursor-pointer" value={editFormData.roadAddress} onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setEditFormData(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} />
@@ -467,12 +453,12 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                             {editFormData.businessRegistrationFileName && <p className="text-xs text-gray-500 mt-1">등록됨: {editFormData.businessRegistrationFileName}</p>}
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">협업 업종 <span className="text-red-500">*</span></label>
-                                                            <input type="text" required placeholder="협업 희망 업종" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.collaborationIndustry} onChange={e => setEditFormData(f => ({ ...f, collaborationIndustry: e.target.value }))} />
+                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">협업 업종 <span className="text-gray-400 text-xs">(선택, 회원명단에 보여요)</span></label>
+                                                            <input type="text" placeholder="협업 희망 업종" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.collaborationIndustry} onChange={e => setEditFormData(f => ({ ...f, collaborationIndustry: e.target.value }))} />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">핵심고객 <span className="text-red-500">*</span></label>
-                                                            <input type="text" required placeholder="핵심 고객층" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.keyCustomers} onChange={e => setEditFormData(f => ({ ...f, keyCustomers: e.target.value }))} />
+                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">핵심고객 <span className="text-gray-400 text-xs">(선택, 회원명단에 보여요)</span></label>
+                                                            <input type="text" placeholder="핵심 고객층" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.keyCustomers} onChange={e => setEditFormData(f => ({ ...f, keyCustomers: e.target.value }))} />
                                                         </div>
                                                     </div>
                                                 )}
@@ -866,8 +852,8 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                     <p className="text-sm text-gray-600 mb-8">PortOne 본인인증을 통해 개인정보를 확인해주세요</p>
                                     <div className="bg-yellow-50 border border-yellow-200 p-6 max-w-md mx-auto">
                                         <p className="text-sm text-gray-700 leading-relaxed">
-                                            본인인증은 회원가입 시 자동으로 진행됩니다.<br/>
-                                            인증 정보는 안전하게 보관되며, 서비스 이용을 위해 필수입니다.
+                                            지금은 본인인증을 진행하지 않아요.<br/>
+                                            인증하지 않아도 모든 서비스를 이용할 수 있어요.
                                         </p>
                                     </div>
                                 </div>
@@ -914,9 +900,10 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                         </div>
                     )}
                 </div>
+                <MarketingConsentSection user={user} />
                 <div className="border-t border-black/[0.06] pt-6 text-center">
-                    <p className="text-xs text-gray-500 mb-2">자진 탈퇴 시 언제든 재가입할 수 있습니다. (강제 탈퇴 시 1년간 재가입 제한·이용약관 제6조의2)</p>
-                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleWithdrawClick(); }} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">회원 탈퇴하기</button>
+                    <p className="text-sm text-gray-500 mb-3 break-keep">자진 탈퇴 시 언제든 재가입할 수 있습니다. (강제 탈퇴 시 1년간 재가입 제한·{REJOIN_LIMIT_ARTICLE})</p>
+                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleWithdrawClick(); }} className="px-6 py-3 rounded-full border border-black/10 bg-white text-sm font-semibold text-gray-700 hover:bg-soft transition-colors">{MYPAGE_MENU.withdraw}</button>
                 </div>
             </div>
 

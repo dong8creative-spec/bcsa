@@ -4,7 +4,11 @@ import { Icons } from '../components/Icons';
 import { authService } from '../services/authService';
 import { firebaseService } from '../services/firebaseService';
 import { openDaumPostcode } from '../utils/daumPostcode';
-import { TERMS_SECTIONS, sectionsToText } from '../constants/legal';
+import { serverTimestamp } from 'firebase/firestore';
+import {
+    TERMS_SECTIONS, sectionsToText, SIGNUP_PRIVACY_CONSENT, MARKETING_CONSENT, MARKETING_CHANNELS,
+    buildSignupConsents, buildMarketingConsent, REJOIN_LIMIT_ARTICLE,
+} from '../constants/legal';
 
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 
@@ -27,20 +31,22 @@ const BUSINESS_CATEGORIES = [
     '건설업', '인테리어', '토목공사', '농업', '축산업', '임업', '어업', '기타 사업',
 ];
 
-/** PIPA 준수: 이용약관 / 개인정보 수집·이용 / 마케팅 안내 문구 (내용보기용) */
-// 가입 화면에서도 사이트 약관 전문을 그대로 보여준다 (예전에는 "이하 생략" 미완성본이었다)
+/** 동의 문구 (내용보기용) — 원문은 constants/legal.js 한 곳에서 관리 */
 const TERMS_SERVICE = sectionsToText(TERMS_SECTIONS);
+const TERMS_PRIVACY = SIGNUP_PRIVACY_CONSENT.full;
+const TERMS_MARKETING = MARKETING_CONSENT.full;
 
-const TERMS_PRIVACY = `개인정보 수집 및 이용 동의
-수집 항목: 이름, 생년월일, 성별, 연락처, 이메일, 비밀번호(암호화 저장), 주소 / 사업자 회원: 상호, 사업자등록번호, 업종, 사업자등록증 사본(사업자 확인 후 삭제)
-수집 목적: 회원 식별과 사업자 확인, 만 14세 이상 확인, 프로그램·그룹 운영, 결제·환불
-보관 기간: 회원 탈퇴 시까지 (법령상 보관 의무가 있는 정보는 해당 기간)
-회원명단에는 이름·회사·업종·지역(구 단위)이 로그인 회원에게 보이며, 연락처는 공개를 선택한 경우에만 보입니다.
-귀하는 동의를 거부할 권리가 있으며, 거부 시 회원가입이 제한됩니다.
-위탁·국외 이전 등 자세한 내용은 개인정보처리방침에서 확인하실 수 있습니다.`;
-
-const TERMS_MARKETING = `마케팅 정보 수신 및 활용 동의 (선택)
-부청사 및 제휴사의 이벤트, 혜택, 사업자 지원 프로그램 등 마케팅 정보를 이메일·문자·앱 푸시로 수신하는 것에 동의합니다. 미동의 시에도 회원가입 및 서비스 이용에 제한이 없습니다.`;
+/** 동의 요약 표 (목적·항목·보관·거부) */
+const ConsentSummary = ({ rows }) => (
+    <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[13px] leading-relaxed">
+        {rows.map((r) => (
+            <React.Fragment key={r.k}>
+                <dt className="text-gray-500 whitespace-nowrap">{r.k}</dt>
+                <dd className="text-gray-700 break-keep">{r.v}</dd>
+            </React.Fragment>
+        ))}
+    </dl>
+);
 
 /** 이메일에서 @ 앞부분과 도메인 분리 (도메인 목록에 있으면 해당 키, 없으면 직접입력) */
 function parseEmailForForm(email) {
@@ -93,6 +99,7 @@ const SignUpPage = ({ onSignUp }) => {
         termsAgreed: false,
         privacyAgreed: false,
         marketingAgreed: false,
+        marketingChannels: [],
         phonePublic: false,
     });
     const [termsModal, setTermsModal] = useState({ open: false, type: '' }); // 'service' | 'privacy' | 'marketing'
@@ -193,7 +200,6 @@ const SignUpPage = ({ onSignUp }) => {
         if (!(form.name || '').trim()) return false;
         const validBirthdate = parseBirthdateInput(form.birthdate);
         if (!validBirthdate || !(form.birthdate || '').trim()) return false;
-        if (!form.gender) return false;
         if (!(form.phone || '').trim() || !validatePhone(form.phone)) return false;
         if (!(form.email || '').trim() || !validateEmail(form.email)) return false;
         if (!fromKakao) {
@@ -202,10 +208,9 @@ const SignUpPage = ({ onSignUp }) => {
             if (form.password !== form.passwordConfirm) return false;
         }
         if (!form.termsAgreed || !form.privacyAgreed) return false;
-        if (!(form.roadAddress || '').trim()) return false;
+        // 성별·주소·협업 업종·핵심 고객은 선택 항목 (개인정보 최소 수집)
         if (userType === '사업자') {
             if (!(form.company || '').trim() || !isBusinessNumberValid || !form.businessCategory) return false;
-            if (!(form.collaborationIndustry || '').trim() || !(form.keyCustomers || '').trim()) return false;
         }
         return true;
     }, [userType, form, isBusinessNumberValid, fromKakao]);
@@ -218,7 +223,6 @@ const SignUpPage = ({ onSignUp }) => {
         if (!(form.birthdate || '').trim()) missing.push('생년월일');
         else if (!parseBirthdateInput(form.birthdate)) missing.push('생년월일(YYYY-MM-DD 형식)');
         else if (isUnder14(parseBirthdateInput(form.birthdate))) missing.push('만 14세 이상만 가입할 수 있습니다');
-        if (!form.gender) missing.push('성별');
         if (!(form.phone || '').trim()) missing.push('연락처');
         else if (!validatePhone(form.phone)) missing.push('연락처(숫자 11자리)');
         if (!(form.email || '').trim()) missing.push('이메일');
@@ -230,15 +234,13 @@ const SignUpPage = ({ onSignUp }) => {
             else if (form.password !== form.passwordConfirm) missing.push('비밀번호 일치');
         }
         if (!form.termsAgreed) missing.push('이용약관 동의');
-        if (!form.privacyAgreed) missing.push('개인정보 수집 및 이용 동의');
-        if (!(form.roadAddress || '').trim()) missing.push('주소');
+        if (!form.privacyAgreed) missing.push('개인정보 수집·이용 동의');
         if (userType === '사업자') {
             if (!(form.company || '').trim()) missing.push('상호명');
             if (!isBusinessNumberValid) missing.push('사업자등록번호');
             if (!form.businessCategory) missing.push('업종/업태');
-            if (!(form.collaborationIndustry || '').trim()) missing.push('협업 업종');
-            if (!(form.keyCustomers || '').trim()) missing.push('핵심고객');
         }
+        if (form.marketingAgreed && !(form.marketingChannels || []).length) missing.push('광고성 정보를 받을 방법(이메일·문자·카카오톡 중 하나 이상)');
         return missing.map((label, i) => `${i + 1}. ${label}을(를) 입력해주십시오.`).join('\n');
     };
 
@@ -317,9 +319,17 @@ const SignUpPage = ({ onSignUp }) => {
                 businessRegistrationDoc: (userType === '사업자' && form.businessRegistrationDoc) || '',
                 businessRegistrationFileName: (userType === '사업자' && form.businessRegistrationFileName) || '',
                 termsAgreed: form.termsAgreed,
-                marketingAgreed: form.marketingAgreed,
                 approvalStatus: 'pending',
-                img: `https://ui-avatars.com/api/?name=${encodeURIComponent(form.name.trim())}&background=random`,
+                // 기본 프로필 그림은 화면에서 이름 첫 글자로 그린다 (외부 아바타 서비스로 이름을 보내지 않음)
+                img: '',
+            };
+            // 동의 기록: 항목별 동의 시각(서버 시각)·문서 버전 (개인정보 보호법 제22조 입증용)
+            const consentAt = serverTimestamp();
+            const marketingOn = !!form.marketingAgreed && (form.marketingChannels || []).length > 0;
+            const consentData = {
+                consents: buildSignupConsents(consentAt),
+                marketingAgreed: marketingOn,
+                marketingConsent: buildMarketingConsent({ agreed: marketingOn, channels: form.marketingChannels, at: consentAt, source: 'signup' }),
             };
 
             const blockCheck = firebaseService.checkBlockedRegistration
@@ -344,19 +354,21 @@ const SignUpPage = ({ onSignUp }) => {
                 }
                 const kakaoUserData = {
                     ...userData,
+                    ...consentData,
                     ...(kakaoProfile?.kakaoId ? { kakaoId: String(kakaoProfile.kakaoId) } : {}),
                     providers: ['kakao'],
                     lastLoginProvider: 'kakao',
                 };
                 await firebaseService.createUser({ uid: currentAuthUser.uid, ...kakaoUserData });
                 try { sessionStorage.removeItem(KAKAO_PROFILE_KEY); } catch (_) {}
-                const fullUserData = { uid: currentAuthUser.uid, ...kakaoUserData, createdAt: new Date().toISOString() };
+                const { consents: _c, marketingConsent: _m, ...kakaoLocal } = kakaoUserData;
+                const fullUserData = { uid: currentAuthUser.uid, ...kakaoLocal, createdAt: new Date().toISOString() };
                 if (onSignUp) onSignUp(fullUserData);
                 alert('회원가입이 완료되었습니다.\n관리자 승인 후 서비스를 이용하실 수 있습니다.');
                 navigate('/', { replace: true });
             } else {
-                const user = await authService.signUp(form.email, form.password, userData);
-                const fullUserData = { uid: user.uid, ...userData, createdAt: new Date().toISOString() };
+                const user = await authService.signUp(form.email, form.password, { ...userData, ...consentData });
+                const fullUserData = { uid: user.uid, ...userData, marketingAgreed: marketingOn, createdAt: new Date().toISOString() };
                 if (onSignUp) onSignUp(fullUserData);
                 alert('회원가입이 완료되었습니다.\n관리자 승인 후 서비스를 이용하실 수 있습니다.');
                 navigate('/', { replace: true });
@@ -395,14 +407,14 @@ const SignUpPage = ({ onSignUp }) => {
                             카카오에서 {[!kakaoProfile?.email ? '이메일' : null, !kakaoProfile?.phone ? '연락처' : null].filter(Boolean).join('·')} 정보가 제공되지 않았습니다. 해당 항목은 직접 입력해 주세요.
                         </p>
                     )}
-                    <p className="text-xs text-gray-400 mt-1">자진 탈퇴 시 언제든 재가입 가능하며, 강제 탈퇴 시 1년간 재가입이 제한됩니다. (이용약관 제6조의2)</p>
+                    <p className="text-xs text-gray-400 mt-1">자진 탈퇴 시 언제든 재가입 가능하며, 강제 탈퇴 시 1년간 재가입이 제한됩니다. ({REJOIN_LIMIT_ARTICLE})</p>
                 </div>
 
                 <div className="bg-white rounded-[28px] border border-black/[0.06] p-6 md:p-8">
                     <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-                        <p className="text-sm font-semibold text-amber-800 flex items-center gap-2">
+                        <p className="text-sm font-semibold text-amber-800 flex items-center gap-2 break-keep">
                             <Icons.AlertCircle className="w-5 h-5 shrink-0" />
-                            이름, 생년월일, 성별, 연락처, 이메일, 비밀번호, 주소, {userType === '사업자' ? '상호명, 사업자등록번호, 업종/업태, 협업 업종, 핵심고객' : '희망업종(선택)'} 및 약관 동의 등 필수 항목을 입력해주세요.
+                            필수 항목: 이름, 생년월일, 연락처, 이메일, {fromKakao ? '' : '비밀번호, '}{userType === '사업자' ? '상호명, 사업자등록번호, 업종/업태, ' : ''}이용약관·개인정보 동의. 나머지는 선택이라 비워 둬도 가입돼요.
                         </p>
                     </div>
 
@@ -455,11 +467,8 @@ const SignUpPage = ({ onSignUp }) => {
                                         <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD (예: 1990-01-15)" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.birthdate} onChange={e => { const v = e.target.value; const parsed = parseBirthdateInput(v); setForm(f => ({ ...f, birthdate: parsed || v })); }} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                            <RequiredFieldBadge number={4} isFilled={!!form.gender} />
-                                            성별 <span className="text-red-500">*</span>
-                                        </label>
-                                        <select required className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none bg-white" value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">성별 <span className="text-gray-400 text-xs">(선택)</span></label>
+                                        <select className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none bg-white" value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
                                             <option value="">선택</option>
                                             <option value="남성">남성</option>
                                             <option value="여성">여성</option>
@@ -468,7 +477,7 @@ const SignUpPage = ({ onSignUp }) => {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                            <RequiredFieldBadge number={5} isFilled={!!(form.phone || '').trim() && validatePhone(form.phone)} />
+                                            <RequiredFieldBadge number={4} isFilled={!!(form.phone || '').trim() && validatePhone(form.phone)} />
                                             연락처 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(숫자 11자리)</span>
                                         </label>
                                         <input type="tel" inputMode="numeric" required placeholder="01012345678" className={inputClass} value={form.phone} onChange={e => {
@@ -489,7 +498,7 @@ const SignUpPage = ({ onSignUp }) => {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                            <RequiredFieldBadge number={6} isFilled={!!(form.email || '').trim() && validateEmail(form.email)} />
+                                            <RequiredFieldBadge number={5} isFilled={!!(form.email || '').trim() && validateEmail(form.email)} />
                                             이메일 <span className="text-red-500">*</span>
                                         </label>
                                         <div className="flex flex-wrap gap-2 items-center p-2 rounded-2xl">
@@ -507,7 +516,7 @@ const SignUpPage = ({ onSignUp }) => {
                                     <>
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                            <RequiredFieldBadge number={7} isFilled={!!(form.password || '').trim() && validatePassword(form.password).valid} />
+                                            <RequiredFieldBadge number={6} isFilled={!!(form.password || '').trim() && validatePassword(form.password).valid} />
                                             비밀번호 <span className="text-red-500">*</span>
                                         </label>
                                         <div className="relative">
@@ -518,7 +527,7 @@ const SignUpPage = ({ onSignUp }) => {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                            <RequiredFieldBadge number={8} isFilled={!!(form.passwordConfirm || '').trim() && form.password === form.passwordConfirm} />
+                                            <RequiredFieldBadge number={7} isFilled={!!(form.passwordConfirm || '').trim() && form.password === form.passwordConfirm} />
                                             비밀번호 확인 <span className="text-red-500">*</span>
                                         </label>
                                         <div className="relative">
@@ -532,10 +541,7 @@ const SignUpPage = ({ onSignUp }) => {
                                 </div>
 
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                        <RequiredFieldBadge number={9} isFilled={!!(form.roadAddress || '').trim()} />
-                                        주소 <span className="text-red-500">*</span>
-                                    </label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">주소 <span className="text-gray-400 text-xs">(선택, 회원명단에는 구 단위 지역만 보여요)</span></label>
                                     <div className="space-y-2">
                                         <div className="flex gap-2">
                                             <input type="text" readOnly placeholder="도로명 주소 검색" className="flex-1 p-3 border border-black/[0.06] rounded-2xl bg-gray-50 text-sm cursor-pointer" value={form.roadAddress} onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setForm(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} />
@@ -552,14 +558,14 @@ const SignUpPage = ({ onSignUp }) => {
                                     <div className="space-y-5 pt-2">
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                                <RequiredFieldBadge number={11} isFilled={!!(form.company || '').trim()} />
+                                                <RequiredFieldBadge number={8} isFilled={!!(form.company || '').trim()} />
                                                 상호명 <span className="text-red-500">*</span>
                                             </label>
                                             <input type="text" required placeholder="회사 또는 사업체 이름" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                                <RequiredFieldBadge number={12} isFilled={isBusinessNumberValid} />
+                                                <RequiredFieldBadge number={9} isFilled={isBusinessNumberValid} />
                                                 사업자등록번호 <span className="text-red-500">*</span>
                                             </label>
                                             <input type="text" inputMode="numeric" maxLength={10} placeholder="숫자 10자리 (예: 1234567890)" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.businessRegistrationNumber} onChange={e => setForm(f => ({ ...f, businessRegistrationNumber: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
@@ -579,7 +585,7 @@ const SignUpPage = ({ onSignUp }) => {
                                         </div>
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                                <RequiredFieldBadge number={13} isFilled={!!form.businessCategory} />
+                                                <RequiredFieldBadge number={10} isFilled={!!form.businessCategory} />
                                                 업종 / 업태 <span className="text-red-500">*</span>
                                             </label>
                                             <select required className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none bg-white" value={form.businessCategory} onChange={e => setForm(f => ({ ...f, businessCategory: e.target.value }))}>
@@ -588,25 +594,19 @@ const SignUpPage = ({ onSignUp }) => {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2">사업자등록증 <span className="text-gray-400 text-xs">(선택, 이미지 또는 PDF)</span></label>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">사업자등록증 <span className="text-gray-400 text-xs">(선택, 이미지 또는 PDF · 사업자 확인 후 삭제해요)</span></label>
                                             <div className="flex flex-col gap-2">
                                                 <input type="file" accept="image/*,.pdf,application/pdf" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand file:text-white file:font-medium file:text-sm" onChange={handleBusinessDocChange} />
                                                 {form.businessRegistrationFileName && <p className="text-xs text-gray-500">등록됨: {form.businessRegistrationFileName}</p>}
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                                <RequiredFieldBadge number={14} isFilled={!!(form.collaborationIndustry || '').trim()} />
-                                                협업 업종 <span className="text-red-500">*</span>
-                                            </label>
-                                            <input type="text" required placeholder="협업 희망 업종" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.collaborationIndustry} onChange={e => setForm(f => ({ ...f, collaborationIndustry: e.target.value }))} />
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">협업 업종 <span className="text-gray-400 text-xs">(선택, 회원명단에 보여요)</span></label>
+                                            <input type="text" placeholder="협업 희망 업종" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.collaborationIndustry} onChange={e => setForm(f => ({ ...f, collaborationIndustry: e.target.value }))} />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                                <RequiredFieldBadge number={15} isFilled={!!(form.keyCustomers || '').trim()} />
-                                                핵심고객 <span className="text-red-500">*</span>
-                                            </label>
-                                            <input type="text" required placeholder="핵심 고객층" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.keyCustomers} onChange={e => setForm(f => ({ ...f, keyCustomers: e.target.value }))} />
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">핵심고객 <span className="text-gray-400 text-xs">(선택, 회원명단에 보여요)</span></label>
+                                            <input type="text" placeholder="핵심 고객층" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={form.keyCustomers} onChange={e => setForm(f => ({ ...f, keyCustomers: e.target.value }))} />
                                         </div>
                                     </div>
                                 )}
@@ -618,34 +618,53 @@ const SignUpPage = ({ onSignUp }) => {
                                     </div>
                                 )}
 
-                                {/* PIPA 준수: 약관 동의 섹션 분리 */}
+                                {/* 동의: 이용약관(필수) / 개인정보 수집·이용(필수, 4가지 고지) / 광고성 정보(선택, 받는 방법 선택) */}
                                 <div className="space-y-4">
                                     <div className="p-4 bg-brand/5 rounded-2xl border border-brand/10">
                                         <div className="flex items-start gap-3">
-                                            <input type="checkbox" id="termsAgreed" checked={form.termsAgreed} onChange={e => setForm(f => ({ ...f, termsAgreed: e.target.checked }))} className="mt-1 w-5 h-5 text-brand rounded" />
-                                            <div className="flex-1 flex items-start gap-2">
-                                                <RequiredFieldBadge number={9} isFilled={form.termsAgreed} />
+                                            <input type="checkbox" id="termsAgreed" checked={form.termsAgreed} onChange={e => setForm(f => ({ ...f, termsAgreed: e.target.checked }))} className="mt-1 w-5 h-5 text-brand rounded shrink-0" />
+                                            <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
                                                 <label htmlFor="termsAgreed" className="text-sm font-semibold text-gray-700 cursor-pointer">(필수) 이용약관 동의 <span className="text-red-500">*</span></label>
-                                                <button type="button" onClick={() => setTermsModal({ open: true, type: 'service' })} className="ml-2 text-xs text-brand font-medium hover:underline">내용보기</button>
+                                                <button type="button" onClick={() => setTermsModal({ open: true, type: 'service' })} className="text-xs text-brand font-medium hover:underline">내용보기</button>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="p-4 bg-brand/5 rounded-2xl border border-brand/10">
                                         <div className="flex items-start gap-3">
-                                            <input type="checkbox" id="privacyAgreed" checked={form.privacyAgreed} onChange={e => setForm(f => ({ ...f, privacyAgreed: e.target.checked }))} className="mt-1 w-5 h-5 text-brand rounded" />
-                                            <div className="flex-1 flex items-start gap-2">
-                                                <RequiredFieldBadge number={10} isFilled={form.privacyAgreed} />
-                                                <label htmlFor="privacyAgreed" className="text-sm font-semibold text-gray-700 cursor-pointer">(필수) 개인정보처리방침을 읽었으며 동의합니다 <span className="text-red-500">*</span></label>
-                                                <button type="button" onClick={() => setTermsModal({ open: true, type: 'privacy' })} className="ml-2 text-xs text-brand font-medium hover:underline">내용보기</button>
+                                            <input type="checkbox" id="privacyAgreed" checked={form.privacyAgreed} onChange={e => setForm(f => ({ ...f, privacyAgreed: e.target.checked }))} className="mt-1 w-5 h-5 text-brand rounded shrink-0" />
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                    <label htmlFor="privacyAgreed" className="text-sm font-semibold text-gray-700 cursor-pointer">{SIGNUP_PRIVACY_CONSENT.label} <span className="text-red-500">*</span></label>
+                                                    <button type="button" onClick={() => setTermsModal({ open: true, type: 'privacy' })} className="text-xs text-brand font-medium hover:underline">내용보기</button>
+                                                </div>
+                                                <ConsentSummary rows={SIGNUP_PRIVACY_CONSENT.summary} />
+                                                <p className="mt-2 text-xs leading-relaxed text-gray-500 break-keep">이름·생년월일·연락처·이메일 등 가입에 꼭 필요한 정보는 계약 이행을 위해 처리해요. 위탁·국외 이전은 <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-brand underline">개인정보처리방침</a>에서 볼 수 있어요.</p>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="p-4 bg-soft rounded-2xl border border-black/[0.06]">
                                         <div className="flex items-start gap-3">
-                                            <input type="checkbox" id="marketingAgreed" checked={form.marketingAgreed} onChange={e => setForm(f => ({ ...f, marketingAgreed: e.target.checked }))} className="mt-1 w-5 h-5 text-brand rounded" />
-                                            <div className="flex-1">
-                                                <label htmlFor="marketingAgreed" className="text-sm font-semibold text-gray-700 cursor-pointer">(선택) 마케팅 정보 수신 및 활용 동의</label>
-                                                <button type="button" onClick={() => setTermsModal({ open: true, type: 'marketing' })} className="ml-2 text-xs text-brand font-medium hover:underline">내용보기</button>
+                                            <input type="checkbox" id="marketingAgreed" checked={form.marketingAgreed} onChange={e => { const on = e.target.checked; setForm(f => ({ ...f, marketingAgreed: on, marketingChannels: on ? f.marketingChannels : [] })); }} className="mt-1 w-5 h-5 text-brand rounded shrink-0" />
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                    <label htmlFor="marketingAgreed" className="text-sm font-semibold text-gray-700 cursor-pointer">{MARKETING_CONSENT.label}</label>
+                                                    <button type="button" onClick={() => setTermsModal({ open: true, type: 'marketing' })} className="text-xs text-brand font-medium hover:underline">내용보기</button>
+                                                </div>
+                                                <ConsentSummary rows={MARKETING_CONSENT.summary} />
+                                                <fieldset className="mt-3" disabled={!form.marketingAgreed}>
+                                                    <legend className="text-[13px] text-gray-600 mb-1.5">받는 방법 (원하는 것만 골라 주세요)</legend>
+                                                    <div className={`flex flex-wrap gap-2 ${form.marketingAgreed ? '' : 'opacity-50'}`}>
+                                                        {MARKETING_CHANNELS.map((c) => {
+                                                            const on = (form.marketingChannels || []).includes(c.key);
+                                                            return (
+                                                                <label key={c.key} className={`inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm cursor-pointer ${on ? 'border-brand bg-white text-brand font-semibold' : 'border-black/10 bg-white text-gray-600'}`}>
+                                                                    <input type="checkbox" className="w-4 h-4 text-brand rounded" checked={on} onChange={(e) => setForm(f => ({ ...f, marketingChannels: e.target.checked ? [...new Set([...(f.marketingChannels || []), c.key])] : (f.marketingChannels || []).filter((k) => k !== c.key) }))} />
+                                                                    {c.label}
+                                                                </label>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </fieldset>
                                             </div>
                                         </div>
                                     </div>
@@ -671,8 +690,8 @@ const SignUpPage = ({ onSignUp }) => {
                     <div className="bg-white rounded-[24px] border border-black/[0.06] max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
                         <div className="p-4 border-b border-black/[0.06] font-semibold text-dark">
                             {termsModal.type === 'service' && '이용약관'}
-                            {termsModal.type === 'privacy' && '개인정보 수집 및 이용'}
-                            {termsModal.type === 'marketing' && '마케팅 정보 수신 및 활용'}
+                            {termsModal.type === 'privacy' && '개인정보 수집·이용 동의'}
+                            {termsModal.type === 'marketing' && '광고성 정보 수신 동의'}
                         </div>
                         <div className="p-4 overflow-y-auto text-sm text-gray-700 whitespace-pre-wrap">
                             {termsModal.type === 'service' && TERMS_SERVICE}

@@ -4,10 +4,10 @@ import ModalPortal from './ModalPortal';
 import { useMediaQuery, MOBILE_QUERY } from '../hooks/useMediaQuery';
 import { defaultContent } from '../constants/content';
 import { isAdminUser } from '../utils/adminAccess';
-import { BUSINESS_INFO, bizInfoCheckUrl } from '../constants/legal';
+import { BUSINESS_INFO, bizInfoCheckUrl } from '../constants/legalCore';
+import ApplicationPrivacyNotice, { buildApplicationPrivacyConsent } from './ApplicationPrivacyNotice';
 
-// 가입·문의 창은 열 때 내려받는다 (첫 화면 번들 축소)
-const SignUpModal = React.lazy(() => import('./SignUpModal'));
+// 문의 창은 열 때 내려받는다 (첫 화면 번들 축소). 가입은 /signup 페이지(SignUpPage)만 쓴다.
 const InquiryModal = React.lazy(() => import('./InquiryModal'));
 
 /** 전자상거래법 사업자 정보 표시: 상호·대표·사업자번호(정보 확인 링크)·통신판매업 신고·주소·호스팅 제공자 */
@@ -36,11 +36,7 @@ function isProfileIncomplete(user) {
         (birthdate.length >= 8 && (birthdateDigits.length >= 8 || /^\d{4}-\d{2}-\d{2}$/.test(birthdate))) ||
         (verifiedBirthday.length >= 8);
     if (!birthdateValid) return true;
-    // 성별: gender 또는 본인인증 verifiedGender('M'/'F')
-    const gender = (user.gender || '').toString().trim();
-    const verifiedGender = (user.verifiedGender || '').toString().trim();
-    const genderValid = !!gender || verifiedGender === 'M' || verifiedGender === 'F';
-    if (!genderValid) return true;
+    // 성별·주소·협업 업종·핵심 고객은 선택 항목이라 검사하지 않는다 (개인정보 최소 수집)
     // 연락처: phone/phoneNumber/verifiedPhone, 10~11자리 01x 형식 허용
     const phoneDigits = (user.phone || user.phoneNumber || user.verifiedPhone || '').toString().replace(/\D/g, '');
     const phoneValid = (phoneDigits.length === 10 || phoneDigits.length === 11) && /^0?1[0-9]{8,9}$/.test(phoneDigits);
@@ -53,8 +49,6 @@ function isProfileIncomplete(user) {
         const bno = (user.businessRegistrationNumber || '').toString().replace(/\D/g, '');
         if (bno.length !== 10) return true;
         if (!(user.businessCategory || user.industry || '').toString().trim()) return true;
-        if (!(user.collaborationIndustry || '').toString().trim()) return true;
-        if (!(user.keyCustomers || '').toString().trim()) return true;
     }
     return false;
 }
@@ -299,12 +293,11 @@ const AppLayout = (props) => {
                                     <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="mealAfter" checked={popupApplicationData.mealAfter === '미참석'} onChange={() => setPopupApplicationData({...popupApplicationData, mealAfter: '미참석'})} className="w-4 h-4 text-brand" /> 미참석</label>
                                 </div>
                             </div>
-                            <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" checked={popupApplicationData.privacyAgreed} onChange={(e) => setPopupApplicationData({...popupApplicationData, privacyAgreed: e.target.checked})} className="w-4 h-4 text-brand rounded" />
-                                    <span className="text-sm font-bold text-gray-700">개인정보 수집·이용에 동의합니다 <span className="text-red-500">*</span></span>
-                                </label>
-                            </div>
+                            <ApplicationPrivacyNotice
+                                id="popup-application-privacy"
+                                checked={popupApplicationData.privacyAgreed}
+                                onChange={(v) => setPopupApplicationData({ ...popupApplicationData, privacyAgreed: v, privacyConsent: v ? buildApplicationPrivacyConsent() : null })}
+                            />
                             <button type="button" onClick={handlePopupApplySubmit} className="w-full py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 mt-6">
                                     참여신청
                                 </button>
@@ -514,16 +507,6 @@ const AppLayout = (props) => {
 
             {/* 🌟 모달들 */}
             <React.Suspense fallback={null}>
-            {showSignUpModal === true ? (
-                <SignUpModal 
-                    onClose={() => {
-                        
-                        setShowSignUpModal(false);
-                    }} 
-                    onSignUp={handleSignUp}
-                    existingUsers={users}
-                />
-            ) : null}
             {showLoginModal === true ? (
                 <LoginModal
                     onClose={() => setShowLoginModal(false)}

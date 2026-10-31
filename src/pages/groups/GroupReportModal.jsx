@@ -78,6 +78,7 @@ export default function GroupReportModal({ group, currentUser, uid, onClose }) {
                             placeholder="언제, 어떤 일이 있었는지 적어 주시면 확인이 빨라요."
                             className="mt-2 w-full rounded-2xl border border-black/10 p-3 text-sm leading-relaxed resize-none focus:outline-none focus:border-brand" />
                         <p className="mt-1 text-right text-xs text-gray-400">{detail.length}/{MAX}</p>
+                        <p className="mt-2 text-xs text-gray-500 break-keep">접수하면 내 이름·신고 대상·내용이 운영진에게 전달되고, 처리 기록은 처리를 마친 날부터 3년간 보관돼요. 사실을 확인하는 동안 그룹이 임시로 비공개될 수 있어요.</p>
 
                         {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
 

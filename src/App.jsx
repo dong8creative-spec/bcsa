@@ -5,7 +5,7 @@ import { firebaseService } from './services/firebaseService';
 import { authService } from './services/authService';
 import { CONFIG } from './config';
 import { calculateStatus, fetchSheetData } from './utils';
-import { uploadImageToImgBB, uploadLogoOrFaviconToGitHub, fileToBase64, normalizeImagesList } from './utils/imageUtils';
+import { uploadLogoOrFaviconToGitHub, fileToBase64, normalizeImagesList } from './utils/imageUtils';
 import { translateFirebaseError } from './utils/errorUtils';
 import { isAdminUser } from './utils/adminAccess';
 import { canEditRestaurantInfo } from './utils/restaurantPermissions';
@@ -1661,7 +1661,7 @@ const App = () => {
                     businessCategory: userInfo.businessCategory || '',
                     address: userInfo.address || '',
                     phone: userInfo.phone || '',
-                img: userInfo.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(userInfo.name)}&background=random`,
+                img: userInfo.img || '', // 기본 그림은 화면에서 로컬로 그림 (외부 아바타 서비스로 이름 전송 금지)
                 approvalStatus: 'pending',
                     businessRegistrationNumber: userInfo.businessRegistrationNumber || null,
                 isIdentityVerified: false
@@ -1680,7 +1680,7 @@ const App = () => {
                 address: userInfo.address || '',
                 phone: userInfo.phone || '',
                 email: userInfo.email,
-                img: userInfo.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(userInfo.name)}&background=random`,
+                img: userInfo.img || '', // 기본 그림은 화면에서 로컬로 그림 (외부 아바타 서비스로 이름 전송 금지)
                 approvalStatus: 'pending',
                 businessRegistrationNumber: userInfo.businessRegistrationNumber || null,
                 isIdentityVerified: false
@@ -2266,6 +2266,7 @@ const App = () => {
             preQuestions: applicationData?.preQuestions || '',
             mealAfter: applicationData?.mealAfter || '',
             privacyAgreed: applicationData?.privacyAgreed === true,
+            privacyConsent: applicationData?.privacyConsent || null,
             reason: [applicationData?.participationPath, applicationData?.applyReason].filter(Boolean).join(' / ') || '',
             questions: [applicationData?.preQuestions].filter(Boolean),
             appliedAt: new Date().toISOString()
@@ -2306,6 +2307,8 @@ const App = () => {
                         preQuestions: applicationData?.preQuestions || '',
                         mealAfter: applicationData?.mealAfter || '',
                         privacyAgreed: applicationData?.privacyAgreed === true,
+                        // 신청 화면 개인정보 동의 기록 (문서 버전·동의 시각)
+                        privacyConsent: applicationData?.privacyConsent || null,
                         reason: [applicationData?.participationPath, applicationData?.applyReason].filter(Boolean).join(' / ') || '',
                         questions: [applicationData?.preQuestions].filter(Boolean),
                         appliedAt: new Date().toISOString(),
@@ -2729,7 +2732,7 @@ END:VCALENDAR`;
                     alert(data.message || '결제는 이미 취소된 상태입니다. 신청 기록을 정리했습니다.');
                 } else {
                     const refundMsg = data.refund_message ? `\n${data.refund_message}` : '';
-                    alert(`세미나 신청이 취소되었습니다. 환불은 영업일 기준 3~5일 내 처리됩니다.${refundMsg}`);
+                    alert(`세미나 신청이 취소되었습니다. 카드사 사정에 따라 실제 반영까지 영업일 기준 3~5일 걸릴 수 있습니다.${refundMsg}`);
                 }
                 return;
             }

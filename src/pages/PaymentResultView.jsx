@@ -88,14 +88,14 @@ export function PaymentResultView({ onComplete, onGoMyPage }) {
                 if (reason === 'capacity_full') {
                     clearPaymentPending(merchantUid);
                     setStatus('fail');
-                    setMessage('정원이 마감되어 결제가 자동 취소(환불)되었습니다.\n프로그램 신청은 진행되지 않았으며, 환불은 영업일 기준 3~5일 내 처리됩니다.');
+                    setMessage('정원이 마감되어 결제가 자동 취소(환불)되었습니다.\n프로그램 신청은 진행되지 않았으며, 카드사 사정에 따라 실제 반영까지 영업일 기준 3~5일 걸릴 수 있습니다.');
                     return;
                 }
 
                 if (typeof reason === 'string' && reason.startsWith('global_recruitment_')) {
                     clearPaymentPending(merchantUid);
                     setStatus('fail');
-                    setMessage('현재 전체 프로그램 모집이 중단되어 결제가 자동 취소(환불)되었습니다.\n프로그램 신청은 진행되지 않았으며, 환불은 영업일 기준 3~5일 내 처리됩니다.');
+                    setMessage('현재 전체 프로그램 모집이 중단되어 결제가 자동 취소(환불)되었습니다.\n프로그램 신청은 진행되지 않았으며, 카드사 사정에 따라 실제 반영까지 영업일 기준 3~5일 걸릴 수 있습니다.');
                     return;
                 }
 

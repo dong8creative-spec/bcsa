@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Icons } from '../../components/Icons';
 import { groupService } from '../../services/groupService';
+import { GROUP_JOIN_NOTICE, GROUP_PAYMENT_NOTICE } from '../../constants/legal';
 
 const PASS_KEY = (gid, sid) => `bcsa_group_pass_${gid}_${sid}`;
 const LAST_PAY_KEY = 'bcsa_group_last_payment';
@@ -152,6 +153,7 @@ export default function GroupCheckIn({ mode, groupId, currentUser, onRequireLogi
             <Screen icon={<Icons.Users size={28} />} title="로그인하면 출석이 완료돼요">
                 <p>{sessionLine}</p>
                 <p className="mt-1 text-xs text-gray-400">QR을 찍은 뒤 10분 안에 로그인해 주세요.</p>
+                <p className="mt-1 text-xs text-gray-400 break-keep">출석하면 그룹 멤버로 등록되고, {GROUP_JOIN_NOTICE.replace('보입니다.', '보여요.')}</p>
                 <button type="button" onClick={onRequireLogin} className="mt-5 w-full py-3.5 rounded-full bg-brand text-white font-semibold">로그인하고 출석하기</button>
             </Screen>
         );
@@ -166,7 +168,8 @@ export default function GroupCheckIn({ mode, groupId, currentUser, onRequireLogi
                 <button type="button" disabled={state.step === 'paying'} onClick={pay} className="mt-5 w-full py-3.5 rounded-full bg-brand text-white font-semibold disabled:opacity-60">
                     {state.step === 'paying' ? '결제 진행 중…' : '결제하고 출석하기'}
                 </button>
-                <p className="mt-3 text-xs text-gray-400">결제 금액은 부청사가 받아 그룹장에게 정산합니다.</p>
+                <p className="mt-3 text-xs text-gray-400 break-keep">{GROUP_PAYMENT_NOTICE} 회차 시작 전 취소는 전액 환불돼요. <a href="/refund" target="_blank" rel="noopener noreferrer" className="underline">취소/환불 규정</a></p>
+                <p className="mt-1 text-xs text-gray-400 break-keep">{GROUP_JOIN_NOTICE}</p>
             </Screen>
         );
     }

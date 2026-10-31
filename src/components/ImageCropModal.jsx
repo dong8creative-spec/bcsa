@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Cropper from 'react-easy-crop';
 import { Icons } from './Icons';
-import { uploadImageToImgBB, fileToBase64, encodeImageHalfWebpFromDataUrl, UPLOAD_WEBP_QUALITY } from '../utils/imageUtils';
+import { uploadDataUrlToStorage, fileToBase64, encodeImageHalfWebpFromDataUrl, UPLOAD_WEBP_QUALITY } from '../utils/imageUtils';
 import ModalPortal from './ModalPortal';
 
 /**
@@ -200,11 +200,11 @@ export const ImageCropModal = ({
       // 크롭 결과를 원본 대비 1/2 해상도 + WebP(약 85%)로 인코딩
       const resizedImage = await encodeImageHalfWebpFromDataUrl(croppedImageBase64, UPLOAD_WEBP_QUALITY);
 
-      // ImgBB에 업로드
-      const result = await uploadImageToImgBB(resizedImage, `cropped_${Date.now()}.webp`);
+      // Firebase Storage에 업로드 (ImgBB 사용 중단)
+      const url = await uploadDataUrlToStorage(resizedImage, 'content', `cropped_${Date.now()}.webp`);
 
-      if (result.success && result.url) {
-        onImageCropped(result.url);
+      if (url) {
+        onImageCropped(url);
         handleClose();
       } else {
         throw new Error('이미지 업로드 실패');

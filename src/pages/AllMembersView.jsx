@@ -4,6 +4,7 @@ import { Icons } from '../components/Icons';
 import { firebaseService } from '../services/firebaseService';
 import { translateFirebaseError } from '../utils/errorUtils';
 import ModalPortal from '../components/ModalPortal';
+import { getProfileImageUrl, buildInitialsAvatar } from '../utils/avatar';
 
 const PAGE_SIZE = 10;
 
@@ -502,13 +503,14 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                 <div className="flex flex-col md:flex-row gap-6 mb-6">
                                     <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-brand/20 shrink-0 mx-auto md:mx-0">
                                         <img 
-                                            src={selectedMember.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name || '회원')}&background=random`} 
+                                            src={getProfileImageUrl(selectedMember.img, selectedMember.name)} 
                                             alt={selectedMember.name || '회원 프로필'} 
                                             className="w-full h-full object-cover" 
                                             loading="lazy"
                                             decoding="async"
                                             onError={(e) => { 
-                                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name || '회원')}&background=random`; 
+                                                e.currentTarget.onerror = null;
+                                                e.currentTarget.src = buildInitialsAvatar(selectedMember.name); 
                                             }} 
                                         />
                                     </div>

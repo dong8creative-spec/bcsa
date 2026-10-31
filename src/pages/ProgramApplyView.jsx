@@ -3,6 +3,8 @@ import { Icons } from '../components/Icons';
 import { normalizeImagesList } from '../utils/imageUtils';
 import { getParticipantCountDisplay, getSeminarCapacity, getDisplayedParticipantCurrent, is정모 } from '../utils/seminarDisplay';
 import { getEffectiveCapacityLimit } from '../utils/adminHiddenApplications';
+import { REFUND_TITLE, PROGRAM_REFUND_SECTIONS, LEGAL_EFFECTIVE_DATE_TEXT } from '../constants/legal';
+import ApplicationPrivacyNotice, { buildApplicationPrivacyConsent } from '../components/ApplicationPrivacyNotice';
 
 const getStatusColor = (status) => {
     switch (status) {
@@ -85,7 +87,8 @@ const ProgramApplyView = ({
         }
         setSubmitting(true);
         try {
-            const success = await onApply(program, applicationData);
+            // 동의 기록(문서 버전·시각)을 신청서에 함께 남긴다
+            const success = await onApply(program, { ...applicationData, privacyConsent: buildApplicationPrivacyConsent() });
             if (success) {
                 setApplicationData({ participationPath: '', applyReason: '', preQuestions: '', mealAfter: '', privacyAgreed: false });
                 onBack();
@@ -269,47 +272,20 @@ const ProgramApplyView = ({
                     </div>
                 </div>
 
-                {/* ========== 취소/환불 규정 (결제 및 신청 바로 위) ========== */}
-                <div className="bg-white rounded-[24px] border border-black/[0.06] overflow-hidden mb-6 p-6 md:p-8" style={{ fontSize: 'calc(0.75rem * 0.3 * 3)' }}>
-                    <h2 className="text-gray-800 font-bold mb-4" style={{ fontSize: '1.2em' }}>[부산청년사업가 포럼] 취소 및 환불 규정</h2>
-                    <div className="text-gray-800 leading-relaxed space-y-4">
-                        <section>
-                            <h3 className="font-bold text-gray-800 mb-2">제1조 (목적)</h3>
-                            <p className="mb-0">본 규정은 '부산청년사업가 포럼'(이하 "포럼")이 제공하는 유료 세미나 및 교육 프로그램의 취소 및 환불에 관한 사항을 규정함을 목적으로 합니다.</p>
-                        </section>
-                        <section>
-                            <h3 className="font-bold text-gray-800 mb-2">제2조 (환불 기준)</h3>
-                            <p className="mb-3">회원은 세미나 시작 전까지 취소를 요청할 수 있으며, 환불액은 '소비자분쟁해결기준'에 의거하여 취소 시점에 따라 차등 적용됩니다.</p>
-                            <div className="mb-3">
-                                <h4 className="font-bold text-gray-800 mb-2">1. 환불 적용 기간 및 비율</h4>
-                                <ul className="list-none space-y-2 pl-0">
-                                    <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 개최 3일 전 (23:59까지): 결제 금액 100% 환불</span></li>
-                                    <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 개최 2일 전 (23:59까지): 결제 금액의 90% 환불 (위약금 10% 공제)</span></li>
-                                    <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 개최 1일 전 (23:59까지): 결제 금액의 80% 환불 (위약금 20% 공제)</span></li>
-                                    <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 당일 및 시작 시간 이후: 환불 불가 (노쇼 포함)</span></li>
-                                </ul>
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-gray-800 mb-2">2. 패키지 상품 (세미나+자료) 예외 조항</h4>
-                                <ul className="list-none space-y-2 pl-0">
-                                    <li className="flex gap-2"><span className="text-brand shrink-0">◦</span><span>세미나 참가권과 디지털 자료(PDF, 영상 등)가 결합된 상품의 경우, 자료를 다운로드하거나 열람한 이력이 확인되면 해당 자료 비용(정가 기준)을 공제한 후 남은 차액에 대해 위 기간별 비율을 적용합니다.</span></li>
-                                </ul>
-                            </div>
-                        </section>
-                        <section>
-                            <h3 className="font-bold text-gray-800 mb-2">제3조 (환불 신청 방법)</h3>
-                            <ol className="list-decimal list-inside space-y-2 pl-2">
-                                <li>환불 신청은 [마이페이지 &gt; 결제내역]에서 직접 취소하거나, 포럼 공식 이메일로 접수해야 합니다.</li>
-                                <li>유선(전화)을 통한 구두 취소는 정확한 시점 확인이 어려워 인정되지 않으며, 시스템상 기록이 남는 온라인 신청을 원칙으로 합니다.</li>
-                            </ol>
-                        </section>
-                        <section>
-                            <h3 className="font-bold text-gray-800 mb-2">제4조 (포럼 귀책사유 및 폐강)</h3>
-                            <ol className="list-decimal list-inside space-y-2 pl-2">
-                                <li>천재지변, 강사 부재, 최소 인원 미달 등 포럼 측의 사정으로 세미나가 취소될 경우, 시점과 관계없이 결제 금액 100%를 전액 환불합니다.</li>
-                                <li>환불 처리는 취소 확정일로부터 영업일 기준 3~5일 이내에 진행됩니다.</li>
-                            </ol>
-                        </section>
+                {/* ========== 취소/환불 규정 (결제 및 신청 바로 위) — 원문은 constants/legal.js ========== */}
+                <div className="bg-white rounded-[24px] border border-black/[0.06] overflow-hidden mb-6 p-6 md:p-8">
+                    <h2 className="text-gray-800 font-bold mb-1 text-base break-keep">{REFUND_TITLE}</h2>
+                    <p className="text-xs text-gray-500 mb-4">시행일: {LEGAL_EFFECTIVE_DATE_TEXT}</p>
+                    <div className="text-gray-800 text-[13px] leading-relaxed space-y-4">
+                        {PROGRAM_REFUND_SECTIONS.map((sec) => (
+                            <section key={sec.title}>
+                                <h3 className="font-bold text-gray-800 mb-1.5">{sec.title}</h3>
+                                <p className="whitespace-pre-line break-keep break-words">{sec.body}</p>
+                            </section>
+                        ))}
+                        <p className="text-xs text-gray-500 break-keep">
+                            소모임·스터디 회차 참가비 기준을 포함한 전체 규정은 <a href="/refund" target="_blank" rel="noopener noreferrer" className="text-brand underline">취소/환불 규정</a>에서 볼 수 있어요.
+                        </p>
                     </div>
                 </div>
 
@@ -343,12 +319,10 @@ const ProgramApplyView = ({
                                 <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="mealAfter" checked={applicationData.mealAfter === '미참석'} onChange={() => setApplicationData({ ...applicationData, mealAfter: '미참석' })} className="w-4 h-4 text-brand" /> 미참석</label>
                             </div>
                         </div>
-                        <div className="p-3 bg-brand/5 rounded-2xl border border-brand/10">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" checked={applicationData.privacyAgreed} onChange={(e) => setApplicationData({ ...applicationData, privacyAgreed: e.target.checked })} className="w-4 h-4 text-brand rounded" />
-                                <span className="text-sm font-bold text-gray-700">개인정보 수집·이용에 동의합니다 <span className="text-red-500">*</span></span>
-                            </label>
-                        </div>
+                        <ApplicationPrivacyNotice
+                            checked={applicationData.privacyAgreed}
+                            onChange={(v) => setApplicationData({ ...applicationData, privacyAgreed: v })}
+                        />
                         <button
                             type="button"
                             onClick={handleSubmit}
