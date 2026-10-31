@@ -11,19 +11,20 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import app, { db, auth } from '../firebase';
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from '../constants';
 import { useRedirectPayment } from '../utils/paymentEnv';
+import { ensurePortOne } from '../utils/portoneLoader';
 
 export const GROUP_TYPE_LABEL = { meetup: '소모임', study: '스터디' };
 export const GROUP_MODE_LABEL = { offline: '오프라인', online: '온라인', hybrid: '온·오프라인' };
 export const JOIN_POLICY_LABEL = { open: '바로 가입', approval: '그룹장 승인 후 가입' };
 export const GROUP_STATUS_LABEL = { pending: '승인 대기', approved: '운영 중', rejected: '반려', closed: '종료' };
-/** 그룹 커버 이미지 (public/assets/images/groups, Codex 생성 원본은 1584×990 → 1200×750 JPG) */
+/** 그룹 커버 이미지 (public/assets/images/groups). 화면에는 960px WebP를 쓴다(JPG 원본은 예전 링크용으로 남겨 둠) */
 export const GROUP_COVERS = [
   ['study', '스터디 테이블'], ['meetup', '저녁 모임'], ['networking', '네트워킹'],
   ['workshop', '워크숍'], ['online', '온라인'], ['busan', '부산 동네'],
 ];
 export const groupCoverUrl = (group) => {
   const key = GROUP_COVERS.some(([k]) => k === group?.cover) ? group.cover : (group?.type === 'study' ? 'study' : 'meetup');
-  return `/assets/images/groups/cover-${key}.jpg`;
+  return `/assets/images/groups/cover-${key}.webp`;
 };
 
 const call = async (name, data) => {
@@ -151,6 +152,7 @@ export const groupService = {
    * @returns {Promise<{ ok: boolean, redirected?: boolean, error?: string }>}
    */
   async requestSessionPayment({ paymentId, amount, orderName, customer }) {
+    await ensurePortOne();
     if (typeof window === 'undefined' || !window.PortOne) return { ok: false, error: '결제 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.' };
     if (!PORTONE_IMP_CODE || !PORTONE_CHANNEL_KEY) return { ok: false, error: '결제 설정이 되어 있지 않습니다. 관리자에게 문의해 주세요.' };
     const request = {

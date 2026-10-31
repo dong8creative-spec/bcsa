@@ -48,7 +48,7 @@ export const CoverPicker = ({ value, type, onChange }) => {
             {GROUP_COVERS.map(([key, label]) => (
                 <button key={key} type="button" onClick={() => onChange(key)}
                     className={`relative rounded-xl overflow-hidden border-2 transition-colors ${current === key ? 'border-brand' : 'border-transparent'}`}>
-                    <img src={`/assets/images/groups/cover-${key}.jpg`} alt="" className="w-full aspect-[16/10] object-cover" loading="lazy" />
+                    <img src={`/assets/images/groups/cover-${key}.webp`} alt="" className="w-full aspect-[16/10] object-cover" loading="lazy" />
                     <span className="absolute bottom-1 left-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-semibold text-white">{label}</span>
                 </button>
             ))}

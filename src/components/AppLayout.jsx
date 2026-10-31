@@ -1,12 +1,14 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Icons } from './Icons';
-import SignUpModal from './SignUpModal';
-import InquiryModal from './InquiryModal';
 import ModalPortal from './ModalPortal';
 import { useMediaQuery, MOBILE_QUERY } from '../hooks/useMediaQuery';
 import { defaultContent } from '../constants/content';
 import { isAdminUser } from '../utils/adminAccess';
 import { BUSINESS_INFO, bizInfoCheckUrl } from '../constants/legal';
+
+// 가입·문의 창은 열 때 내려받는다 (첫 화면 번들 축소)
+const SignUpModal = React.lazy(() => import('./SignUpModal'));
+const InquiryModal = React.lazy(() => import('./InquiryModal'));
 
 /** 전자상거래법 사업자 정보 표시: 상호·대표·사업자번호(정보 확인 링크)·통신판매업 신고·주소·호스팅 제공자 */
 const BusinessInfoLines = ({ className }) => (
@@ -511,6 +513,7 @@ const AppLayout = (props) => {
             </footer>
 
             {/* 🌟 모달들 */}
+            <React.Suspense fallback={null}>
             {showSignUpModal === true ? (
                 <SignUpModal 
                     onClose={() => {
@@ -541,6 +544,8 @@ const AppLayout = (props) => {
                     onSubmit={handleInquirySubmit}
                 />
             ) : null}
+
+            </React.Suspense>
 
             {/* 필수 회원정보 입력 안내 팝업 */}
             {showProfileIncompleteBanner && (

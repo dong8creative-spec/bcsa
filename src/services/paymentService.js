@@ -6,6 +6,7 @@
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from '../constants';
 import { useRedirectPayment } from '../utils/paymentEnv';
 import { pollPaymentUntilComplete } from '../utils/paymentPoll';
+import { ensurePortOne } from '../utils/portoneLoader';
 
 const PENDING_PREFIX = 'payment_pending_';
 const PENDING_TTL_MS = 30 * 60 * 1000;
@@ -95,6 +96,7 @@ export async function requestPayment({ seminar, applicationData, customer, apiBa
     const orderName = (seminar?.title || '프로그램 신청').substring(0, 50);
     const merchantUid = getMerchantUid();
 
+    await ensurePortOne();
     if (typeof window === 'undefined' || !window.PortOne) {
         alert('결제를 불러올 수 없습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.');
         if (onFail) onFail();

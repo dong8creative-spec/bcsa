@@ -7,6 +7,7 @@ import { openDaumPostcode } from '../utils/daumPostcode';
 import { Icons } from './Icons';
 import ModalPortal from './ModalPortal';
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from '../constants';
+import { ensurePortOne } from '../utils/portoneLoader';
 /** 프로필 이미지 data URL을 ImgBB에 업로드 후 URL 반환. 실패 시 null 또는 throw */
 async function uploadProfileImageToUrl(dataUrl, defaultAvatarUrl) {
     if (!dataUrl || !dataUrl.startsWith('data:')) return defaultAvatarUrl;
@@ -368,8 +369,9 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
 
     const handleIdentityVerification = async () => {
         try {
+            await ensurePortOne();
             if (typeof window === 'undefined' || !window.PortOne) {
-                alert('PortOne SDK가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
+                alert('본인인증 모듈을 불러오지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.');
                 return;
             }
             if (!PORTONE_IMP_CODE || PORTONE_IMP_CODE === 'imp00000000') {

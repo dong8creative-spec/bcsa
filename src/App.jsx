@@ -23,28 +23,14 @@ import { getIdToken } from 'firebase/auth';
 import { auth } from './firebase';
 import { waitForKakaoMapsCoreReady, invokeKakaoMapsLoad, KAKAO_MAP_SDK_URL } from './utils/kakaoMapReady';
 import { requestPayment as paymentServiceRequestPayment } from './services/paymentService';
-import { PaymentResultView } from './pages/PaymentResultView';
 import { defaultContent, defaultMenuOrder, defaultMenuNames } from './constants/content';
 import { buildSiteContent, getMenuStateFromSiteContent, mergeLiveContent } from './utils/siteContent';
 import PageTitle from './components/PageTitle';
-import NoticeView from './pages/NoticeView';
-import AboutView from './pages/AboutView';
-import ToolsView from './pages/ToolsView';
-import SupportProgramsView from './pages/SupportProgramsView';
 import AdSlot from './components/AdSlot';
-import NewsView from './pages/NewsView';
-import RequestsView from './pages/RequestsView';
-import QnaView from './pages/QnaView';
-import UnderConstructionView from './pages/UnderConstructionView';
-import AllSeminarsView from './pages/AllSeminarsView';
-import CalendarSection from './components/CalendarSection';
 import { Icons } from './components/Icons';
-import SignUpModal from './components/SignUpModal';
-import InquiryModal from './components/InquiryModal';
 import ProgramPopupWindowView from './pages/ProgramPopupWindowView';
 import AppLayout from './components/AppLayout';
 import ModalPortal from './components/ModalPortal';
-import { KakaoMapModal } from './pages/Admin/components/KakaoMapModal';
 import {
     DONATION_FEATURE_DISABLED,
     POPUP_AS_NEW_WINDOW,
@@ -72,11 +58,21 @@ import {
     clearProgramPopupSessionDismissed,
 } from './utils/programPopupCache';
 import { applyProgramRecruitmentState, getProgramRecruitmentState } from './utils/programRecruitmentSettings';
-import { LoginModal } from './components/LoginModal';
-import KakaoLinkPromptModal from './components/KakaoLinkPromptModal';
 import { MobileMenu } from './components/MobileMenu';
 
 // 자주 쓰지 않는 화면은 열 때 내려받는다 (첫 화면 번들 축소)
+// 첫 화면(홈)에 필요 없는 화면·창은 열 때 내려받는다 (첫 화면 번들 축소)
+const PaymentResultView = lazy(() => import('./pages/PaymentResultView').then((m) => ({ default: m.PaymentResultView })));
+const NoticeView = lazy(() => import('./pages/NoticeView'));
+const AboutView = lazy(() => import('./pages/AboutView'));
+const ToolsView = lazy(() => import('./pages/ToolsView'));
+const SupportProgramsView = lazy(() => import('./pages/SupportProgramsView'));
+const NewsView = lazy(() => import('./pages/NewsView'));
+const UnderConstructionView = lazy(() => import('./pages/UnderConstructionView'));
+const AllSeminarsView = lazy(() => import('./pages/AllSeminarsView'));
+const KakaoMapModal = lazy(() => import('./pages/Admin/components/KakaoMapModal').then((m) => ({ default: m.KakaoMapModal })));
+const LoginModal = lazy(() => import('./components/LoginModal'));
+const KakaoLinkPromptModal = lazy(() => import('./components/KakaoLinkPromptModal'));
 const MyPageView = lazy(() => import('./pages/MyPageView'));
 const GroupsPage = lazy(() => import('./pages/groups/GroupsPage'));
 const AllMembersView = lazy(() => import('./pages/AllMembersView'));
@@ -3614,7 +3610,7 @@ END:VCALENDAR`;
                         {/* 2줄: 소모임·스터디(6) + 사업자 도구함(6) */}
                         {menuEnabled['그룹'] ? (
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('groups'); }} className="home-card md:col-span-6 md:min-h-[320px] bg-white text-left hover:bg-[#eceef2] !p-0 overflow-hidden">
-                                <img src="/assets/images/groups/cover-meetup.jpg" alt="" className="w-full h-40 md:h-44 object-cover" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                <img src="/assets/images/groups/cover-meetup.webp" alt="" className="w-full h-40 md:h-44 object-cover" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                                 <div className="flex flex-col flex-1 w-full p-6 md:p-8">
                                     <p className="home-eyebrow text-gray-500">SMALL GROUPS</p>
                                     <h3 className="home-title text-dark">소모임·스터디</h3>
@@ -3687,6 +3683,8 @@ END:VCALENDAR`;
                                         src={src}
                                         alt={PARTNER_NAMES[i] || `협력기관 ${i + 1}`}
                                         className={`w-full object-contain ${i === 6 ? 'max-h-[6.4rem]' : 'max-h-16'}`}
+                                        loading="lazy"
+                                        decoding="async"
                                     />
                                 </div>
                             ))}
@@ -3926,6 +3924,7 @@ END:VCALENDAR`;
             </ModalPortal>
         )}
         {showKakaoMapModal && (
+            <React.Suspense fallback={null}>
             <KakaoMapModal
                 onClose={() => setShowKakaoMapModal(false)}
                 onSelectLocation={(place) => {
@@ -3945,8 +3944,10 @@ END:VCALENDAR`;
                 }}
                 initialLocation={null}
             />
+            </React.Suspense>
         )}
         {showKakaoLinkPrompt && currentUser && !currentUser.kakaoId && (
+            <React.Suspense fallback={null}>
             <KakaoLinkPromptModal
                 onLink={() => {
                     setShowKakaoLinkPrompt(false);
@@ -3954,6 +3955,7 @@ END:VCALENDAR`;
                 }}
                 onDismiss={() => setShowKakaoLinkPrompt(false)}
             />
+            </React.Suspense>
         )}
         {showGoogleSignupExtraInfoModal && googleSignupExtraInfoUser && (
             <ModalPortal>

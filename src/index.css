@@ -1,29 +1,11 @@
-/* PyeojinGothic 웹폰트 (전체 사이트 기본 폰트) */
-@font-face {
-  font-family: 'PyeojinGothic';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2504-1@1.0/PyeojinGothic-Light.woff2') format('woff2');
-  font-weight: 300;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'PyeojinGothic';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2504-1@1.0/PyeojinGothic-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'PyeojinGothic';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2504-1@1.0/PyeojinGothic-Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-display: swap;
-}
-
-/* SUIT Variable 웹폰트 (벤토 리디자인 기본 폰트, PyeojinGothic은 폴백으로 유지) */
+/* SUIT Variable 웹폰트 (사이트 기본 폰트)
+   - 같은 주소(bcsa.co.kr)에서 받아 외부 CDN 연결 시간을 없앴다. index.html에서 미리 받기(preload)한다.
+   - 예전 폴백 PyeojinGothic(굵기 2종, 약 1.5MB)은 SUIT가 뜨기 전 잠깐 쓰이려고 매번 내려받아져서 뺐다.
+   - 라이선스: public/assets/fonts/SUIT-LICENSE.txt (SIL OFL 1.1, 원본 그대로 사용) */
 @font-face {
   font-family: 'SUIT Variable';
-  src: url('https://cdn.jsdelivr.net/gh/sunn-us/SUIT@2/fonts/variable/woff2/SUIT-Variable.woff2') format('woff2-variations');
+  src: url('/assets/fonts/SUIT-Variable.woff2') format('woff2-variations'),
+       url('/assets/fonts/SUIT-Variable.woff2') format('woff2');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
@@ -37,7 +19,7 @@
   body {
     background-color: #ffffff;
     color: #1e293b;
-    font-family: 'SUIT Variable', 'PyeojinGothic', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    font-family: 'SUIT Variable', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
   

@@ -2,8 +2,16 @@
  * 이미지 처리 유틸리티 함수
  */
 
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../firebase';
+import app from '../firebase';
+
+/** 파일 저장소(Firebase Storage)는 업로드할 때만 내려받는다 (첫 화면 번들 축소) */
+let storageModulePromise = null;
+const loadStorage = () => {
+  if (!storageModulePromise) {
+    storageModulePromise = import('firebase/storage').then((m) => ({ ...m, storage: m.getStorage(app) }));
+  }
+  return storageModulePromise;
+};
 import { CONFIG } from '../config';
 import { getApiBaseUrl } from './api';
 
@@ -29,6 +37,7 @@ export const uploadImageToStorage = async (file, type = 'program') => {
     const safeName = (file.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
     const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `id_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     const path = `images/${safeType}/${id}_${safeName}`;
+    const { ref, uploadBytes, getDownloadURL, storage } = await loadStorage();
     const storageRef = ref(storage, path);
     await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
     const url = await getDownloadURL(storageRef);

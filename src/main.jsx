@@ -9,6 +9,9 @@ const AdminDashboard = lazy(() => import('./pages/Admin/AdminDashboard'));
 const AuthResetPasswordPage = lazy(() => import('./pages/AuthResetPasswordPage'));
 const ProgramDetailPage = lazy(() => import('./pages/ProgramDetailPage'));
 import './index.css';
+import { preloadPortOneWhenIdle } from './utils/portoneLoader';
+
+preloadPortOneWhenIdle();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

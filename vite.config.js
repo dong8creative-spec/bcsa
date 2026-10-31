@@ -32,6 +32,18 @@ export default defineConfig({
     sourcemap: false,
     assetsDir: 'assets',
     copyPublicDir: true,
+    rollupOptions: {
+      output: {
+        // 자주 바뀌지 않는 라이브러리를 따로 묶어, 사이트를 다시 배포해도 재방문자는 캐시를 그대로 쓴다
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/node_modules\/(@firebase\/firestore|@firebase\/webchannel-wrapper)/.test(id)) return 'vendor-firestore';
+          if (/node_modules\/(firebase|@firebase|idb)\//.test(id)) return 'vendor-firebase';
+          if (/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom|@remix-run)\//.test(id)) return 'vendor-react';
+          return undefined;
+        },
+      },
+    },
     // 빌드 시 SPA 라우팅을 위한 rollup 플러그인 설정은 불필요
     // Vite가 자동으로 처리함
   },

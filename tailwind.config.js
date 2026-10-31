@@ -11,8 +11,8 @@ export default {
         desktop: '1400px',
       },
       fontFamily: {
-        sans: ['SUIT Variable', 'PyeojinGothic', 'sans-serif'],
-        pop: ['SUIT Variable', 'PyeojinGothic', 'sans-serif'],
+        sans: ['SUIT Variable', '-apple-system', 'BlinkMacSystemFont', 'Apple SD Gothic Neo', 'Malgun Gothic', 'sans-serif'],
+        pop: ['SUIT Variable', '-apple-system', 'BlinkMacSystemFont', 'Apple SD Gothic Neo', 'Malgun Gothic', 'sans-serif'],
       },
       colors: {
         // 벤토 리디자인 브랜드 컬러 (기존 #0045a5와 사실상 동일한 블루 — 기존 bg-brand/text-brand 사용처는 영향 없음)

@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { initializeFirestore, memoryLocalCache, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyA9aeP_SeSCJIgzST45tPj7FFZZcEfEaec",
@@ -34,6 +33,6 @@ function createFirestoreDb() {
 export const db = createFirestoreDb();
 export const auth = getAuth(app);
 auth.languageCode = 'ko';
-export const storage = getStorage(app);
+// 파일 저장소(Storage)는 src/utils/imageUtils.js에서 업로드할 때만 불러온다
 
 export default app;
