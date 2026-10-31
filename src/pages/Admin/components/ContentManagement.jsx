@@ -7,6 +7,7 @@ import { imageMetadata } from '../../../constants/imageMetadata';
 import { Icons } from '../../../components/Icons';
 import { ImageCropModal } from '../../../components/ImageCropModal';
 import ModalPortal from '../../../components/ModalPortal';
+import { AdminPageHeader, adminAlert, adminConfirm, adminPrompt, btn } from './ui';
 
 /**
  * 콘텐츠 관리 컴포넌트
@@ -47,22 +48,22 @@ export const ContentManagement = () => {
       setContent(mergeLiveContent(buildSiteContent(), contentData));
     } catch (error) {
       console.error('콘텐츠 로드 오류:', error);
-      alert('콘텐츠를 불러오는 데 실패했습니다.');
+      adminAlert('콘텐츠를 불러오는 데 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!confirm('변경사항을 저장하시겠습니까?')) return;
+    if (!await adminConfirm('바꾼 내용을 저장할까요? 저장하면 사이트에 바로 반영돼요.', { okText: '저장' })) return;
 
     try {
       setIsSaving(true);
       await firebaseService.updateContent({ ...content, liveSync: true }, currentUser?.uid);
-      alert('저장했어요. 사이트에 바로 반영돼요.');
+      adminAlert('저장했어요. 사이트에 바로 반영돼요.');
     } catch (error) {
       console.error('콘텐츠 저장 오류:', error);
-      alert('콘텐츠 저장에 실패했습니다.');
+      adminAlert('콘텐츠 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -105,36 +106,36 @@ export const ContentManagement = () => {
       <h3 className="text-xl font-bold text-dark mb-4">메인 상단 배너</h3>
       
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">제목</label>
         <textarea
           value={content.hero_title || ''}
           onChange={(e) => handleInputChange('hero_title', e.target.value)}
-          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-3 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
           rows={3}
           placeholder="메인 제목을 입력하세요"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">설명</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">설명</label>
         <textarea
           value={content.hero_desc || ''}
           onChange={(e) => handleInputChange('hero_desc', e.target.value)}
-          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-3 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
           rows={3}
           placeholder="설명을 입력하세요"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">배경 이미지 (16:9)</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">배경 이미지 (16:9)</label>
         <div className="flex items-center gap-4">
           {content.hero_bg && (
-            <img src={content.hero_bg} alt="Hero Background" className="w-32 h-18 object-cover rounded-xl" loading="lazy" decoding="async" />
+            <img src={content.hero_bg} alt="Hero Background" className="w-32 h-18 object-cover rounded-lg" loading="lazy" decoding="async" />
           )}
           <button
             onClick={() => handleImageUpload('hero_bg', 16 / 9)}
-            className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand/90 transition-colors flex items-center gap-2"
           >
             <Icons.Camera size={18} />
             {content.hero_bg ? '변경' : '업로드'}
@@ -142,7 +143,7 @@ export const ContentManagement = () => {
           {content.hero_bg && (
             <button
               onClick={() => handleInputChange('hero_bg', '')}
-              className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors"
+              className="px-4 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-colors"
             >
               삭제
             </button>
@@ -151,14 +152,14 @@ export const ContentManagement = () => {
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">메인 이미지 (16:9)</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">메인 이미지 (16:9)</label>
         <div className="flex items-center gap-4">
           {content.hero_image && (
-            <img src={content.hero_image} alt="Hero Image" className="w-32 h-18 object-cover rounded-xl" loading="lazy" decoding="async" />
+            <img src={content.hero_image} alt="Hero Image" className="w-32 h-18 object-cover rounded-lg" loading="lazy" decoding="async" />
           )}
           <button
             onClick={() => handleImageUpload('hero_image', 16 / 9)}
-            className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand/90 transition-colors flex items-center gap-2"
           >
             <Icons.Camera size={18} />
             {content.hero_image ? '변경' : '업로드'}
@@ -166,7 +167,7 @@ export const ContentManagement = () => {
           {content.hero_image && (
             <button
               onClick={() => handleInputChange('hero_image', '')}
-              className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors"
+              className="px-4 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-colors"
             >
               삭제
             </button>
@@ -181,24 +182,24 @@ export const ContentManagement = () => {
       <h3 className="text-xl font-bold text-dark mb-4">숫자 통계</h3>
       
       {[1, 2, 3, 4].map((num) => (
-        <div key={num} className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl">
+        <div key={num} className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">통계 {num} - 값</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">통계 {num} - 값</label>
             <input
               type="text"
               value={content[`stat_${num}_val`] || ''}
               onChange={(e) => handleInputChange(`stat_${num}_val`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
               placeholder="예: 200+"
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">통계 {num} - 설명</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">통계 {num} - 설명</label>
             <input
               type="text"
               value={content[`stat_${num}_desc`] || ''}
               onChange={(e) => handleInputChange(`stat_${num}_desc`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
               placeholder="예: 활동중인 사업가"
             />
           </div>
@@ -206,14 +207,14 @@ export const ContentManagement = () => {
       ))}
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">배경 이미지 (16:9)</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">배경 이미지 (16:9)</label>
         <div className="flex items-center gap-4">
           {content.stat_bg && (
-            <img src={content.stat_bg} alt="Stats Background" className="w-32 h-18 object-cover rounded-xl" loading="lazy" decoding="async" />
+            <img src={content.stat_bg} alt="Stats Background" className="w-32 h-18 object-cover rounded-lg" loading="lazy" decoding="async" />
           )}
           <button
             onClick={() => handleImageUpload('stat_bg', 16 / 9)}
-            className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand/90 transition-colors flex items-center gap-2"
           >
             <Icons.Camera size={18} />
             {content.stat_bg ? '변경' : '업로드'}
@@ -221,7 +222,7 @@ export const ContentManagement = () => {
           {content.stat_bg && (
             <button
               onClick={() => handleInputChange('stat_bg', '')}
-              className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors"
+              className="px-4 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-colors"
             >
               삭제
             </button>
@@ -236,33 +237,33 @@ export const ContentManagement = () => {
       <h3 className="text-xl font-bold text-dark mb-4">소개 카드</h3>
       
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">섹션 제목</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">섹션 제목</label>
         <input
           type="text"
           value={content.features_title || ''}
           onChange={(e) => handleInputChange('features_title', e.target.value)}
-          className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
         />
       </div>
 
       {['network', 'expert', 'success'].map((type) => (
-        <div key={type} className="p-4 bg-gray-50 rounded-xl space-y-3">
-          <h4 className="font-bold text-gray-800 capitalize">{type}</h4>
+        <div key={type} className="p-4 bg-slate-50 rounded-lg space-y-3">
+          <h4 className="font-bold text-slate-800 capitalize">{type}</h4>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">제목</label>
             <input
               type="text"
               value={content[`features_${type}_title`] || ''}
               onChange={(e) => handleInputChange(`features_${type}_title`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">설명</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">설명</label>
             <textarea
               value={content[`features_${type}_desc`] || ''}
               onChange={(e) => handleInputChange(`features_${type}_desc`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
               rows={2}
             />
           </div>
@@ -272,22 +273,22 @@ export const ContentManagement = () => {
       <div className="grid grid-cols-2 gap-4">
         {[1, 2].map((num) => (
           <div key={num}>
-            <label className="block text-sm font-bold text-gray-700 mb-2">이미지 {num} (1:1)</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">이미지 {num} (1:1)</label>
             <div className="flex flex-col gap-2">
               {content[`features_image_${num}`] && (
-                <img src={content[`features_image_${num}`]} alt={`Feature ${num}`} className="w-full h-32 object-cover rounded-xl" loading="lazy" decoding="async" />
+                <img src={content[`features_image_${num}`]} alt={`Feature ${num}`} className="w-full h-32 object-cover rounded-lg" loading="lazy" decoding="async" />
               )}
               <div className="flex gap-2">
                 <button
                   onClick={() => handleImageUpload(`features_image_${num}`, 1)}
-                  className="flex-1 px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-sm"
+                  className="flex-1 px-4 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand/90 transition-colors text-sm"
                 >
                   {content[`features_image_${num}`] ? '변경' : '업로드'}
                 </button>
                 {content[`features_image_${num}`] && (
                   <button
                     onClick={() => handleInputChange(`features_image_${num}`, '')}
-                    className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors text-sm"
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-colors text-sm"
                   >
                     삭제
                   </button>
@@ -305,76 +306,76 @@ export const ContentManagement = () => {
       <h3 className="text-xl font-bold text-dark mb-4">활동 소개</h3>
       
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">섹션 제목</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">섹션 제목</label>
         <input
           type="text"
           value={content.activities_title || ''}
           onChange={(e) => handleInputChange('activities_title', e.target.value)}
-          className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">서브타이틀</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">서브타이틀</label>
         <input
           type="text"
           value={content.activities_subtitle || ''}
           onChange={(e) => handleInputChange('activities_subtitle', e.target.value)}
-          className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
         />
       </div>
 
       {['seminar', 'investment', 'networking'].map((type) => (
-        <div key={type} className="p-4 bg-gray-50 rounded-xl space-y-3">
-          <h4 className="font-bold text-gray-800 capitalize">{type}</h4>
+        <div key={type} className="p-4 bg-slate-50 rounded-lg space-y-3">
+          <h4 className="font-bold text-slate-800 capitalize">{type}</h4>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">제목</label>
             <input
               type="text"
               value={content[`activity_${type}_title`] || ''}
               onChange={(e) => handleInputChange(`activity_${type}_title`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">설명</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">설명</label>
             <textarea
               value={content[`activity_${type}_desc`] || ''}
               onChange={(e) => handleInputChange(`activity_${type}_desc`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
               rows={2}
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">일정</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">일정</label>
             <input
               type="text"
               value={content[`activity_${type}_schedule`] || ''}
               onChange={(e) => handleInputChange(`activity_${type}_schedule`, e.target.value)}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">이미지 (4:3)</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">이미지 (4:3)</label>
             <div className="flex items-center gap-4">
               {content[`activity_${type}_image`] && (
                 <div 
                   onClick={() => setPreviewImageUrl(content[`activity_${type}_image`])} 
                   className="cursor-pointer hover:opacity-80 transition-opacity"
                 >
-                  <img src={content[`activity_${type}_image`]} alt={type} className="w-32 h-24 object-cover rounded-xl border-2 border-blue-200" loading="lazy" decoding="async" />
+                  <img src={content[`activity_${type}_image`]} alt={type} className="w-32 h-24 object-cover rounded-lg border border-black/10" loading="lazy" decoding="async" />
                 </div>
               )}
               <button
                 onClick={() => handleImageUpload(`activity_${type}_image`, 4 / 3)}
-                className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-sm"
+                className="px-4 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand/90 transition-colors text-sm"
               >
                 {content[`activity_${type}_image`] ? '변경' : '업로드'}
               </button>
               {content[`activity_${type}_image`] && (
                 <button
                   onClick={() => handleInputChange(`activity_${type}_image`, '')}
-                  className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors text-sm"
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-colors text-sm"
                 >
                   삭제
                 </button>
@@ -391,44 +392,44 @@ export const ContentManagement = () => {
       <h3 className="text-xl font-bold text-dark mb-4">후원 안내</h3>
       
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">제목</label>
         <input
           type="text"
           value={content.donation_title || ''}
           onChange={(e) => handleInputChange('donation_title', e.target.value)}
-          className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">설명</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">설명</label>
         <textarea
           value={content.donation_desc || ''}
           onChange={(e) => handleInputChange('donation_desc', e.target.value)}
-          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-3 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
           rows={3}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">버튼 텍스트</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">버튼 텍스트</label>
         <input
           type="text"
           value={content.donation_button || ''}
           onChange={(e) => handleInputChange('donation_button', e.target.value)}
-          className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">이미지 (4:3)</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">이미지 (4:3)</label>
         <div className="flex items-center gap-4">
           {content.donation_image && (
-            <img src={content.donation_image} alt="Donation" className="w-32 h-24 object-cover rounded-xl" loading="lazy" decoding="async" />
+            <img src={content.donation_image} alt="Donation" className="w-32 h-24 object-cover rounded-lg" loading="lazy" decoding="async" />
           )}
           <button
             onClick={() => handleImageUpload('donation_image', 4 / 3)}
-            className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand/90 transition-colors flex items-center gap-2"
           >
             <Icons.Camera size={18} />
             {content.donation_image ? '변경' : '업로드'}
@@ -436,7 +437,7 @@ export const ContentManagement = () => {
           {content.donation_image && (
             <button
               onClick={() => handleInputChange('donation_image', '')}
-              className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors"
+              className="px-4 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-colors"
             >
               삭제
             </button>
@@ -458,7 +459,7 @@ export const ContentManagement = () => {
                         imageMeta.aspectRatio === 1 ? '1:1' : 'Free';
 
       return (
-        <div key={imageMeta.id} className="bg-white border-2 border-blue-200 rounded-xl p-4 hover:shadow-lg transition-shadow">
+        <div key={imageMeta.id} className="bg-white border border-black/10 rounded-lg p-4 hover:shadow-lg transition-shadow">
           <div className="flex flex-col md:flex-row gap-4">
             {/* 이미지 정보 */}
             <div className="flex-1">
@@ -468,8 +469,8 @@ export const ContentManagement = () => {
                   {ratioLabel}
                 </span>
               </div>
-              <p className="text-sm text-gray-600 mb-2">{imageMeta.description}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm text-slate-600 mb-2">{imageMeta.description}</p>
+              <p className="text-xs text-slate-500">
                 {imageMeta.page} · {imageMeta.section}
               </p>
             </div>
@@ -482,7 +483,7 @@ export const ContentManagement = () => {
                   className="cursor-pointer hover:opacity-80 transition-opacity"
                 >
                   <div 
-                    className="border-2 border-blue-200 rounded-xl overflow-hidden bg-gray-100"
+                    className="border border-black/10 rounded-lg overflow-hidden bg-slate-100"
                     style={{ 
                       width: '120px', 
                       aspectRatio: imageMeta.aspectRatio || '16/9' 
@@ -499,20 +500,20 @@ export const ContentManagement = () => {
                 </div>
               ) : (
                 <div 
-                  className="border-2 border-dashed border-blue-300 rounded-xl flex items-center justify-center bg-gray-50"
+                  className="border-2 border-dashed border-blue-300 rounded-lg flex items-center justify-center bg-slate-50"
                   style={{ 
                     width: '120px', 
                     aspectRatio: imageMeta.aspectRatio || '16/9' 
                   }}
                 >
-                  <Icons.Image size={24} className="text-gray-400" />
+                  <Icons.Image size={24} className="text-slate-400" />
                 </div>
               )}
               
               <div className="flex flex-col gap-2">
                 <button
                   onClick={() => handleImageUpload(imageMeta.field, imageMeta.aspectRatio)}
-                  className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
+                  className="px-4 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand/90 transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
                 >
                   <Icons.Camera size={16} />
                   {imageUrl ? '변경' : '업로드'}
@@ -520,7 +521,7 @@ export const ContentManagement = () => {
                 {imageUrl && (
                   <button
                     onClick={() => handleInputChange(imageMeta.field, '')}
-                    className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
+                    className="px-4 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
                   >
                     <Icons.Trash2 size={16} />
                     삭제
@@ -537,7 +538,7 @@ export const ContentManagement = () => {
       <div className="space-y-6">
         <div className="mb-6">
           <h3 className="text-xl font-bold text-dark mb-2">사이트 이미지</h3>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-slate-600">
             메인페이지와 소개페이지에 사용되는 모든 이미지를 한 곳에서 관리할 수 있습니다.
             각 이미지는 표시되는 비율에 맞춰 크롭됩니다.
           </p>
@@ -572,29 +573,29 @@ export const ContentManagement = () => {
     <div className="space-y-6">
       <h3 className="text-xl font-bold text-dark mb-4">단체 소개</h3>
       
-      <div className="p-4 bg-blue-50 rounded-xl">
-        <h4 className="font-bold text-gray-800 mb-3">상단 배너</h4>
+      <div className="p-4 bg-blue-50 rounded-lg">
+        <h4 className="font-bold text-slate-800 mb-3">상단 배너</h4>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">제목</label>
             <input
               type="text"
               value={content.about_hero_title || ''}
               onChange={(e) => handleInputChange('about_hero_title', e.target.value)}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">설명</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">설명</label>
             <textarea
               value={content.about_hero_desc || ''}
               onChange={(e) => handleInputChange('about_hero_desc', e.target.value)}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
               rows={2}
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">히어로 이미지 (16:9)</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">히어로 이미지 (16:9)</label>
             <div className="flex items-center gap-4">
               {content.about_hero_image && (
                 <div 
@@ -604,7 +605,7 @@ export const ContentManagement = () => {
                   <img 
                     src={content.about_hero_image} 
                     alt="About Hero" 
-                    className="w-48 h-27 object-cover rounded-xl border-2 border-blue-200" 
+                    className="w-48 h-27 object-cover rounded-lg border border-black/10" 
                     loading="lazy"
                     decoding="async"
                   />
@@ -612,7 +613,7 @@ export const ContentManagement = () => {
               )}
               <button
                 onClick={() => handleImageUpload('about_hero_image', 16 / 9)}
-                className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-brand text-white rounded-lg font-bold hover:bg-brand/90 transition-colors flex items-center gap-2"
               >
                 <Icons.Camera size={18} />
                 {content.about_hero_image ? '변경' : '업로드'}
@@ -620,7 +621,7 @@ export const ContentManagement = () => {
               {content.about_hero_image && (
                 <button
                   onClick={() => handleInputChange('about_hero_image', '')}
-                  className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors"
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-colors"
                 >
                   삭제
                 </button>
@@ -630,25 +631,25 @@ export const ContentManagement = () => {
         </div>
       </div>
 
-      <div className="p-4 bg-green-50 rounded-xl">
-        <h4 className="font-bold text-gray-800 mb-3">Mission 섹션</h4>
+      <div className="p-4 bg-green-50 rounded-lg">
+        <h4 className="font-bold text-slate-800 mb-3">Mission 섹션</h4>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">제목</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">제목</label>
             <input
               type="text"
               value={content.about_mission_title || ''}
               onChange={(e) => handleInputChange('about_mission_title', e.target.value)}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
             />
           </div>
           {[1, 2, 3].map((num) => (
             <div key={num}>
-              <label className="block text-sm font-bold text-gray-700 mb-2">설명 {num}</label>
+              <label className="block text-sm font-bold text-slate-700 mb-2">설명 {num}</label>
               <textarea
                 value={content[`about_mission_desc_${num}`] || ''}
                 onChange={(e) => handleInputChange(`about_mission_desc_${num}`, e.target.value)}
-                className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
                 rows={2}
               />
             </div>
@@ -656,45 +657,45 @@ export const ContentManagement = () => {
         </div>
       </div>
 
-      <div className="p-4 bg-yellow-50 rounded-xl">
-        <h4 className="font-bold text-gray-800 mb-3">Why Us 섹션</h4>
+      <div className="p-4 bg-yellow-50 rounded-lg">
+        <h4 className="font-bold text-slate-800 mb-3">Why Us 섹션</h4>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">섹션 제목</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">섹션 제목</label>
             <input
               type="text"
               value={content.about_why_title || ''}
               onChange={(e) => handleInputChange('about_why_title', e.target.value)}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">서브타이틀</label>
+            <label className="block text-sm font-bold text-slate-700 mb-2">서브타이틀</label>
             <input
               type="text"
               value={content.about_why_subtitle || ''}
               onChange={(e) => handleInputChange('about_why_subtitle', e.target.value)}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
             />
           </div>
           {[1, 2, 3, 4].map((num) => (
             <div key={num} className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">항목 {num} - 제목</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">항목 {num} - 제목</label>
                 <input
                   type="text"
                   value={content[`about_why_${num}_title`] || ''}
                   onChange={(e) => handleInputChange(`about_why_${num}_title`, e.target.value)}
-                  className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">항목 {num} - 설명</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">항목 {num} - 설명</label>
                 <input
                   type="text"
                   value={content[`about_why_${num}_desc`] || ''}
                   onChange={(e) => handleInputChange(`about_why_${num}_desc`, e.target.value)}
-                  className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-2 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
                 />
               </div>
             </div>
@@ -707,71 +708,71 @@ export const ContentManagement = () => {
   const renderFooterSection = () => (
     <div className="space-y-6">
       <h3 className="text-xl font-bold text-dark mb-4">푸터 텍스트</h3>
-      <p className="text-sm text-gray-600 mb-6">사이트 하단 푸터에 표시되는 문구를 수정할 수 있습니다.</p>
+      <p className="text-sm text-slate-600 mb-6">사이트 하단 푸터에 표시되는 문구를 수정할 수 있습니다.</p>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">푸터 제목 (1줄)</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">푸터 제목 (1줄)</label>
         <input
           type="text"
           value={content.footer_title || ''}
           onChange={(e) => handleInputChange('footer_title', e.target.value)}
-          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-3 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
           placeholder="예: 부산청년사업가들"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">주소 · 대표 · 사업자등록번호 (2줄, | 로 구분)</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">주소 · 대표 · 사업자등록번호 (2줄, | 로 구분)</label>
         <input
           type="text"
           value={content.footer_line2 || ''}
           onChange={(e) => handleInputChange('footer_line2', e.target.value)}
-          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-3 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
           placeholder="예: 부산광역시 연제구 ... | 대표 정은지 | 사업자등록번호 792-72-00616"
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">대표번호</label>
+          <label className="block text-sm font-bold text-slate-700 mb-2">대표번호</label>
           <input
             type="text"
             value={content.footer_phone || ''}
             onChange={(e) => handleInputChange('footer_phone', e.target.value)}
-            className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+            className="w-full px-4 py-3 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
             placeholder="예: 070-8064-7238"
           />
         </div>
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">운영시간 문구</label>
+          <label className="block text-sm font-bold text-slate-700 mb-2">운영시간 문구</label>
           <input
             type="text"
             value={content.footer_hours || ''}
             onChange={(e) => handleInputChange('footer_hours', e.target.value)}
-            className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+            className="w-full px-4 py-3 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
             placeholder="예: 평일 09:00–18:00 / 주말·공휴일 휴무"
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">대표 메일</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">대표 메일</label>
         <input
           type="email"
           value={content.footer_email || ''}
           onChange={(e) => handleInputChange('footer_email', e.target.value)}
-          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-3 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
           placeholder="예: pujar@naver.com"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">저작권 문구</label>
+        <label className="block text-sm font-bold text-slate-700 mb-2">저작권 문구</label>
         <input
           type="text"
           value={content.footer_copyright || ''}
           onChange={(e) => handleInputChange('footer_copyright', e.target.value)}
-          className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="w-full px-4 py-3 border border-black/10 rounded-lg focus:border-brand focus:outline-none"
           placeholder="예: © 2025 부산청년사업가들 (BCSA). All rights reserved."
         />
       </div>
@@ -806,7 +807,7 @@ export const ContentManagement = () => {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand mb-4"></div>
-          <p className="text-gray-600">콘텐츠 로딩 중...</p>
+          <p className="text-slate-600">콘텐츠 로딩 중...</p>
         </div>
       </div>
     );
@@ -814,29 +815,15 @@ export const ContentManagement = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-dark flex items-center gap-3">
-          <Icons.FileText size={28} />
-          콘텐츠 관리
-        </h2>
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {isSaving ? (
-            <>
-              <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              저장 중...
-            </>
-          ) : (
-            <>
-              <Icons.CheckCircle size={20} />
-              저장
-            </>
-          )}
-        </button>
-      </div>
+      <AdminPageHeader
+        title="페이지 문구"
+        description="홈·소개 화면의 문구와 이미지를 바꿔요. 저장하면 사이트에 바로 반영돼요."
+        actions={
+          <button type="button" onClick={handleSave} disabled={isSaving} className={btn('primary')}>
+            {isSaving ? '저장 중…' : <><Icons.CheckCircle size={16} />저장</>}
+          </button>
+        }
+      />
 
       {/* 섹션 탭 */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
@@ -846,10 +833,10 @@ export const ContentManagement = () => {
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
-              className={`px-4 py-2 rounded-xl font-bold transition-colors whitespace-nowrap flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-lg font-bold transition-colors whitespace-nowrap flex items-center gap-2 ${
                 activeSection === section.id
                   ? 'bg-brand text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               <Icon size={18} />
@@ -860,7 +847,7 @@ export const ContentManagement = () => {
       </div>
 
       {/* 섹션 콘텐츠 */}
-      <div className="bg-white rounded-2xl border-2 border-blue-200 p-6">
+      <div className="bg-white rounded-2xl border border-black/10 p-6">
         {renderSection()}
       </div>
 
@@ -890,12 +877,12 @@ export const ContentManagement = () => {
               onClick={() => setPreviewImageUrl(null)}
               className="absolute top-4 right-4 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center z-10 transition-colors"
             >
-              <Icons.X size={24} className="text-gray-700" />
+              <Icons.X size={24} className="text-slate-700" />
             </button>
             <img 
               src={previewImageUrl} 
               alt="미리보기" 
-              className="w-full h-full object-contain rounded-xl"
+              className="w-full h-full object-contain rounded-lg"
               loading="lazy"
               decoding="async"
               onClick={(e) => e.stopPropagation()}
