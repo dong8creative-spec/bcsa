@@ -11,14 +11,24 @@ export function isChunkLoadError(error) {
   return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|ChunkLoadError/i.test(msg);
 }
 
-/** 60초 안에 이미 한 번 새로고침했으면 다시 하지 않는다 (무한 새로고침 방지) */
+/**
+ * 새 버전 화면(index.html)을 받아 새로고침한다. 60초 안에 이미 한 번 했으면 다시 하지 않는다 (무한 새로고침 방지).
+ * 브라우저는 index.html을 잠시(GitHub Pages 10분, Firebase 1시간) 저장해 두기 때문에 그냥 새로고침하면
+ * 옛 index.html을 다시 써서 같은 오류가 반복된다. 그래서 저장본을 건너뛰고 새로 받아 둔 뒤 새로고침한다.
+ */
 export function reloadOnceForNewVersion() {
   try {
     const last = Number(sessionStorage.getItem(RELOAD_KEY) || 0);
     if (Date.now() - last < 60000) return false;
     sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
   } catch (_) { /* 저장소를 못 쓰면 그냥 새로고침 */ }
-  window.location.reload();
+  const reload = () => window.location.reload();
+  try {
+    fetch(window.location.href, { cache: 'reload', credentials: 'same-origin' }).then(reload, reload);
+    setTimeout(reload, 3000);
+  } catch (_) {
+    reload();
+  }
   return true;
 }
 
