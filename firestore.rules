@@ -32,7 +32,36 @@ service cloud.firestore {
     function noPrivilegedFieldChange() {
       return !request.resource.data.diff(resource.data).affectedKeys()
         .hasAny(['role', 'memberGrade', 'approvalStatus', 'uid', 'kakaoId', 'providers', 'kakaoLinkedAt',
-                 'businessVerified', 'businessDocVerifiedAt', 'rejectReason', 'rejectedAt', 'approvedAt']);
+                 'businessVerified', 'businessDocVerifiedAt', 'rejectReason', 'rejectedAt', 'approvedAt',
+                 // 가입 동의 기록은 가입 때 한 번만 남기고 본인도 고칠 수 없다 (동의 입증 자료)
+                 'consents',
+                 // 서버 확인 표시(만 14세 미만·재가입 제한·사업자등록증 사본 파기 기록)
+                 'ageRestricted', 'ageRestrictedAt', 'blockedRegistration',
+                 'businessDocSeenAt', 'businessDocFingerprint', 'businessDocDeletedAt']);
+    }
+
+    // 가입 동의 기록: 이용약관·개인정보 수집·이용·만 14세 이상 확인 동의 시각이 모두 서버 시각이어야 한다
+    // (기기 시각을 넣어 동의 시점을 꾸밀 수 없게). 광고성 정보 수신 동의를 함께 남기면 그 시각도 서버 시각.
+    function signupConsentsValid() {
+      let d = request.resource.data;
+      let c = d.get('consents', null);
+      return c is map
+        && c.get('terms', {}).get('agreedAt', null) == request.time
+        && c.get('privacy', {}).get('agreedAt', null) == request.time
+        && c.get('ageOver14', {}).get('agreedAt', null) == request.time
+        && (!('marketingConsent' in d) || (d.marketingConsent is map && d.marketingConsent.get('updatedAt', null) == request.time));
+    }
+
+    // 광고성 정보 수신 설정 변경(마이페이지): 바뀐 시각(updatedAt)은 서버 시각, 변경 이력(marketingConsentLog)은 추가만
+    function marketingConsentUpdateValid() {
+      let keys = request.resource.data.diff(resource.data).affectedKeys();
+      let d = request.resource.data;
+      return (!keys.hasAny(['marketingConsent'])
+          || (d.marketingConsent is map && d.marketingConsent.get('updatedAt', null) == request.time))
+        && (!keys.hasAny(['marketingConsentLog'])
+          || (d.marketingConsentLog is list
+            && d.marketingConsentLog.size() >= resource.data.get('marketingConsentLog', []).size()
+            && d.marketingConsentLog.hasAll(resource.data.get('marketingConsentLog', []))));
     }
 
     // 회원가입 시 스스로 admin/마스터·운영진 권한이나 승인 상태, 남의 uid·카카오 연결을 심어 넣지 못하게 차단
@@ -40,7 +69,8 @@ service cloud.firestore {
       let d = request.resource.data;
       return !(d.get('role', '') in ['admin', 'master'])
         && !(d.get('memberGrade', '') in ['마스터', '운영진'])
-        && d.get('approvalStatus', 'pending') == 'pending'
+        // 승인 상태 값을 빼고 가입하면 '값 없음 = 예전 승인 회원'으로 읽히므로 반드시 'pending'을 넣게 한다
+        && ('approvalStatus' in d) && d.approvalStatus == 'pending'
         && d.get('uid', request.auth.uid) == request.auth.uid
         && (!('kakaoId' in d) || request.auth.uid == 'kakao_' + string(d.kakaoId));
     }
@@ -93,8 +123,9 @@ service cloud.firestore {
     // 회원명단 등 공개 화면은 서버가 공개 필드만 복사해 두는 publicProfiles를 읽는다.
     match /users/{userId} {
       allow read: if isAdmin() || isOwnUserDoc(userId);
-      allow create: if isSelf(userId) && noPrivilegedFieldsOnCreate() && birthdateOkOnCreate();
-      allow update: if isAdmin() || (isSelf(userId) && noPrivilegedFieldChange() && birthdateOkOnUpdate());
+      allow create: if isSelf(userId) && noPrivilegedFieldsOnCreate() && birthdateOkOnCreate() && signupConsentsValid();
+      allow update: if isAdmin() || (isSelf(userId) && noPrivilegedFieldChange() && birthdateOkOnUpdate()
+        && marketingConsentUpdateValid());
       allow delete: if isAdmin() || isSelf(userId);
     }
 

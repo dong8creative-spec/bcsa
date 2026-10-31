@@ -10,8 +10,15 @@ import {
   initializeTestEnvironment, assertFails, assertSucceeds,
 } from '@firebase/rules-unit-testing';
 import {
-  doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, where, addDoc, serverTimestamp,
+  doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, where, addDoc, serverTimestamp, arrayUnion, Timestamp,
 } from 'firebase/firestore';
+
+/** 가입 화면(buildSignupConsents)과 같은 모양의 동의 기록 — 시각은 서버 시각 */
+const consents = () => ({
+  terms: { agreedAt: serverTimestamp(), version: '2026-11-01' },
+  privacy: { agreedAt: serverTimestamp(), version: '2026-11-01' },
+  ageOver14: { agreedAt: serverTimestamp(), method: 'birthdate' },
+});
 
 const PROJECT_ID = 'demo-bcsa';
 let env;
@@ -103,7 +110,7 @@ describe('publicStats·memberAccess·legalRetention', () => {
 });
 
 describe('users 생성·수정: 만 14세 확인', () => {
-  const create = (uid, birthdate) => setDoc(doc(ctx.as(uid), `users/${uid}`), { uid, name: '신규', approvalStatus: 'pending', ...(birthdate === undefined ? {} : { birthdate }) });
+  const create = (uid, birthdate) => setDoc(doc(ctx.as(uid), `users/${uid}`), { uid, name: '신규', approvalStatus: 'pending', consents: consents(), ...(birthdate === undefined ? {} : { birthdate }) });
   test('만 30세 가입 허용', async () => { await assertSucceeds(create('n1', kstYmdYearsAgo(30))); });
   test('오늘이 만 14세 생일(KST)이면 허용', async () => { await assertSucceeds(create('n2', kstYmdYearsAgo(14))); });
   test('만 14세 생일 하루 전이면 거부', async () => { await assertFails(create('n3', kstYmdYearsAgo(14, 1))); });
@@ -127,7 +134,57 @@ describe('users 생성·수정: 만 14세 확인', () => {
     await assertFails(updateDoc(doc(ctx.as('u_pend'), 'users/u_pend'), { approvalStatus: 'approved' }));
   });
   test('생성: 스스로 승인 상태로 가입 거부(기존 규칙 유지)', async () => {
-    await assertFails(setDoc(doc(ctx.as('n10'), 'users/n10'), { uid: 'n10', approvalStatus: 'approved', birthdate: '1990-01-01' }));
+    await assertFails(setDoc(doc(ctx.as('n10'), 'users/n10'), { uid: 'n10', approvalStatus: 'approved', birthdate: '1990-01-01', consents: consents() }));
+  });
+});
+
+describe('users 생성: 승인 상태 값 필수', () => {
+  test('approvalStatus 없이 가입하면 거부(옛 승인 회원처럼 읽히는 우회 차단)', async () => {
+    await assertFails(setDoc(doc(ctx.as('s1'), 'users/s1'), { uid: 's1', name: '우회', birthdate: '1990-01-01', consents: consents() }));
+  });
+  test('approvalStatus 빈 문자열로 가입 거부', async () => {
+    await assertFails(setDoc(doc(ctx.as('s2'), 'users/s2'), { uid: 's2', approvalStatus: '', birthdate: '1990-01-01', consents: consents() }));
+  });
+});
+
+describe('users 동의 기록: 서버 시각·본인 수정 금지', () => {
+  const base = (uid) => ({ uid, name: '신규', approvalStatus: 'pending', birthdate: '1990-01-01' });
+  test('동의 기록 없이 가입 거부', async () => {
+    await assertFails(setDoc(doc(ctx.as('c1'), 'users/c1'), base('c1')));
+  });
+  test('동의 시각을 기기 시각으로 넣으면 거부', async () => {
+    const t = Timestamp.fromDate(new Date('2026-01-01T00:00:00Z'));
+    await assertFails(setDoc(doc(ctx.as('c2'), 'users/c2'), { ...base('c2'), consents: { terms: { agreedAt: t }, privacy: { agreedAt: t }, ageOver14: { agreedAt: t } } }));
+  });
+  test('만 14세 확인 동의가 빠지면 거부', async () => {
+    const c = consents(); delete c.ageOver14;
+    await assertFails(setDoc(doc(ctx.as('c3'), 'users/c3'), { ...base('c3'), consents: c }));
+  });
+  test('광고성 정보 동의를 함께 남길 때 서버 시각이면 허용, 기기 시각이면 거부', async () => {
+    await assertSucceeds(setDoc(doc(ctx.as('c4'), 'users/c4'), { ...base('c4'), consents: consents(), marketingConsent: { agreed: true, channels: ['email'], agreedAt: serverTimestamp(), updatedAt: serverTimestamp() } }));
+    await assertFails(setDoc(doc(ctx.as('c5'), 'users/c5'), { ...base('c5'), consents: consents(), marketingConsent: { agreed: true, updatedAt: Timestamp.fromDate(new Date()) } }));
+  });
+  test('가입 뒤 본인이 동의 기록(consents) 수정 거부', async () => {
+    await seed((db) => updateDoc(doc(db, 'users/u_ok'), { consents: { terms: { agreedAt: Timestamp.now() } } }));
+    await assertFails(updateDoc(doc(ctx.as('u_ok'), 'users/u_ok'), { 'consents.terms.version': 'x' }));
+  });
+  test('마이페이지 수신 설정 변경: 서버 시각 + 이력 추가 허용', async () => {
+    await assertSucceeds(updateDoc(doc(ctx.as('u_ok'), 'users/u_ok'), {
+      marketingAgreed: false,
+      marketingConsent: { agreed: false, channels: [], agreedAt: null, withdrawnAt: serverTimestamp(), updatedAt: serverTimestamp(), version: '2026-11-01', source: 'mypage', resultNotice: '철회', resultNoticeShownAt: serverTimestamp() },
+      marketingConsentLog: arrayUnion({ agreed: false, channels: [], at: new Date().toISOString(), source: 'mypage', version: '2026-11-01' }),
+    }));
+  });
+  test('수신 설정 변경 시각을 기기 시각으로 넣으면 거부', async () => {
+    await assertFails(updateDoc(doc(ctx.as('u_ok'), 'users/u_ok'), { marketingConsent: { agreed: true, channels: ['sms'], updatedAt: Timestamp.fromDate(new Date('2025-01-01')) } }));
+  });
+  test('수신 동의 이력 지우기 거부', async () => {
+    await seed((db) => updateDoc(doc(db, 'users/u_ok'), { marketingConsentLog: [{ agreed: true, at: '2026-10-01' }] }));
+    await assertFails(updateDoc(doc(ctx.as('u_ok'), 'users/u_ok'), { marketingConsentLog: [] }));
+  });
+  test('서버 확인 표시(ageRestricted·blockedRegistration) 본인 수정 거부', async () => {
+    await assertFails(updateDoc(doc(ctx.as('u_ok'), 'users/u_ok'), { ageRestricted: false }));
+    await assertFails(updateDoc(doc(ctx.as('u_ok'), 'users/u_ok'), { blockedRegistration: false }));
   });
 });
 
