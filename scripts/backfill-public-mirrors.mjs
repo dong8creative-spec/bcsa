@@ -14,12 +14,18 @@
  * 실행:
  *   node scripts/backfill-public-mirrors.mjs --dry-run   # 건수만 확인
  *   node scripts/backfill-public-mirrors.mjs
+ *   node scripts/backfill-public-mirrors.mjs --count-missing-uid   # 읽기 전용: uid 필드 없는 회원 문서 수만 출력
+ *
+ * uid 필드가 없는 예전 가입자는 functions/legacyUid.js 조건(같은 이메일의 비밀번호·같은 카카오 계정 +
+ * 이메일 인증 또는 회원 문서 생성 1일 안에 만든 계정)을 만족할 때만 로그인 uid로 인정하고, 그때 회원 문서에 uid를 한 번 적는다.
  */
 
 import admin from 'firebase-admin';
 import { buildPublicProfile, buildPublicApplication, isApprovedMember } from '../functions/publicMirrors.js';
+import { resolveLegacyAuthUid } from '../functions/legacyUid.js';
 
 const DRY_RUN = process.argv.includes('--dry-run');
+const COUNT_MISSING_UID = process.argv.includes('--count-missing-uid');
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
@@ -53,17 +59,24 @@ async function backfillProfiles() {
   // 승인 회원 표시(로그인 uid 기준) — firestore.rules isApprovedMemberCaller가 사용
   const accessSnap = await db.collection('memberAccess').get();
   const accessKeep = new Set();
-  usersSnap.docs.forEach((d) => {
+  let resolvedByEmail = 0; let unresolved = 0;
+  for (const d of usersSnap.docs) {
     const u = d.data() || {};
-    if (!isApprovedMember(u)) return;
-    const authUid = String(u.uid || d.id);
-    accessKeep.add(authUid);
-    ops.push((b) => b.set(db.collection('memberAccess').doc(authUid), { docId: d.id, approved: true }));
-  });
+    if (!isApprovedMember(u)) continue;
+    let r = null;
+    try { r = await resolveLegacyAuthUid(admin.auth(), d.id, u); } catch (e) { console.warn(`  - uid 확인 실패 ${d.id.slice(0, 6)}…: ${e.code || e.message}`); }
+    if (!r) { unresolved += 1; continue; }
+    accessKeep.add(r.uid);
+    ops.push((b) => b.set(db.collection('memberAccess').doc(r.uid), { docId: d.id, approved: true }));
+    if (r.how === 'email' && !u.uid) {
+      resolvedByEmail += 1;
+      ops.push((b) => b.update(d.ref, { uid: r.uid, uidResolvedAt: now, uidResolvedBy: 'email' }));
+    }
+  }
   const accessStale = accessSnap.docs.filter((d) => !accessKeep.has(d.id));
   accessStale.forEach((d) => ops.push((b) => b.delete(d.ref)));
   ops.push((b) => b.set(db.collection('publicStats').doc('members'), { approvedMemberCount: keep.size, updatedAt: now }));
-  console.log(`[memberAccess] ${accessKeep.size}건, 정리 ${accessStale.length}건 · [publicStats/members] ${keep.size}명`);
+  console.log(`[memberAccess] ${accessKeep.size}건, 정리 ${accessStale.length}건 · 이메일로 uid 확인 ${resolvedByEmail}건 · 확인 못 함 ${unresolved}건 · [publicStats/members] ${keep.size}명`);
   if (!DRY_RUN) await commitInChunks(ops);
 }
 
@@ -90,6 +103,24 @@ async function backfillApplications() {
   stale.forEach((d) => ops.push((b) => b.delete(d.ref)));
   console.log(`[publicApplications] 신청 ${appsSnap.size}건 복사, 정리 ${stale.length}건`);
   if (!DRY_RUN) await commitInChunks(ops);
+}
+
+/** 읽기 전용: uid 필드가 없는 회원 문서 수 (쓰기 없음) */
+async function countMissingUid() {
+  const snap = await db.collection('users').get();
+  const missing = snap.docs.filter((d) => !(d.data() || {}).uid);
+  const approved = missing.filter((d) => isApprovedMember(d.data() || {}));
+  console.log(`[uid 없는 회원 문서] 전체 ${snap.size}건 중 ${missing.length}건 (그중 승인 회원 ${approved.length}건) — 읽기만 했습니다`);
+}
+
+if (COUNT_MISSING_UID) {
+  try {
+    await countMissingUid();
+    process.exit(0);
+  } catch (e) {
+    console.error('실패:', e.message);
+    process.exit(1);
+  }
 }
 
 try {

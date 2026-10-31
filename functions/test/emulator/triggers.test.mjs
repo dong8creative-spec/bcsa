@@ -41,6 +41,14 @@ describe('syncPublicProfile: 공개 프로필·승인 표시·홈 회원 수', (
     assert.equal((await db.doc('memberAccess/authB').get()).exists, false);
   });
 
+  test('같은 uid의 다른(승인 대기) 문서가 바뀌어도 승인 문서의 표시는 지우지 않는다', async () => {
+    await db.doc('users/docX').set({ uid: 'dupUid', approvalStatus: 'approved' });
+    await fns.syncPublicProfile.run(userEvent('docX', null, { uid: 'dupUid', approvalStatus: 'approved' }));
+    await db.doc('users/docY').set({ uid: 'dupUid', approvalStatus: 'pending' });
+    await fns.syncPublicProfile.run(userEvent('docY', null, { uid: 'dupUid', approvalStatus: 'pending' }));
+    assert.deepEqual((await db.doc('memberAccess/dupUid').get()).data(), { docId: 'docX', approved: true });
+  });
+
   test('늦게 도착한 "승인" 이벤트도 지금 문서(승인 대기) 기준으로 처리', async () => {
     const u = { uid: 'authC', name: '최회원', approvalStatus: 'pending', ageRestricted: true };
     await db.doc('users/authC').set(u);

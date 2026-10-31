@@ -21,6 +21,7 @@ import { createBlocklist, normalizeEmail, normalizePhone } from './blocklist.js'
 import { createUserPurge } from './userPurge.js';
 import { createUserGuards } from './userGuards.js';
 import { createScheduledPurge } from './scheduledPurge.js';
+import { resolveLegacyAuthUid } from './legacyUid.js';
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
@@ -90,6 +91,14 @@ function isSeminarEligibleForGlobalRecruitmentControl(seminarData) {
   if (seminarData.recruitmentClosedByAdmin) return false;
   const naturalStatus = calculateSeminarStatusFromDate(seminarData.date || '');
   return naturalStatus === '모집중' || naturalStatus === '마감임박';
+}
+
+/** 새 신청·결제를 받지 않는 세미나: 회사 사정 취소(cancelledByOrganizer) 또는 관리자 모집 중단 */
+function seminarClosedForNewApplications(seminarData) {
+  if (!seminarData) return null;
+  if (isSeminarCancelledByCompany(seminarData)) return 'seminar_cancelled';
+  if (seminarData.recruitmentClosedByAdmin === true) return 'recruitment_closed';
+  return null;
 }
 
 async function getGlobalProgramRecruitmentState() {
@@ -596,6 +605,12 @@ async function createApplicationFromPending(paymentId, pending, { payment = null
     } catch (e) {
       console.warn('[Payment Complete] seminar fetch for recruitment check failed (non-fatal)', e.message);
     }
+  }
+
+  // 결제 뒤 확인 시점에 회사 사정 취소된 프로그램이면 신청을 만들지 않는다 → 호출부가 전액 자동 환불
+  if (seminarData && isSeminarCancelledByCompany(seminarData)) {
+    console.warn('[Payment Complete] seminar cancelled by organizer', seminarId);
+    return { created: false, reason: 'seminar_cancelled', seminarId };
   }
 
   const globalRecruitment = await getGlobalProgramRecruitmentState();
@@ -1237,6 +1252,17 @@ app.post('/api/payment/pending', requireUserAuth, async (req, res) => {
       res.status(400).json({ saved: false, error: 'merchant_uid, seminar_id, user_id required' });
       return;
     }
+    // 회사 사정 취소·모집 중단된 프로그램은 결제를 시작하지 못하게 한다 (화면도 마감으로 표시)
+    const semSnap = await db.collection('seminars').doc(String(seminarId)).get();
+    const closedReason = semSnap.exists ? seminarClosedForNewApplications(semSnap.data()) : null;
+    if (closedReason) {
+      res.status(409).json({
+        saved: false,
+        error: closedReason,
+        message: closedReason === 'seminar_cancelled' ? '취소된 프로그램이라 신청할 수 없어요.' : '모집이 마감된 프로그램이에요.',
+      });
+      return;
+    }
     const data = {
       merchant_uid: merchantUid,
       seminar_id: seminarId,
@@ -1396,6 +1422,17 @@ app.post('/api/payment/complete', async (req, res) => {
       res.status(200).json({ ok: false, error: 'capacity_full' });
       return;
     }
+    if (createResult.reason === 'seminar_cancelled') {
+      // 회사 사정 취소된 프로그램에 결제가 들어온 경우: 신청을 만들지 않고 전액 자동 환불
+      console.warn('[Payment Complete] seminar cancelled — auto refund', merchantUid);
+      const paid = Number(verifyResult.payment?.amount?.total) || expectedAmount || 0;
+      await db.collection('paymentWebhookEvents').doc(merchantUid).set({ seminar_cancelled: true }, { merge: true });
+      await cancelPortOnePayment({ paymentId: merchantUid, reason: '프로그램 취소로 인한 자동 환불', paidAmount: paid, refundAmount: paid });
+      await retainAutoRefundedPending(merchantUid, pendingData, paid || null, '프로그램 취소로 인한 자동 환불');
+      await db.collection('pendingPayments').doc(merchantUid).delete();
+      res.status(200).json({ ok: false, error: 'seminar_cancelled' });
+      return;
+    }
     if (isGlobalRecruitmentClosedReason(createResult.reason)) {
       console.warn('[Payment Complete] global recruitment closed — auto refund', merchantUid, createResult.reason);
       await db.collection('paymentWebhookEvents').doc(merchantUid).set({ global_recruitment_closed: true, reason: createResult.reason }, { merge: true });
@@ -1497,6 +1534,16 @@ app.post('/api/payment/webhook', async (req, res) => {
           res.status(200).json({ received: true, merchant_uid: merchantUid, warning: 'capacity_full_refunded' });
           return;
         }
+        if (createResult.reason === 'seminar_cancelled') {
+          console.warn('[Payment Webhook] seminar cancelled — auto refund', merchantUid);
+          const paid = Number(vResult?.payment?.amount?.total) || expectedAmount || 0;
+          await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set({ seminar_cancelled: true }, { merge: true });
+          await cancelPortOnePayment({ paymentId: merchantUid, reason: '프로그램 취소로 인한 자동 환불', paidAmount: paid, refundAmount: paid });
+          await retainAutoRefundedPending(merchantUid, pendingData, paid || null, '프로그램 취소로 인한 자동 환불');
+          await db.collection('pendingPayments').doc(String(merchantUid)).delete();
+          res.status(200).json({ received: true, merchant_uid: merchantUid, warning: 'seminar_cancelled_refunded' });
+          return;
+        }
         if (isGlobalRecruitmentClosedReason(createResult.reason)) {
           console.warn('[Payment Webhook] global recruitment closed — auto refund', merchantUid, createResult.reason);
           await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set(
@@ -1556,7 +1603,19 @@ app.post('/api/admin/application-from-pending', requireAdminAuth, async (req, re
     }
 
     const payInfo = await getPortOneV2PaymentInfo(String(merchantUid));
-    const { created, applicationId } = await createApplicationFromPending(merchantUid, pendingSnap.data(), { payment: payInfo?.payment });
+    const result = await createApplicationFromPending(merchantUid, pendingSnap.data(), { payment: payInfo?.payment });
+    if (!result.created && !result.applicationId && result.reason) {
+      // 프로그램 취소·정원 마감·모집 중단: 신청을 만들지 않고 결제 대기도 그대로 둔다(운영진이 포트원에서 환불)
+      res.status(409).json({
+        success: false,
+        error: result.reason,
+        message: result.reason === 'seminar_cancelled'
+          ? '취소된 프로그램이라 신청으로 옮기지 않았어요. 포트원에서 환불해 주세요.'
+          : '정원 마감·모집 중단으로 신청으로 옮기지 않았어요. 포트원에서 환불해 주세요.',
+      });
+      return;
+    }
+    const { created, applicationId } = result;
     await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set({ completed: true }, { merge: true });
     await db.collection('pendingPayments').doc(String(merchantUid)).delete();
     res.status(200).json({ success: true, applicationId, created });
@@ -2249,22 +2308,34 @@ export const syncPublicProfile = onDocumentWritten(
     const fresh = await db.collection('users').doc(userId).get();
     const after = fresh.exists ? fresh.data() || {} : null;
     const approved = !!after && isApprovedMember(after);
-    const beforeAuthUid = before ? String(before.uid || userId) : '';
-    const afterAuthUid = after ? String(after.uid || userId) : '';
     const wasApproved = !!before && isApprovedMember(before);
 
+    // 이 회원 문서에 걸린 승인 표시(memberAccess) — 문서 id로 찾아 다른 문서의 표시는 건드리지 않는다
+    const accessForDoc = (await db.collection(MEMBER_ACCESS).where('docId', '==', userId).get()).docs;
     if (approved) {
       await ref.set({
         ...buildPublicProfile(userId, after),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      await db.collection(MEMBER_ACCESS).doc(afterAuthUid).set({ docId: userId, approved: true });
+      // 로그인 uid: uid 필드 → 문서 id가 Auth uid인지 → (uid 필드 없는 예전 가입자) 안전한 조건의 이메일 일치 계정
+      let resolved = null;
+      try {
+        resolved = await resolveLegacyAuthUid(admin.auth(), userId, after);
+      } catch (e) {
+        console.warn('[syncPublicProfile] auth uid 확인 실패', userId, e.code || e.message);
+      }
+      const authUid = resolved?.uid || '';
+      if (authUid) {
+        await db.collection(MEMBER_ACCESS).doc(authUid).set({ docId: userId, approved: true });
+        if (resolved.how === 'email' && !after.uid) {
+          // 한 번만 기록 (다음 트리거에서는 uid 필드가 있어 여기로 오지 않음 = 반복 없음)
+          await db.collection('users').doc(userId).update({ uid: authUid, uidResolvedAt: admin.firestore.FieldValue.serverTimestamp(), uidResolvedBy: 'email' });
+        }
+      }
+      await Promise.all(accessForDoc.filter((d) => d.id !== authUid).map((d) => d.ref.delete()));
     } else {
       await ref.delete().catch(() => {});
-      if (afterAuthUid) await db.collection(MEMBER_ACCESS).doc(afterAuthUid).delete().catch(() => {});
-    }
-    if (beforeAuthUid && beforeAuthUid !== afterAuthUid) {
-      await db.collection(MEMBER_ACCESS).doc(beforeAuthUid).delete().catch(() => {});
+      await Promise.all(accessForDoc.map((d) => d.ref.delete()));
     }
     if (approved !== wasApproved) {
       await refreshPublicMemberCount().catch((e) => console.warn('[syncPublicProfile] member count', e.message));
