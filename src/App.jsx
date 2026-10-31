@@ -2266,6 +2266,7 @@ const App = () => {
             preQuestions: applicationData?.preQuestions || '',
             mealAfter: applicationData?.mealAfter || '',
             privacyAgreed: applicationData?.privacyAgreed === true,
+            privacyConsent: applicationData?.privacyConsent || null,
             reason: [applicationData?.participationPath, applicationData?.applyReason].filter(Boolean).join(' / ') || '',
             questions: [applicationData?.preQuestions].filter(Boolean),
             appliedAt: new Date().toISOString()
@@ -2306,6 +2307,8 @@ const App = () => {
                         preQuestions: applicationData?.preQuestions || '',
                         mealAfter: applicationData?.mealAfter || '',
                         privacyAgreed: applicationData?.privacyAgreed === true,
+                        // 신청 화면 개인정보 동의 기록 (문서 버전·동의 시각)
+                        privacyConsent: applicationData?.privacyConsent || null,
                         reason: [applicationData?.participationPath, applicationData?.applyReason].filter(Boolean).join(' / ') || '',
                         questions: [applicationData?.preQuestions].filter(Boolean),
                         appliedAt: new Date().toISOString(),
