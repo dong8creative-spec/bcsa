@@ -1,5 +1,7 @@
 import { onRequest, onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { defineSecret } from 'firebase-functions/params';
 import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
@@ -13,6 +15,12 @@ import { buildPasswordResetEmailHtml, buildPasswordResetEmailText } from './emai
 import { isSmtpConfigured, sendMail } from './email/mailer.js';
 import { buildPublicProfile, buildPublicApplication, isApprovedMember } from './publicMirrors.js';
 import { createGroupHandlers } from './groups.js';
+import { calculateSeminarRefund, isSeminarCancelledByCompany, pickPaidAt } from './refund.js';
+import { buildSeminarPaymentRecord, buildPendingPaymentRecord, writeRetention } from './retention.js';
+import { createBlocklist, normalizeEmail, normalizePhone } from './blocklist.js';
+import { createUserPurge } from './userPurge.js';
+import { createUserGuards } from './userGuards.js';
+import { createScheduledPurge } from './scheduledPurge.js';
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
@@ -344,32 +352,7 @@ async function getExpectedAmountForPending(pendingData) {
   return fee > 0 ? fee : null;
 }
 
-/**
- * 환불 금액 계산 (소비자분쟁해결기준)
- * 세미나 3일+ 전: 100%, 2일 전: 90%, 1일 전: 80%, 당일 이후: 0%
- */
-const calculateRefundAmount = (paidAmount, seminarDateStr) => {
-  const amount = Number(paidAmount) || 0;
-  if (!seminarDateStr) return amount;
-  let s = String(seminarDateStr).trim().split(/[\sT]/)[0];
-  s = s.replace(/-/g, '.').replace(/\//g, '.');
-  const parts = s.split('.');
-  if (parts.length < 3) return amount;
-  const semDate = new Date(
-    parseInt(parts[0], 10),
-    parseInt(parts[1], 10) - 1,
-    parseInt(parts[2], 10)
-  );
-  if (isNaN(semDate.getTime())) return amount;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  semDate.setHours(0, 0, 0, 0);
-  const diffDays = Math.floor((semDate - today) / (1000 * 60 * 60 * 24));
-  if (diffDays >= 3) return amount;
-  if (diffDays === 2) return Math.floor(amount * 0.9);
-  if (diffDays === 1) return Math.floor(amount * 0.8);
-  return 0;
-};
+// 세미나 환불 금액 계산은 functions/refund.js (결제 7일 이내·시작 전 전액 → 그 뒤 날짜별 차등)
 
 const seminarMatchesId = (data, sid) => {
   const s1 = data.seminarId != null ? String(data.seminarId) : '';
@@ -548,11 +531,41 @@ const isPaidWebhook = (body) => {
   return false;
 };
 
+/** 포트원 시각(ISO 문자열 등) → Firestore Timestamp, 해석할 수 없으면 서버 시각 */
+const toFirestoreTimestampOrNow = (v) => {
+  const d = v ? new Date(v) : null;
+  return d && !Number.isNaN(d.getTime())
+    ? admin.firestore.Timestamp.fromDate(d)
+    : admin.firestore.FieldValue.serverTimestamp();
+};
+
+/** 법정 보존 기록 쓰기 — 실패해도 결제 처리 흐름은 막지 않되 오류는 남긴다 */
+const retainSafely = async (record, label) => {
+  try {
+    await writeRetention({ db, admin, record });
+  } catch (e) {
+    console.error(`[legalRetention] ${label} 보존 기록 실패`, e.message);
+  }
+};
+
+/** 결제 대기만 있고 신청이 만들어지지 않은 채 전액 자동 환불한 결제의 보존 기록 */
+const retainAutoRefundedPending = async (merchantUid, pendingData, amount, note) => {
+  const sid = pendingData?.seminar_id || pendingData?.seminarId;
+  let seminar = null;
+  try {
+    if (sid) {
+      const snap = await db.collection('seminars').doc(String(sid)).get();
+      seminar = snap.exists ? snap.data() : null;
+    }
+  } catch (_) {}
+  await retainSafely(buildPendingPaymentRecord({ merchantUid, pending: pendingData, seminar, reason: 'auto_refund', amount, note }), 'auto_refund');
+};
+
 /**
  * pendingPayments 문서로 applications 신청을 생성. 중복(merchant_uid 동일) 방지 포함.
  * @returns {Promise<{ created: boolean, applicationId: string|null }>}
  */
-async function createApplicationFromPending(paymentId, pending) {
+async function createApplicationFromPending(paymentId, pending, { payment = null } = {}) {
   const id = String(paymentId);
   // 중복 방지: 이미 같은 merchant_uid로 신청이 있으면 생성하지 않음
   const existing = await db.collection('applications').where('merchant_uid', '==', id).limit(1).get();
@@ -626,6 +639,10 @@ async function createApplicationFromPending(paymentId, pending) {
     questions,
     appliedAt: new Date().toISOString(),
     merchant_uid: id,
+    // 환불(결제 7일 이내 전액) 계산·법정 보존 기록용 결제 시각·금액. 포트원 응답이 없으면 지금 시각
+    // (신청은 결제 확인 뒤 만들어지므로 실제 결제 시각보다 늦거나 같다 → 7일 계산이 소비자에게 불리하지 않음)
+    paidAt: toFirestoreTimestampOrNow(payment?.paidAt),
+    paidAmount: Number(payment?.amount?.total ?? payment?.totalAmount) || (Number(seminarData?.applicationFee) || null),
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   });
@@ -729,7 +746,7 @@ async function matchExistingUserForKakao({ kakaoId, email, phone, isEmailVerifie
   if (email && isEmailVerified === true) {
     const emailSnap = await db.collection('users').where('email', '==', email).limit(2).get();
     if (emailSnap.size > 1) {
-      console.warn('[Kakao Auth] email match conflict (multiple users):', email);
+      console.warn('[Kakao Auth] email match conflict (multiple users):', maskEmail(email));
       return { conflict: true, reason: 'email_multiple' };
     }
     if (emailSnap.size === 1) matched = emailSnap.docs[0];
@@ -743,7 +760,7 @@ async function matchExistingUserForKakao({ kakaoId, email, phone, isEmailVerifie
     byPhone.docs.forEach((d) => candidateMap.set(d.id, d));
     byPhoneNumber.docs.forEach((d) => candidateMap.set(d.id, d));
     if (candidateMap.size > 1) {
-      console.warn('[Kakao Auth] phone match conflict (multiple users):', phone);
+      console.warn('[Kakao Auth] phone match conflict (multiple users):', maskPhoneForLog(phone));
       return { conflict: true, reason: 'phone_multiple' };
     }
     if (candidateMap.size === 1) matched = Array.from(candidateMap.values())[0];
@@ -1342,6 +1359,7 @@ app.post('/api/payment/complete', async (req, res) => {
       console.error('[Payment Complete] amount_mismatch — auto refund', merchantUid, verifyResult.expected, verifyResult.actual);
       const actualPaid = Number(verifyResult.actual) || 0;
       await cancelPortOnePayment({ paymentId: merchantUid, reason: '결제 금액 불일치로 인한 자동 환불', paidAmount: actualPaid, refundAmount: actualPaid });
+      await retainAutoRefundedPending(merchantUid, pendingData, actualPaid, '결제 금액 불일치로 인한 자동 환불');
       await db.collection('paymentWebhookEvents').doc(merchantUid).set({ amount_mismatch: true }, { merge: true });
       await db.collection('pendingPayments').doc(merchantUid).delete();
       res.status(400).json({ ok: false, error: 'amount_mismatch' });
@@ -1353,12 +1371,13 @@ app.post('/api/payment/complete', async (req, res) => {
       return;
     }
 
-    const createResult = await createApplicationFromPending(merchantUid, pendingData);
+    const createResult = await createApplicationFromPending(merchantUid, pendingData, { payment: verifyResult.payment });
     if (createResult.reason === 'capacity_full') {
       console.warn('[Payment Complete] capacity_full — auto refund', merchantUid);
       await db.collection('paymentWebhookEvents').doc(merchantUid).set({ capacity_full: true }, { merge: true });
       const fee = pendingData?.application_data?.applicationFee ?? 0;
       await cancelPortOnePayment({ paymentId: merchantUid, reason: '정원 마감으로 인한 자동 환불', paidAmount: Number(fee) || 0, refundAmount: Number(fee) || 0 });
+      await retainAutoRefundedPending(merchantUid, pendingData, Number(verifyResult.payment?.amount?.total) || expectedAmount || Number(fee) || null, '정원 마감으로 인한 자동 환불');
       await db.collection('pendingPayments').doc(merchantUid).delete();
       res.status(200).json({ ok: false, error: 'capacity_full' });
       return;
@@ -1368,6 +1387,7 @@ app.post('/api/payment/complete', async (req, res) => {
       await db.collection('paymentWebhookEvents').doc(merchantUid).set({ global_recruitment_closed: true, reason: createResult.reason }, { merge: true });
       const fee = pendingData?.application_data?.applicationFee ?? 0;
       await cancelPortOnePayment({ paymentId: merchantUid, reason: '모집 중단으로 인한 자동 환불', paidAmount: Number(fee) || 0, refundAmount: Number(fee) || 0 });
+      await retainAutoRefundedPending(merchantUid, pendingData, Number(verifyResult.payment?.amount?.total) || expectedAmount || Number(fee) || null, '모집 중단으로 인한 자동 환불');
       await db.collection('pendingPayments').doc(merchantUid).delete();
       res.status(200).json({ ok: false, error: createResult.reason });
       return;
@@ -1432,8 +1452,9 @@ app.post('/api/payment/webhook', async (req, res) => {
         const pendingData = pendingSnap.data();
         const expectedAmount = await getExpectedAmountForPending(pendingData);
 
+        let vResult;
         try {
-          const vResult = await verifyPortOnePayment({ paymentId: merchantUid, expectedAmount });
+          vResult = await verifyPortOnePayment({ paymentId: merchantUid, expectedAmount });
           if (!vResult.verified) {
             console.error('[Payment Webhook] 실결제 검증 실패', vResult.reason, merchantUid);
             await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set(
@@ -1450,13 +1471,14 @@ app.post('/api/payment/webhook', async (req, res) => {
           return;
         }
 
-        const createResult = await createApplicationFromPending(merchantUid, pendingData);
+        const createResult = await createApplicationFromPending(merchantUid, pendingData, { payment: vResult?.payment });
         if (createResult.reason === 'capacity_full') {
           console.warn('[Payment Webhook] capacity_full — auto refund', merchantUid);
           await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set(
             { capacity_full: true }, { merge: true }
           );
           await cancelPortOnePayment({ paymentId: merchantUid, reason: '정원 마감으로 인한 자동 환불', paidAmount: expectedAmount || 0, refundAmount: expectedAmount || 0 });
+          await retainAutoRefundedPending(merchantUid, pendingData, expectedAmount || null, '정원 마감으로 인한 자동 환불');
           await db.collection('pendingPayments').doc(String(merchantUid)).delete();
           res.status(200).json({ received: true, merchant_uid: merchantUid, warning: 'capacity_full_refunded' });
           return;
@@ -1467,6 +1489,7 @@ app.post('/api/payment/webhook', async (req, res) => {
             { global_recruitment_closed: true, reason: createResult.reason }, { merge: true }
           );
           await cancelPortOnePayment({ paymentId: merchantUid, reason: '모집 중단으로 인한 자동 환불', paidAmount: expectedAmount || 0, refundAmount: expectedAmount || 0 });
+          await retainAutoRefundedPending(merchantUid, pendingData, expectedAmount || null, '모집 중단으로 인한 자동 환불');
           await db.collection('pendingPayments').doc(String(merchantUid)).delete();
           res.status(200).json({ received: true, merchant_uid: merchantUid, warning: 'global_recruitment_closed_refunded' });
           return;
@@ -1518,7 +1541,8 @@ app.post('/api/admin/application-from-pending', requireAdminAuth, async (req, re
       return;
     }
 
-    const { created, applicationId } = await createApplicationFromPending(merchantUid, pendingSnap.data());
+    const payInfo = await getPortOneV2PaymentInfo(String(merchantUid));
+    const { created, applicationId } = await createApplicationFromPending(merchantUid, pendingSnap.data(), { payment: payInfo?.payment });
     await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set({ completed: true }, { merge: true });
     await db.collection('pendingPayments').doc(String(merchantUid)).delete();
     res.status(200).json({ success: true, applicationId, created });
@@ -1586,6 +1610,12 @@ app.post('/api/admin/delete-application', requireAdminAuth, async (req, res) => 
     };
     const seminarId =
       pickSeminarId(row.seminarId) || pickSeminarId(row.programId) || pickSeminarId(row.seminar_id);
+    // 결제 건은 지우기 전에 법정 보존 기록(5년)으로 필요한 항목만 따로 남긴다
+    if (applicationHasPayment(row)) {
+      await retainSeminarApplication({ id: applicationId, ...row }, seminarId, {
+        reason: 'admin_delete', cancel: { note: `관리자 삭제 (${req.adminUid || ''})` },
+      });
+    }
     await appRef.delete();
     if (seminarId) {
       const seminarRef = db.collection('seminars').doc(seminarId);
@@ -1599,9 +1629,32 @@ app.post('/api/admin/delete-application', requireAdminAuth, async (req, res) => 
   }
 });
 
-/** 신청 문서 삭제 + 세미나 currentParticipants 감소 (matched: { id, ...data }[]) */
-const removeMatchedApplicationsAndDecrementSeminar = async (matched, seminarIdStr) => {
+const applicationHasPayment = (a) => !!(a?.merchant_uid || a?.merchantUid || a?.imp_uid || a?.impUid);
+
+/** 세미나 결제 신청 1건 → legalRetention (세미나 제목·날짜·포트원 결제 정보 함께) */
+const retainSeminarApplication = async (row, seminarIdStr, { reason, cancel = {}, payInfo = undefined } = {}) => {
+  let seminar = null;
+  try {
+    const snap = await db.collection('seminars').doc(String(seminarIdStr)).get();
+    seminar = snap.exists ? snap.data() : null;
+  } catch (_) {}
+  const paymentId = row.merchant_uid || row.merchantUid || '';
+  const info = payInfo !== undefined ? payInfo : (paymentId ? await getPortOneV2PaymentInfo(paymentId) : null);
+  await retainSafely(
+    buildSeminarPaymentRecord({ application: row, seminar, seminarId: seminarIdStr, payInfo: info, reason, cancel }),
+    reason,
+  );
+};
+
+/**
+ * 신청 문서 삭제 + 세미나 currentParticipants 감소 (matched: { id, ...data }[])
+ * 결제가 있던 신청은 지우기 전에 legalRetention에 보존 기록을 남긴다(retain 옵션).
+ */
+const removeMatchedApplicationsAndDecrementSeminar = async (matched, seminarIdStr, retain = null) => {
   for (const row of matched) {
+    if (retain && applicationHasPayment(row)) {
+      await retainSeminarApplication(row, seminarIdStr, retain);
+    }
     await db.collection('applications').doc(row.id).delete();
   }
   const seminarRef = db.collection('seminars').doc(String(seminarIdStr));
@@ -1727,7 +1780,10 @@ app.post('/api/payment/cancel', requireUserAuth, async (req, res) => {
     }
 
     if (withdrawOnly) {
-      await removeMatchedApplicationsAndDecrementSeminar(matched, sid);
+      await removeMatchedApplicationsAndDecrementSeminar(matched, sid, {
+        reason: 'withdraw_only',
+        cancel: { status: 'withdraw_only', cancelledAt: new Date(), note: '회원이 결제 취소를 직접 마친 뒤 신청 기록만 삭제 요청' },
+      });
       console.log('[Payment Cancel] withdraw_only (DB only)', matched.map((m) => m.id).join(','));
       res.status(200).json({ cancelled: true, withdraw_only: true });
       return;
@@ -1763,7 +1819,10 @@ app.post('/api/payment/cancel', requireUserAuth, async (req, res) => {
     const payInfo = await getPortOneV2PaymentInfo(merchantUid);
     if (payInfo?.paidTotal > 0) paidAmount = payInfo.paidTotal;
     if (payInfo?.status && /CANCEL/i.test(String(payInfo.status))) {
-      await removeMatchedApplicationsAndDecrementSeminar(matched, sid);
+      await removeMatchedApplicationsAndDecrementSeminar(matched, sid, {
+        reason: 'cancel', payInfo,
+        cancel: { status: 'cancelled', note: '포트원에서 이미 취소된 결제의 신청 기록 정리' },
+      });
       res.status(200).json({
         cancelled: true,
         merchant_uid: merchantUid,
@@ -1773,14 +1832,24 @@ app.post('/api/payment/cancel', requireUserAuth, async (req, res) => {
       return;
     }
 
-    const refundAmount = calculateRefundAmount(paidAmount, seminarDate);
+    // 결제 7일 이내·시작 전이면 전액, 그 뒤에는 날짜별 차등 (functions/refund.js)
+    const refund = calculateSeminarRefund({
+      paidAmount,
+      seminarDate,
+      paidAt: pickPaidAt({ portonePaidAt: payInfo?.payment?.paidAt, application: applicationWithMerchant }),
+      companyCaused: isSeminarCancelledByCompany(seminarSnap.exists ? seminarSnap.data() : null),
+    });
+    const refundAmount = refund.amount;
     const cancellableAmount = payInfo?.cancellable ?? paidAmount;
 
     if (refundAmount <= 0 && paidAmount > 0) {
       res.status(400).json({
         cancelled: false,
         error: 'refund_not_allowed',
-        message: '세미나 당일 이후에는 환불이 불가능합니다.',
+        refund_rule: refund.rule,
+        message: refund.rule === 'started'
+          ? '세미나가 시작된 뒤에는 환불이 불가능합니다.'
+          : '세미나 당일에는 환불이 불가능합니다.',
       });
       return;
     }
@@ -1804,16 +1873,26 @@ app.post('/api/payment/cancel', requireUserAuth, async (req, res) => {
       return;
     }
 
-    await removeMatchedApplicationsAndDecrementSeminar(matched, sid);
     const actualRefund = cancelResult.refundAmount ?? refundAmount;
-    const refundMessage = paidAmount > 0 && actualRefund < paidAmount
-      ? `환불 금액: ${actualRefund.toLocaleString()}원 (위약금 ${paidAmount - actualRefund}원 공제)`
-      : undefined;
+    await removeMatchedApplicationsAndDecrementSeminar(matched, sid, {
+      reason: 'cancel', payInfo,
+      cancel: {
+        status: actualRefund < paidAmount ? 'partial_refunded' : 'refunded',
+        cancelledAt: new Date(), refundedAt: new Date(), refundAmount: actualRefund, refundRule: refund.rule,
+      },
+    });
+    let refundMessage;
+    if (paidAmount > 0 && actualRefund < paidAmount) {
+      refundMessage = `환불 금액: ${actualRefund.toLocaleString()}원 (위약금 ${(paidAmount - actualRefund).toLocaleString()}원 공제)`;
+    } else if (refund.rule === 'cooling_off') {
+      refundMessage = '결제한 날부터 7일 이내 취소로 전액 환불됩니다.';
+    }
     console.log('[Payment Cancel] applications cancelled', matched.map((m) => m.id).join(','), merchantUid, refundMessage || '');
     res.status(200).json({
       cancelled: true,
       merchant_uid: merchantUid,
       refund_amount: actualRefund,
+      refund_rule: refund.rule,
       refund_message: refundMessage,
       already_cancelled: cancelResult.alreadyCancelled === true,
     });
@@ -1885,12 +1964,17 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 관리자 강제 탈퇴 시 1년간 재가입 차단 목록에 등록 (document id = uid)
-const BLOCKED_REGISTRATIONS = 'blockedRegistrations';
-const BLOCK_YEARS = 1;
-
-const normalizeEmail = (v) => (typeof v === 'string' ? v.trim().toLowerCase() : '') || '';
-const normalizePhone = (v) => (typeof v === 'string' ? v.replace(/\D/g, '').slice(0, 11) : '') || '';
+// 강제 탈퇴 재가입 제한 목록: 이메일·전화번호·uid 원문 대신 HMAC 확인값만 저장 (functions/blocklist.js)
+// 비밀값은 Secret Manager의 BLOCKLIST_HASH_SECRET — 배포 전에 `firebase functions:secrets:set BLOCKLIST_HASH_SECRET`
+const BLOCKLIST_HASH_SECRET = defineSecret('BLOCKLIST_HASH_SECRET');
+const readBlocklistSecret = () => {
+  try {
+    return BLOCKLIST_HASH_SECRET.value() || '';
+  } catch (_) {
+    return process.env.BLOCKLIST_HASH_SECRET || '';
+  }
+};
+const blocklist = createBlocklist({ db, admin });
 
 const PASSWORD_RESET_PAGE_URL = process.env.PASSWORD_RESET_PAGE_URL || 'https://bcsa.co.kr/auth/reset-password';
 const SITE_CONTINUE_URL = process.env.SITE_CONTINUE_URL || 'https://bcsa.co.kr';
@@ -1937,9 +2021,9 @@ async function sendFirebaseKoFallback(email) {
   );
 }
 
-/** 관리자만 호출: 강제 탈퇴한 회원을 1년간 재가입 차단 목록에 등록 */
+/** 관리자만 호출: 강제 탈퇴한 회원을 1년간 재가입 제한 목록에 등록 (확인값만 저장, functions/blocklist.js) */
 export const addBlockedRegistration = onCall(
-  { region: 'asia-northeast3' },
+  { region: 'asia-northeast3', secrets: [BLOCKLIST_HASH_SECRET] },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
@@ -1954,67 +2038,41 @@ export const addBlockedRegistration = onCall(
       throw new HttpsError('permission-denied', '관리자만 실행할 수 있습니다.');
     }
 
-    const email = normalizeEmail(request.data?.email || '');
-    const phone = normalizePhone(request.data?.phone || '');
-    const now = new Date();
-    const blockedUntil = new Date(now);
-    blockedUntil.setFullYear(blockedUntil.getFullYear() + BLOCK_YEARS);
-
-    await db.collection(BLOCKED_REGISTRATIONS).doc(uid).set({
+    const secret = readBlocklistSecret();
+    if (!secret) {
+      // 비밀값 없이 전화번호를 해시하면 역산될 수 있어 이메일·전화 확인값은 만들지 않는다 (uid 기준 차단만)
+      console.error('[addBlockedRegistration] BLOCKLIST_HASH_SECRET 미설정 — uid 기준으로만 차단합니다');
+    }
+    const { expiresAt } = await blocklist.addBlock(secret, {
       uid,
-      email,
-      phone,
-      blockedAt: admin.firestore.FieldValue.serverTimestamp(),
-      blockedUntil: admin.firestore.Timestamp.fromDate(blockedUntil),
-      reason: 'admin_forced'
+      email: request.data?.email || '',
+      phone: request.data?.phone || '',
     });
-    console.log('[addBlockedRegistration] uid=', uid, 'blockedUntil=', blockedUntil.toISOString());
-    return { success: true, blockedUntil: blockedUntil.toISOString() };
+    console.log('[addBlockedRegistration] blocked until', expiresAt.toISOString());
+    return { success: true, blockedUntil: expiresAt.toISOString(), ...(secret ? {} : { warning: 'secret_missing' }) };
   }
 );
 
-/** 회원가입 전 호출: uid/email/phone 기준 1년 차단 여부 조회 (비인증 호출 가능) */
+/** 회원가입 전 호출: uid/email/phone 확인값 기준 1년 제한 여부 조회 (비인증 호출 가능, 일치 여부와 기한만 반환) */
 export const checkBlockedRegistration = onCall(
-  { region: 'asia-northeast3', invoker: 'public' },
+  { region: 'asia-northeast3', invoker: 'public', secrets: [BLOCKLIST_HASH_SECRET] },
   async (request) => {
-    const uid = typeof request.data?.uid === 'string' ? request.data.uid.trim() : null;
-    const email = normalizeEmail(request.data?.email || '');
-    const phone = normalizePhone(request.data?.phone || '');
-    const now = new Date();
-
-    const checkDoc = (snap) => {
-      if (!snap || !snap.exists) return null;
-      const d = snap.data();
-      let until = d?.blockedUntil;
-      if (until && typeof until.toDate === 'function') until = until.toDate();
-      if (!until || (until instanceof Date && until.getTime() <= now.getTime())) return null;
-      return until instanceof Date ? until.toISOString() : (typeof until === 'string' ? until : null);
-    };
-
-    if (uid) {
-      const byUid = await db.collection(BLOCKED_REGISTRATIONS).doc(uid).get();
-      const until = checkDoc(byUid);
-      if (until) return { blocked: true, blockedUntil: until };
-    }
-    if (email) {
-      const byEmail = await db.collection(BLOCKED_REGISTRATIONS).where('email', '==', email).limit(1).get();
-      if (!byEmail.empty) {
-        const until = checkDoc(byEmail.docs[0]);
-        if (until) return { blocked: true, blockedUntil: until };
-      }
-    }
-    if (phone) {
-      const byPhone = await db.collection(BLOCKED_REGISTRATIONS).where('phone', '==', phone).limit(1).get();
-      if (!byPhone.empty) {
-        const until = checkDoc(byPhone.docs[0]);
-        if (until) return { blocked: true, blockedUntil: until };
-      }
-    }
-    return { blocked: false };
+    const until = await blocklist.findActiveBlock(readBlocklistSecret(), {
+      uid: typeof request.data?.uid === 'string' ? request.data.uid.trim() : '',
+      email: request.data?.email || '',
+      phone: request.data?.phone || '',
+    });
+    return until ? { blocked: true, blockedUntil: until.toISOString() } : { blocked: false };
   }
 );
 
-/** 아이디 찾기용 이메일 마스킹: 로컬 파트 첫 글자만 노출 (예: i***@devhounds.com) */
+/** 로그용 전화번호 가림 (Cloud Logging에 원문이 남지 않게): 010****5678 */
+const maskPhoneForLog = (phone) => {
+  const d = String(phone || '').replace(/\D/g, '');
+  return d.length >= 8 ? `${d.slice(0, 3)}****${d.slice(-4)}` : '***';
+};
+
+/** 아이디 찾기용 이메일 마스킹: 로컬 파트 첫 글자만 노출 (예: i***@devhounds.com) — 로그에도 사용 */
 const maskEmail = (email) => {
   const [local, domain] = String(email).split('@');
   if (!local || !domain) return '';
@@ -2080,7 +2138,7 @@ export const requestPasswordReset = onCall(
         if (err.code !== 'auth/user-not-found') throw err;
       }
       if (!userExists) {
-        console.log('[requestPasswordReset] auth user not found:', email);
+        console.log('[requestPasswordReset] auth user not found:', maskEmail(email));
         return { success: true };
       }
 
@@ -2097,13 +2155,13 @@ export const requestPasswordReset = onCall(
       } else {
         await sendFirebaseKoFallback(email);
       }
-      console.log('[requestPasswordReset] sent for', email, 'via', deliveryProvider);
+      console.log('[requestPasswordReset] sent for', maskEmail(email), 'via', deliveryProvider);
       return { success: true };
     } catch (err) {
       if (err.message === 'SMTP_NOT_CONFIGURED') {
         try {
           await sendFirebaseKoFallback(email);
-          console.log('[requestPasswordReset] sent for', email, 'via firebase-fallback-after-smtp-error');
+          console.log('[requestPasswordReset] sent for', maskEmail(email), 'via firebase-fallback-after-smtp-error');
           return { success: true };
         } catch (fallbackErr) {
           console.error('[requestPasswordReset] fallback failed', fallbackErr);
@@ -2153,18 +2211,74 @@ export const deleteAuthUser = onCall(
 // 누구나 보는 화면에 필요한 필드만 publicProfiles·publicApplications로 복사한다.
 // ==========================================
 
+// 회원명단(publicProfiles)은 로그인한 승인 회원·관리자만 읽는다(firestore.rules). 규칙이 승인 여부를 확인할 수 있게
+// 로그인 uid 기준 표시(memberAccess/{authUid})를 함께 맞추고, 비로그인 홈 화면용 회원 수(publicStats/members)만 공개한다.
+// (예전 가입자는 회원 문서 id ≠ 로그인 uid라서 users/{uid}만으로는 규칙이 승인 여부를 알 수 없음)
+const MEMBER_ACCESS = 'memberAccess';
+const PUBLIC_STATS = 'publicStats';
+
+async function refreshPublicMemberCount() {
+  const agg = await db.collection('publicProfiles').count().get();
+  await db.collection(PUBLIC_STATS).doc('members').set({
+    approvedMemberCount: agg.data().count || 0,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
 export const syncPublicProfile = onDocumentWritten(
   { document: 'users/{userId}', region: 'asia-northeast3' },
   async (event) => {
-    const ref = db.collection('publicProfiles').doc(event.params.userId);
-    const after = event.data?.after;
-    if (!after?.exists || !isApprovedMember(after.data() || {})) {
+    const userId = event.params.userId;
+    const ref = db.collection('publicProfiles').doc(userId);
+    const before = event.data?.before?.exists ? event.data.before.data() || {} : null;
+    const after = event.data?.after?.exists ? event.data.after.data() || {} : null;
+    const approved = !!after && isApprovedMember(after);
+    const beforeAuthUid = before ? String(before.uid || userId) : '';
+    const afterAuthUid = after ? String(after.uid || userId) : '';
+    const wasApproved = !!before && isApprovedMember(before);
+
+    if (approved) {
+      await ref.set({
+        ...buildPublicProfile(userId, after),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      await db.collection(MEMBER_ACCESS).doc(afterAuthUid).set({ docId: userId, approved: true });
+    } else {
       await ref.delete().catch(() => {});
-      return;
+      if (afterAuthUid) await db.collection(MEMBER_ACCESS).doc(afterAuthUid).delete().catch(() => {});
     }
-    await ref.set({
-      ...buildPublicProfile(event.params.userId, after.data() || {}),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    if (beforeAuthUid && beforeAuthUid !== afterAuthUid) {
+      await db.collection(MEMBER_ACCESS).doc(beforeAuthUid).delete().catch(() => {});
+    }
+    if (approved !== wasApproved) {
+      await refreshPublicMemberCount().catch((e) => console.warn('[syncPublicProfile] member count', e.message));
+    }
+  }
+);
+
+/** 회원 문서 서버 확인: 만 14세 미만 차단, 재가입 제한 대조 (functions/userGuards.js) */
+const userGuards = createUserGuards({ db, admin, blocklist });
+export const guardUserDoc = onDocumentWritten(
+  { document: 'users/{userId}', region: 'asia-northeast3', secrets: [BLOCKLIST_HASH_SECRET] },
+  async (event) => {
+    const action = await userGuards.onUserWritten({
+      userId: event.params.userId,
+      before: event.data?.before?.exists ? event.data.before.data() || {} : null,
+      after: event.data?.after?.exists ? event.data.after.data() || {} : null,
+      secret: readBlocklistSecret(),
+    });
+    if (action !== 'none') console.log('[guardUserDoc]', event.params.userId, action);
+  }
+);
+
+/** 모임 멤버 수(활동 중)를 그룹 문서에 맞춘다 — 멤버 명단 대신 이 숫자만 누구나 볼 수 있다 */
+export const syncGroupMemberCount = onDocumentWritten(
+  { document: 'groups/{groupId}/members/{uid}', region: 'asia-northeast3' },
+  async (event) => {
+    const gref = db.collection('groups').doc(event.params.groupId);
+    const agg = await gref.collection('members').where('status', '==', 'active').count().get();
+    await gref.update({ memberCount: agg.data().count || 0 }).catch((e) => {
+      if (e.code !== 5) console.warn('[syncGroupMemberCount]', event.params.groupId, e.message); // 5 = NOT_FOUND(그룹 삭제됨)
     });
   }
 );
@@ -2214,6 +2328,69 @@ export const checkSignupDuplicates = onCall(
         : false,
     ]);
     return { emailTaken, phoneTaken: phoneTaken || phoneNumberTaken, brnTaken };
+  }
+);
+
+// ==========================================
+// 회원 탈퇴·강제 탈퇴 서버 정리 + 기한 지난 정보 예약 파기
+// (2026-10-31 약관 검토 ①-7: 법정 보존 기록은 legalRetention에 분리 보관, 나머지는 지체 없이 파기)
+// ==========================================
+const userPurge = createUserPurge({ db, admin, getPortOneV2PaymentInfo });
+
+/**
+ * 탈퇴 정리 (본인 또는 관리자). data: { docId?, uid? } — 비우면 본인.
+ * 운영 중 모임의 그룹장이면 failed-precondition으로 막는다(모임장 변경·모임 종료 후 재시도).
+ * 게시글·맛집 이미지와 회원 문서·Auth 삭제는 이어서 클라이언트가 한다(firebaseService.purgeUserRelatedData).
+ */
+export const purgeUserData = onCall(
+  { region: 'asia-northeast3', timeoutSeconds: 300 },
+  async (request) => {
+    if (!request.auth?.uid) throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    const callerUid = request.auth.uid;
+    const reqDocId = typeof request.data?.docId === 'string' ? request.data.docId.trim() : '';
+    const reqUid = typeof request.data?.uid === 'string' ? request.data.uid.trim() : '';
+    const isSelf = (!reqDocId || reqDocId === callerUid) && (!reqUid || reqUid === callerUid);
+
+    let userDoc = null;
+    if (isSelf) {
+      userDoc = await getCallerUserDoc(callerUid);
+      if (!userDoc && request.auth.token?.email) {
+        const byEmail = await db.collection('users').where('email', '==', request.auth.token.email).limit(1).get();
+        if (!byEmail.empty) userDoc = byEmail.docs[0];
+      }
+    } else {
+      if (!(await isCallerAdmin({ uid: callerUid, admin: request.auth.token?.admin }))) {
+        throw new HttpsError('permission-denied', '다른 회원의 탈퇴는 관리자만 처리할 수 있습니다.');
+      }
+      if (reqDocId) {
+        const snap = await db.collection('users').doc(reqDocId).get();
+        if (snap.exists) userDoc = snap;
+      }
+      if (!userDoc && reqUid) {
+        userDoc = await getCallerUserDoc(reqUid);
+      }
+    }
+    const u = userDoc ? userDoc.data() || {} : {};
+    const docId = userDoc ? userDoc.id : (isSelf ? callerUid : (reqDocId || reqUid));
+    const authUid = isSelf ? callerUid : String(u.uid || reqUid || docId);
+    const summary = await userPurge.purge({
+      docId,
+      authUid,
+      profile: { name: u.name || '', email: u.email || '', phone: u.phone || u.phoneNumber || '' },
+      reason: isSelf ? 'withdrawal' : 'admin_forced',
+    });
+    console.log('[purgeUserData]', isSelf ? 'self' : `admin:${callerUid}`, docId, JSON.stringify(summary));
+    return { success: true, summary };
+  }
+);
+
+/** 매일 새벽(한국 시간 03:30) 보존 기한이 지난 기록·재가입 제한·확인 끝난 사업자등록증 사본 파기 */
+const scheduledPurge = createScheduledPurge({ db, admin });
+export const dailyLegalPurge = onSchedule(
+  { schedule: '30 3 * * *', timeZone: 'Asia/Seoul', region: 'asia-northeast3', timeoutSeconds: 540 },
+  async () => {
+    const result = await scheduledPurge.run(new Date());
+    console.log('[dailyLegalPurge]', JSON.stringify(result));
   }
 );
 
