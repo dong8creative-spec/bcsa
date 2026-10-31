@@ -2,6 +2,7 @@
  * 유틸리티 함수 모음
  * 기존 utils.js의 함수들을 utils/ 폴더로 통합
  */
+import { buildInitialsAvatar } from './avatar';
 
 /**
  * 세미나 상태 계산 함수
@@ -232,9 +233,9 @@ const setImageFallback = (imgElement, fallbackUrl = '') => {
         if (fallbackUrl) {
             imgElement.src = fallbackUrl;
         } else {
-            // 기본 아바타 생성
-            const name = imgElement.alt || 'User';
-            imgElement.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+            // 기본 아바타: 이름 첫 글자 SVG를 브라우저에서 만든다 (외부 서비스로 이름 전송 금지)
+            imgElement.onerror = null;
+            imgElement.src = buildInitialsAvatar(imgElement.alt || '');
         }
     };
 };

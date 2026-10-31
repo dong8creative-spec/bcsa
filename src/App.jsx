@@ -5,7 +5,7 @@ import { firebaseService } from './services/firebaseService';
 import { authService } from './services/authService';
 import { CONFIG } from './config';
 import { calculateStatus, fetchSheetData } from './utils';
-import { uploadImageToImgBB, uploadLogoOrFaviconToGitHub, fileToBase64, normalizeImagesList } from './utils/imageUtils';
+import { uploadLogoOrFaviconToGitHub, fileToBase64, normalizeImagesList } from './utils/imageUtils';
 import { translateFirebaseError } from './utils/errorUtils';
 import { isAdminUser } from './utils/adminAccess';
 import { canEditRestaurantInfo } from './utils/restaurantPermissions';
@@ -1661,7 +1661,7 @@ const App = () => {
                     businessCategory: userInfo.businessCategory || '',
                     address: userInfo.address || '',
                     phone: userInfo.phone || '',
-                img: userInfo.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(userInfo.name)}&background=random`,
+                img: userInfo.img || '', // 기본 그림은 화면에서 로컬로 그림 (외부 아바타 서비스로 이름 전송 금지)
                 approvalStatus: 'pending',
                     businessRegistrationNumber: userInfo.businessRegistrationNumber || null,
                 isIdentityVerified: false
@@ -1680,7 +1680,7 @@ const App = () => {
                 address: userInfo.address || '',
                 phone: userInfo.phone || '',
                 email: userInfo.email,
-                img: userInfo.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(userInfo.name)}&background=random`,
+                img: userInfo.img || '', // 기본 그림은 화면에서 로컬로 그림 (외부 아바타 서비스로 이름 전송 금지)
                 approvalStatus: 'pending',
                 businessRegistrationNumber: userInfo.businessRegistrationNumber || null,
                 isIdentityVerified: false

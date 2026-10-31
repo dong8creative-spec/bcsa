@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from './Icons';
-import { encodeImageHalfWebpDataUrl, uploadImageToImgBB, UPLOAD_WEBP_QUALITY } from '../utils/imageUtils';
+import { encodeImageHalfWebpDataUrl, uploadDataUrlToStorage, UPLOAD_WEBP_QUALITY } from '../utils/imageUtils';
 
 const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openKakaoPlacesSearch }) => {
     // 초기 데이터 설정 (이미지 배열을 최소 3개 슬롯으로 확장)
@@ -51,11 +51,12 @@ const RestaurantFormView = ({ restaurant, onBack, onSave, waitForKakaoMap, openK
         try {
             // 업로드 공통: 원본의 1/2 픽셀 + WebP(약 85%)
             const resizedImage = await encodeImageHalfWebpDataUrl(file, UPLOAD_WEBP_QUALITY);
-            const result = await uploadImageToImgBB(resizedImage, `restaurant_${Date.now()}_${index}.webp`);
+            // 회원 이미지는 Firebase Storage에만 저장 (ImgBB 사용 중단)
+            const url = await uploadDataUrlToStorage(resizedImage, 'community', `restaurant_${Date.now()}_${index}.webp`);
             
-            if (result.success) {
+            if (url) {
                 const newImages = [...formData.images];
-                newImages[index] = result.url;
+                newImages[index] = url;
                 setFormData({ ...formData, images: newImages });
             } else {
                 alert('이미지 업로드에 실패했습니다.');

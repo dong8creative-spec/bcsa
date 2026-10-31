@@ -1,8 +1,12 @@
 /**
  * 이미지 처리 유틸리티 함수
+ *
+ * 이미지 저장소는 Firebase Storage 하나만 쓴다 (2026-11 개정).
+ * 예전에는 ImgBB(해외 무료 이미지 호스팅)로도 올렸으나, 위탁 계약이 없고 서버 국가를 알 수 없어
+ * 회원·관리자 업로드 모두 중단했다. 이미 ImgBB에 있는 이미지의 삭제(delete_url 호출)만 남겨 둔다.
  */
 
-import app from '../firebase';
+import app, { auth } from '../firebase';
 
 /** 파일 저장소(Firebase Storage)는 업로드할 때만 내려받는다 (첫 화면 번들 축소) */
 let storageModulePromise = null;
@@ -12,7 +16,6 @@ const loadStorage = () => {
   }
   return storageModulePromise;
 };
-import { CONFIG } from '../config';
 import { getApiBaseUrl } from './api';
 
 const IMAGE_TYPES = ['program', 'content', 'community', 'company'];
@@ -39,7 +42,12 @@ export const uploadImageToStorage = async (file, type = 'program') => {
     const path = `images/${safeType}/${id}_${safeName}`;
     const { ref, uploadBytes, getDownloadURL, storage } = await loadStorage();
     const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
+    // 올린 사람 uid를 남겨 두면 storage.rules에서 본인 삭제를 허용할 수 있다
+    const ownerUid = auth?.currentUser?.uid || '';
+    await uploadBytes(storageRef, file, {
+      contentType: file.type || 'image/jpeg',
+      ...(ownerUid ? { customMetadata: { ownerUid } } : {}),
+    });
     const url = await getDownloadURL(storageRef);
     return url;
   } catch (error) {
@@ -57,9 +65,12 @@ export const uploadImageToStorage = async (file, type = 'program') => {
   }
 };
 
-const IMGBB_API_KEY = CONFIG.IMGBB?.API_KEY || '4c975214037cdf1889d5d02a01a7831d';
-
-const FIREBASE_UPLOAD_TIMEOUT_MS = 4 * 1000; // 4초 내 응답 없으면 ImgBB 폴백
+/** data: URL(WebP 등) → Firebase Storage 업로드 후 다운로드 URL */
+export const uploadDataUrlToStorage = async (dataUrl, type = 'program', fileName = 'image.webp') => {
+  if (!dataUrl || typeof dataUrl !== 'string') throw new Error('이미지 데이터가 없습니다.');
+  const file = await dataURLToFile(dataUrl, fileName, 'image/webp');
+  return uploadImageToStorage(file, type);
+};
 
 /**
  * 사이트에 등록·업로드되는 이미지 공통: WebP 인코딩 품질 (0~1, 약 85%)
@@ -155,27 +166,19 @@ export async function fileToHalfWebpFile(file, quality = UPLOAD_WEBP_QUALITY) {
 }
 
 /**
- * Admin 전용 이미지 업로드: ImgBB만 사용 (Firebase 미사용)
+ * Admin 전용 이미지 업로드 (프로그램·포스터·지원사업·공지 이미지): Firebase Storage
  * (원본의 1/2 픽셀 + WebP 품질 기본 UPLOAD_WEBP_QUALITY)
  * @param {File} file - 업로드할 이미지 파일
- * @param {Object} options - { quality?: number } (maxSize는 더 이상 사용하지 않음, 호환만 유지)
- * @returns {Promise<string>} 업로드된 이미지의 URL
- */
-/**
- * Admin 전용: 업로드 후 URL + ImgBB delete_url(삭제용)
- * @returns {Promise<{ url: string, deleteUrl: string | null }>}
+ * @param {Object} options - { quality?: number, type?: 'program' | 'content' }
+ * @returns {Promise<{ url: string, deleteUrl: null }>} deleteUrl은 예전 ImgBB 호환용(항상 null)
  */
 export const uploadImageForAdminWithMeta = async (file, options = {}) => {
   const quality = options.quality ?? PROGRAM_QUALITY;
-  const outName = toWebpFileName(file.name || 'image.jpg');
+  const type = IMAGE_TYPES.includes(options.type) ? options.type : 'program';
   const webpFile = await fileToHalfWebpFile(file, quality);
-  const base64 = await fileToBase64(webpFile);
-  const result = await uploadImageToImgBB(base64, outName);
-  const url = result?.url ?? (typeof result === 'string' ? result : null);
-  if (url) {
-    return { url, deleteUrl: result?.deleteUrl || null };
-  }
-  throw new Error(result?.message || '이미지 업로드에 실패했습니다.');
+  const url = await uploadImageToStorage(webpFile, type);
+  if (url) return { url, deleteUrl: null };
+  throw new Error('이미지 업로드에 실패했습니다.');
 };
 
 export const uploadImageForAdmin = async (file, options = {}) => {
@@ -186,43 +189,18 @@ export const uploadImageForAdmin = async (file, options = {}) => {
 /** @deprecated Admin은 uploadImageForAdmin 사용. 프로그램 등록 호환용 별칭 */
 export const uploadProgramImage = uploadImageForAdmin;
 
-const isLocalOrigin = () => {
-  if (typeof window === 'undefined' || !window.location?.origin) return false;
-  const o = window.location.origin;
-  return o.startsWith('http://127.0.0.1') || o.startsWith('http://localhost');
-};
-
 /**
- * Firebase + ImgBB 이중 업로드. 로컬에서는 Firebase 생략(ImgBB만).
- * @param {File} file - 업로드할 이미지 파일
- * @param {string} type - 'program' | 'community' | 'company'
- * @returns {Promise<{ firebase: string | null, imgbb: string | null }>}
+ * (호환용) 예전 이중 업로드 함수. 이제 Firebase Storage에만 올린다.
+ * @returns {Promise<{ firebase: string | null, imgbb: null }>}
  */
 export const uploadImageDual = async (file, type = 'program') => {
   const fileToUse = await fileToHalfWebpFile(file, PROGRAM_QUALITY);
-
-  if (isLocalOrigin()) {
-    try {
-      const base64 = await fileToBase64(fileToUse);
-      const result = await uploadImageToImgBB(base64, fileToUse.name || toWebpFileName(file.name) || 'image.webp');
-      const url = result?.url ?? (typeof result === 'string' ? result : null);
-      return { firebase: null, imgbb: url || null };
-    } catch (_) {
-      return { firebase: null, imgbb: null };
-    }
+  try {
+    const url = await uploadImageToStorage(fileToUse, type);
+    return { firebase: url || null, imgbb: null };
+  } catch (_) {
+    return { firebase: null, imgbb: null };
   }
-
-  const base64 = await fileToBase64(fileToUse);
-  const name = fileToUse.name || toWebpFileName(file.name) || 'image.webp';
-  const [firebaseResult, imgbbResult] = await Promise.allSettled([
-    uploadImageToStorage(fileToUse, type),
-    uploadImageToImgBB(base64, name)
-  ]);
-  const firebaseUrl = firebaseResult.status === 'fulfilled' ? firebaseResult.value : null;
-  const imgbbUrl = imgbbResult.status === 'fulfilled'
-    ? (imgbbResult.value?.url ?? (typeof imgbbResult.value === 'string' ? imgbbResult.value : null))
-    : null;
-  return { firebase: firebaseUrl || null, imgbb: imgbbUrl || null };
 };
 
 /**
@@ -250,38 +228,21 @@ export const normalizeImagesList = (images) => {
 };
 
 /**
- * Firebase Storage(우선) 또는 ImgBB. ImgBB인 경우 delete_url로 이후 완전 삭제 가능
- * @returns {Promise<{ url: string, deleteUrl: string | null, storage: 'firebase' | 'imgbb' }>}
+ * 회원·관리자 공통 이미지 업로드: Firebase Storage만 사용 (ImgBB 폴백 없음)
+ * @returns {Promise<{ url: string, deleteUrl: null, storage: 'firebase' }>}
  */
 export const uploadImageWithMeta = async (file, type = 'program') => {
   const fileToUse = await fileToHalfWebpFile(file, PROGRAM_QUALITY);
-
-  try {
-    const url = await Promise.race([
-      uploadImageToStorage(fileToUse, type),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('TIMEOUT')), FIREBASE_UPLOAD_TIMEOUT_MS)
-      ),
-    ]);
-    return { url, deleteUrl: null, storage: 'firebase' };
-  } catch (e) {
-    /* ImgBB 폴백 */
-  }
-  const base64 = await fileToBase64(fileToUse);
-  const result = await uploadImageToImgBB(base64, fileToUse.name || toWebpFileName(file.name) || 'image.webp');
-  const url = result?.url ?? (typeof result === 'string' ? result : null);
-  if (url) {
-    return { url, deleteUrl: result?.deleteUrl || null, storage: 'imgbb' };
-  }
-  throw new Error(result?.message || 'ImgBB 업로드 후 URL을 받지 못했습니다.');
+  const url = await uploadImageToStorage(fileToUse, type);
+  if (!url) throw new Error('이미지 업로드 후 주소를 받지 못했습니다. 다시 시도해 주세요.');
+  return { url, deleteUrl: null, storage: 'firebase' };
 };
 
 /**
- * 통합 이미지 업로드: Firebase Storage 시도 후 실패/타임아웃 시 ImgBB 폴백
- * (프로그램 등록은 uploadProgramImage 사용 권장)
+ * 통합 이미지 업로드 (Firebase Storage)
  * @param {File} file - 업로드할 이미지 파일
- * @param {string} type - 이미지 유형 (program | content | community | company). Firebase 경로에만 사용됨.
- * @returns {Promise<string>} 업로드된 이미지의 URL (Firebase 또는 ImgBB)
+ * @param {string} type - 이미지 유형 (program | content | community | company)
+ * @returns {Promise<string>} 업로드된 이미지의 URL
  */
 export const uploadImage = async (file, type = 'program') => {
   const { url } = await uploadImageWithMeta(file, type);
@@ -334,90 +295,52 @@ export async function requestImgbbImageDeletion(deleteUrl) {
   }
 }
 
+const isOurStorageUrl = (u) =>
+  typeof u === 'string' && /^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/[^/]+\/o\/images%2F/i.test(u.trim());
+
 /**
- * payload에 수집된 모든 ImgBB delete URL 호출(병렬, 실패 무시)
+ * Firestore 문서에서 우리 Firebase Storage 이미지 주소(images/…) 수집
+ * @returns {string[]}
+ */
+export function collectStorageImageUrlsFromPayload(data) {
+  if (!data || typeof data !== 'object') return [];
+  const set = new Set();
+  const push = (v) => {
+    const url = normalizeImageItem(v);
+    if (isOurStorageUrl(url)) set.add(url.trim());
+  };
+  [data.posterUrl, data.thumbnailUrl, data.imageUrl].forEach(push);
+  const lists = [data.images, data.imageUrls, data.reviewImages, data.storeImages, data.itemImages, data.photos];
+  for (const list of lists) {
+    if (Array.isArray(list)) list.forEach(push);
+  }
+  return [...set];
+}
+
+/** Firebase Storage 이미지 삭제(실패 무시). 규칙상 관리자 또는 올린 본인(ownerUid)만 지울 수 있다 */
+export async function deleteStorageImageByUrl(url) {
+  if (!isOurStorageUrl(url)) return;
+  try {
+    const { ref, deleteObject, storage } = await loadStorage();
+    await deleteObject(ref(storage, url));
+  } catch (e) {
+    console.warn('[Storage] 이미지 삭제 실패(무시):', e?.code || e?.message);
+  }
+}
+
+/**
+ * payload에 있는 호스팅 이미지 정리(병렬, 실패 무시)
+ * - 예전 ImgBB 이미지: delete_url 호출
+ * - Firebase Storage 이미지: 파일 삭제
  */
 export async function deleteHostedImagesForPayload(data) {
   const urls = collectImgbbDeleteUrlsFromPayload(data);
-  await Promise.allSettled(urls.map((d) => requestImgbbImageDeletion(d)));
+  const storageUrls = collectStorageImageUrlsFromPayload(data);
+  await Promise.allSettled([
+    ...urls.map((d) => requestImgbbImageDeletion(d)),
+    ...storageUrls.map((u) => deleteStorageImageByUrl(u)),
+  ]);
 }
-
-/** ImgBB POST: base64 본문이 클수록 업로드에 더 오래 걸릴 수 있어 하한~상한(120초) 둔다. */
-const IMGBB_UPLOAD_TIMEOUT_MIN_MS = 45 * 1000;
-const IMGBB_UPLOAD_TIMEOUT_MAX_MS = 120 * 1000;
-function getImgbbUploadTimeoutMs(base64DataLength) {
-  const n = Math.floor((base64DataLength || 0) / 500000);
-  return Math.min(IMGBB_UPLOAD_TIMEOUT_MAX_MS, IMGBB_UPLOAD_TIMEOUT_MIN_MS + n * 15 * 1000);
-}
-
-/**
- * 이미지를 ImgBB에 업로드 (타임아웃 적용)
- */
-export const uploadImageToImgBB = async (base64Image, fileName) => {
-    const base64Data = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
-    const timeoutMs = getImgbbUploadTimeoutMs(base64Data.length);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-        const formData = new FormData();
-        formData.append('key', IMGBB_API_KEY);
-        formData.append('image', base64Data);
-
-        const response = await fetch('https://api.imgbb.com/1/upload', {
-            method: 'POST',
-            body: formData,
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('ImgBB API 응답 오류:', response.status, errorText);
-            throw new Error(`이미지 업로드 실패 (HTTP ${response.status}). ${errorText.slice(0, 80)}`);
-        }
-
-        let data;
-        try {
-            data = await response.json();
-        } catch (parseErr) {
-            console.error('ImgBB 응답 JSON 파싱 실패', parseErr);
-            throw new Error('서버 응답 형식 오류입니다. 잠시 후 다시 시도해주세요.');
-        }
-
-        if (!data) {
-            throw new Error('서버 응답이 비어있습니다.');
-        }
-
-        const imageUrl = data.data?.url || data.data?.display_url || data.data?.image?.url;
-        if (data.success && imageUrl) {
-            return {
-                success: true,
-                url: imageUrl,
-                deleteUrl: data.data?.delete_url || null,
-                id: data.data?.id
-            };
-        }
-
-        const errorMessage = data.error?.message || data.error ||
-            (typeof data.error === 'string' ? data.error : null) || '이미지 업로드 실패';
-        console.error('ImgBB API 에러 응답:', data);
-        throw new Error(errorMessage);
-    } catch (error) {
-        clearTimeout(timeoutId);
-        console.error('이미지 업로드 오류:', error);
-        if (error.name === 'AbortError') {
-            throw new Error('업로드 시간이 초과되었습니다. 네트워크를 확인한 뒤 다시 시도해주세요.');
-        }
-        if (error instanceof TypeError && error.message.includes('fetch')) {
-            throw new Error('네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.');
-        }
-        if (error.message) {
-            throw error;
-        }
-        throw new Error('이미지 업로드 중 알 수 없는 오류가 발생했습니다.');
-    }
-};
 
 /**
  * 파일을 Base64로 변환
