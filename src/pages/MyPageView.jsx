@@ -517,6 +517,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                 <div>
                                                     <span className="text-sm font-medium text-red-900 block mb-1">승인 거절</span>
                                                     <p className="text-xs text-red-700 leading-relaxed">회원가입 신청이 거절되었습니다. 관리자에게 문의하세요.</p>
+                                                    {user.rejectReason ? <p className="text-xs text-red-700 leading-relaxed mt-1">거절 사유: {user.rejectReason}</p> : null}
                                                 </div>
                                             </div>
                                         </div>

@@ -230,11 +230,11 @@ export const firebaseService = {
   },
 
   /** 관리자 전용: 회원 원본 실시간 구독 */
-  subscribeUsersAdmin(callback) {
+  subscribeUsersAdmin(callback, onError) {
     return onSnapshot(collection(db, 'users'), (snapshot) => {
       const users = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
       callback(users);
-    }, (error) => console.error('Error subscribing users:', error));
+    }, (error) => { console.error('Error subscribing users:', error); onError?.(error); });
   },
 
   /**
@@ -500,11 +500,11 @@ export const firebaseService = {
     }
   },
 
-  subscribeSeminars(callback) {
+  subscribeSeminars(callback, onError) {
     return onSnapshot(collection(db, 'seminars'), (snapshot) => {
       const seminars = snapshot.docs.map((d) => this._mapSeminarDoc(d));
       callback(seminars);
-    });
+    }, (error) => { console.error('Error subscribing seminars:', error); onError?.(error); });
   },
 
   // ==========================================
@@ -908,6 +908,17 @@ export const firebaseService = {
     }
   },
 
+  /**
+   * 관리자: 신청을 명단·인원 집계에서 숨김/해제 (DB 기록은 지우지 않음, 환불도 하지 않음).
+   * 모든 운영자·기기·방문자 화면에 똑같이 반영된다. 본인은 이 필드를 바꿀 수 없다(보안 규칙).
+   */
+  async setApplicationAdminHidden(applicationId, hidden, by = null) {
+    const docRef = doc(db, 'applications', String(applicationId));
+    await updateDoc(docRef, hidden
+      ? { adminHidden: true, adminHiddenAt: serverTimestamp(), adminHiddenBy: by?.uid || null }
+      : { adminHidden: false, adminHiddenAt: null, adminHiddenBy: null });
+  },
+
   async deleteApplication(applicationId) {
     try {
       await deleteDoc(doc(db, 'applications', applicationId));
@@ -928,7 +939,7 @@ export const firebaseService = {
   },
 
   /** 관리자 전용: 신청 원본 실시간 구독 */
-  subscribeApplications(callback) {
+  subscribeApplications(callback, onError) {
     const toMs = (v) => {
       if (!v) return 0;
       if (v.toMillis && typeof v.toMillis === 'function') return v.toMillis();
@@ -939,7 +950,7 @@ export const firebaseService = {
       const list = snapshot.docs.map((d) => ({ ...d.data(), id: d.id }));
       list.sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt));
       callback(list);
-    });
+    }, (error) => { console.error('Error subscribing applications:', error); onError?.(error); });
   },
 
   // ==========================================

@@ -135,6 +135,8 @@ async function countRegisteredParticipantsForSeminar(seminarId, applicationFee) 
   let n = 0;
   for (const doc of snap.docs) {
     const d = doc.data();
+    // 관리자가 명단에서 숨긴 신청(adminHidden)은 화면 집계와 똑같이 정원 계산에서도 뺀다
+    if (d.adminHidden === true) continue;
     if (isRegisteredApplicationData(d, fee)) n += 1;
   }
   return n;

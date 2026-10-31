@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { firebaseService } from '../../../services/firebaseService';
 import { Timestamp } from 'firebase/firestore';
+import { AdminPageHeader, adminAlert, adminConfirm, btn } from './ui';
 import { Icons } from '../../../components/Icons';
 import { firestoreLikeToMillis } from '../../../appHelpers';
 
@@ -29,7 +30,7 @@ function parseDatetimeLocal(str) {
 }
 
 const SOURCE_TYPE_LABELS = {
-  admin_manual: { label: '수동 등록', className: 'bg-gray-200 text-gray-700' },
+  admin_manual: { label: '수동 등록', className: 'bg-slate-200 text-slate-700' },
   site_scan: { label: '자동 수집', className: 'bg-purple-100 text-purple-700' },
 };
 
@@ -58,12 +59,25 @@ export const NewsManagement = () => {
     return () => unsub();
   }, []);
 
+  const [formOpen, setFormOpen] = useState(false);
+
+  /** 저장·취소 후: 입력칸을 비우고 닫는다 */
   const openNew = () => {
+    setFormOpen(false);
     setEditingId(null);
     setForm(emptyForm());
   };
 
+  /** 새로 등록: 빈 입력칸을 연다 */
+  const startNew = () => {
+    setEditingId(null);
+    setForm(emptyForm());
+    setFormOpen(true);
+  };
+
   const openEdit = (row) => {
+    setFormOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     setEditingId(row.id);
     setForm({
       title: row.title || '',
@@ -79,11 +93,11 @@ export const NewsManagement = () => {
 
   const validate = useCallback(() => {
     if (!(form.title || '').trim()) {
-      alert('제목을 입력해주세요.');
+      adminAlert('제목을 입력해주세요.');
       return false;
     }
     if (!(form.url || '').trim()) {
-      alert('기사 링크를 입력해주세요.');
+      adminAlert('기사 링크를 입력해주세요.');
       return false;
     }
     return true;
@@ -110,45 +124,44 @@ export const NewsManagement = () => {
       setSaving(true);
       if (editingId) {
         await firebaseService.updateNewsItem(editingId, payload);
-        alert('저장되었습니다.');
+        adminAlert('저장되었습니다.');
       } else {
         await firebaseService.createNewsItem(payload);
-        alert('등록되었습니다.');
+        adminAlert('등록되었습니다.');
       }
       openNew();
     } catch (err) {
       console.error(err);
-      alert('저장에 실패했습니다. 로그인 상태를 확인해주세요.');
+      adminAlert('저장에 실패했습니다. 로그인 상태를 확인해주세요.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('이 뉴스 항목을 삭제하시겠습니까?')) return;
+    if (!await adminConfirm('이 뉴스를 삭제할까요? 되돌릴 수 없어요.', { okText: '삭제', danger: true })) return;
     try {
       await firebaseService.deleteNewsItem(id);
     } catch (err) {
       console.error(err);
-      alert('삭제에 실패했습니다.');
+      adminAlert('삭제에 실패했습니다.');
     }
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-dark mb-2">뉴스 관리</h2>
-        <p className="text-sm text-gray-600 leading-relaxed">
-          경제뉴스 카드를 등록하면 뉴스 페이지의 "경제" 탭에 노출됩니다. "공고" 탭은 지원사업 피드를 그대로 가져와 보여주므로
-          여기서 따로 등록할 필요가 없습니다. 매일 07:00(KST)에 자동으로도 채워집니다(GitHub Actions).
-        </p>
-      </div>
+    <div className="space-y-6">
+      <AdminPageHeader
+        title="뉴스"
+        description='경제뉴스를 등록하면 뉴스 페이지 "경제" 탭에 보여요. "공고" 탭은 지원사업 목록을 그대로 가져와요. 매일 아침 7시에 자동으로도 모여요.'
+        actions={!formOpen ? <button type="button" onClick={startNew} className={btn('primary')}><Icons.Plus size={16} />새 뉴스 등록</button> : null}
+      />
 
-      <div className="rounded-[24px] border border-black/[0.06] p-6 bg-soft/80 space-y-4">
+      {formOpen ? (
+      <div className="rounded-2xl border border-black/[0.06] p-6 bg-soft/80 space-y-4">
         <h3 className="text-lg font-semibold text-dark">{editingId ? '뉴스 수정' : '새 뉴스 등록'}</h3>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">제목</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">제목</label>
             <input
               type="text"
               value={form.title}
@@ -158,7 +171,7 @@ export const NewsManagement = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">출처(언론사/기관)</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">출처(언론사/기관)</label>
             <input
               type="text"
               value={form.source}
@@ -168,7 +181,7 @@ export const NewsManagement = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">카테고리</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">카테고리</label>
             <select
               value={form.category}
               onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
@@ -179,7 +192,7 @@ export const NewsManagement = () => {
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">한 줄 요약</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">한 줄 요약</label>
             <input
               type="text"
               value={form.summary}
@@ -188,7 +201,7 @@ export const NewsManagement = () => {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">기사 링크</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">기사 링크</label>
             <input
               type="url"
               value={form.url}
@@ -198,7 +211,7 @@ export const NewsManagement = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">발행일시</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">발행일시</label>
             <input
               type="datetime-local"
               value={form.publishedLocal}
@@ -207,7 +220,7 @@ export const NewsManagement = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">상태</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">상태</label>
             <select
               value={form.status}
               onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
@@ -218,12 +231,12 @@ export const NewsManagement = () => {
             </select>
           </div>
           <div className="flex items-end">
-            <label className="flex items-center gap-2 cursor-pointer font-semibold text-gray-700">
+            <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
               <input
                 type="checkbox"
                 checked={form.enabled}
                 onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))}
-                className="w-4 h-4 rounded border-gray-300 text-brand"
+                className="w-4 h-4 rounded border-slate-300 text-brand"
               />
               활성화 (노출)
             </label>
@@ -234,36 +247,35 @@ export const NewsManagement = () => {
             type="button"
             disabled={saving}
             onClick={handleSave}
-            className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors disabled:opacity-50"
+            className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-brand/90 transition-colors disabled:opacity-50"
           >
             {saving ? '저장 중…' : editingId ? '수정 저장' : '등록'}
           </button>
-          {editingId ? (
-            <button type="button" onClick={openNew} className="px-6 py-3 bg-white border border-black/[0.06] text-dark font-semibold rounded-full hover:bg-soft transition-colors">
-              새로 작성
+          <button type="button" onClick={openNew} className={btn('secondary')}>
+              취소
             </button>
-          ) : null}
         </div>
       </div>
+      ) : null}
 
       <div>
-        <h3 className="text-lg font-semibold text-dark mb-3">등록 목록</h3>
+        <h3 className="text-lg font-bold text-dark mb-3">등록 목록</h3>
         {loading ? (
-          <p className="text-gray-500">불러오는 중…</p>
+          <p className="text-slate-500">불러오는 중…</p>
         ) : rows.length === 0 ? (
-          <p className="text-gray-500 text-sm">등록된 뉴스가 없습니다.</p>
+          <p className="text-slate-500 text-sm">등록된 뉴스가 없습니다.</p>
         ) : (
-          <div className="overflow-x-auto rounded-[24px] border border-black/[0.06]">
+          <div className="overflow-x-auto rounded-2xl border border-black/[0.06]">
             <table className="min-w-full text-sm">
               <thead className="bg-soft text-left">
                 <tr>
-                  <th className="p-3 font-semibold text-gray-700">상태</th>
-                  <th className="p-3 font-semibold text-gray-700">출처유형</th>
-                  <th className="p-3 font-semibold text-gray-700">카테고리</th>
-                  <th className="p-3 font-semibold text-gray-700">제목</th>
-                  <th className="p-3 font-semibold text-gray-700">언론사</th>
-                  <th className="p-3 font-semibold text-gray-700">발행일</th>
-                  <th className="p-3 font-semibold text-gray-700">작업</th>
+                  <th className="p-3 font-semibold text-slate-700">상태</th>
+                  <th className="p-3 font-semibold text-slate-700">출처유형</th>
+                  <th className="p-3 font-semibold text-slate-700">카테고리</th>
+                  <th className="p-3 font-semibold text-slate-700">제목</th>
+                  <th className="p-3 font-semibold text-slate-700">언론사</th>
+                  <th className="p-3 font-semibold text-slate-700">발행일</th>
+                  <th className="p-3 font-semibold text-slate-700">작업</th>
                 </tr>
               </thead>
               <tbody>
@@ -274,7 +286,7 @@ export const NewsManagement = () => {
                   return (
                     <tr key={row.id} className="border-t border-black/[0.06] hover:bg-soft/70">
                       <td className="p-3">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${row.enabled !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-700'}`}>
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${row.enabled !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
                           {row.enabled !== false ? '노출중' : '비활성'}
                         </span>
                       </td>
@@ -285,8 +297,8 @@ export const NewsManagement = () => {
                         <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${cat.className}`}>{cat.label}</span>
                       </td>
                       <td className="p-3 font-medium max-w-[260px] truncate">{row.title || '—'}</td>
-                      <td className="p-3 text-gray-600 max-w-[120px] truncate">{row.source || '—'}</td>
-                      <td className="p-3 text-gray-600 whitespace-nowrap text-xs">
+                      <td className="p-3 text-slate-600 max-w-[120px] truncate">{row.source || '—'}</td>
+                      <td className="p-3 text-slate-600 whitespace-nowrap text-xs">
                         {pMs != null ? new Date(pMs).toLocaleString('ko-KR') : '—'}
                       </td>
                       <td className="p-3 whitespace-nowrap">

@@ -58,5 +58,7 @@ export const buildPublicApplication = (a) => ({
   program_id: a.program_id ?? null,
   hasPayment: !!(a.merchant_uid || a.merchantUid || a.imp_uid || a.impUid),
   adminAddedParticipant: a.adminAddedParticipant === true || String(a.participationPath || '').trim() === '관리자 등록',
+  // 관리자가 명단에서 숨긴 신청 — 공개 화면 인원 집계에서 빠지도록 표시만 복사 (개인정보 아님)
+  adminHidden: a.adminHidden === true,
   createdAt: a.createdAt ?? null,
 });

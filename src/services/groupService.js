@@ -56,11 +56,11 @@ export const groupService = {
     return snap.docs.map(withId);
   },
   /** 관리자: 전체 그룹 (승인 대기 우선) */
-  subscribeAllGroupsAdmin(callback) {
+  subscribeAllGroupsAdmin(callback, onError) {
     return onSnapshot(collection(db, 'groups'), (snap) => {
       const order = { pending: 0, approved: 1, rejected: 2, closed: 3 };
       callback(snap.docs.map(withId).sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || toMs(b.createdAt) - toMs(a.createdAt)));
-    }, (e) => { console.error('groups admin subscribe', e); callback([]); });
+    }, (e) => { console.error('groups admin subscribe', e); if (onError) onError(e); else callback([]); });
   },
   subscribeGroup(groupId, callback) {
     return onSnapshot(doc(db, 'groups', groupId), (d) => callback(d.exists() ? withId(d) : null), () => callback(null));
@@ -134,11 +134,26 @@ export const groupService = {
       reporterUid: reporter.uid, reporterName: reporter.name || '', status: 'open', createdAt: serverTimestamp(),
     });
   },
-  subscribeOpenReports(callback) {
-    return onSnapshot(query(collection(db, 'reports'), where('status', '==', 'open')), (snap) => callback(snap.docs.map(withId)), () => callback([]));
+  subscribeOpenReports(callback, onError) {
+    return onSnapshot(query(collection(db, 'reports'), where('status', '==', 'open')), (snap) => callback(snap.docs.map(withId)), (e) => { if (onError) onError(e); else callback([]); });
   },
-  resolveReport(reportId) {
-    return updateDoc(doc(db, 'reports', reportId), { status: 'resolved' });
+  /** 관리자: 신고 전체(처리 완료 포함) — 최근 접수 순 */
+  subscribeAllReports(callback, onError) {
+    return onSnapshot(collection(db, 'reports'), (snap) => callback(snap.docs.map(withId).sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt))), (e) => onError?.(e));
+  },
+  /** 처리 완료: 누가·언제·어떻게 처리했는지 남긴다 */
+  resolveReport(reportId, { note = '', by = null } = {}) {
+    return updateDoc(doc(db, 'reports', reportId), {
+      status: 'resolved',
+      resolvedAt: serverTimestamp(),
+      resolvedByUid: by?.uid || null,
+      resolvedByName: String(by?.name || '').slice(0, 40),
+      resolutionNote: String(note || '').slice(0, 500),
+    });
+  },
+  /** 처리 완료를 되돌림 */
+  reopenReport(reportId) {
+    return updateDoc(doc(db, 'reports', reportId), { status: 'open' });
   },
   /** 그룹장: 내 그룹 결제 내역(정산 장부) */
   async getGroupPayments(groupId, leaderUid) {

@@ -28,9 +28,11 @@ service cloud.firestore {
 
     // 본인이 권한·계정 연결 필드를 스스로 바꾸지 못하게 차단 (관리자·서버만 변경 가능).
     // uid/kakaoId/providers는 서버의 카카오 로그인 매칭이 신뢰하는 값이라 본인 수정도 막는다.
+    // 사업자등록증 확인 표시(businessVerified·businessDocVerifiedAt)와 가입 승인·거절 기록은 관리자 판단이라 본인 수정 금지.
     function noPrivilegedFieldChange() {
       return !request.resource.data.diff(resource.data).affectedKeys()
-        .hasAny(['role', 'memberGrade', 'approvalStatus', 'uid', 'kakaoId', 'providers', 'kakaoLinkedAt']);
+        .hasAny(['role', 'memberGrade', 'approvalStatus', 'uid', 'kakaoId', 'providers', 'kakaoLinkedAt',
+                 'businessVerified', 'businessDocVerifiedAt', 'rejectReason', 'rejectedAt', 'approvedAt']);
     }
 
     // 회원가입 시 스스로 admin/마스터·운영진 권한이나 승인 상태, 남의 uid·카카오 연결을 심어 넣지 못하게 차단
