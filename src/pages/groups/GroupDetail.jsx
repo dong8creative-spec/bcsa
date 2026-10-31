@@ -8,6 +8,7 @@ import {
 import { PageShell, TypeBadge, Field, inputClass, REGIONS, CoverPicker } from './GroupsPage';
 import GroupQrModal from './GroupQrModal';
 import GroupReportModal from './GroupReportModal';
+import { GROUP_JOIN_NOTICE, GROUP_PAYMENT_NOTICE, GROUP_CASH_NOTICE } from '../../constants/legal';
 
 const won = (n) => `${(Number(n) || 0).toLocaleString()}원`;
 const fmtDate = (s) => {
@@ -49,6 +50,8 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
 
     const join = async () => {
         if (!currentUser) { onRequireLogin(); return; }
+        // 가입 전에 그룹장에게 보이는 정보를 알린다 (개인정보처리방침 제4조)
+        if (!confirm(`${GROUP_JOIN_NOTICE}\n그룹에 가입할까요?`)) return;
         setBusy(true);
         try {
             const r = await groupService.joinGroup(groupId);
@@ -163,12 +166,15 @@ function InfoTab({ group, sessions, me, isLeader, uid, activeCount, onJoin, onLe
                     ) : me?.status === 'pending' ? (
                         <div className="w-full py-3 rounded-full bg-amber-50 text-center text-sm font-semibold text-amber-700">가입 승인 대기 중</div>
                     ) : (
-                        <button type="button" disabled={busy} onClick={onJoin} className="w-full py-3.5 rounded-full bg-brand text-white font-semibold disabled:opacity-60">
-                            {group.joinPolicy === 'open' ? '가입하기' : '가입 신청하기'}
-                        </button>
+                        <>
+                            <button type="button" disabled={busy} onClick={onJoin} className="w-full py-3.5 rounded-full bg-brand text-white font-semibold disabled:opacity-60">
+                                {group.joinPolicy === 'open' ? '가입하기' : '가입 신청하기'}
+                            </button>
+                            <p className="text-xs text-gray-500 break-keep">가입하면 {GROUP_JOIN_NOTICE.replace('보입니다.', '보여요.')}</p>
+                        </>
                     )
                 ) : null}
-                <p className="text-xs text-gray-500 break-keep">모임 현장에서는 그룹장 화면의 QR을 휴대폰 카메라로 찍으면 출석(참가비가 있으면 결제까지)이 됩니다.</p>
+                <p className="text-xs text-gray-500 break-keep">모임 현장에서는 그룹장 화면의 QR을 휴대폰 카메라로 찍으면 출석(참가비가 있으면 결제까지)이 됩니다. {GROUP_PAYMENT_NOTICE} <a href="/refund" className="underline">환불 기준</a></p>
                 {currentUser && !isLeader ? (
                     <button type="button" onClick={() => setReportOpen(true)} className="text-xs text-gray-400 underline">이 그룹 신고하기</button>
                 ) : null}
@@ -257,6 +263,7 @@ function Roster({ group, session, members }) {
     return (
         <div className="mt-4 border-t border-black/[0.06] pt-3">
             <p className="text-xs text-gray-500 mb-2">출석 {att.length}명 / 멤버 {members.length}명{fee > 0 ? ` · 결제 완료 ${att.filter((a) => a.paid).length}명` : ''}</p>
+            {fee > 0 ? <p className="text-xs text-gray-400 mb-2 break-keep">「현장 결제 표시」는 그룹장이 직접 받은 돈을 기록하는 용도예요. {GROUP_CASH_NOTICE}</p> : null}
             <ul className="divide-y divide-black/[0.04]">
                 {rows.map((r) => {
                     const a = byUid[r.uid];
@@ -334,7 +341,7 @@ function PaymentsTab({ group, sessions }) {
             <div className="rounded-[24px] bg-soft p-5">
                 <p className="text-xs text-gray-500">QR로 결제된 참가비 합계</p>
                 <p className="text-3xl font-semibold text-dark mt-1">{won(total)}</p>
-                <p className="text-xs text-gray-500 mt-2 break-keep">결제 금액은 부청사가 받아 두었다가 그룹장에게 정산합니다. 정산 방식은 운영진이 안내드려요.</p>
+                <p className="text-xs text-gray-500 mt-2 break-keep">QR 결제 참가비는 회사가 판매자로서 받고, 취소·환불도 회사가 책임져요. 그룹장 운영비는 「그룹장 운영 기준」(정산 주기·수수료·지급 방법)에 따라 회사가 지급해요. 정산 전 결제는 여기서 전액 환불할 수 있고, 정산이 끝난 결제는 운영진에게 요청해 주세요.</p>
             </div>
             {rows === null ? <p className="text-sm text-gray-400">불러오는 중…</p> : rows.length === 0 ? <p className="text-sm text-gray-500">결제 내역이 없어요.</p> : (
                 <ul className="divide-y divide-black/[0.05] text-sm">
@@ -352,7 +359,7 @@ function PaymentsTab({ group, sessions }) {
                                         try {
                                             await groupService.refundGroupPayment(r.id, reason);
                                             setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, status: 'refunded' } : x)));
-                                            alert('환불했습니다. 카드사에 따라 3~5영업일 걸릴 수 있어요.');
+                                            alert('환불했어요. 카드사 사정에 따라 실제 반영까지 며칠 더 걸릴 수 있어요.');
                                         } catch (e) { alert(e.message); }
                                     }} className="ml-2 rounded-full bg-soft px-2.5 py-0.5 font-semibold text-red-600">환불</button>
                                 ) : null}

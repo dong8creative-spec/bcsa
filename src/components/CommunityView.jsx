@@ -3,6 +3,7 @@ import { firebaseService } from '../services/firebaseService';
 import { Icons } from './Icons';
 import { uploadImageWithMeta, getDisplayImageUrl } from '../utils/imageUtils';
 import ModalPortal from './ModalPortal';
+import { REVIEW_POLICY } from '../constants/legal';
 
 const CommunityView = ({ 
     onBack, 
@@ -396,6 +397,21 @@ const CommunityView = ({
                                                         </button>
                                                 ))}
                                                     </div>
+
+                {/* 프로그램 후기 수집·처리 기준 공개 (전자상거래법 제21조의4, 시행령 제27조의3) */}
+                {(selectedCategory === '전체' || selectedCategory === '프로그램 후기') ? (
+                    <details className="mb-6 rounded-2xl bg-white border border-black/[0.06] px-4 py-3 text-sm text-gray-700" open={selectedCategory === '프로그램 후기'}>
+                        <summary className="font-semibold text-dark cursor-pointer">{REVIEW_POLICY.title}</summary>
+                        <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[13px] leading-relaxed">
+                            {REVIEW_POLICY.items.map((r) => (
+                                <React.Fragment key={r.k}>
+                                    <dt className="text-gray-500 whitespace-nowrap">{r.k}</dt>
+                                    <dd className="break-keep break-words">{r.v}</dd>
+                                </React.Fragment>
+                            ))}
+                        </dl>
+                    </details>
+                ) : null}
 
                 {/* 공지사항 상단 고정 (1줄 표기) */}
                 {noticePosts.length > 0 ? (
