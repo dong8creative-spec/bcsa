@@ -1168,7 +1168,7 @@ const App = () => {
                 img: images.length > 0 ? images[0] : (seminar.img && typeof seminar.img === 'string' && seminar.img.trim() !== '' ? seminar.img : ''),
                 date: seminar.date || '',
                 // 관리자가 모집 중단한 경우 '종료', 아니면 날짜 기준 재계산
-                status: seminar.recruitmentClosedByAdmin ? '종료' : calculateStatus(seminar.date || '')
+                status: (seminar.recruitmentClosedByAdmin || seminar.cancelledByOrganizer === true) ? '종료' : calculateStatus(seminar.date || '')
             }, programRecruitmentState);
         };
         

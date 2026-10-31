@@ -37,7 +37,9 @@ export default defineConfig({
         // 자주 바뀌지 않는 라이브러리를 따로 묶어, 사이트를 다시 배포해도 재방문자는 캐시를 그대로 쓴다
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
-          if (/node_modules\/(@firebase\/firestore|@firebase\/webchannel-wrapper)/.test(id)) return 'vendor-firestore';
+          // Storage는 업로드할 때만 따로 받도록 묶음에서 뺀다 (src/utils/imageUtils.js 동적 import)
+          if (/node_modules\/(@firebase\/storage|firebase\/storage)/.test(id)) return undefined;
+          // Firebase는 한 묶음으로 둔다 (두 묶음으로 나누면 서로를 불러오는 순환 구조가 생김)
           if (/node_modules\/(firebase|@firebase|idb)\//.test(id)) return 'vendor-firebase';
           if (/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom|@remix-run)\//.test(id)) return 'vendor-react';
           return undefined;

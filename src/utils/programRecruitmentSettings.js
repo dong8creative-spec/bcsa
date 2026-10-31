@@ -35,7 +35,7 @@ export function getProgramRecruitmentState(content = {}, now = new Date()) {
 /** 전역 모집 중단/재개 대상: 행사일(마감)이 남아 모집중·마감임박인 프로그램만 */
 export function isSeminarEligibleForGlobalRecruitmentControl(seminar) {
   if (!seminar) return false;
-  if (seminar.recruitmentClosedByAdmin) return false;
+  if (seminar.recruitmentClosedByAdmin || seminar.cancelledByOrganizer === true) return false;
   const naturalStatus = calculateStatus(seminar.date || '');
   return naturalStatus === '모집중' || naturalStatus === '마감임박';
 }

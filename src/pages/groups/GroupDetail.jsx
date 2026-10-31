@@ -27,7 +27,6 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
     // 마이페이지 '운영하는 모임'에서 ?tab=sessions 처럼 관리 탭으로 바로 들어올 수 있다
     const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') || 'info');
     const [busy, setBusy] = useState(false);
-    const [reportOpen, setReportOpen] = useState(false);
 
     const isLeader = !!group && group.leaderUid === uid;
     const canManage = isLeader || isAdminUser(currentUser);
@@ -116,6 +115,8 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
 }
 
 function InfoTab({ group, sessions, me, isLeader, uid, activeCount, onJoin, onLeave, busy, currentUser }) {
+    // 신고 창 상태는 이 탭 안에서만 쓴다 (예전에는 상위 컴포넌트 변수를 참조해 화면 전체가 멈췄음)
+    const [reportOpen, setReportOpen] = useState(false);
     const [myAttendance, setMyAttendance] = useState({});
     useEffect(() => {
         if (!uid || !me || me.status !== 'active') return;

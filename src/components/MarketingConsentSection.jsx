@@ -23,7 +23,8 @@ const fmt = (d) => (d ? `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDat
  * - 예전 가입자(marketingAgreed만 있고 동의 일시가 없음)는 '미확인'으로 보고 보내지 않는다
  */
 export default function MarketingConsentSection({ user }) {
-    const uid = user?.uid || user?.id;
+    // 회원 문서 id 우선 (예전 가입자는 문서 id와 로그인 uid가 달라서, 정보 수정과 같은 기준을 쓴다)
+    const uid = user?.id || user?.uid;
     const [local, setLocal] = useState(null); // 저장 후 화면용 { agreed, channels, at: Date, notice }
     const state = useMemo(() => getMarketingConsentState(user), [user]);
     const current = local

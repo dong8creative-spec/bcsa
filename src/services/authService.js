@@ -22,12 +22,19 @@ export const authService = {
       const user = userCredential.user;
       
       // Create user document in Firestore
-      await firebaseService.createUser({
-        uid: user.uid,
-        email: user.email,
-        ...userData,
-        createdAt: new Date().toISOString()
-      });
+      try {
+        await firebaseService.createUser({
+          uid: user.uid,
+          email: user.email,
+          ...userData,
+          createdAt: new Date().toISOString()
+        });
+      } catch (docError) {
+        // 회원 정보 저장이 거부되면 방금 만든 로그인 계정도 지운다.
+        // (그대로 두면 같은 이메일로 다시 가입할 때 "이미 사용 중인 이메일"로 영구히 막힌다)
+        try { await deleteUser(user); } catch (rollbackError) { console.error('[signUp] 로그인 계정 되돌리기 실패', rollbackError); }
+        throw docError;
+      }
       
       return user;
     } catch (error) {

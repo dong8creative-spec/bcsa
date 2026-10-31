@@ -414,13 +414,16 @@ export const UserManagement = ({ currentUser, initialView }) => {
       adminAlert('메인 페이지에서 로그인한 뒤 다시 시도해 주세요.');
       return;
     }
-    const targets = users.filter((u) => selectedIds.has(u.id));
+    const myIds = new Set([currentUser.id, currentUser.uid].filter(Boolean));
+    const isMe = (u) => myIds.has(u.id) || (u.uid && myIds.has(u.uid));
+    const includesMe = users.some((u) => selectedIds.has(u.id) && isMe(u));
+    const targets = users.filter((u) => selectedIds.has(u.id) && !isMe(u));
     if (targets.length === 0) {
-      adminAlert('탈퇴 처리할 회원을 골라 주세요.');
+      adminAlert(includesMe ? '본인 계정은 여기서 탈퇴할 수 없어요. 본인 탈퇴는 마이페이지에서 해 주세요.' : '탈퇴 처리할 회원을 골라 주세요.');
       return;
     }
     const names = targets.slice(0, 5).map((u) => u.name || '(이름 없음)').join(', ') + (targets.length > 5 ? ` 외 ${targets.length - 5}명` : '');
-    const typed = await adminPrompt(`고른 ${targets.length}명을 강제 탈퇴 처리할게요.\n${names}\n\n탈퇴한 회원은 1년 동안 다시 가입할 수 없고, 되돌릴 수 없어요.\n계속하려면 "탈퇴"라고 입력해 주세요.`, {
+    const typed = await adminPrompt(`고른 ${targets.length}명을 강제 탈퇴 처리할게요.\n${names}${includesMe ? '\n(본인 계정은 빼고 처리해요)' : ''}\n\n탈퇴한 회원은 1년 동안 다시 가입할 수 없고, 되돌릴 수 없어요.\n계속하려면 "탈퇴"라고 입력해 주세요.`, {
       title: '일괄 강제 탈퇴', mustEqual: '탈퇴', okText: `${targets.length}명 탈퇴 처리`, danger: true, placeholder: '탈퇴',
     });
     if (typed === null) return;

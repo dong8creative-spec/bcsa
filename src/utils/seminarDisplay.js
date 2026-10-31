@@ -46,7 +46,7 @@ export const isSeminarRecruitmentEnded = (seminar) => {
   if (!seminar) return false;
   const st = seminar.status || '';
   if (st === '종료' || st === '후기작성가능') return true;
-  if (seminar.recruitmentClosedByAdmin) return true;
+  if (seminar.recruitmentClosedByAdmin || seminar.cancelledByOrganizer === true) return true;
   const t = parseSeminarDateToMs(seminar.date);
   if (t > 0 && t < getTodayStartMs()) return true;
   return false;

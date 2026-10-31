@@ -166,6 +166,13 @@ const SignUpPage = ({ onSignUp }) => {
         return age < 14;
     };
 
+    /** 실제 달력에 있는 날짜인지 (예: 1990-02-31은 거부 — 서버 규칙도 같은 기준으로 거부한다) */
+    const isRealDate = (y, m, d) => {
+        if (!(y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return false;
+        const dt = new Date(y, m - 1, d);
+        return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+    };
+
     /** 생년월일 입력 파싱: "19870625" 또는 "1987-06-25" → "1987-06-25" (유효할 때만) */
     const parseBirthdateInput = (value) => {
         if (!value || typeof value !== 'string') return '';
@@ -178,13 +185,13 @@ const SignUpPage = ({ onSignUp }) => {
             const y = parseInt(yyyy, 10);
             const m = parseInt(mm, 10);
             const d = parseInt(dd, 10);
-            if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+            if (isRealDate(y, m, d)) {
                 return `${yyyy}-${mm}-${dd}`;
             }
         }
         if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
             const [y, m, d] = trimmed.split('-').map(Number);
-            if (y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31) return trimmed;
+            if (isRealDate(y, m, d)) return trimmed;
         }
         return value;
     };

@@ -766,6 +766,10 @@ export const ProgramManagement = ({ currentUser }) => {
       return;
     }
     const isCurrentlyClosed = !!program.recruitmentClosedByAdmin;
+    if (isCurrentlyClosed && program.cancelledByOrganizer === true) {
+      adminAlert('회사 사정 취소로 표시된 행사예요. 모집을 다시 열려면 "취소 표시 되돌리기"를 먼저 눌러 주세요.');
+      return;
+    }
     const action = isCurrentlyClosed ? '재개' : '중단';
     const confirmMsg = isCurrentlyClosed
       ? `"${program.title || '이 프로그램'}" 모집을 재개하시겠습니까?\n재개 후 사용자가 다시 신청할 수 있습니다.`

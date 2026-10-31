@@ -20,8 +20,16 @@ export function ensurePortOne() {
       document.head.appendChild(script);
     }
     script.addEventListener('load', done, { once: true });
-    script.addEventListener('error', () => { loading = null; resolve(null); }, { once: true });
-    setTimeout(done, 15000);
+    script.addEventListener('error', () => {
+      // 실패한 <script>를 남겨 두면 다음 결제 때 같은 태그를 다시 기다리다 15초씩 멈추므로 지운다
+      script.remove();
+      loading = null;
+      resolve(null);
+    }, { once: true });
+    setTimeout(() => {
+      if (!window.PortOne) { loading = null; }
+      done();
+    }, 15000);
   });
   return loading;
 }

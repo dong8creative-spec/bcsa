@@ -227,7 +227,6 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
             companyWebsite: editUserType === '사업자' ? (editFormData.companyWebsite || '').trim() : '',
             businessRegistrationNumber: editUserType === '사업자' ? businessNumberDigits : '',
             position: editUserType === '사업자' ? (editFormData.position || '').trim() : '',
-            role: editUserType === '사업자' ? (editFormData.position || '').trim() : '',
             businessCategory: editUserType === '사업자' ? editFormData.businessCategory : '',
             industry: editUserType === '사업자' ? editFormData.businessCategory : '',
             collaborationIndustry: editUserType === '사업자' ? (editFormData.collaborationIndustry || '').trim() : '',

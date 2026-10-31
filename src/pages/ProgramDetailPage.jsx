@@ -39,7 +39,7 @@ const ProgramDetailPage = () => {
     }, [id]);
 
     const status = program
-        ? (program.recruitmentClosedByAdmin ? '종료' : calculateStatus(program.date || ''))
+        ? ((program.recruitmentClosedByAdmin || program.cancelledByOrganizer === true) ? '종료' : calculateStatus(program.date || ''))
         : '';
 
     const images = (() => {
