@@ -784,6 +784,39 @@ export const ProgramManagement = ({ currentUser }) => {
     }
   };
 
+  /**
+   * 회사(운영진) 사정으로 행사를 취소했다고 표시한다. 표시되면 서버 환불 계산(functions/refund.js
+   * isSeminarCancelledByCompany)이 날짜와 관계없이 전액 환불로 처리하고, 새 신청도 막힌다.
+   * (취소/환불 규정: 회사 사정으로 취소되면 전액 환불)
+   */
+  const handleOrganizerCancel = async (program) => {
+    const isCancelled = program.cancelledByOrganizer === true;
+    const title = program.title || '이 프로그램';
+    const ok = await adminConfirm(
+      isCancelled
+        ? `"${title}"의 회사 사정 취소 표시를 되돌릴까요?\n되돌리면 환불은 다시 날짜 기준으로 계산되고, 모집 중단 상태는 그대로 남아요.`
+        : `"${title}"을(를) 회사 사정으로 취소했다고 표시할까요?\n\n· 새 신청이 막혀요.\n· 신청자가 마이페이지에서 신청을 취소하면 날짜와 관계없이 전액 환불돼요.\n· 신청자에게 취소 사실과 환불 방법은 따로 꼭 알려 주세요.`,
+      { okText: isCancelled ? '표시 되돌리기' : '회사 사정으로 취소', danger: !isCancelled }
+    );
+    if (!ok) return;
+    setClosingRecruitmentId(program.id);
+    try {
+      await firebaseService.updateSeminar(
+        program.id,
+        isCancelled
+          ? { cancelledByOrganizer: false }
+          : { cancelledByOrganizer: true, cancelledByOrganizerAt: new Date().toISOString(), recruitmentClosedByAdmin: true }
+      );
+      adminAlert(isCancelled ? '회사 사정 취소 표시를 되돌렸어요.' : '회사 사정 취소로 표시했어요. 신청자에게 안내를 보내 주세요.');
+      await loadPrograms();
+    } catch (err) {
+      console.error('회사 사정 취소 표시 실패:', err);
+      adminAlert('처리하지 못했어요. 잠시 뒤 다시 시도해 주세요.');
+    } finally {
+      setClosingRecruitmentId(null);
+    }
+  };
+
   const resetForm = () => {
     setEditingProgram(null);
     setFormData({
@@ -956,7 +989,7 @@ export const ProgramManagement = ({ currentUser }) => {
             const summary = applicationSummaryByProgramId[String(program.id)] || { confirmed: 0, awaitingPayment: 0, hidden: 0 };
             const cardCap = getSeminarCapacity(program);
             const thumb = normalizeImageItem(program.images?.[0]) || program.imageUrls?.[0] || program.imageUrl;
-            const displayStatus = program.recruitmentClosedByAdmin ? '모집중단' : (program.status || calculateStatus(program.date || ''));
+            const displayStatus = program.cancelledByOrganizer === true ? '행사 취소' : program.recruitmentClosedByAdmin ? '모집중단' : (program.status || calculateStatus(program.date || ''));
             const canToggleRecruitment = parseDateForSort(program.date) >= getTodayStart();
             const isClosingThis = closingRecruitmentId === program.id;
             const isRecruitmentClosed = !!program.recruitmentClosedByAdmin;
@@ -1041,6 +1074,17 @@ export const ProgramManagement = ({ currentUser }) => {
                         <Icons.X size={16} />
                       )}
                       {isRecruitmentClosed ? '모집 재개' : '모집 중단'}
+                    </button>
+                  )}
+                  {canToggleRecruitment && (
+                    <button
+                      type="button"
+                      onClick={() => handleOrganizerCancel(program)}
+                      disabled={isClosingThis}
+                      title="회사 사정으로 행사를 취소하면 신청자는 날짜와 관계없이 전액 환불받아요"
+                      className={btn(program.cancelledByOrganizer === true ? 'secondary' : 'danger', 'sm')}
+                    >
+                      {program.cancelledByOrganizer === true ? '취소 표시 되돌리기' : '회사 사정 취소'}
                     </button>
                   )}
                 </div>
