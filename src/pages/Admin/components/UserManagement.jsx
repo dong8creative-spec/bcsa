@@ -436,14 +436,15 @@ export const UserManagement = ({ currentUser, initialView }) => {
         done.add(user.id);
       } catch (error) {
         console.error('일괄 탈퇴 오류:', user.id, error);
-        failedNames.push(user.name || user.id);
+        // 서버가 멈춘 이유(시작 전 유료 신청·미처리 결제·운영 중 그룹장 등)를 함께 보여 준다
+        failedNames.push(`${user.name || user.id}${error?.message ? ` — ${error.message}` : ''}`);
       }
     }
     setSelectedIds(new Set([...selectedIds].filter((id) => !done.has(id))));
     setMemberModalUser(null);
     adminAlert(failedNames.length === 0
       ? `${done.size}명을 탈퇴 처리했어요. 1년 동안 다시 가입할 수 없어요.`
-      : `${done.size}명은 탈퇴 처리했고, ${failedNames.length}명은 처리하지 못했어요.\n처리 못 한 회원: ${failedNames.slice(0, 10).join(', ')}`);
+      : `${done.size}명은 탈퇴 처리했고, ${failedNames.length}명은 처리하지 못했어요.\n처리 못 한 회원:\n${failedNames.slice(0, 10).join('\n')}`);
     if (!firebaseService.subscribeUsersAdmin) loadUsers();
   };
 

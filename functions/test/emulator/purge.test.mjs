@@ -6,9 +6,12 @@ import { createUserPurge, WITHDRAWN_LABEL } from '../../userPurge.js';
 import { createScheduledPurge, BUSINESS_DOC_GRACE_DAYS } from '../../scheduledPurge.js';
 
 const { Timestamp } = admin.firestore;
-const portone = async (paymentId) => (paymentId === 'p_paid'
-  ? { paidTotal: 30000, cancellable: 30000, status: 'PAID', payment: { paidAt: '2026-11-01T01:00:00Z' } }
-  : null);
+const portone = async (paymentId) => {
+  if (paymentId === 'p_paid') return { paidTotal: 30000, cancellable: 30000, status: 'PAID', payment: { paidAt: '2026-11-01T01:00:00Z' } };
+  if (paymentId === 'p_up') return { paidTotal: 20000, cancellable: 20000, status: 'PAID', payment: { paidAt: '2026-11-02T01:00:00Z' } };
+  if (paymentId === 'p_up_cancelled') return { paidTotal: 20000, cancellable: 0, status: 'CANCELLED', payment: { paidAt: '2026-11-02T01:00:00Z', cancelledAt: '2026-11-03T01:00:00Z' } };
+  return null;
+};
 const NOW = new Date('2026-11-05T00:00:00Z');
 const released = [];
 const purger = (extra = {}) => createUserPurge({ db, admin, getPortOneV2PaymentInfo: portone, now: () => NOW, onSeatReleased: async (sid) => { released.push(sid); }, ...extra });
@@ -137,52 +140,57 @@ describe('탈퇴 정리 purgeUserData 본체', () => {
     assert.equal((await db.doc('applications/a_paid').get()).exists, true);
   });
 
-  test('관리자 강제 탈퇴: 시작 전 유료 신청도 보존 기록 후 삭제하고 좌석(참가 인원)을 돌려준다', async () => {
-    released.length = 0;
+  test('관리자 강제 탈퇴도 시작 전 유료 신청이 있으면 막고 프로그램명·날짜·금액을 알려 준다', async () => {
     await db.doc('seminars/s_up').set({ title: '12월 세미나', date: '2026.12.10 19:00', applicationFee: 20000 });
     await db.doc('applications/a_up').set({ userId: 'u1', seminarId: 's_up', merchant_uid: 'p_up' });
+    await assert.rejects(purger().purge({ docId: 'u1', authUid: 'u1', reason: 'admin_forced' }),
+      (e) => e.code === 'failed-precondition' && /12월 세미나/.test(e.message) && /2026\.12\.10 19:00/.test(e.message) && /20,000원/.test(e.message) && /포트원/.test(e.message));
+    assert.equal((await db.doc('applications/a_up').get()).exists, true);
+    assert.equal((await all('legalRetention')).length, 0);
+  });
+
+  test('포트원에서 이미 취소된 시작 전 신청은 막지 않고, 보존 기록 후 정리하며 좌석을 돌려준다', async () => {
+    released.length = 0;
+    await db.doc('seminars/s_up').set({ title: '12월 세미나', date: '2026.12.10 19:00', applicationFee: 20000 });
+    await db.doc('applications/a_up').set({ userId: 'u1', seminarId: 's_up', merchant_uid: 'p_up_cancelled' });
     await purger().purge({ docId: 'u1', authUid: 'u1', reason: 'admin_forced' });
     assert.deepEqual(released, ['s_up']);
-    const rec = (await all('legalRetention')).find((r) => r.paymentId === 'p_up');
-    assert.match(rec.note, /환불 여부 확인/);
+    const rec = (await all('legalRetention')).find((r) => r.paymentId === 'p_up_cancelled');
+    assert.equal(rec.status, 'cancelled');
     assert.equal(rec.reason, 'admin_forced');
   });
 
-  test('결제는 됐는데 신청으로 옮겨지지 않은 결제 대기: 본인 탈퇴는 막고, 강제 탈퇴는 보존 기록 후 삭제', async () => {
+  test('결제는 됐는데 신청으로 옮겨지지 않은 결제 대기: 본인·관리자 모두 막는다', async () => {
     await db.doc('pendingPayments/p_paid_pending').set({ merchant_uid: 'p_paid', user_id: 'u1', user_name: '홍길동', user_phone: '01011112222', seminar_id: 's1' });
     await assert.rejects(purger().purge({ docId: 'u1', authUid: 'u1' }), (e) => /운영진이 확인/.test(e.message));
-    await purger().purge({ docId: 'u1', authUid: 'u1', reason: 'admin_forced' });
-    assert.equal((await db.doc('pendingPayments/p_paid_pending').get()).exists, false);
-    const rec = (await all('legalRetention')).find((r) => r.source === 'seminarPendingPayment');
-    assert.equal(rec.status, 'paid_unprocessed');
-    assert.equal(rec.amount, 30000);
-    assert.equal(rec.name, '홍길동');
+    await assert.rejects(purger().purge({ docId: 'u1', authUid: 'u1', reason: 'admin_forced' }),
+      (e) => /결제번호 p_paid/.test(e.message) && /30,000원/.test(e.message) && /10월 세미나/.test(e.message));
+    assert.equal((await db.doc('pendingPayments/p_paid_pending').get()).exists, true);
   });
 
-  test('Storage: 본인이 올린 파일·회원 문서·게시글 주소의 파일 삭제, 남의 파일과 사이트 콘텐츠는 유지', async () => {
+  test('Storage: 회원 업로드 폴더의 본인 파일·주소가 든 파일만 삭제, 남의 파일·사이트 콘텐츠는 유지', async () => {
     const bucket = admin.storage().bucket(BUCKET);
     const put = (path, ownerUid) => bucket.file(path).save(Buffer.from('x'), { contentType: 'image/png', metadata: ownerUid ? { metadata: { ownerUid } } : {} });
     await put('images/community/u1_post.png', 'u1');
-    await put('images/company/legacy_profile.png');
+    await put('images/company/legacy_logo.png');
     await put('images/community/u2_post.png', 'u2');
     await put('images/community/u2_but_linked.png', 'u2');
-    await put('images/program/admin_poster.png', 'u_admin');
+    await put('images/program/poster_by_u1.png', 'u1');
+    await put('images/content/banner_linked.png');
+    await put('images/content/u1_profile_crop.png', 'u1');
     const url = (p) => `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodeURIComponent(p)}?alt=media&token=t`;
-    await db.doc('users/u1').update({ img: url('images/company/legacy_profile.png') });
-    await db.doc('posts/post1').set({ authorId: 'u1', images: [url('images/community/u2_but_linked.png')] });
+    await db.doc('users/u1').update({ img: url('images/content/u1_profile_crop.png'), companyLogo: url('images/company/legacy_logo.png') });
+    await db.doc('posts/post1').set({ authorId: 'u1', images: [url('images/community/u2_but_linked.png'), url('images/content/banner_linked.png'), url('images/program/poster_by_u1.png')] });
     const s = await purger({ bucket }).purge({ docId: 'u1', authUid: 'u1', userData: { name: '홍길동' } });
     const exists = async (p) => (await bucket.file(p).exists())[0];
     assert.equal(await exists('images/community/u1_post.png'), false);
-    assert.equal(await exists('images/company/legacy_profile.png'), false);
+    assert.equal(await exists('images/company/legacy_logo.png'), false);
+    assert.equal(await exists('images/content/u1_profile_crop.png'), false, '본인이 올린 프로필 사진은 삭제');
     assert.equal(await exists('images/community/u2_post.png'), true);
-    assert.equal(await exists('images/community/u2_but_linked.png'), true, '다른 회원이 올린 파일은 주소가 있어도 유지');
-    assert.equal(s.storageFiles, 2);
-
-    // 관리자 회원이 탈퇴해도 사이트 콘텐츠(program·content)는 남긴다
-    await put('images/community/admin_post.png', 'u_admin');
-    await purger({ bucket }).purge({ docId: 'u_admin', authUid: 'u_admin', userData: { role: 'admin' }, reason: 'admin_forced' });
-    assert.equal(await exists('images/program/admin_poster.png'), true);
-    assert.equal(await exists('images/community/admin_post.png'), false);
+    assert.equal(await exists('images/community/u2_but_linked.png'), true, '다른 회원 파일은 주소가 있어도 유지');
+    assert.equal(await exists('images/content/banner_linked.png'), true, '사이트 콘텐츠는 게시글에 주소가 있어도 유지');
+    assert.equal(await exists('images/program/poster_by_u1.png'), true, '프로그램 이미지는 본인이 올렸어도 유지');
+    assert.equal(s.storageFiles, 3);
   });
 
   test('예전 가입자(문서 id ≠ uid): 두 id 모두로 찾아 정리', async () => {

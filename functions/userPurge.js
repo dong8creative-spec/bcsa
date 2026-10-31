@@ -8,37 +8,38 @@
  * 먼저 확인하고 막는 경우 (아무것도 지우기 전에)
  *  a. 운영 중(approved)인 그룹의 그룹장 → 본인·관리자 모두 차단. 회사에 그룹장 변경·그룹 종료를 요청한 뒤 탈퇴
  *     (이용약관 제13조 제1항).
- *  b. 본인 탈퇴 때, 아직 시작하지 않은 유료 프로그램 신청이 남아 있으면 차단 → 먼저 「신청 취소」로 환불 규정에 따라
- *     취소(이용약관 제13조 제5항). 관리자 강제 탈퇴는 진행하되 보존 기록에 "미취소 결제"로 남긴다.
- *  c. 본인 탈퇴 때, 결제는 됐는데 신청으로 옮겨지지 않은 결제 대기(포트원 PAID)가 있으면 차단 → 운영진 확인 필요.
+ *  b. 아직 시작하지 않은 유료 프로그램 신청이 남아 있으면 본인 탈퇴·관리자 강제 탈퇴 모두 차단 → 먼저 「신청 취소」 또는
+ *     포트원 환불(이용약관 제13조 제5항). 포트원에서 이미 전액 취소된 결제는 막지 않는다. 메시지에 프로그램명·날짜·금액.
+ *  c. 결제는 됐는데 신청으로 옮겨지지 않은 결제 대기(포트원 PAID)가 있으면 본인·관리자 모두 차단 → 운영진이 신청 편입·환불.
  *
  * 처리 내용
  *  1. 세미나 신청: 결제 건은 보존 기록(payment, 5년) 복사 후 삭제. 무료 신청은 바로 삭제. 아직 시작 전인 세미나는
  *     참가 인원(예전 방식 currentParticipants)을 줄인다(onSeatReleased).
- *  2. 결제 대기(pendingPayments): 포트원에서 결제 완료(PAID)로 확인되면 보존 기록을 남기고, 모두 삭제.
+ *  2. 결제 대기(pendingPayments): 결제 완료 건은 위 c에서 막으므로, 남은 미결제·취소 건을 삭제.
  *  3. 그룹 결제 장부(groupPayments): 결제·환불된 건은 보존 기록 복사 후 장부에서 이름·uid를 지워 익명화
  *     (그룹장 정산 금액이 맞도록 금액·상태·정산 여부는 남긴다). 미결제(pending) 건은 삭제.
  *  4. 그룹 멤버 문서·출석 기록: 삭제. 승인 전·반려된 개설 신청은 통째로 삭제, 종료된 그룹은 그룹장 이름·uid만 지운다.
  *  5. 신고: 본인이 낸 신고와 본인을 대상으로 한 신고는 분쟁 기록(dispute, 3년) 복사 후 원본에서 이름·uid를 지운다
  *     (처리 중인 신고를 운영진이 계속 볼 수 있게 원본은 남김).
  *  6. 알림(users/{id}/notifications): 삭제.
- *  7. Firebase Storage 이미지: 회원이 올린 파일(customMetadata.ownerUid)과 회원 문서·게시글·맛집에 들어 있는
- *     Storage 주소의 파일을 지운다. 관리자 회원이면 사이트 콘텐츠(program·content)는 남긴다.
+ *  7. Firebase Storage 이미지: 회원 업로드 폴더(images/community/, images/company/)에서 회원이 올린 파일(ownerUid)과
+ *     회원 문서·게시글·맛집에 주소가 든 파일을 지운다. 사이트 콘텐츠(images/program/, images/content/)는 지우지 않는다
+ *     (본인이 올린 것으로 확인된 프로필 사진 1장만 예외).
  * 게시글·맛집 문서 삭제와 회원 문서·Auth 삭제는 지금처럼 클라이언트(firebaseService.purgeUserRelatedData
  * 이후 deleteUser/deleteAuthUser)가 한다.
  */
 import { HttpsError } from 'firebase-functions/v2/https';
 import {
-  buildSeminarPaymentRecord, buildPendingPaymentRecord, buildGroupPaymentRecord, buildReportRecord, writeRetention,
+  buildSeminarPaymentRecord, buildGroupPaymentRecord, buildReportRecord, writeRetention,
 } from './retention.js';
 import { parseSeminarDate } from './refund.js';
 
 export const WITHDRAWN_LABEL = '탈퇴한 회원';
-const MEMBER_IMAGE_TYPES = ['community', 'company'];
+const MEMBER_IMAGE_PREFIXES = ['images/community/', 'images/company/'];
+const PROFILE_EXTRA_PREFIX = 'images/content/';
 
 const hasPayment = (a) => !!(a?.merchant_uid || a?.merchantUid || a?.imp_uid || a?.impUid);
 const seminarIdOf = (a) => String(a?.seminarId || a?.programId || a?.seminar_id || '');
-const isAdminData = (u) => ['admin', 'master'].includes(String(u?.role || '')) || ['마스터', '운영진'].includes(String(u?.memberGrade || ''));
 
 /** 값 안의 모든 문자열(중첩 포함) */
 function collectStrings(v, out = []) {
@@ -100,34 +101,50 @@ export function createUserPurge({
   };
   const isPaidStatus = (info) => String(info?.status || '').toUpperCase() === 'PAID';
 
-  /** 회원이 올린 Storage 파일 삭제. 반환: 지운 파일 수 */
-  async function purgeStorage(ids, { userDocs, extraDocs, keepSiteContent }) {
+  /**
+   * 회원이 올린 Storage 파일 삭제. 반환: 지운 파일 수
+   * - 지울 수 있는 곳은 회원 업로드 폴더(images/community/, images/company/)뿐이다. 사이트 콘텐츠
+   *   (images/program/, images/content/)는 게시글에 주소가 들어 있어도 지우지 않는다(관리자 회원이든 아니든).
+   * - 예외: 회원 문서의 프로필 사진(img)이 images/content/에 있고 그 파일을 올린 사람(ownerUid)이 본인으로
+   *   확인되면 지운다(프로필 사진 자르기 업로드).
+   * - 다른 회원이 올린 파일(ownerUid가 다름)은 주소가 들어 있어도 지우지 않는다.
+   */
+  async function purgeStorage(ids, { userDocs, extraDocs }) {
     if (!bucket) return 0;
-    const targets = new Set();
-    const typeOf = (p) => (p.match(/^images\/([^/]+)\//) || [])[1] || '';
-    const allowedType = (p) => p.startsWith('images/') && (!keepSiteContent || MEMBER_IMAGE_TYPES.includes(typeOf(p)));
+    const isMemberPath = (p) => MEMBER_IMAGE_PREFIXES.some((pre) => p.startsWith(pre));
+    const targets = new Map(); // path → 'member' | 'ownProfile'
 
-    // 1) ownerUid 메타데이터로 찾기
-    const [files] = await bucket.getFiles({ prefix: 'images/' });
-    for (const f of files) {
-      const owner = f.metadata?.metadata?.ownerUid;
-      if (owner && ids.includes(String(owner)) && allowedType(f.name)) targets.add(f.name);
-    }
-    // 2) 회원 문서·게시글·맛집에 들어 있는 Storage 주소로 찾기 (ownerUid가 없는 예전 업로드)
-    for (const data of [...userDocs, ...extraDocs]) {
-      for (const s of collectStrings(data)) {
-        const loc = storagePathFromUrl(s);
-        if (loc && loc.bucket === bucket.name && allowedType(loc.path)) targets.add(loc.path);
+    // 1) ownerUid 메타데이터로 찾기 (회원 업로드 폴더만)
+    for (const prefix of MEMBER_IMAGE_PREFIXES) {
+      const [files] = await bucket.getFiles({ prefix });
+      for (const f of files) {
+        const owner = f.metadata?.metadata?.ownerUid;
+        if (owner && ids.includes(String(owner))) targets.set(f.name, 'member');
       }
     }
+    // 2) 회원 문서·게시글·맛집에 들어 있는 Storage 주소 (ownerUid가 없는 예전 업로드)
+    for (const data of [...userDocs, ...extraDocs]) {
+      for (const str of collectStrings(data)) {
+        const loc = storagePathFromUrl(str);
+        if (loc && loc.bucket === bucket.name && isMemberPath(loc.path)) targets.set(loc.path, 'member');
+      }
+    }
+    // 3) 프로필 사진(img)이 사이트 콘텐츠 폴더에 있는 경우: 본인이 올린 것이 확인될 때만
+    for (const u of userDocs) {
+      const loc = storagePathFromUrl(u?.img);
+      if (loc && loc.bucket === bucket.name && loc.path.startsWith(PROFILE_EXTRA_PREFIX) && !targets.has(loc.path)) {
+        targets.set(loc.path, 'ownProfile');
+      }
+    }
+
     let n = 0;
-    for (const path of targets) {
+    for (const [path, kind] of targets) {
       const file = bucket.file(path);
       try {
-        // 다른 회원이 올린 파일(ownerUid가 다름)은 주소가 들어 있어도 지우지 않는다
         const [meta] = await file.getMetadata();
         const owner = meta?.metadata?.ownerUid;
         if (owner && !ids.includes(String(owner))) continue;
+        if (kind === 'ownProfile' && !owner) continue; // 올린 사람이 확인되지 않은 콘텐츠 이미지는 남긴다
         await file.delete();
         n += 1;
       } catch (e) {
@@ -175,34 +192,51 @@ export function createUserPurge({
       return !!sem && nowDate.getTime() < sem.startMs;
     };
 
-    // b) 시작 전 유료 신청이 남은 본인 탈퇴 → 차단 (먼저 신청 취소로 환불)
-    if (isSelf) {
-      const upcomingPaid = [];
-      for (const d of apps) {
-        const a = d.data() || {};
-        if (hasPayment(a) && await notStarted(seminarIdOf(a))) upcomingPaid.push((await loadSeminar(seminarIdOf(a)))?.title || '프로그램');
-      }
-      if (upcomingPaid.length) {
-        throw new HttpsError(
-          'failed-precondition',
-          `아직 열리지 않은 유료 프로그램 신청(${upcomingPaid.map((t) => `「${t}」`).join(', ')})이 있어요. 마이페이지에서 먼저 「신청 취소」를 하시면 취소/환불 규정에 따라 환불됩니다. 그 뒤에 탈퇴해 주세요.`,
-          { reason: 'upcoming_paid_application' },
-        );
-      }
+    const won = (n) => (Number(n) > 0 ? `${Number(n).toLocaleString('ko-KR')}원` : '금액 확인 필요');
+    const isCancelledStatus = (info) => /CANCEL/i.test(String(info?.status || ''));
+
+    // b) 시작 전 유료 신청이 남아 있으면 본인 탈퇴·관리자 강제 탈퇴 모두 차단 (먼저 취소·환불)
+    //    포트원에서 이미 전액 취소된 결제는 막지 않는다(보존 기록만 남기고 정리).
+    const upcomingPaid = [];
+    for (const d of apps) {
+      const a = d.data() || {};
+      const sid = seminarIdOf(a);
+      if (!hasPayment(a) || !(await notStarted(sid))) continue;
+      const info = await payInfoSafe(a.merchant_uid || a.merchantUid || '');
+      if (isCancelledStatus(info)) continue;
+      const sem = await loadSeminar(sid);
+      upcomingPaid.push(`「${sem?.title || '프로그램'}」(${sem?.date || '날짜 미정'}, ${won(info?.paidTotal || a.paidAmount || sem?.applicationFee)})`);
+    }
+    if (upcomingPaid.length) {
+      throw new HttpsError(
+        'failed-precondition',
+        isSelf
+          ? `아직 열리지 않은 유료 프로그램 신청 ${upcomingPaid.join(', ')}이 있어요. 마이페이지에서 먼저 「신청 취소」를 하시면 취소/환불 규정에 따라 환불됩니다. 그 뒤에 탈퇴해 주세요.`
+          : `이 회원에게 아직 열리지 않은 유료 프로그램 신청 ${upcomingPaid.join(', ')}이 있어 탈퇴 처리를 멈췄어요. 회원에게 마이페이지 「신청 취소」를 안내하거나, 포트원 관리자 화면에서 결제를 취소(환불)한 뒤 다시 탈퇴 처리해 주세요.`,
+        { reason: 'upcoming_paid_application', items: upcomingPaid },
+      );
     }
 
-    // c) 결제 대기 중 실제로 결제된 건 확인
+    // c) 결제는 끝났지만 신청으로 옮겨지지 않은 결제 대기 → 본인·관리자 모두 차단 (운영진이 신청 편입 또는 환불)
     const pendings = await queryByFields('pendingPayments', ['user_id', 'userId'], ids);
     const paidPendings = [];
     for (const d of pendings) {
       const info = await payInfoSafe(d.data()?.merchant_uid || d.id);
       if (isPaidStatus(info)) paidPendings.push({ d, info });
     }
-    if (isSelf && paidPendings.length) {
+    if (paidPendings.length) {
+      const items = [];
+      for (const { d, info } of paidPendings) {
+        const p = d.data() || {};
+        const sem = await loadSeminar(String(p.seminar_id || p.seminarId || ''));
+        items.push(`「${sem?.title || '프로그램'}」(${sem?.date || '날짜 미정'}, ${won(info?.paidTotal)}, 결제번호 ${p.merchant_uid || d.id})`);
+      }
       throw new HttpsError(
         'failed-precondition',
-        '결제가 끝났지만 신청 확인이 끝나지 않은 건이 있어요. 운영진이 확인해 신청 또는 환불로 처리한 뒤 탈퇴할 수 있습니다. 회사 이메일·전화로 문의해 주세요.',
-        { reason: 'paid_pending_payment' },
+        isSelf
+          ? '결제가 끝났지만 신청 확인이 끝나지 않은 건이 있어요. 운영진이 확인해 신청 또는 환불로 처리한 뒤 탈퇴할 수 있습니다. 회사 이메일·전화로 문의해 주세요.'
+          : `이 회원에게 결제는 끝났지만 신청으로 옮겨지지 않은 건 ${items.join(', ')}이 있어 탈퇴 처리를 멈췄어요. 결제 대기 목록에서 신청으로 옮기거나 포트원에서 환불한 뒤 다시 탈퇴 처리해 주세요.`,
+        { reason: 'paid_pending_payment', items },
       );
     }
 
@@ -216,9 +250,7 @@ export function createUserPurge({
         const record = buildSeminarPaymentRecord({
           application: a, seminar: await loadSeminar(sid), seminarId: sid, payInfo, reason, profile,
           cancel: {
-            note: upcoming
-              ? '강제 탈퇴 시점에 취소되지 않은 시작 전 유료 신청 — 환불 여부 확인 필요'
-              : '탈퇴 시점의 결제 신청 기록',
+            note: upcoming ? '시작 전 신청 — 포트원에서 취소된 결제의 정리 기록' : '탈퇴 시점의 결제 신청 기록',
           },
         });
         const batch = db.batch();
@@ -233,18 +265,7 @@ export function createUserPurge({
       summary.applications += 1;
     }
 
-    // 2) 결제 대기 (관리자 강제 탈퇴에서 결제 완료 건은 보존 기록 후 삭제)
-    for (const { d, info } of paidPendings) {
-      const p = d.data() || {};
-      const sid = String(p.seminar_id || p.seminarId || '');
-      const record = {
-        ...buildPendingPaymentRecord({ merchantUid: p.merchant_uid || d.id, pending: p, seminar: await loadSeminar(sid), reason, amount: info?.paidTotal || null, note: '결제 완료됐지만 신청으로 옮겨지지 않은 건 — 환불 여부 확인 필요' }),
-        status: 'paid_unprocessed', cancelledAt: null, refundedAt: null, refundAmount: null, refundRule: '',
-        paidAt: info?.payment?.paidAt ? new Date(info.payment.paidAt) : null,
-      };
-      await writeRetention({ db, admin, record, now: nowDate });
-      summary.retained += 1;
-    }
+    // 2) 결제 대기: 위에서 결제 완료 건은 막았으므로 남은 것은 미결제·취소 건 → 삭제
     await commitOps(pendings.map((d) => (b) => b.delete(d.ref)));
     summary.pendingPayments = pendings.length;
 
@@ -327,7 +348,6 @@ export function createUserPurge({
       summary.storageFiles = await purgeStorage(ids, {
         userDocs: [userData, ...userDocs],
         extraDocs: [...posts, ...restaurants].map((d) => d.data()),
-        keepSiteContent: isAdminData(userData) || userDocs.some(isAdminData),
       });
     } catch (e) {
       console.error('[purgeUserData] storage purge failed', e?.message);
