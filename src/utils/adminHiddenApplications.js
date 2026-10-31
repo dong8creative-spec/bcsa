@@ -1,6 +1,9 @@
 /**
- * 관리자가 명단에서만 숨긴 신청 — Firestore 미삭제, localStorage + CustomEvent로
- * 홈·목록 등 공개 UI의 currentParticipants 집계에 반영.
+ * 관리자가 명단에서 숨긴 신청.
+ * - 지금: 신청 문서의 adminHidden: true (DB 저장 → 모든 운영자·기기·방문자 화면에 같은 숫자)
+ *   공개 사본(publicApplications)에도 서버가 adminHidden을 함께 복사한다.
+ * - 예전: 운영자 브라우저 localStorage에만 저장(그 브라우저에서만 반영). 관리 화면에서 DB로 옮기기 버튼을 제공하고,
+ *   옮기기 전까지는 그 브라우저에서 계속 숨겨 보이도록 읽기만 유지한다.
  */
 
 import { SEMINAR_PARTICIPANT_FROM_APPLICATIONS_FIELD, CAPACITY_EXTRA_SLOTS } from '../constants/appConstants';
@@ -148,27 +151,54 @@ export function isRegisteredApplication(app, applicationFee) {
   return !!(app?.hasPayment || app?.merchant_uid || app?.merchantUid || app?.imp_uid || app?.impUid);
 }
 
+/** DB에 숨김 표시된 신청인지 */
+export function isAdminHiddenApplication(app) {
+  return app?.adminHidden === true;
+}
+
 /**
- * 프로그램에 연결된 "명단 확정" applications 수 (유료: 결제 증빙 보유 + 관리자 숨김 제외)
+ * 프로그램에 연결된 "명단 확정" applications 수 — 관리 화면 카드·명단 창·공개 화면이 모두 이 기준을 쓴다.
+ * (무료: 신청 건 / 유료: 결제 확인 또는 운영자 직접 등록) − 숨김(DB 또는 예전 브라우저 숨김)
  */
 export function countRegisteredParticipants(seminar, applications, hiddenEntries = [], appById = {}) {
   const keys = collectProgramSeminarKeys(seminar);
   if (keys.size === 0) return 0;
   const fee = Number(seminar?.applicationFee) || 0;
-  const hiddenSub = countHiddenApplicationsForSeminar(seminar, hiddenEntries, appById);
+  const localHidden = new Set((hiddenEntries || []).map((e) => String(e.applicationId)));
+  const seenIds = new Set();
   let n = 0;
   for (const app of applications || []) {
-    const cand = [
-      toSeminarId(app.seminarId),
-      toSeminarId(app.programId),
-      toSeminarId(app.seminar_id),
-      toSeminarId(app.program_id),
-    ].filter(Boolean);
+    const cand = keysFromApplicationRow(app);
     if (!cand.some((c) => keys.has(c))) continue;
+    if (app?.id != null) seenIds.add(String(app.id));
+    if (isAdminHiddenApplication(app)) continue;
+    if (app?.id != null && localHidden.has(String(app.id))) continue;
     if (!isRegisteredApplication(app, fee)) continue;
     n += 1;
   }
-  return Math.max(0, n - hiddenSub);
+  // 예전 형식(신청 id만 저장, 목록에 해당 행이 없는 경우)은 보조 매칭으로 한 번 더 뺀다
+  const orphanEntries = (hiddenEntries || []).filter((e) => !seenIds.has(String(e.applicationId)));
+  const orphanSub = orphanEntries.length ? countHiddenApplicationsForSeminar(seminar, orphanEntries, appById) : 0;
+  return Math.max(0, n - orphanSub);
+}
+
+/**
+ * 프로그램별 인원 내역 (관리 화면 표시용)
+ * @returns {{ confirmed: number, awaitingPayment: number, hidden: number }}
+ */
+export function summarizeProgramApplications(seminar, applications, hiddenEntries = []) {
+  const keys = collectProgramSeminarKeys(seminar);
+  const out = { confirmed: 0, awaitingPayment: 0, hidden: 0 };
+  if (keys.size === 0) return out;
+  const fee = Number(seminar?.applicationFee) || 0;
+  const localHidden = new Set((hiddenEntries || []).map((e) => String(e.applicationId)));
+  for (const app of applications || []) {
+    if (!keysFromApplicationRow(app).some((c) => keys.has(c))) continue;
+    if (isAdminHiddenApplication(app) || (app?.id != null && localHidden.has(String(app.id)))) { out.hidden += 1; continue; }
+    if (isRegisteredApplication(app, fee)) out.confirmed += 1;
+    else out.awaitingPayment += 1;
+  }
+  return out;
 }
 
 /**
