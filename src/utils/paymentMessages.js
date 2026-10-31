@@ -35,5 +35,5 @@ export function formatPaymentApplySuccess(seminarTitle, { serverCompleted = true
 /** 정원 초과로 자동 환불 안내 */
 export function formatCapacityFullRefund(seminarTitle) {
     const title = (seminarTitle || '프로그램').trim();
-    return `"${title}"의 정원이 마감되어 결제가 자동 취소(환불)되었습니다.\n환불은 영업일 기준 3~5일 내 처리됩니다.`;
+    return `"${title}"의 정원이 마감되어 결제가 자동 취소(환불)되었습니다.\n카드사 사정에 따라 실제 반영까지 영업일 기준 3~5일 걸릴 수 있습니다.`;
 }

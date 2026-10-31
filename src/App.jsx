@@ -2732,7 +2732,7 @@ END:VCALENDAR`;
                     alert(data.message || '결제는 이미 취소된 상태입니다. 신청 기록을 정리했습니다.');
                 } else {
                     const refundMsg = data.refund_message ? `\n${data.refund_message}` : '';
-                    alert(`세미나 신청이 취소되었습니다. 환불은 영업일 기준 3~5일 내 처리됩니다.${refundMsg}`);
+                    alert(`세미나 신청이 취소되었습니다. 카드사 사정에 따라 실제 반영까지 영업일 기준 3~5일 걸릴 수 있습니다.${refundMsg}`);
                 }
                 return;
             }
