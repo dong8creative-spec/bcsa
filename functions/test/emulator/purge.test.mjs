@@ -153,6 +153,14 @@ describe('예약 파기 dailyLegalPurge 본체', () => {
     assert.deepEqual((await all('blockedRegistrations')).map((d) => d.id), ['keep']);
   });
 
+  test('교환되지 않은 만료 카카오 1회용 코드 삭제', async () => {
+    await db.doc('kakaoOAuthCodes/old').set({ profile: { name: '홍', phone: '010' }, exp: now.getTime() - 1000 });
+    await db.doc('kakaoOAuthCodes/fresh').set({ profile: { name: '김' }, exp: now.getTime() + 60000 });
+    const r = await createScheduledPurge({ db, admin }).run(now);
+    assert.equal(r.kakaoCodes, 1);
+    assert.deepEqual((await all('kakaoOAuthCodes')).map((d) => d.id), ['fresh']);
+  });
+
   test('처리 완료 후 3년 지난 신고만 삭제', async () => {
     const b = db.batch();
     b.set(db.doc('reports/old'), { status: 'resolved', createdAt: ts('2023-11-01T00:00:00Z') });

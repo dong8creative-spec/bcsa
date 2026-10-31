@@ -4,6 +4,7 @@
  *  1. legalRetention: retainUntil이 지난 보존 기록 삭제 (결제 5년·분쟁 3년)
  *  2. blockedRegistrations: expiresAt(예전 형식은 blockedUntil)이 지난 재가입 제한 기록 삭제 (1년)
  *  3. reports: 처리 완료(resolved)된 신고 중 접수 후 3년이 지난 것 삭제 (분쟁처리 기록 3년)
+ *  3-1. kakaoOAuthCodes: 로그인 도중 그만둬 교환되지 않은 1회용 코드(이름·연락처·이메일 포함) 중 만료된 것 삭제
  *  4. 사업자등록증 사본(users.businessRegistrationDoc): 확인이 끝난 뒤 남아 있는 사본 삭제
  *     - 운영진이 사업자 확인(businessVerified)을 마쳤으면 바로 삭제
  *     - 가입 승인(approvalStatus 'approved', 값이 없는 예전 회원 포함)된 회원은 사본을 처음 발견한 날부터 BUSINESS_DOC_GRACE_DAYS일 뒤 삭제
@@ -104,8 +105,10 @@ export function createScheduledPurge({ db, admin }) {
     }
     reports = old.length;
 
+    const kakaoCodes = await deleteQuery(db.collection('kakaoOAuthCodes').where('exp', '<=', now.getTime()));
+
     const businessDocs = await purgeBusinessDocs(now);
-    return { retention, blocks, reports, businessDocs };
+    return { retention, blocks, reports, kakaoCodes, businessDocs };
   }
 
   return { run, purgeBusinessDocs };
