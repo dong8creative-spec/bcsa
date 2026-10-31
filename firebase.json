@@ -55,6 +55,9 @@
     "ui": {
       "enabled": true,
       "port": 4000
+    },
+    "storage": {
+      "port": 9199
     }
   }
 }

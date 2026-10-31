@@ -2,14 +2,25 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     // 사이트 업로드 이미지(uploadImageToStorage: images/{type}/{uuid}_{name}).
-    // 로그인 사용자는 새 파일 생성만 가능(10MB 이하 이미지). 기존 파일 덮어쓰기·삭제는 관리자 Claim만.
+    // 로그인 사용자는 새 파일 생성만 가능(10MB 이하 이미지). 올린 사람 표시(customMetadata.ownerUid)를 넣으면
+    // 반드시 본인 uid여야 한다(남의 이름으로 올려 남이 지울 수 있게 만들거나, 탈퇴 정리 대상을 꾸미지 못하게).
+    // 덮어쓰기는 관리자 Claim만, 삭제는 관리자 또는 올린 본인(ownerUid)만 — 회원이 자기 게시물·사진을 지울 때 이미지도 함께 지운다.
+    // 회원 탈퇴 시에는 서버(purgeUserData, Admin SDK)가 ownerUid·저장된 주소로 찾아 지운다.
     match /images/{type}/{fileName} {
       allow read: if true;
       allow create: if request.auth != null
+        && resource == null
         && type in ['program', 'content', 'community', 'company']
         && request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*');
-      allow update, delete: if request.auth != null && request.auth.token.admin == true;
+        && request.resource.contentType.matches('image/.*')
+        && (request.resource.metadata == null
+          || !('ownerUid' in request.resource.metadata)
+          || request.resource.metadata.ownerUid == request.auth.uid);
+      allow update: if request.auth != null && request.auth.token.get('admin', false) == true;
+      allow delete: if request.auth != null && (
+        request.auth.token.get('admin', false) == true
+        || (resource.metadata != null && resource.metadata.get('ownerUid', '') == request.auth.uid)
+      );
     }
   }
 }

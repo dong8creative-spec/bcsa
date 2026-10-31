@@ -31,8 +31,8 @@
     "ingest-daily-feed": "node scripts/ingest-daily-feed.mjs",
     "backfill-public-mirrors": "node scripts/backfill-public-mirrors.mjs",
     "migrate-blocklist-hashes": "node scripts/migrate-blocklist-hashes.mjs",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-bcsa \"node --test tests/rules/*.test.mjs\"",
-    "test:functions": "node --test functions/test/unit/*.test.mjs && firebase emulators:exec --only firestore --project demo-bcsa \"node --test --test-concurrency=1 functions/test/emulator/*.test.mjs\"",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-bcsa \"node --test --test-concurrency=1 tests/rules/*.test.mjs\"",
+    "test:functions": "node --test functions/test/unit/*.test.mjs && firebase emulators:exec --only firestore,storage --project demo-bcsa \"node --test --test-concurrency=1 functions/test/emulator/*.test.mjs\"",
     "test:legal": "npm run test:rules && npm run test:functions"
   },
   "dependencies": {
