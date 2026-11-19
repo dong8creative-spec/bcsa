@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MgPageHead, MgWrap, MgCard, MgInfoTable } from '../components/mg/Mg';
+import { useCoffeeChat } from '../components/coffee/CoffeeChatProvider';
 import { topicService, parseTopicBody, topicDateLabel, topicImages } from '../services/topicService';
 
 /**
@@ -34,7 +35,23 @@ function TopicList() {
                         ))}
                     </div>
                 )}
+                <CoffeeChatLink />
             </MgWrap>
+        </div>
+    );
+}
+
+/** 토픽 아래: 현직 선배들이 직접 쓴 노하우·1:1 커피챗(창)으로 이어지는 칸 */
+function CoffeeChatLink() {
+    const cc = useCoffeeChat();
+    if (!cc) return null;
+    return (
+        <div className="mt-14 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-card px-5 py-5 md:px-6">
+            <div className="min-w-0">
+                <p className="text-[18px] font-bold text-ink">선배 사장님들이 직접 쓴 노하우</p>
+                <p className="mt-1 text-[14px] text-sub">문제 상황 → 해결 과정 → 결과로 정리한 실전 팁. 궁금하면 1:1 커피챗으로 물어보세요.</p>
+            </div>
+            <button type="button" onClick={() => cc.open('hub', { tab: 'feed' })} className="h-12 shrink-0 rounded-lg bg-[#0c0c0e] px-5 text-[16px] font-bold text-white">선배 노하우 보기</button>
         </div>
     );
 }

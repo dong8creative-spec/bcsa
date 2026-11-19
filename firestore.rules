@@ -88,6 +88,99 @@ service cloud.firestore {
     // 지원사업 자동 수집 피드: 읽기 공개. 관리자 브라우저 UI에서의 수동 등록/수정/삭제는 isAdmin()만 허용.
     // 주의: 향후 자동 수집 스크립트(scripts/ingest-support-programs.mjs)는 Admin SDK(서비스 계정)로
     // 쓰기 때문에 이 규칙을 완전히 우회함 — 아래 규칙은 브라우저 클라이언트 쓰기에만 적용됨.
+    // ── 선배 커피챗(2026-11-20) ──
+    // 선배 프로필: 승인된 프로필은 누구나 읽기. 본인은 소개·가격 등만 고치고, 승인 상태·통계는 운영진/서버만
+    function seniorPriceOk(d) {
+      let unlocked = d.get('completedCount', 0) >= 10 && d.get('ratingCount', 0) > 0
+        && d.get('ratingSum', 0) >= 4.5 * d.get('ratingCount', 0);
+      return d.prices is map
+        && d.prices.online30 is int && d.prices.online30 >= 20000 && d.prices.online30 <= (unlocked ? 100000 : 50000) && d.prices.online30 % 5000 == 0
+        && d.prices.visit60 is int && d.prices.visit60 >= 50000 && d.prices.visit60 <= 100000 && d.prices.visit60 % 5000 == 0;
+    }
+    function seniorFieldsOk(d) {
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 40
+        && d.bizName is string && d.bizName.size() > 0 && d.bizName.size() <= 60
+        && d.industry in ['카페', '음식점', '뷰티', '소매', '서비스', '기타']
+        && d.area is string && d.area.size() > 0 && d.area.size() <= 40
+        && d.years is int && d.years >= 3 && d.years <= 60
+        && d.topics is list && d.topics.size() >= 1 && d.topics.size() <= 4
+        && d.intro is string && d.intro.size() <= 300
+        && seniorPriceOk(d);
+    }
+    match /seniors/{uid} {
+      allow read: if resource.data.status == 'approved' || (isSignedIn() && request.auth.uid == uid) || isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'bizName', 'industry', 'area', 'years', 'topics', 'intro', 'photoUrl', 'prices', 'accepting', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.uid == uid
+        && seniorFieldsOk(request.resource.data);
+      allow update: if isAdmin() || (isSignedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'bizName', 'industry', 'area', 'years', 'topics', 'intro', 'photoUrl', 'prices', 'accepting', 'updatedAt', 'status'])
+        && (request.resource.data.status == resource.data.status || (resource.data.status == 'rejected' && request.resource.data.status == 'pending'))
+        && seniorFieldsOk(request.resource.data));
+      allow delete: if isAdmin();
+      match /private/{docId} {
+        allow read, write: if (isSignedIn() && request.auth.uid == uid) || isAdmin();
+      }
+      match /reviews/{chatId} {
+        allow read: if true;
+        allow write: if false;
+      }
+    }
+    // 선배 노하우 글(지식피드): 공개 글은 누구나, 쓰기는 승인된 선배 본인. 좋아요 수·조회수만 정해진 방식으로 누구나 바꿀 수 있다
+    function isApprovedSenior() {
+      return isSignedIn() && exists(/databases/$(database)/documents/seniors/$(request.auth.uid))
+        && get(/databases/$(database)/documents/seniors/$(request.auth.uid)).data.status == 'approved';
+    }
+    function seniorPostOk(d) {
+      return d.topic in ['마케팅·브랜딩', 'AI·업무효율화', '재무·세무', '위기극복']
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 50
+        && d.problem is string && d.problem.size() <= 1500
+        && d.solution is string && d.solution.size() <= 1500
+        && d.result is string && d.result.size() <= 1500
+        && d.status in ['published', 'draft'];
+    }
+    match /seniorPosts/{postId} {
+      allow read: if resource.data.status == 'published' || (isSignedIn() && resource.data.authorUid == request.auth.uid) || isAdmin();
+      allow create: if isApprovedSenior() && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.likeCount == 0 && request.resource.data.viewCount == 0
+        && seniorPostOk(request.resource.data);
+      allow update: if (isSignedIn() && resource.data.authorUid == request.auth.uid
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['authorUid', 'likeCount', 'viewCount', 'createdAt'])
+          && seniorPostOk(request.resource.data))
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
+          && request.resource.data.viewCount == resource.data.viewCount + 1)
+        || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likeCount'])
+          && ((request.resource.data.likeCount == resource.data.likeCount + 1
+                && existsAfter(/databases/$(database)/documents/seniorPosts/$(postId)/likes/$(request.auth.uid))
+                && !exists(/databases/$(database)/documents/seniorPosts/$(postId)/likes/$(request.auth.uid)))
+            || (request.resource.data.likeCount == resource.data.likeCount - 1
+                && !existsAfter(/databases/$(database)/documents/seniorPosts/$(postId)/likes/$(request.auth.uid))
+                && exists(/databases/$(database)/documents/seniorPosts/$(postId)/likes/$(request.auth.uid)))))
+        || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.authorUid == request.auth.uid) || isAdmin();
+      // 좋아요 표시는 글의 좋아요 수 ±1 과 함께(같은 묶음 쓰기)일 때만 — 표시만 지웠다 다시 눌러 수를 부풀리는 것 방지
+      match /likes/{uid} {
+        allow read: if isSignedIn() && request.auth.uid == uid;
+        allow create: if isSignedIn() && request.auth.uid == uid
+          && getAfter(/databases/$(database)/documents/seniorPosts/$(postId)).data.likeCount == get(/databases/$(database)/documents/seniorPosts/$(postId)).data.likeCount + 1;
+        allow delete: if isSignedIn() && request.auth.uid == uid
+          && getAfter(/databases/$(database)/documents/seniorPosts/$(postId)).data.likeCount == get(/databases/$(database)/documents/seniorPosts/$(postId)).data.likeCount - 1;
+      }
+    }
+    // 저장한 글(마이페이지): 본인만
+    match /postSaves/{saveId} {
+      allow read, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid
+        && saveId == request.auth.uid + '_' + request.resource.data.postId;
+    }
+    // 커피챗 신청: 서버(함수)만 씀. 후배·선배 당사자와 운영진만 읽음. 운영진은 정산 표시(settled)만 바꾼다
+    match /coffeeChats/{chatId} {
+      allow read: if isSignedIn() && (resource.data.juniorUid == request.auth.uid || resource.data.seniorUid == request.auth.uid || isAdmin());
+      allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['settled', 'settledAt']);
+      allow create, delete: if false;
+    }
+
     // 토픽(대표 인터뷰, 2026-11): 공개 글은 누구나 읽기, 임시저장 글 읽기와 모든 쓰기는 관리자만
     match /topics/{topicId} {
       allow read: if resource.data.status == 'published' || isAdmin();

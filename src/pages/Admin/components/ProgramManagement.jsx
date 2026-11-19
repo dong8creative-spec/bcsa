@@ -197,9 +197,9 @@ function FinalParticipantCountEditor({ program, onUpdated }) {
     program.finalParticipantCount !== undefined && program.finalParticipantCount !== null && program.finalParticipantCount !== '';
 
   return (
-    <div className="mt-3 pt-3 border-t border-dashed border-blue-200 space-y-2">
-      <p className="text-xs font-bold text-gray-700">모집 종료 후 공개 인원 (최종 확정)</p>
-      <p className="text-[11px] text-gray-500 leading-snug">
+    <div className="mt-3 pt-3 border-t border-dashed border-line space-y-2">
+      <p className="text-[14px] font-semibold text-ink">모집 종료 후 공개 인원 (최종 확정)</p>
+      <p className="text-[13px] text-sub leading-snug">
         홈·프로그램 목록에 보이는 신청 인원에 반영됩니다. 명단 건수와 다를 때만 수정하세요.
       </p>
       <div className="flex flex-wrap items-center gap-2">
@@ -207,18 +207,18 @@ function FinalParticipantCountEditor({ program, onUpdated }) {
           type="number"
           min={0}
           inputMode="numeric"
-          className="w-24 px-2 py-1.5 border border-blue-200 rounded-lg text-sm font-bold text-dark"
+          className="h-10 w-24 rounded-lg border border-line2 bg-white px-3 text-[15px] font-semibold text-ink focus:border-royal focus:outline-none"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           disabled={saving}
           aria-label="최종 모집 인원"
         />
-        {cap > 0 ? <span className="text-xs text-gray-500">/ 정원 {cap}명</span> : null}
+        {cap > 0 ? <span className="text-[13px] text-sub">/ 정원 {cap}명</span> : null}
         <button
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-bold hover:bg-blue-700 disabled:opacity-50"
+          className="inline-flex h-10 items-center rounded-lg bg-[#0c0c0e] px-4 text-[14px] font-bold text-white hover:bg-black disabled:opacity-50"
         >
           {saving ? '…' : '저장'}
         </button>
@@ -227,7 +227,7 @@ function FinalParticipantCountEditor({ program, onUpdated }) {
             type="button"
             onClick={handleClear}
             disabled={saving}
-            className="px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex h-10 items-center rounded-lg border border-line2 bg-white px-4 text-[14px] font-semibold text-ink hover:border-ink disabled:opacity-50"
           >
             자동 집계
           </button>
@@ -791,7 +791,7 @@ export const ProgramManagement = () => {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand mb-4"></div>
-          <p className="text-gray-600">프로그램 목록 로딩 중...</p>
+          <p className="text-[15px] text-sub">프로그램 목록 로딩 중...</p>
         </div>
       </div>
     );
@@ -800,16 +800,16 @@ export const ProgramManagement = () => {
   return (
     <div className="min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6 min-w-0">
-        <h2 className="text-xl sm:text-2xl font-bold text-dark flex items-center gap-2 sm:gap-3 flex-shrink-0">
-          <Icons.Calendar size={24} className="sm:w-7 sm:h-7 flex-shrink-0" />
+        <h2 className="text-[22px] md:text-[24px] font-bold text-ink flex items-center gap-2 flex-shrink-0">
+          <Icons.Calendar size={22} className="flex-shrink-0" />
           <span className="truncate">프로그램 관리</span>
         </h2>
         <div className="flex flex-wrap items-center gap-2 flex-shrink-0 min-w-0 justify-end">
           <button
             onClick={loadPrograms}
-            className="px-3 py-2 sm:px-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base whitespace-nowrap"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink disabled:opacity-50 whitespace-nowrap"
           >
-            <Icons.RefreshCw size={16} className="sm:w-[18px] sm:h-[18px] flex-shrink-0" />
+            <Icons.RefreshCw size={16} className="flex-shrink-0" />
             새로고침
           </button>
           <button
@@ -821,7 +821,7 @@ export const ProgramManagement = () => {
             }}
             disabled={savingRecruitmentPause}
             title="사이트 전체 프로그램의 신규 신청을 한번에 막거나 다시 엽니다 (긴급 상황용). 특정 프로그램 하나만 마감하려면 카드의 개별 버튼을 쓰세요."
-            className={`px-3 py-2 sm:px-4 rounded-xl font-bold transition-colors flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base whitespace-nowrap disabled:opacity-50 ${recruitmentPaused ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+            className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-[15px] font-bold whitespace-nowrap disabled:opacity-50 ${recruitmentPaused ? 'bg-royal text-white hover:bg-royalDark' : 'border border-red-200 bg-white text-red-600 hover:bg-red-50'}`}
           >
             {savingRecruitmentPause ? (
               <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -837,7 +837,7 @@ export const ProgramManagement = () => {
             onClick={handleClosePastPrograms}
             disabled={isClosingPast}
             title="행사일이 지난 프로그램을 한 번에 정원 만석·종료 처리합니다"
-            className="px-3 py-2 sm:px-4 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base whitespace-nowrap disabled:opacity-50"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink disabled:opacity-50 whitespace-nowrap"
           >
             {isClosingPast ? (
               <span className="inline-block w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
@@ -849,9 +849,9 @@ export const ProgramManagement = () => {
               resetForm();
               setShowModal(true);
             }}
-            className="px-3 py-2 sm:px-4 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base whitespace-nowrap"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#0c0c0e] px-5 text-[15px] font-bold text-white hover:bg-black disabled:opacity-50 whitespace-nowrap"
           >
-            <Icons.Plus size={16} className="sm:w-[18px] sm:h-[18px] flex-shrink-0" />
+            <Icons.Plus size={16} className="flex-shrink-0" />
             프로그램 추가
           </button>
         </div>
@@ -864,13 +864,13 @@ export const ProgramManagement = () => {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="제목, 설명, 카테고리, 장소, 일시로 검색..."
-          className="flex-1 min-w-[200px] px-4 py-2.5 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="h-12 flex-1 min-w-[200px] rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none"
           aria-label="프로그램 검색"
         />
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="px-4 py-2.5 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white font-medium text-gray-700 min-w-[180px]"
+          className="h-12 min-w-[180px] rounded-lg border border-line2 bg-white px-3 text-[15px] text-ink focus:border-royal focus:outline-none"
           aria-label="정렬 기준"
         >
           {SORT_OPTIONS.map((opt) => (
@@ -884,7 +884,7 @@ export const ProgramManagement = () => {
         {filteredAndSortedPrograms.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <Icons.Calendar size={48} className="text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">
+            <p className="text-[15px] text-sub">
               {programs.length === 0 ? '등록된 프로그램이 없습니다.' : '검색 결과가 없습니다.'}
             </p>
           </div>
@@ -896,53 +896,51 @@ export const ProgramManagement = () => {
             const canToggleRecruitment = parseDateForSort(program.date) >= getTodayStart();
             const isClosingThis = closingRecruitmentId === program.id;
             const isRecruitmentClosed = !!program.recruitmentClosedByAdmin;
-            const statusClass = displayStatus === '모집중단' ? 'bg-amber-100 text-amber-800' : displayStatus === '종료' ? 'bg-gray-100 text-gray-600' : displayStatus === '마감임박' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700';
+            const statusClass = displayStatus === '모집중단' ? 'bg-[#0c0c0e] text-white' : displayStatus === '종료' ? 'bg-card text-sub' : displayStatus === '마감임박' ? 'bg-red-50 text-red-600' : 'bg-royal text-white';
             return (
-              <div key={program.id} className="relative bg-white border-2 border-blue-200 rounded-2xl p-4 hover:shadow-lg transition-shadow">
+              <div key={program.id} className="relative flex h-full flex-col border border-line bg-white p-4">
                 <button
                   type="button"
                   onClick={() => handleDelete(program.id)}
-                  className="absolute top-3 right-3 z-10 p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  className="absolute top-3 right-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50"
                   title="프로그램 삭제"
                   aria-label="삭제"
                 >
                   <Icons.Trash2 size={18} />
                 </button>
                 {thumb && (
-                  <img src={thumb} alt={program.title} className="w-full h-40 object-cover rounded-xl mb-3" loading="lazy" decoding="async" />
+                  <img src={thumb} alt={program.title} className="mb-3 aspect-[3/2] w-full object-cover" loading="lazy" decoding="async" />
                 )}
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusClass}`}>{displayStatus}</span>
-                  <h3 className="font-bold text-lg text-dark flex-1 truncate pr-8">{program.title}</h3>
+                <div className={`mb-2 ${thumb ? '' : 'pr-12'}`}>
+                  <span className={`inline-flex h-7 items-center rounded-none px-2 text-[13px] font-semibold ${statusClass}`}>{displayStatus}</span>
                 </div>
-                {program.description && (
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{program.description}</p>
-                )}
+                <h3 className="mb-2 line-clamp-2 min-h-[2.8em] text-[17px] font-semibold leading-[1.4] text-ink" title={program.title}>{program.title}</h3>
+                <p className="mb-3 line-clamp-2 min-h-[3.2em] text-[15px] leading-[1.6] text-sub">{program.description || '\u00a0'}</p>
                 <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Icons.Calendar size={16} />
-                    <span>{program.date || '-'}</span>
+                  <div className="flex items-center gap-2 text-[15px] text-sub">
+                    <Icons.Calendar size={16} className="shrink-0" />
+                    <span className="truncate" title={program.date || ''}>{program.date || '-'}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Icons.MapPin size={16} />
-                    <span className="line-clamp-1">{program.location || '-'}</span>
+                  <div className="flex items-center gap-2 text-[15px] text-sub">
+                    <Icons.MapPin size={16} className="shrink-0" />
+                    <span className="truncate" title={program.location || ''}>{program.location || '-'}</span>
                   </div>
                   {program.capacity && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Icons.Users size={16} />
+                    <div className="flex items-center gap-2 text-[15px] text-sub">
+                      <Icons.Users size={16} className="shrink-0" />
                       <span>정원 {program.capacity}명</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 text-sm font-bold text-green-700">
+                  <div className="flex items-center gap-2 text-[15px] font-semibold text-royal">
                     <Icons.Users size={16} />
                     <span>신청 {appCount}명</span>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 w-full">
+                <div className="mt-auto flex flex-wrap gap-2 w-full">
                   <button
                     type="button"
                     onClick={() => handleEdit(program)}
-                    className="flex-none whitespace-nowrap px-3 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                    className="inline-flex h-10 flex-none items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-[#0c0c0e] px-3 text-[15px] font-bold text-white hover:bg-black"
                   >
                     <Icons.Edit2 size={16} />
                     수정
@@ -953,7 +951,7 @@ export const ProgramManagement = () => {
                       setApplicantModalProgram(program);
                       setShowApplicantModal(true);
                     }}
-                    className="flex-none whitespace-nowrap px-3 py-2 bg-green-50 text-green-700 rounded-xl font-bold hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
+                    className="inline-flex h-10 flex-none items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-line2 bg-white px-3 text-[15px] font-semibold text-ink hover:border-ink"
                   >
                     <Icons.Users size={16} />
                     신청자명단
@@ -964,7 +962,7 @@ export const ProgramManagement = () => {
                       onClick={() => handleCloseRecruitment(program)}
                       disabled={isClosingThis}
                       title={isRecruitmentClosed ? '모집 재개 후 사용자가 다시 신청할 수 있습니다' : '모집 중단 후 이 프로그램만 신청할 수 없습니다'}
-                      className={`flex-none whitespace-nowrap px-3 py-2 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${isRecruitmentClosed ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+                      className={`inline-flex h-10 flex-none items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-[15px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${isRecruitmentClosed ? 'bg-sky text-royal hover:bg-skyLine' : 'border border-line2 bg-white text-ink hover:border-ink'}`}
                     >
                       {isClosingThis ? (
                         <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -993,18 +991,18 @@ export const ProgramManagement = () => {
             type="button"
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage <= 1}
-            className="px-4 py-2 rounded-xl font-bold border-2 border-blue-200 text-gray-700 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex h-11 items-center rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink disabled:opacity-50 disabled:cursor-not-allowed"
           >
             이전
           </button>
-          <span className="px-4 py-2 text-sm font-bold text-gray-700">
+          <span className="px-4 py-2 text-[15px] font-semibold text-ink">
             {currentPage} / {totalPages}
           </span>
           <button
             type="button"
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage >= totalPages}
-            className="px-4 py-2 rounded-xl font-bold border-2 border-blue-200 text-gray-700 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex h-11 items-center rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink disabled:opacity-50 disabled:cursor-not-allowed"
           >
             다음
           </button>
@@ -1014,38 +1012,38 @@ export const ProgramManagement = () => {
       {/* 프로그램 추가/수정 모달 (ESC 미적용) */}
       {showModal && (
         <ModalPortal>
-        <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
-          <div className="bg-white rounded-3xl max-w-2xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center">
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-[18px] max-w-2xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center">
             <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-6">
-              <h3 className="text-2xl font-bold text-dark mb-6">
+              <h3 className="text-[20px] font-bold text-ink mb-6">
                 {editingProgram ? '프로그램 수정' : '프로그램 추가'}
               </h3>
 
             <form id="program-form" onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">제목 *</label>
+                <label className="block text-[15px] font-semibold text-ink mb-2">제목 *</label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required
-                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-3 border border-line2 rounded-lg focus:border-royal focus:outline-none text-[15px]"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">설명 *</label>
+                <label className="block text-[15px] font-semibold text-ink mb-2">설명 *</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   required
                   rows={4}
-                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-3 border border-line2 rounded-lg focus:border-royal focus:outline-none text-[15px]"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">일시 *</label>
+                <label className="block text-[15px] font-semibold text-ink mb-2">일시 *</label>
                 <DateTimePicker
                   value={formData.date}
                   onChange={(value) => setFormData({ ...formData, date: value })}
@@ -1054,19 +1052,19 @@ export const ProgramManagement = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">장소 *</label>
+                <label className="block text-[15px] font-semibold text-ink mb-2">장소 *</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value, locationLat: null, locationLng: null })}
                     required
-                    className="flex-1 px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                    className="flex-1 px-4 py-3 border border-line2 rounded-lg focus:border-royal focus:outline-none text-[15px]"
                   />
                   <button
                     type="button"
                     onClick={() => setShowMapModal(true)}
-                    className="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+                    className="inline-flex h-12 shrink-0 items-center gap-2 rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink"
                   >
                     <Icons.MapPin size={18} />
                     지도
@@ -1075,14 +1073,14 @@ export const ProgramManagement = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">정원</label>
+                <label className="block text-[15px] font-semibold text-ink mb-2">정원</label>
                 <select
                   value={formData.capacity === '' ? '' : CAPACITY_OPTIONS.includes(Number(formData.capacity)) ? formData.capacity : 'direct'}
                   onChange={(e) => {
                     const v = e.target.value;
                     setFormData({ ...formData, capacity: v === 'direct' ? formData.capacity : v });
                   }}
-                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white"
+                  className="w-full px-4 py-3 border border-line2 rounded-lg focus:border-royal focus:outline-none bg-white text-[15px]"
                 >
                   <option value="">선택 안 함 (정원 없음)</option>
                   {CAPACITY_OPTIONS.map((n) => (
@@ -1098,14 +1096,14 @@ export const ProgramManagement = () => {
                     value={formData.capacity}
                     onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
                     placeholder="정원 입력 (명)"
-                    className="w-full mt-2 px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                    className="w-full mt-2 px-4 py-3 border border-line2 rounded-lg focus:border-royal focus:outline-none text-[15px]"
                   />
                 )}
-                <p className="text-xs text-gray-500 mt-1">자주 쓰는 인원수는 목록에서 고르고, 그 외 숫자는 "직접 입력"으로 정확히 입력하세요. 목록 선택 시에도 값이 임의로 반올림되지 않습니다.</p>
+                <p className="text-[13px] text-sub mt-1">자주 쓰는 인원수는 목록에서 고르고, 그 외 숫자는 "직접 입력"으로 정확히 입력하세요. 목록 선택 시에도 값이 임의로 반올림되지 않습니다.</p>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">초과 인원 (정모 등)</label>
+                <label className="block text-[15px] font-semibold text-ink mb-2">초과 인원 (정모 등)</label>
                 <input
                   type="number"
                   min="0"
@@ -1113,20 +1111,20 @@ export const ProgramManagement = () => {
                   value={formData.overflowParticipants}
                   onChange={(e) => setFormData({ ...formData, overflowParticipants: e.target.value })}
                   placeholder="0"
-                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                  className="w-full px-4 py-3 border border-line2 rounded-lg focus:border-royal focus:outline-none text-[15px]"
                 />
-                <p className="text-xs text-gray-500 mt-1">내부 기록용입니다. 홈·프로그램 목록의 신청 인원 숫자에는 반영되지 않습니다.</p>
+                <p className="text-[13px] text-sub mt-1">내부 기록용입니다. 홈·프로그램 목록의 신청 인원 숫자에는 반영되지 않습니다.</p>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">신청 비용 (원)</label>
+                <label className="block text-[15px] font-semibold text-ink mb-2">신청 비용 (원)</label>
                 <select
                   value={formData.applicationFee === '' ? '' : FEE_OPTIONS.includes(Number(formData.applicationFee)) ? formData.applicationFee : 'direct'}
                   onChange={(e) => {
                     const v = e.target.value;
                     setFormData({ ...formData, applicationFee: v === 'direct' ? formData.applicationFee : v });
                   }}
-                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white"
+                  className="w-full px-4 py-3 border border-line2 rounded-lg focus:border-royal focus:outline-none bg-white text-[15px]"
                 >
                   <option value="">무료</option>
                   {FEE_OPTIONS.map((n) => (
@@ -1142,18 +1140,18 @@ export const ProgramManagement = () => {
                     value={formData.applicationFee}
                     onChange={(e) => setFormData({ ...formData, applicationFee: e.target.value })}
                     placeholder="금액 입력 (원)"
-                    className="w-full mt-2 px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+                    className="w-full mt-2 px-4 py-3 border border-line2 rounded-lg focus:border-royal focus:outline-none text-[15px]"
                   />
                 )}
-                <p className="text-xs text-gray-500 mt-1">무료 또는 1만~10만원 선택, 직접 입력도 가능합니다.</p>
+                <p className="text-[13px] text-sub mt-1">무료 또는 1만~10만원 선택, 직접 입력도 가능합니다.</p>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
+                <label className="block text-[15px] font-semibold text-ink mb-2">카테고리</label>
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none bg-white"
+                  className="w-full px-4 py-3 border border-line2 rounded-lg focus:border-royal focus:outline-none bg-white text-[15px]"
                 >
                   <option value="">선택하세요</option>
                   {PROGRAM_CATEGORIES.map((opt) => (
@@ -1163,7 +1161,7 @@ export const ProgramManagement = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">이미지 (최대 {MAX_IMAGES}장)</label>
+                <label className="block text-[15px] font-semibold text-ink mb-2">이미지 (최대 {MAX_IMAGES}장)</label>
                 <input
                   ref={programImageInputRef}
                   type="file"
@@ -1175,11 +1173,11 @@ export const ProgramManagement = () => {
                 <div className="flex flex-wrap gap-2 mb-2">
                   {(formData.imageEntries || []).map((entry, idx) => (
                     <div key={idx} className="relative group">
-                      <img src={normalizeImageItem(entry)} alt={`이미지 ${idx + 1}`} className="w-20 h-20 object-cover rounded-xl border-2 border-blue-200" loading="lazy" decoding="async" />
+                      <img src={normalizeImageItem(entry)} alt={`이미지 ${idx + 1}`} className="w-20 h-20 object-cover border border-line" loading="lazy" decoding="async" />
                       <button
                         type="button"
                         onClick={() => removeProgramImage(idx)}
-                        className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-90 hover:opacity-100"
+                        className="absolute -top-1 -right-1 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center hover:bg-red-700"
                         aria-label="삭제"
                       >
                         <Icons.X size={14} />
@@ -1191,11 +1189,11 @@ export const ProgramManagement = () => {
                   type="button"
                   disabled={(formData.imageEntries?.length || 0) >= MAX_IMAGES || imageUploading}
                   onClick={() => programImageInputRef.current?.click()}
-                  className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="inline-flex h-11 items-center gap-2 rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {imageUploading ? (
                     <>
-                      <span className="inline-block w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      <span className="inline-block w-4 h-4 border-2 border-royal border-t-transparent rounded-full animate-spin" />
                       업로드 중...
                     </>
                   ) : (
@@ -1208,18 +1206,18 @@ export const ProgramManagement = () => {
               </div>
             </form>
             </div>
-            <div className="shrink-0 border-t border-blue-200 p-4 flex gap-3 justify-end">
+            <div className="shrink-0 border-t border-line p-4 flex gap-3 justify-end">
               <button
                 type="submit"
                 form="program-form"
-                className="flex-1 max-w-[12rem] px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
+                className="h-12 flex-1 max-w-[12rem] rounded-lg bg-[#0c0c0e] px-6 text-[16px] font-bold text-white hover:bg-black"
               >
                 {editingProgram ? '수정' : '추가'}
               </button>
               <button
                 type="button"
                 onClick={() => { setShowModal(false); resetForm(); }}
-                className="flex-1 max-w-[12rem] px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200"
+                className="h-12 flex-1 max-w-[12rem] rounded-lg border border-line2 bg-white px-6 text-[16px] font-semibold text-ink hover:border-ink"
               >
                 닫기
               </button>
@@ -1322,30 +1320,30 @@ export const ProgramManagement = () => {
         };
         return (
           <ModalPortal>
-            <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
-              <div className="bg-white rounded-2xl max-w-[78.4rem] w-full max-h-[90vh] flex flex-col shadow-xl">
-                <div className="flex items-center justify-between p-4 border-b border-blue-200">
+            <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50">
+              <div className="bg-white rounded-[18px] max-w-[78.4rem] w-full max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b border-line">
                   <div>
-                    <h3 className="text-xl font-bold text-dark">
+                    <h3 className="text-[20px] font-bold text-ink">
                       신청자명단: {applicantModalProgram.title || '(제목 없음)'}
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1">신청 {list.length}명</p>
+                    <p className="text-[15px] text-sub mt-1">신청 {list.length}명</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => { setShowApplicantModal(false); setApplicantModalProgram(null); }}
-                    className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-sub hover:bg-card"
                     aria-label="닫기"
                   >
                     <Icons.X size={24} />
                   </button>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 p-4 border-b border-blue-100 bg-gray-50/50">
+                <div className="flex flex-wrap items-center gap-2 p-4 border-b border-line bg-card">
                   <button
                     type="button"
                     onClick={loadApplicantModalData}
                     disabled={applicantModalDataLoading}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2 disabled:opacity-50 shrink-0"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink disabled:opacity-50 shrink-0"
                   >
                     {applicantModalDataLoading ? (
                       <span className="inline-block w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
@@ -1355,7 +1353,7 @@ export const ProgramManagement = () => {
                   <button
                     type="button"
                     onClick={handleCsvDownload}
-                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl font-bold hover:bg-blue-200 transition-colors flex items-center gap-2 shrink-0"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#0c0c0e] px-5 text-[15px] font-bold text-white hover:bg-black disabled:opacity-50 shrink-0"
                   >
                     <Icons.FileText size={18} />
                     CSV 다운로드
@@ -1363,19 +1361,19 @@ export const ProgramManagement = () => {
                   <button
                     type="button"
                     onClick={handleCopyForSheets}
-                    className="px-4 py-2 bg-green-100 text-green-700 rounded-xl font-bold hover:bg-green-200 transition-colors flex items-center gap-2 shrink-0"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink disabled:opacity-50 shrink-0"
                   >
                     스프레드시트에 붙여넣기
                   </button>
-                  <span className="hidden sm:inline-block w-px h-8 bg-gray-200 shrink-0 mx-1" aria-hidden="true" />
+                  <span className="hidden sm:inline-block w-px h-8 bg-line shrink-0 mx-1" aria-hidden="true" />
                   <button
                     type="button"
                     onClick={clearAllHiddenApplicants}
-                    className="px-3 py-2 text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 shrink-0"
+                    className="inline-flex h-11 items-center rounded-lg bg-sky px-3 text-[14px] font-semibold text-royal hover:bg-skyLine shrink-0"
                   >
                     숨김 전체 해제
                   </button>
-                  <span className="text-xs text-gray-500 shrink-0 max-w-[14rem] lg:max-w-none leading-snug">
+                  <span className="text-[13px] text-sub shrink-0 max-w-[14rem] lg:max-w-none leading-snug">
                     「명단에서 제거」는 이 브라우저만 반영 (홈·목록 인원 표시 포함, DB 미삭제)
                   </span>
                 </div>
@@ -1389,16 +1387,16 @@ export const ProgramManagement = () => {
                             .slice(0, 25)
                         : [];
                     return (
-                      <div className="mb-6 p-4 rounded-xl border-2 border-brand/25 bg-gradient-to-br from-blue-50/90 to-white">
-                        <h4 className="text-sm font-bold text-dark mb-1 flex items-center gap-2">
-                          <Icons.User size={18} className="text-brand shrink-0" />
-                          <Icons.Plus size={16} className="text-brand shrink-0" />
+                      <div className="mb-6 p-4 rounded-xl bg-sky">
+                        <h4 className="text-[16px] font-semibold text-ink mb-1 flex items-center gap-2">
+                          <Icons.User size={18} className="text-royal shrink-0" />
+                          <Icons.Plus size={16} className="text-royal shrink-0" />
                           회원을 참여 명단에 직접 추가
                         </h4>
-                        <p className="text-xs text-gray-600 mb-3 leading-relaxed">
+                        <p className="text-[14px] text-sub mb-3 leading-relaxed">
                           이름·닉네임으로 회원을 검색해 명단에 추가할 수 있습니다.
                         </p>
-                        <label className="block text-xs font-bold text-gray-600 mb-1.5" htmlFor="participant-add-search">
+                        <label className="block text-[14px] font-semibold text-ink mb-1.5" htmlFor="participant-add-search">
                           이름·닉네임으로 검색 (이메일·연락처도 가능)
                         </label>
                         <input
@@ -1407,14 +1405,14 @@ export const ProgramManagement = () => {
                           value={participantAddSearch}
                           onChange={(e) => setParticipantAddSearch(e.target.value)}
                           placeholder="예: 홍길동, 또는 성/이름 일부"
-                          className="w-full px-3 py-2.5 border-2 border-blue-200 rounded-xl text-sm focus:border-brand focus:outline-none mb-3"
+                          className="h-12 w-full rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none mb-3"
                           aria-label="회원 검색"
                         />
                         {addQuery.length >= 1 && usersForManualAdd.length === 0 ? (
-                          <p className="text-xs text-gray-500 py-2">검색 결과가 없습니다.</p>
+                          <p className="text-[14px] text-sub py-2">검색 결과가 없습니다.</p>
                         ) : null}
                         {usersForManualAdd.length > 0 ? (
-                          <ul className="space-y-2 max-h-52 overflow-y-auto rounded-lg border border-blue-100 bg-white/80 p-2">
+                          <ul className="max-h-52 overflow-y-auto divide-y divide-line rounded-lg border border-line bg-white">
                             {usersForManualAdd.map((u) => {
                               const uid = String(u.id || u.uid || '');
                               const onList = list.some((app) => String(app.userId || '') === uid);
@@ -1422,17 +1420,17 @@ export const ProgramManagement = () => {
                               return (
                                 <li
                                   key={uid || `${u.email}-${u.name}`}
-                                  className="flex flex-wrap items-center justify-between gap-2 py-2 px-2 rounded-lg border border-transparent hover:border-blue-100 hover:bg-blue-50/50"
+                                  className="flex min-h-[52px] flex-wrap items-center justify-between gap-2 px-3 py-2 hover:bg-card"
                                 >
                                   <div className="min-w-0 flex-1">
-                                    <div className="font-bold text-dark text-sm truncate">{(u.name || '').trim() || '(이름 없음)'}</div>
-                                    <div className="text-xs text-gray-600 truncate">{u.email || '-'} · {u.phone || u.phoneNumber || u.verifiedPhone || '-'}</div>
+                                    <div className="font-semibold text-ink text-[15px] truncate">{(u.name || '').trim() || '(이름 없음)'}</div>
+                                    <div className="text-[13px] text-sub truncate">{u.email || '-'} · {u.phone || u.phoneNumber || u.verifiedPhone || '-'}</div>
                                   </div>
                                   <button
                                     type="button"
                                     disabled={onList || busy || !uid}
                                     onClick={() => handleAdminAddParticipant(u)}
-                                    className="shrink-0 px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="inline-flex h-10 shrink-0 items-center rounded-lg bg-[#0c0c0e] px-3 text-[14px] font-bold text-white hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
                                     {busy ? '추가 중…' : onList ? '이미 명단' : '명단에 추가'}
                                   </button>
@@ -1445,29 +1443,29 @@ export const ProgramManagement = () => {
                     );
                   })()}
                   {list.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">신청자가 없습니다.</p>
+                    <p className="text-[15px] text-sub text-center py-8">신청자가 없습니다.</p>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm min-w-[1020px]">
+                    <div className="overflow-x-auto border-t border-ink">
+                      <table className="w-full text-[15px] min-w-[1020px]">
                         <thead>
-                          <tr className="border-b border-blue-200">
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">번호</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">이름</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">닉네임</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">성별</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">생년월일</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">연락처</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">이메일</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">업종/업태</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">협업 업종</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">핵심 고객</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">참여 경로</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">강연 신청 계기</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">강연 사전 질문</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">식사 여부</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">개인정보 동의</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap">신청일</th>
-                            <th className="px-2 py-2 text-left font-bold text-gray-700 whitespace-nowrap sticky right-0 bg-white z-[1] border-l border-blue-100 shadow-[-6px_0_10px_-6px_rgba(0,0,0,0.12)]">
+                          <tr>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">번호</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">이름</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">닉네임</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">성별</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">생년월일</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">연락처</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">이메일</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">업종/업태</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">협업 업종</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">핵심 고객</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">참여 경로</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">강연 신청 계기</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">강연 사전 질문</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">식사 여부</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">개인정보 동의</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line bg-white whitespace-nowrap">신청일</th>
+                            <th className="h-[52px] px-4 text-left text-[14px] font-semibold text-sub border-b border-line whitespace-nowrap sticky right-0 bg-white z-[1] border-l">
                               관리
                             </th>
                           </tr>
@@ -1477,34 +1475,34 @@ export const ProgramManagement = () => {
                             const user = resolveUser(app);
                             const rowLabel = (user?.name || app.userName || '').trim() || app.userEmail || `신청 ${i + 1}`;
                             return (
-                              <tr key={app.id ? `${app.id}-${i}` : `row-${i}`} className="border-b border-blue-100">
-                                <td className="px-2 py-2 text-gray-600">{i + 1}</td>
-                                <td className="px-2 py-2">{(user?.name || app.userName || '').trim() || '-'}</td>
-                                <td className="px-2 py-2 text-gray-600">{user?.nickname || '-'}</td>
-                                <td className="px-2 py-2 text-gray-600">{user?.gender || '-'}</td>
-                                <td className="px-2 py-2 text-gray-600">{user?.birthdate || '-'}</td>
-                                <td className="px-2 py-2">{app.userPhone || user?.phone || user?.phoneNumber || '-'}</td>
-                                <td className="px-2 py-2">{app.userEmail || user?.email || '-'}</td>
-                                <td className="px-2 py-2 max-w-[120px] truncate" title={user?.industry || user?.businessCategory || ''}>{user?.industry || user?.businessCategory || '-'}</td>
-                                <td className="px-2 py-2 max-w-[100px] truncate" title={user?.collaborationIndustry || ''}>{user?.collaborationIndustry || '-'}</td>
-                                <td className="px-2 py-2 max-w-[100px] truncate" title={user?.keyCustomers || ''}>{user?.keyCustomers || '-'}</td>
-                                <td className="px-2 py-2">{app.participationPath || '-'}</td>
-                                <td className="px-2 py-2 max-w-[150px] truncate" title={app.applyReason || ''}>{app.applyReason || '-'}</td>
-                                <td className="px-2 py-2 max-w-[150px] truncate" title={app.preQuestions || ''}>{app.preQuestions || '-'}</td>
-                                <td className="px-2 py-2">{app.mealAfter || '-'}</td>
-                                <td className="px-2 py-2">{app.privacyAgreed === true ? '동의' : '-'}</td>
-                                <td className="px-2 py-2 text-gray-600">{formatDate(app.createdAt || app.appliedAt)}</td>
-                                <td className="px-2 py-2 align-top sticky right-0 bg-white z-[1] border-l border-blue-100 shadow-[-6px_0_10px_-6px_rgba(0,0,0,0.12)]">
+                              <tr key={app.id ? `${app.id}-${i}` : `row-${i}`} className="border-b border-line hover:bg-card">
+                                <td className="h-[52px] px-4 py-3 align-middle text-sub">{i + 1}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle">{(user?.name || app.userName || '').trim() || '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle text-sub">{user?.nickname || '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle text-sub">{user?.gender || '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle text-sub">{user?.birthdate || '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle">{app.userPhone || user?.phone || user?.phoneNumber || '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle">{app.userEmail || user?.email || '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle max-w-[120px] truncate" title={user?.industry || user?.businessCategory || ''}>{user?.industry || user?.businessCategory || '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle max-w-[100px] truncate" title={user?.collaborationIndustry || ''}>{user?.collaborationIndustry || '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle max-w-[100px] truncate" title={user?.keyCustomers || ''}>{user?.keyCustomers || '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle">{app.participationPath || '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle max-w-[150px] truncate" title={app.applyReason || ''}>{app.applyReason || '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle max-w-[150px] truncate" title={app.preQuestions || ''}>{app.preQuestions || '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle">{app.mealAfter || '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle">{app.privacyAgreed === true ? '동의' : '-'}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle text-sub">{formatDate(app.createdAt || app.appliedAt)}</td>
+                                <td className="h-[52px] px-4 py-3 align-middle sticky right-0 bg-white z-[1] border-l border-line">
                                   <button
                                     type="button"
                                     disabled={!app.id}
                                     onClick={() => handleAdminRemoveApplicant(app.id, rowLabel, applicantModalProgram)}
-                                    className="text-xs font-bold text-red-600 hover:text-red-800 px-2 py-1.5 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 whitespace-nowrap"
+                                    className="inline-flex h-10 items-center rounded-lg border border-red-200 bg-white px-3 text-[14px] font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 whitespace-nowrap"
                                   >
                                     명단에서 제거
                                   </button>
                                   {app.id ? (
-                                    <div className="text-[10px] text-gray-400 mt-1 font-mono break-all max-w-[8.5rem]" title={app.id}>
+                                    <div className="text-[11px] text-gray-400 mt-1 font-mono truncate max-w-[8.5rem]" title={app.id}>
                                       {app.id}
                                     </div>
                                   ) : null}

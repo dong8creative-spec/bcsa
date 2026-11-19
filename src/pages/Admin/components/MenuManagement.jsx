@@ -31,17 +31,19 @@ const SortableMenuItem = ({ id, enabled, name, onToggle, onNameChange }) => {
     <div
       ref={setNodeRef}
       style={style}
-      className="bg-white border-2 border-blue-200 rounded-xl p-4 hover:shadow-lg transition-all"
+      className="border-b border-line bg-white px-1 py-2.5 md:px-3"
     >
-      <div className="flex items-center gap-4">
+      <div className="flex min-h-[52px] items-center gap-2 md:gap-4">
         {/* 드래그 핸들 */}
         <button
           {...listeners}
           {...attributes}
-          className="cursor-grab active:cursor-grabbing p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          type="button"
+          aria-label="드래그하여 순서 변경"
+          className="flex h-11 w-11 shrink-0 cursor-grab items-center justify-center rounded-lg hover:bg-card active:cursor-grabbing"
           title="드래그하여 순서 변경"
         >
-          <Icons.GripVertical size={20} className="text-gray-400" />
+          <Icons.GripVertical size={20} className="text-sub" />
         </button>
 
         {/* 활성화 토글 */}
@@ -50,29 +52,31 @@ const SortableMenuItem = ({ id, enabled, name, onToggle, onNameChange }) => {
             type="checkbox"
             checked={enabled}
             onChange={onToggle}
-            className="w-5 h-5 text-brand focus:ring-brand border-blue-300 rounded cursor-pointer"
+            aria-label={`${name} 메뉴 표시`}
+            className="h-5 w-5 cursor-pointer rounded border-line2 text-royal accent-[#2d4fe0] focus:ring-royal"
           />
         </div>
 
         {/* 명칭 수정 */}
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <input
             type="text"
             value={name}
             onChange={onNameChange}
-            className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none font-bold"
+            aria-label="메뉴 명칭"
+            className="h-12 w-full rounded-lg border border-line2 bg-white px-3 text-[15px] font-semibold text-ink focus:border-royal focus:outline-none"
             placeholder="메뉴 명칭"
           />
         </div>
 
         {/* 상태 표시 */}
-        <div className="min-w-[80px] text-center">
+        <div className="hidden w-[84px] shrink-0 text-center sm:block">
           {enabled ? (
-            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">
+            <span className="inline-flex h-7 items-center rounded-none bg-royal px-2 text-[13px] font-semibold text-white">
               활성화
             </span>
           ) : (
-            <span className="px-3 py-1 bg-gray-100 text-gray-500 rounded-lg text-xs font-bold">
+            <span className="inline-flex h-7 items-center rounded-none bg-card px-2 text-[13px] font-semibold text-sub">
               비활성화
             </span>
           )}
@@ -189,7 +193,7 @@ export const MenuManagement = () => {
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand mb-4"></div>
-          <p className="text-gray-600">메뉴 설정 로딩 중...</p>
+          <p className="text-[15px] text-sub">메뉴 설정 로딩 중...</p>
         </div>
       </div>
     );
@@ -197,13 +201,13 @@ export const MenuManagement = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-dark flex items-center gap-3">
-            <Icons.Menu size={28} />
+          <h2 className="flex items-center gap-2.5 text-[22px] font-bold text-ink md:text-[24px]">
+            <Icons.Menu size={24} />
             메뉴 관리
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="mt-1 text-[15px] text-sub">
             드래그하여 메뉴 순서를 변경하고, 활성화 여부와 명칭을 수정할 수 있습니다.
           </p>
         </div>
@@ -211,7 +215,7 @@ export const MenuManagement = () => {
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#0c0c0e] px-5 text-[15px] font-bold text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Icons.Save size={18} />
             {isSaving ? '저장 중...' : '저장'}
@@ -220,12 +224,12 @@ export const MenuManagement = () => {
       </div>
 
       {/* 안내 메시지 */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+      <div className="mb-6 rounded-xl bg-sky p-4 md:p-5">
         <div className="flex items-start gap-3">
-          <Icons.Info size={20} className="text-blue-600 mt-0.5" />
+          <Icons.Info size={20} className="text-royal mt-0.5" />
           <div>
-            <p className="text-sm font-bold text-blue-900 mb-1">사용 방법</p>
-            <ul className="text-sm text-blue-700 space-y-1">
+            <p className="mb-1 text-[15px] font-bold text-royal">사용 방법</p>
+            <ul className="space-y-1 text-[15px] text-ink">
               <li>• 좌측 아이콘을 드래그하여 메뉴 순서를 변경할 수 있습니다.</li>
               <li>• 체크박스를 클릭하여 메뉴 표시 여부를 설정할 수 있습니다.</li>
               <li>• 입력창에서 메뉴 명칭을 수정할 수 있습니다.</li>
@@ -236,7 +240,7 @@ export const MenuManagement = () => {
       </div>
 
       {/* 메뉴 목록 */}
-      <div className="space-y-3">
+      <div className="border-t border-ink">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -261,8 +265,8 @@ export const MenuManagement = () => {
       </div>
 
       {/* 미리보기 */}
-      <div className="mt-8 p-6 bg-gray-50 rounded-2xl border-2 border-blue-200">
-        <h3 className="text-lg font-bold text-dark mb-4 flex items-center gap-2">
+      <div className="mt-8 rounded-xl bg-card p-4 md:p-6">
+        <h3 className="mb-4 flex items-center gap-2 text-[18px] font-bold text-ink">
           <Icons.Eye size={20} />
           메뉴 미리보기
         </h3>
@@ -270,14 +274,14 @@ export const MenuManagement = () => {
           {menuOrder.filter(menuKey => menuEnabled[menuKey] !== false).map((menuKey, idx) => (
             <div
               key={menuKey}
-              className="px-4 py-2 bg-brand text-white rounded-xl font-bold shadow-sm"
+              className="inline-flex h-10 items-center bg-[#0c0c0e] px-4 text-[15px] font-semibold text-white"
             >
               {idx + 1}. {menuNames[menuKey] || menuKey}
             </div>
           ))}
         </div>
         {menuOrder.filter(menuKey => menuEnabled[menuKey] !== false).length === 0 && (
-          <p className="text-gray-500 text-sm">활성화된 메뉴가 없습니다.</p>
+          <p className="text-[15px] text-sub">활성화된 메뉴가 없습니다.</p>
         )}
       </div>
     </div>

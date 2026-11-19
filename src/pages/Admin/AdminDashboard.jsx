@@ -10,10 +10,11 @@ import { MenuManagement } from './components/MenuManagement';
 import { ExternalEventPosterManagement } from './components/ExternalEventPosterManagement';
 import { SupportProgramManagement } from './components/SupportProgramManagement';
 import { NewsManagement } from './components/NewsManagement';
+import { CoffeeChatManagement } from './components/CoffeeChatManagement';
 import { TopicManagement } from './components/TopicManagement';
 import { GroupManagement } from './components/GroupManagement';
 
-const VALID_TABS = ['users', 'programs', 'groups', 'externalPosters', 'supportPrograms', 'topics', 'news', 'posts', 'content', 'menu'];
+const VALID_TABS = ['users', 'programs', 'groups', 'externalPosters', 'supportPrograms', 'topics', 'coffee', 'news', 'posts', 'content', 'menu'];
 
 /**
  * 관리자 대시보드 메인 컴포넌트
@@ -71,6 +72,8 @@ export const AdminDashboard = ({ userDoc }) => {
         return <SupportProgramManagement />;
       case 'topics':
         return <TopicManagement />;
+      case 'coffee':
+        return <CoffeeChatManagement />;
       case 'news':
         return <NewsManagement />;
       case 'posts':

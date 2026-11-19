@@ -6,6 +6,7 @@ import { firebaseService } from '../services/firebaseService';
 import ModalPortal from '../components/ModalPortal';
 import { openDaumPostcode } from '../utils/daumPostcode';
 import { useNavigate } from 'react-router-dom';
+import { useCoffeeChat } from '../components/coffee/CoffeeChatProvider';
 import { groupService, GROUP_TYPE_LABEL, GROUP_STATUS_LABEL, groupCoverUrl } from '../services/groupService';
 
 // 회원가입 페이지와 동일한 상수·헬퍼 (회원정보 수정 폼 일치용)
@@ -108,6 +109,29 @@ const getTodayStart = () => {
     t.setHours(0, 0, 0, 0);
     return t.getTime();
 };
+
+/** 마이페이지 「선배 커피챗」 칸: 내 커피챗·노하우·선배 등록/활동 창 열기 */
+function CoffeeChatBox() {
+    const cc = useCoffeeChat();
+    if (!cc) return null;
+    const s = cc.mySenior;
+    const seniorLabel = s?.status === 'approved' ? '선배 활동' : s?.status === 'pending' ? '선배 등록 심사 중' : s?.status === 'rejected' ? '선배 등록 다시 신청' : '선배로 등록하기';
+    return (
+        <section aria-labelledby="mp-coffee" className="mb-8 rounded-xl bg-card px-5 py-5 md:mb-10 md:px-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                    <h2 id="mp-coffee" className="text-[18px] font-bold text-ink">선배 커피챗</h2>
+                    <p className="mt-1 text-[14px] text-sub">같은 업종 선배의 노하우를 읽고, 1:1로 물어보세요.</p>
+                </div>
+                <div className="grid w-full grid-cols-3 gap-2 sm:w-auto">
+                    <button type="button" onClick={() => cc.open('center', { tab: s?.status === 'approved' ? 'received' : 'mine' })} className="h-11 rounded-lg bg-[#0c0c0e] px-3 text-[15px] font-bold text-white">내 커피챗</button>
+                    <button type="button" onClick={() => cc.open('hub', { tab: 'feed' })} className="h-11 rounded-lg border border-line2 bg-white px-3 text-[15px] font-semibold text-ink">선배 노하우</button>
+                    <button type="button" onClick={() => (s?.status === 'approved' ? cc.open('center', { tab: 'senior' }) : cc.open('register', {}))} className="h-11 truncate rounded-lg border border-line2 bg-white px-3 text-[15px] font-semibold text-ink">{seniorLabel}</button>
+                </div>
+            </div>
+        </section>
+    );
+}
 
 const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApplication, myPosts, onWithdraw, onUpdateProfile, onCancelSeminar, onWithdrawApplicationRecord, onWriteReview, pageTitles, onUpdatePost, onKakaoLink }) => {
     const [activeTab, setActiveTab] = useState(() => (new URLSearchParams(window.location.search).get('tab') === 'groups' ? 'groups' : 'seminars'));
@@ -552,6 +576,9 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                         </div>
                     </div>
                 </section>
+
+                {/* 선배 커피챗(2026-11-20): 페이지를 늘리지 않고 창으로 연다 */}
+                <CoffeeChatBox />
 
                 {/* 탭 메뉴 — 직사각형 탭(가안 MgTabs 규칙). 휴대폰은 2×2 */}
                 <div role="tablist" aria-label="마이페이지 구역" className="mb-8 grid grid-cols-2 gap-px border border-[#0c0c0e] bg-[#0c0c0e] md:mb-10 md:grid-cols-4">

@@ -147,55 +147,55 @@ export const ExternalEventPosterManagement = () => {
   const statusFor = (row) => {
     const a = firestoreLikeToMillis(row.displayStartAt);
     const b = firestoreLikeToMillis(row.displayEndAt);
-    if (row.enabled === false) return { label: '비활성', className: 'bg-gray-200 text-gray-700' };
-    if (a == null || b == null) return { label: '일정 미설정', className: 'bg-amber-100 text-amber-800' };
-    if (nowMs < a) return { label: '예정', className: 'bg-blue-100 text-blue-800' };
-    if (nowMs > b) return { label: '기간 만료', className: 'bg-gray-100 text-gray-600' };
-    return { label: '노출 중', className: 'bg-green-100 text-green-800' };
+    if (row.enabled === false) return { label: '비활성', className: 'bg-card text-sub' };
+    if (a == null || b == null) return { label: '일정 미설정', className: 'bg-sky text-royal' };
+    if (nowMs < a) return { label: '예정', className: 'bg-sky text-royal' };
+    if (nowMs > b) return { label: '기간 만료', className: 'bg-[#0c0c0e] text-white' };
+    return { label: '노출 중', className: 'bg-royal text-white' };
   };
 
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-dark mb-2">외부행사 포스터 (기간제)</h2>
-        <p className="text-sm text-gray-600 leading-relaxed">
+        <h2 className="mb-2 text-[22px] font-bold text-ink md:text-[24px]">외부행사 포스터 (기간제)</h2>
+        <p className="text-[15px] leading-relaxed text-sub">
           외부 행사 포스터를 기간으로 지정해 홈 화면 팝업에 노출할 수 있습니다. 팝업은 최대 3장까지 표시됩니다.
         </p>
       </div>
 
-      <div className="border-2 border-blue-100 rounded-2xl p-6 bg-gray-50/80 space-y-4">
-        <h3 className="text-lg font-bold text-dark">{editingId ? '포스터 수정' : '새 포스터 등록'}</h3>
+      <div className="space-y-4 rounded-xl bg-card p-4 md:p-6">
+        <h3 className="text-[18px] font-bold text-ink">{editingId ? '포스터 수정' : '새 포스터 등록'}</h3>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
-            <label className="block text-sm font-bold text-gray-700 mb-1">행사명 (이미지 대체 텍스트·관리용)</label>
+            <label className="mb-1.5 block text-[15px] font-semibold text-ink">행사명 (이미지 대체 텍스트·관리용)</label>
             <input
               type="text"
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="h-12 w-full rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none"
               placeholder="예: OO 컨퍼런스"
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-bold text-gray-700 mb-1">포스터 이미지</label>
+            <label className="mb-1.5 block text-[15px] font-semibold text-ink">포스터 이미지</label>
             <div className="flex flex-wrap items-center gap-3">
               {form.posterUrl ? (
-                <img src={form.posterUrl} alt="" className="h-40 w-28 object-cover rounded-xl border border-gray-200" />
+                <img src={form.posterUrl} alt="" className="h-40 w-28 border border-line bg-white object-cover" />
               ) : (
-                <div className="h-40 w-28 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs text-center px-1">
+                <div className="flex h-40 w-28 items-center justify-center border border-dashed border-line2 bg-white px-1 text-center text-[13px] text-sub">
                   미리보기
                 </div>
               )}
-              <label className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white rounded-xl font-bold cursor-pointer hover:bg-blue-700 text-sm">
+              <label className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg bg-[#0c0c0e] px-4 text-[15px] font-bold text-white hover:bg-black focus-within:ring-2 focus-within:ring-royal">
                 <Icons.Camera size={18} />
                 {uploading ? '업로드 중…' : '이미지 업로드'}
-                <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={handlePosterFile} />
+                <input type="file" accept="image/*" className="sr-only" disabled={uploading} onChange={handlePosterFile} aria-label="포스터 이미지 업로드" />
               </label>
               {form.posterUrl ? (
                 <button
                   type="button"
                   onClick={() => setForm((f) => ({ ...f, posterUrl: '' }))}
-                  className="px-3 py-2 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl"
+                  className="inline-flex h-11 items-center rounded-lg border border-red-200 bg-white px-3 text-[15px] font-semibold text-red-600 hover:border-red-600"
                 >
                   URL 지우기
                 </button>
@@ -203,40 +203,40 @@ export const ExternalEventPosterManagement = () => {
             </div>
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-bold text-gray-700 mb-1">행사 페이지 URL (선택, 있으면 버튼으로 새 창 열기)</label>
+            <label className="mb-1.5 block text-[15px] font-semibold text-ink">행사 페이지 URL (선택, 있으면 버튼으로 새 창 열기)</label>
             <input
               type="url"
               value={form.linkUrl}
               onChange={(e) => setForm((f) => ({ ...f, linkUrl: e.target.value }))}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="h-12 w-full rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none"
               placeholder="https://"
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">노출 시작</label>
+            <label className="mb-1.5 block text-[15px] font-semibold text-ink">노출 시작</label>
             <input
               type="datetime-local"
               value={form.displayStartLocal}
               onChange={(e) => setForm((f) => ({ ...f, displayStartLocal: e.target.value }))}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="h-12 w-full rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">노출 종료</label>
+            <label className="mb-1.5 block text-[15px] font-semibold text-ink">노출 종료</label>
             <input
               type="datetime-local"
               value={form.displayEndLocal}
               onChange={(e) => setForm((f) => ({ ...f, displayEndLocal: e.target.value }))}
-              className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+              className="h-12 w-full rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none"
             />
           </div>
           <div className="flex items-end">
-            <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-700">
+            <label className="flex min-h-[48px] cursor-pointer items-center gap-2 text-[15px] font-semibold text-ink">
               <input
                 type="checkbox"
                 checked={form.enabled}
                 onChange={(e) => setForm((f) => ({ ...f, enabled: e.target.checked }))}
-                className="w-4 h-4 rounded border-gray-300 text-brand"
+                className="h-5 w-5 rounded border-line2 accent-[#2d4fe0]"
               />
               활성화
             </label>
@@ -247,12 +247,12 @@ export const ExternalEventPosterManagement = () => {
             type="button"
             disabled={saving}
             onClick={handleSave}
-            className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex h-12 items-center justify-center rounded-lg bg-[#0c0c0e] px-6 text-[16px] font-bold text-white hover:bg-black disabled:opacity-50"
           >
             {saving ? '저장 중…' : editingId ? '수정 저장' : '등록'}
           </button>
           {editingId ? (
-            <button type="button" onClick={openNew} className="px-6 py-3 bg-gray-200 text-gray-800 font-bold rounded-xl hover:bg-gray-300">
+            <button type="button" onClick={openNew} className="inline-flex h-12 items-center justify-center rounded-lg border border-line2 bg-white px-6 text-[16px] font-semibold text-ink hover:border-ink">
               새로 작성
             </button>
           ) : null}
@@ -260,21 +260,21 @@ export const ExternalEventPosterManagement = () => {
       </div>
 
       <div>
-        <h3 className="text-lg font-bold text-dark mb-3">등록 목록</h3>
+        <h3 className="mb-3 text-[18px] font-bold text-ink">등록 목록</h3>
         {loading ? (
-          <p className="text-gray-500">불러오는 중…</p>
+          <p className="text-[15px] text-sub">불러오는 중…</p>
         ) : rows.length === 0 ? (
-          <p className="text-gray-500 text-sm">등록된 포스터가 없습니다.</p>
+          <p className="rounded-xl bg-card px-5 py-8 text-center text-[15px] text-sub">등록된 포스터가 없습니다.</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-blue-100">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-left">
+          <div className="overflow-x-auto border-t border-ink">
+            <table className="w-full min-w-[640px] text-[15px]">
+              <thead className="bg-white text-left">
                 <tr>
-                  <th className="p-3 font-bold text-gray-700">상태</th>
-                  <th className="p-3 font-bold text-gray-700">썸네일</th>
-                  <th className="p-3 font-bold text-gray-700">행사명</th>
-                  <th className="p-3 font-bold text-gray-700">노출 기간</th>
-                  <th className="p-3 font-bold text-gray-700">작업</th>
+                  <th className="h-[52px] whitespace-nowrap border-b border-line px-4 text-left text-[14px] font-semibold text-sub">상태</th>
+                  <th className="h-[52px] whitespace-nowrap border-b border-line px-4 text-left text-[14px] font-semibold text-sub">썸네일</th>
+                  <th className="h-[52px] whitespace-nowrap border-b border-line px-4 text-left text-[14px] font-semibold text-sub">행사명</th>
+                  <th className="h-[52px] whitespace-nowrap border-b border-line px-4 text-left text-[14px] font-semibold text-sub">노출 기간</th>
+                  <th className="h-[52px] whitespace-nowrap border-b border-line px-4 text-left text-[14px] font-semibold text-sub">작업</th>
                 </tr>
               </thead>
               <tbody>
@@ -283,28 +283,28 @@ export const ExternalEventPosterManagement = () => {
                   const sMs = firestoreLikeToMillis(row.displayStartAt);
                   const eMs = firestoreLikeToMillis(row.displayEndAt);
                   return (
-                    <tr key={row.id} className="border-t border-gray-100 hover:bg-gray-50/80">
-                      <td className="p-3">
-                        <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold ${st.className}`}>{st.label}</span>
+                    <tr key={row.id} className="border-b border-line hover:bg-card">
+                      <td className="h-[52px] whitespace-nowrap px-4 py-3 align-middle">
+                        <span className={`inline-flex h-7 items-center rounded-none px-2 text-[13px] font-semibold ${st.className}`}>{st.label}</span>
                       </td>
-                      <td className="p-3">
+                      <td className="h-[52px] px-4 py-3 align-middle">
                         {row.posterUrl ? (
-                          <img src={row.posterUrl} alt="" className="h-16 w-11 object-cover rounded-lg border" />
+                          <img src={row.posterUrl} alt="" className="h-16 w-11 border border-line object-cover" />
                         ) : (
                           '—'
                         )}
                       </td>
-                      <td className="p-3 font-medium max-w-[200px] truncate">{row.title || '—'}</td>
-                      <td className="p-3 text-gray-600 whitespace-nowrap text-xs">
+                      <td className="h-[52px] max-w-[240px] truncate px-4 py-3 align-middle font-medium text-ink" title={row.title || ''}>{row.title || '—'}</td>
+                      <td className="h-[52px] whitespace-nowrap px-4 py-3 align-middle text-[13px] text-sub">
                         {sMs != null ? new Date(sMs).toLocaleString('ko-KR') : '—'}
                         <br />
                         ~ {eMs != null ? new Date(eMs).toLocaleString('ko-KR') : '—'}
                       </td>
-                      <td className="p-3 whitespace-nowrap">
-                        <button type="button" onClick={() => openEdit(row)} className="text-brand font-bold mr-3 hover:underline">
+                      <td className="h-[52px] whitespace-nowrap px-4 py-3 align-middle">
+                        <button type="button" onClick={() => openEdit(row)} className="mr-2 inline-flex h-10 items-center rounded-lg border border-line2 bg-white px-3 text-[14px] font-semibold text-ink hover:border-ink">
                           수정
                         </button>
-                        <button type="button" onClick={() => handleDelete(row.id)} className="text-red-600 font-bold hover:underline">
+                        <button type="button" onClick={() => handleDelete(row.id)} className="inline-flex h-10 items-center rounded-lg border border-red-200 bg-white px-3 text-[14px] font-semibold text-red-600 hover:border-red-600">
                           삭제
                         </button>
                       </td>

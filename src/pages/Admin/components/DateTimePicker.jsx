@@ -128,7 +128,7 @@ export const DateTimePicker = ({ value, onChange, placeholder }) => {
   return (
     <div className="relative" ref={calendarRef}>
       <div
-        className="w-full p-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none cursor-pointer flex items-center justify-between bg-white"
+        className="flex h-12 w-full cursor-pointer items-center justify-between rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none"
         onClick={() => setShowCalendar(!showCalendar)}
       >
         <span className={value ? 'text-gray-900' : 'text-gray-400'}>
@@ -138,16 +138,16 @@ export const DateTimePicker = ({ value, onChange, placeholder }) => {
       </div>
 
       {showCalendar && (
-        <div className="absolute top-full left-0 mt-2 bg-white border-2 border-blue-200 rounded-2xl shadow-xl z-50 p-4 w-80">
+        <div className="absolute top-full left-0 z-50 mt-2 w-80 max-w-[calc(100vw-48px)] rounded-lg border border-line2 bg-white p-4">
           {/* 월 네비게이션 */}
           <div className="flex items-center justify-between mb-4">
-            <button type="button" onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <button type="button" onClick={prevMonth} className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-card transition-colors" aria-label="이전 달">
               <Icons.ChevronLeft size={20} />
             </button>
-            <span className="font-bold text-lg">
+            <span className="text-[17px] font-bold text-ink">
               {currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월
             </span>
-            <button type="button" onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <button type="button" onClick={nextMonth} className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-card transition-colors" aria-label="다음 달">
               <Icons.ChevronRight size={20} />
             </button>
           </div>
@@ -155,7 +155,7 @@ export const DateTimePicker = ({ value, onChange, placeholder }) => {
           {/* 요일 헤더 */}
           <div className="grid grid-cols-7 gap-1 mb-2">
             {weekDays.map((day, idx) => (
-              <div key={day} className={`text-center text-sm font-bold py-2 ${idx === 0 ? 'text-red-500' : idx === 6 ? 'text-blue-500' : 'text-gray-600'}`}>
+              <div key={day} className={`text-center text-[14px] font-semibold py-2 ${idx === 0 ? 'text-red-500' : idx === 6 ? 'text-royal' : 'text-gray-600'}`}>
                 {day}
               </div>
             ))}
@@ -170,13 +170,13 @@ export const DateTimePicker = ({ value, onChange, placeholder }) => {
                 disabled={!date}
                 onClick={() => date && handleDateClick(date)}
                 className={`
-                  w-9 h-9 rounded-lg text-sm font-medium transition-all
+                  h-9 w-9 rounded-lg text-[15px] font-medium transition-colors
                   ${!date ? 'invisible' : ''}
-                  ${date && isSelected(date) ? 'bg-brand text-white' : ''}
-                  ${date && isToday(date) && !isSelected(date) ? 'border-2 border-brand text-brand' : ''}
-                  ${date && !isSelected(date) && !isToday(date) ? 'hover:bg-gray-100' : ''}
+                  ${date && isSelected(date) ? 'bg-[#0c0c0e] text-white' : ''}
+                  ${date && isToday(date) && !isSelected(date) ? 'border border-royal text-royal' : ''}
+                  ${date && !isSelected(date) && !isToday(date) ? 'hover:bg-card' : ''}
                   ${date && idx % 7 === 0 ? 'text-red-500' : ''}
-                  ${date && idx % 7 === 6 ? 'text-blue-500' : ''}
+                  ${date && idx % 7 === 6 ? 'text-royal' : ''}
                 `}
               >
                 {date ? date.getDate() : ''}
@@ -185,13 +185,13 @@ export const DateTimePicker = ({ value, onChange, placeholder }) => {
           </div>
 
           {/* 시간 선택 */}
-          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-blue-200">
+          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-line">
             <Icons.Clock size={18} className="text-gray-400" />
-            <span className="text-sm font-bold text-gray-700">시간:</span>
+            <span className="text-[15px] font-semibold text-ink">시간:</span>
             <select
               value={selectedTime}
               onChange={(e) => setSelectedTime(e.target.value)}
-              className="flex-1 p-2 border-2 border-blue-200 rounded-lg focus:border-brand focus:outline-none text-sm"
+              className="h-11 flex-1 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none"
             >
               {timeOptions.map(time => (
                 <option key={time} value={time}>{time}</option>
@@ -204,8 +204,8 @@ export const DateTimePicker = ({ value, onChange, placeholder }) => {
             type="button"
             onClick={handleConfirm}
             disabled={!selectedDate}
-            className={`w-full py-3 rounded-xl font-bold transition-colors ${selectedDate
-              ? 'bg-brand text-white hover:bg-blue-700'
+            className={`h-12 w-full rounded-lg text-[15px] font-bold transition-colors ${selectedDate
+              ? 'bg-[#0c0c0e] text-white hover:bg-black'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
           >

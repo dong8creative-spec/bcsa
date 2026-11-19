@@ -27,16 +27,23 @@ function gradeBucketForStats(memberGrade) {
   return '대기자';
 }
 
-/** 등급별 통계 카드 배경/텍스트 색상 (한눈에 구분) */
+/** 등급별 거르기 칸 바탕/글자 색 (먼저가본 개편: 흰색·하늘·회색만, 선택은 검정) */
 const GRADE_STYLES = {
-  '': 'bg-gray-100 text-gray-700 border-gray-200',
-  '마스터': 'bg-amber-100 text-amber-800 border-amber-200',
-  '운영진': 'bg-red-100 text-red-800 border-red-200',
-  '파트너사': 'bg-indigo-100 text-indigo-800 border-indigo-200',
-  '사업자': 'bg-blue-100 text-blue-800 border-blue-200',
-  '예창': 'bg-slate-100 text-slate-700 border-slate-200',
-  '대기자': 'bg-gray-100 text-gray-600 border-gray-200',
+  '': 'bg-white text-sub',
+  '마스터': 'bg-sky text-royal',
+  '운영진': 'bg-sky text-royal',
+  '파트너사': 'bg-white text-ink',
+  '사업자': 'bg-white text-ink',
+  '예창': 'bg-white text-ink',
+  '대기자': 'bg-white text-sub',
 };
+
+/** 정보 표 줄: 이름 칸 너비·줄 높이·여백을 글 양과 상관없이 같게 */
+const ROW = 'grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 border-b border-line py-3 md:grid-cols-[130px_minmax(0,1fr)]';
+const ROW_K = 'text-sub';
+const ROW_V = 'min-w-0 break-keep break-words text-ink';
+const EDIT_ROW = 'grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 md:grid-cols-[130px_minmax(0,1fr)]';
+const EDIT_INPUT = 'h-12 w-full min-w-0 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none';
 
 /**
  * 회원 관리 컴포넌트
@@ -428,8 +435,8 @@ export const UserManagement = ({ currentUser }) => {
     return (
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand mb-4"></div>
-          <p className="text-gray-600">회원 목록 로딩 중...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-royal mb-4"></div>
+          <p className="text-[15px] text-sub">회원 목록 로딩 중...</p>
         </div>
       </div>
     );
@@ -437,15 +444,19 @@ export const UserManagement = ({ currentUser }) => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-dark flex items-center gap-3">
-          <Icons.Users size={28} />
-          회원 관리
-        </h2>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2.5 text-[22px] font-bold text-ink md:text-[24px]">
+            <Icons.Users size={24} />
+            회원 관리
+          </h2>
+          <p className="mt-1 text-[15px] text-sub">전체 {users.length}명 · 등급을 바꾸면 바로 저장되고 가입이 승인됩니다.</p>
+        </div>
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={loadUsers}
-            className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink"
           >
             <Icons.RefreshCw size={18} />
             새로고침
@@ -454,64 +465,64 @@ export const UserManagement = ({ currentUser }) => {
       </div>
 
       {/* 필터 */}
-      <div className="mb-6">
-        <label className="block text-sm font-bold text-gray-700 mb-2">검색</label>
+      <div className="mb-5">
+        <label htmlFor="user-mgmt-search" className="mb-2 block text-[15px] font-semibold text-ink">검색</label>
         <input
+          id="user-mgmt-search"
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="이름 또는 이메일 검색"
-          className="w-full px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="h-12 w-full rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none"
         />
       </div>
 
-      {/* 등급별 필터 · 인원 수 (memberGrade 기준) */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
+      {/* 등급별 필터 · 인원 수 (memberGrade 기준) — 칸 크기 모두 같게 */}
+      <div className="mb-5 grid grid-cols-3 border-l border-t border-line sm:grid-cols-4 lg:grid-cols-7" role="group" aria-label="회원등급으로 거르기">
         <button
           type="button"
           onClick={() => setFilterMemberGrade('')}
-          className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-colors ${
-            !filterMemberGrade
-              ? 'bg-blue-100 border-blue-400 ring-2 ring-blue-300'
-              : 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+          aria-pressed={!filterMemberGrade}
+          className={`flex h-[60px] flex-col items-center justify-center border-b border-r border-line px-2 transition-colors ${
+            !filterMemberGrade ? 'bg-[#0c0c0e] text-white' : 'bg-white text-ink hover:bg-card'
           }`}
         >
-          <span className="text-xs font-bold text-blue-700">전체</span>
-          <span className="text-sm font-bold text-dark">{users.length}</span>
+          <span className="text-[13px] font-semibold opacity-80">전체</span>
+          <span className="text-[17px] font-bold">{users.length}</span>
         </button>
         {MEMBER_GRADE_OPTIONS.filter((o) => o.value).map((opt) => (
           <button
             type="button"
             key={opt.value}
             onClick={() => setFilterMemberGrade(opt.value)}
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-colors ${
-              GRADE_STYLES[opt.value] ?? GRADE_STYLES['']
-            } ${
-              filterMemberGrade === opt.value ? 'ring-2 ring-brand ring-offset-1' : 'hover:opacity-90'
+            aria-pressed={filterMemberGrade === opt.value}
+            className={`flex h-[60px] flex-col items-center justify-center border-b border-r border-line px-2 transition-colors ${
+              filterMemberGrade === opt.value ? 'bg-[#0c0c0e] text-white' : `${GRADE_STYLES[opt.value] ?? GRADE_STYLES['']} hover:bg-card`
             }`}
           >
-            <span className="text-xs font-bold">{opt.label}</span>
-            <span className="text-sm font-bold text-dark">{gradeCounts[opt.value] ?? 0}</span>
+            <span className="text-[13px] font-semibold opacity-80">{opt.label}</span>
+            <span className="text-[17px] font-bold">{gradeCounts[opt.value] ?? 0}</span>
           </button>
         ))}
       </div>
 
       {/* 일괄 작업 버튼 */}
-      <div className="flex flex-wrap items-center gap-3 mb-4 p-4 bg-gray-50 rounded-xl border border-blue-100">
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl bg-card p-3 md:p-4">
         <button
           type="button"
           onClick={toggleSelectAll}
-          className="px-4 py-2 bg-white border-2 border-blue-200 rounded-xl font-bold text-gray-700 hover:border-brand hover:bg-brand/5 transition-colors"
+          className="inline-flex h-11 items-center justify-center rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink"
         >
           {paginatedUsers.length > 0 && paginatedUsers.every(u => selectedIds.has(u.id)) ? '전체 해제' : '전체선택'}
         </button>
         {selectedIds.size > 0 && (
           <>
-            <span className="text-sm text-gray-600 font-medium">선택 {selectedIds.size}명</span>
+            <span className="px-1 text-[15px] font-semibold text-ink">선택 {selectedIds.size}명</span>
             <select
               value={bulkGradeValue}
               onChange={(e) => setBulkGradeValue(e.target.value)}
-              className="px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white focus:border-brand focus:outline-none"
+              aria-label="일괄 변경할 회원등급"
+              className="h-11 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none"
             >
               <option value="">등급 선택</option>
               {MEMBER_GRADE_OPTIONS.filter(o => o.value).map((opt) => (
@@ -522,14 +533,14 @@ export const UserManagement = ({ currentUser }) => {
               type="button"
               onClick={handleBulkGradeChange}
               disabled={!bulkGradeValue}
-              className="px-4 py-2 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex h-11 items-center justify-center rounded-lg bg-[#0c0c0e] px-4 text-[15px] font-bold text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
             >
               선택 회원 등급 일괄 변경
             </button>
             <button
               type="button"
               onClick={handleBulkWithdraw}
-              className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
+              className="inline-flex h-11 items-center justify-center rounded-lg bg-red-600 px-4 text-[15px] font-bold text-white hover:bg-red-700"
             >
               선택 회원 일괄 탈퇴
             </button>
@@ -538,133 +549,119 @@ export const UserManagement = ({ currentUser }) => {
       </div>
 
       {/* 회원 목록: 회원등급 | 회원명 | 가입일자 | 탈퇴 (항목별 오름/내림차순 정렬) */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+      <div className="overflow-x-auto border-t border-ink">
+        <table className="w-full min-w-[720px] border-collapse text-[15px]">
           <thead>
-            <tr className="border-b border-blue-200 bg-blue-50/50">
-              <th className="px-4 py-3 text-center w-12 align-middle">
+            <tr className="border-b border-line bg-white">
+              <th className="h-[52px] w-12 px-4 text-center align-middle">
                 <input
                   type="checkbox"
                   checked={paginatedUsers.length > 0 && paginatedUsers.every(u => selectedIds.has(u.id))}
                   onChange={toggleSelectAll}
-                  className="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand"
+                  aria-label="이 쪽 회원 모두 선택"
+                  className="h-4 w-4 rounded border-gray-300 text-royal focus:ring-royal"
                 />
               </th>
-              <th
-                className="relative px-4 py-3 pr-12 text-center text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none align-middle"
-                onClick={() => handleSort('memberGrade')}
-              >
-                <span className="block text-center">회원등급</span>
-                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg border border-blue-200 bg-white/90 text-gray-500 shadow-sm" aria-hidden="true">
-                  {sortKey === 'memberGrade' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={18} className="text-brand" /> : <Icons.ChevronDown size={18} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-40" />}
-                </span>
-              </th>
-              <th
-                className="relative px-4 py-3 pr-12 text-center text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none align-middle"
-                onClick={() => handleSort('name')}
-              >
-                <span className="block text-center">회원명</span>
-                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg border border-blue-200 bg-white/90 text-gray-500 shadow-sm" aria-hidden="true">
-                  {sortKey === 'name' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={18} className="text-brand" /> : <Icons.ChevronDown size={18} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-40" />}
-                </span>
-              </th>
-              <th
-                className="relative px-4 py-3 pr-12 text-center text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none align-middle"
-                onClick={() => handleSort('company')}
-              >
-                <span className="block text-center">회사명</span>
-                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg border border-blue-200 bg-white/90 text-gray-500 shadow-sm" aria-hidden="true">
-                  {sortKey === 'company' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={18} className="text-brand" /> : <Icons.ChevronDown size={18} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-40" />}
-                </span>
-              </th>
-              <th
-                className="relative px-4 py-3 pr-12 text-center text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none align-middle"
-                onClick={() => handleSort('createdAt')}
-              >
-                <span className="block text-center">가입일자</span>
-                <span className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg border border-blue-200 bg-white/90 text-gray-500 shadow-sm" aria-hidden="true">
-                  {sortKey === 'createdAt' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={18} className="text-brand" /> : <Icons.ChevronDown size={18} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-40" />}
-                </span>
-              </th>
-              <th className="px-4 py-3 text-center text-sm font-bold text-gray-700 align-middle">탈퇴</th>
+              {[['memberGrade', '회원등급'], ['name', '회원명'], ['company', '회사명'], ['createdAt', '가입일자']].map(([key, label]) => (
+                <th
+                  key={key}
+                  className="h-[52px] cursor-pointer select-none whitespace-nowrap px-4 text-left align-middle text-[14px] font-semibold text-sub hover:text-ink"
+                  onClick={() => handleSort(key)}
+                  aria-sort={sortKey === key ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    {label}
+                    <span className="inline-flex h-6 w-6 items-center justify-center" aria-hidden="true">
+                      {sortKey === key ? (sortOrder === 'asc' ? <Icons.ChevronUp size={16} className="text-ink" /> : <Icons.ChevronDown size={16} className="text-ink" />) : <Icons.ChevronUp size={14} className="opacity-40" />}
+                    </span>
+                  </span>
+                </th>
+              ))}
+              <th className="h-[52px] whitespace-nowrap px-4 text-center align-middle text-[14px] font-semibold text-sub">탈퇴</th>
             </tr>
           </thead>
           <tbody>
             {paginatedUsers.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={6} className="h-[104px] px-4 text-center align-middle text-sub">
                   회원이 없습니다.
                 </td>
               </tr>
             ) : (
-              paginatedUsers.map((user) => (
-                <tr key={user.id} className="border-b border-blue-100 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-center align-middle">
+              paginatedUsers.map((user) => {
+                const joined = user.createdAt?.toDate?.().toLocaleDateString('ko-KR') ?? (typeof user.createdAt === 'string' ? new Date(user.createdAt).toLocaleDateString('ko-KR') : user.createdAt) ?? '-';
+                return (
+                <tr key={user.id} className="border-b border-line hover:bg-card">
+                  <td className="h-[52px] px-4 py-2 text-center align-middle">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(user.id)}
                       onChange={() => toggleSelectOne(user.id)}
-                      className="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand"
+                      aria-label={`${user.name || '회원'} 선택`}
+                      className="h-4 w-4 rounded border-gray-300 text-royal focus:ring-royal"
                     />
                   </td>
-                  <td className="px-4 py-3 text-center align-middle">
+                  <td className="h-[52px] whitespace-nowrap px-4 py-2 align-middle">
                     <select
                       value={user.memberGrade || ''}
                       onChange={(e) => handleGradeChange(user.id || user.uid, e.target.value)}
-                      className="mx-auto block max-w-[140px] px-2 py-1.5 border border-blue-200 rounded-lg text-sm focus:border-brand focus:outline-none bg-white"
+                      aria-label={`${user.name || '회원'} 회원등급`}
+                      className="h-10 w-[128px] rounded-lg border border-line2 bg-white px-2 text-[15px] focus:border-royal focus:outline-none"
                     >
                       {MEMBER_GRADE_OPTIONS.map((opt) => (
                         <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
                   </td>
-                  <td className="px-4 py-3 text-center align-middle">
+                  <td className="h-[52px] max-w-[180px] px-4 py-2 align-middle">
                     <button
                       type="button"
                       onClick={() => setMemberModalUser(user)}
-                      className="text-sm font-bold text-brand hover:underline"
+                      title={user.name || '-'}
+                      className="block max-w-full truncate text-left text-[15px] font-semibold text-royal hover:underline"
                     >
                       {user.name || '-'}
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 text-center align-middle">{user.company || '-'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600 text-center align-middle">
-                    {user.createdAt?.toDate?.().toLocaleDateString('ko-KR') ?? (typeof user.createdAt === 'string' ? new Date(user.createdAt).toLocaleDateString('ko-KR') : user.createdAt) ?? '-'}
+                  <td className="h-[52px] max-w-[220px] truncate px-4 py-2 align-middle text-[15px] text-[#444]" title={user.company || ''}>{user.company || '-'}</td>
+                  <td className="h-[52px] whitespace-nowrap px-4 py-2 align-middle text-[15px] text-[#444]">
+                    {joined}
                   </td>
-                  <td className="px-4 py-3 text-center align-middle">
+                  <td className="h-[52px] whitespace-nowrap px-4 py-2 text-center align-middle">
                     <button
                       type="button"
                       onClick={() => handleDeleteUser(user)}
-                      className="px-3 py-1.5 text-sm font-bold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                      className="inline-flex h-10 items-center justify-center rounded-lg border border-red-200 bg-white px-3 text-[15px] font-semibold text-red-600 hover:bg-red-50"
                     >
                       탈퇴
                     </button>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-6">
+        <div className="mt-6 flex items-center justify-center gap-2">
           <button
             type="button"
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage <= 1}
-            className="px-4 py-2 rounded-xl font-bold border-2 border-blue-200 text-gray-700 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex h-11 items-center justify-center rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink disabled:cursor-not-allowed disabled:opacity-50"
           >
             이전
           </button>
-          <span className="px-4 py-2 text-sm font-bold text-gray-700">
+          <span className="px-3 text-[15px] font-semibold text-ink">
             {currentPage} / {totalPages}
           </span>
           <button
             type="button"
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage >= totalPages}
-            className="px-4 py-2 rounded-xl font-bold border-2 border-blue-200 text-gray-700 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex h-11 items-center justify-center rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink disabled:cursor-not-allowed disabled:opacity-50"
           >
             다음
           </button>
@@ -673,103 +670,103 @@ export const UserManagement = ({ currentUser }) => {
 
       {/* 회원 정보 모달: 열람(전체) + 수정(수정 가능 필드만) */}
       {memberModalUser && (
-        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => { setMemberModalEditing(false); setMemberModalUser(null); }}>
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-5 border-b border-blue-100 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-dark">{memberModalEditing ? '회원 정보 수정' : '회원 정보'}</h3>
-              <button type="button" onClick={() => { setMemberModalEditing(false); setMemberModalUser(null); }} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg">×</button>
+        <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/50 p-4" onClick={() => { setMemberModalEditing(false); setMemberModalUser(null); }}>
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[18px] bg-white" role="dialog" aria-modal="true" aria-label={memberModalEditing ? '회원 정보 수정' : '회원 정보'} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-line px-5 py-4">
+              <h3 className="text-[20px] font-bold text-ink">{memberModalEditing ? '회원 정보 수정' : '회원 정보'}</h3>
+              <button type="button" aria-label="닫기" onClick={() => { setMemberModalEditing(false); setMemberModalUser(null); }} className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[22px] text-sub hover:bg-card hover:text-ink">×</button>
             </div>
-            <div className="p-5 overflow-y-auto space-y-4 text-sm">
+            <div className="space-y-6 overflow-y-auto p-5 text-[15px]">
               {/* 열람 전용: 개인정보·본인인증·주소·사업자등록번호 */}
-              <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
-                <h4 className="font-bold text-gray-700 mb-3">개인정보 (열람 전용)</h4>
-                <div className="grid grid-cols-1 gap-2">
-                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회원명</span><span className="text-dark">{memberModalUser.name || '-'}</span></div>
-                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">이메일</span><span className="text-dark">{memberModalUser.email || '-'}</span></div>
-                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">연락처</span><span className="text-dark">{memberModalUser.phone || memberModalUser.phoneNumber || '-'}</span></div>
-                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">생년월일</span><span className="text-dark">{memberModalUser.birthdate || '-'}</span></div>
-                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">성별</span><span className="text-dark">{memberModalUser.gender === 'M' ? '남성' : memberModalUser.gender === 'F' ? '여성' : (memberModalUser.gender || '-')}</span></div>
-                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">주소</span><span className="text-dark">{[memberModalUser.roadAddress, memberModalUser.detailAddress].filter(Boolean).join(' ') || memberModalUser.address || memberModalUser.region || '-'}</span></div>
-                  {memberModalUser.zipCode && <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">우편번호</span><span className="text-dark">{memberModalUser.zipCode}</span></div>}
-                  <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">가입일자</span><span className="text-dark">{memberModalUser.createdAt?.toDate?.().toLocaleString('ko-KR') ?? (typeof memberModalUser.createdAt === 'string' ? new Date(memberModalUser.createdAt).toLocaleString('ko-KR') : memberModalUser.createdAt) ?? '-'}</span></div>
+              <div>
+                <h4 className="mb-2 text-[17px] font-bold text-ink">개인정보 (열람 전용)</h4>
+                <div className="border-t border-ink">
+                  <div className={ROW}><span className={ROW_K}>회원명</span><span className={ROW_V}>{memberModalUser.name || '-'}</span></div>
+                  <div className={ROW}><span className={ROW_K}>이메일</span><span className={ROW_V}>{memberModalUser.email || '-'}</span></div>
+                  <div className={ROW}><span className={ROW_K}>연락처</span><span className={ROW_V}>{memberModalUser.phone || memberModalUser.phoneNumber || '-'}</span></div>
+                  <div className={ROW}><span className={ROW_K}>생년월일</span><span className={ROW_V}>{memberModalUser.birthdate || '-'}</span></div>
+                  <div className={ROW}><span className={ROW_K}>성별</span><span className={ROW_V}>{memberModalUser.gender === 'M' ? '남성' : memberModalUser.gender === 'F' ? '여성' : (memberModalUser.gender || '-')}</span></div>
+                  <div className={ROW}><span className={ROW_K}>주소</span><span className={ROW_V}>{[memberModalUser.roadAddress, memberModalUser.detailAddress].filter(Boolean).join(' ') || memberModalUser.address || memberModalUser.region || '-'}</span></div>
+                  {memberModalUser.zipCode && <div className={ROW}><span className={ROW_K}>우편번호</span><span className={ROW_V}>{memberModalUser.zipCode}</span></div>}
+                  <div className={ROW}><span className={ROW_K}>가입일자</span><span className={ROW_V}>{memberModalUser.createdAt?.toDate?.().toLocaleString('ko-KR') ?? (typeof memberModalUser.createdAt === 'string' ? new Date(memberModalUser.createdAt).toLocaleString('ko-KR') : memberModalUser.createdAt) ?? '-'}</span></div>
                   {(memberModalUser.businessRegistrationNumber || memberModalUser.company) && (
-                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">사업자등록번호</span><span className="text-dark">{memberModalUser.businessRegistrationNumber || '-'}</span></div>
+                    <div className={ROW}><span className={ROW_K}>사업자등록번호</span><span className={ROW_V}>{memberModalUser.businessRegistrationNumber || '-'}</span></div>
                   )}
                 </div>
               </div>
 
               {memberModalEditing ? (
-                <div className="rounded-xl bg-blue-50/50 border border-blue-200 p-4">
-                  <h4 className="font-bold text-gray-700 mb-3">수정 가능 항목</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="w-32 font-bold text-gray-600 shrink-0">회원등급</span>
-                      <select value={memberEditForm.memberGrade ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, memberGrade: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none bg-white">
+                <div className="rounded-xl bg-card p-4">
+                  <h4 className="mb-3 text-[17px] font-bold text-ink">수정 가능 항목</h4>
+                  <div className="space-y-2">
+                    <div className={EDIT_ROW}>
+                      <span className={ROW_K}>회원등급</span>
+                      <select value={memberEditForm.memberGrade ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, memberGrade: e.target.value }))} className={EDIT_INPUT}>
                         {MEMBER_GRADE_OPTIONS.map(opt => <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>)}
                       </select>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-32 font-bold text-gray-600 shrink-0">회사명</span>
-                      <input type="text" value={memberEditForm.company ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, company: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="회사명" />
+                    <div className={EDIT_ROW}>
+                      <span className={ROW_K}>회사명</span>
+                      <input type="text" value={memberEditForm.company ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, company: e.target.value }))} className={EDIT_INPUT} placeholder="회사명" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-32 font-bold text-gray-600 shrink-0">회사 전화</span>
-                      <input type="text" value={memberEditForm.companyPhone ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, companyPhone: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="회사 전화번호" />
+                    <div className={EDIT_ROW}>
+                      <span className={ROW_K}>회사 전화</span>
+                      <input type="text" value={memberEditForm.companyPhone ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, companyPhone: e.target.value }))} className={EDIT_INPUT} placeholder="회사 전화번호" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-32 font-bold text-gray-600 shrink-0">회사 사이트</span>
-                      <input type="url" value={memberEditForm.companyWebsite ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, companyWebsite: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="https://..." />
+                    <div className={EDIT_ROW}>
+                      <span className={ROW_K}>회사 사이트</span>
+                      <input type="url" value={memberEditForm.companyWebsite ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, companyWebsite: e.target.value }))} className={EDIT_INPUT} placeholder="https://..." />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-32 font-bold text-gray-600 shrink-0">업종/업태</span>
-                      <select value={memberEditForm.businessCategory ?? memberEditForm.industry ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, businessCategory: e.target.value, industry: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none bg-white">
+                    <div className={EDIT_ROW}>
+                      <span className={ROW_K}>업종/업태</span>
+                      <select value={memberEditForm.businessCategory ?? memberEditForm.industry ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, businessCategory: e.target.value, industry: e.target.value }))} className={EDIT_INPUT}>
                         <option value="">선택</option>
                         {BUSINESS_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-32 font-bold text-gray-600 shrink-0">직책</span>
-                      <input type="text" value={memberEditForm.position ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, position: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="직책" />
+                    <div className={EDIT_ROW}>
+                      <span className={ROW_K}>직책</span>
+                      <input type="text" value={memberEditForm.position ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, position: e.target.value }))} className={EDIT_INPUT} placeholder="직책" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-32 font-bold text-gray-600 shrink-0">협업 업종</span>
-                      <input type="text" value={memberEditForm.collaborationIndustry ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, collaborationIndustry: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="협업 업종" />
+                    <div className={EDIT_ROW}>
+                      <span className={ROW_K}>협업 업종</span>
+                      <input type="text" value={memberEditForm.collaborationIndustry ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, collaborationIndustry: e.target.value }))} className={EDIT_INPUT} placeholder="협업 업종" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-32 font-bold text-gray-600 shrink-0">핵심고객</span>
-                      <input type="text" value={memberEditForm.keyCustomers ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, keyCustomers: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="핵심고객" />
+                    <div className={EDIT_ROW}>
+                      <span className={ROW_K}>핵심고객</span>
+                      <input type="text" value={memberEditForm.keyCustomers ?? ''} onChange={e => setMemberEditForm(f => ({ ...f, keyCustomers: e.target.value }))} className={EDIT_INPUT} placeholder="핵심고객" />
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl bg-blue-50/50 border border-blue-200 p-4">
-                  <h4 className="font-bold text-gray-700 mb-3">수정 가능 항목 (현재 값)</h4>
-                  <div className="grid grid-cols-1 gap-2">
-                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회원등급</span><span className="text-dark">{memberModalUser.memberGrade || '-'}</span></div>
-                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사명</span><span className="text-dark">{memberModalUser.company || '-'}</span></div>
-                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사 전화</span><span className="text-dark">{memberModalUser.companyPhone || '-'}</span></div>
-                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">회사 사이트</span><span className="text-dark">{memberModalUser.companyWebsite ? <a href={memberModalUser.companyWebsite.startsWith('http') ? memberModalUser.companyWebsite : `https://${memberModalUser.companyWebsite}`} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">{memberModalUser.companyWebsite}</a> : '-'}</span></div>
+                <div>
+                  <h4 className="mb-2 text-[17px] font-bold text-ink">수정 가능 항목 (현재 값)</h4>
+                  <div className="border-t border-ink">
+                    <div className={ROW}><span className={ROW_K}>회원등급</span><span className={ROW_V}>{memberModalUser.memberGrade || '-'}</span></div>
+                    <div className={ROW}><span className={ROW_K}>회사명</span><span className={ROW_V}>{memberModalUser.company || '-'}</span></div>
+                    <div className={ROW}><span className={ROW_K}>회사 전화</span><span className={ROW_V}>{memberModalUser.companyPhone || '-'}</span></div>
+                    <div className={ROW}><span className={ROW_K}>회사 사이트</span><span className={ROW_V}>{memberModalUser.companyWebsite ? <a href={memberModalUser.companyWebsite.startsWith('http') ? memberModalUser.companyWebsite : `https://${memberModalUser.companyWebsite}`} target="_blank" rel="noopener noreferrer" className="text-royal hover:underline">{memberModalUser.companyWebsite}</a> : '-'}</span></div>
 
                     {/* 사업자등록증: 확인 후 사본은 지우고 확인 여부만 남긴다 (개인정보 최소 보관) */}
-                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">사업자등록증</span><span className="text-dark flex flex-wrap items-center gap-2">
+                    <div className={ROW}><span className={ROW_K}>사업자등록증</span><span className={`${ROW_V} flex flex-wrap items-center gap-2`}>
                       {memberModalUser.businessRegistrationDoc ? (
                         <>
-                          <button type="button" onClick={() => openBusinessDoc(memberModalUser.businessRegistrationDoc)} className="text-brand hover:underline">등록증 보기</button>
-                          <button type="button" onClick={handleBusinessDocVerified} className="px-2.5 py-1 rounded-lg bg-brand text-white text-xs font-semibold">확인 완료 · 사본 삭제</button>
+                          <button type="button" onClick={() => openBusinessDoc(memberModalUser.businessRegistrationDoc)} className="text-royal hover:underline">등록증 보기</button>
+                          <button type="button" onClick={handleBusinessDocVerified} className="inline-flex h-10 items-center justify-center rounded-lg bg-[#0c0c0e] px-3 text-[14px] font-semibold text-white hover:bg-black">확인 완료 · 사본 삭제</button>
                         </>
                       ) : memberModalUser.businessDocVerifiedAt ? (
-                        <span className="text-emerald-700 text-sm">확인 완료 ({String(memberModalUser.businessDocVerifiedAt).slice(0, 10)}) · 사본 삭제됨</span>
+                        <span className="text-[15px] text-royal">확인 완료 ({String(memberModalUser.businessDocVerifiedAt).slice(0, 10)}) · 사본 삭제됨</span>
                       ) : '-'}
                     </span></div>
-                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">업종/업태</span><span className="text-dark">{memberModalUser.businessCategory || memberModalUser.industry || '-'}</span></div>
-                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">직책</span><span className="text-dark">{memberModalUser.position || '-'}</span></div>
-                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">협업 업종</span><span className="text-dark">{memberModalUser.collaborationIndustry || '-'}</span></div>
-                    <div className="flex"><span className="w-32 font-bold text-gray-600 shrink-0">핵심고객</span><span className="text-dark">{memberModalUser.keyCustomers || '-'}</span></div>
+                    <div className={ROW}><span className={ROW_K}>업종/업태</span><span className={ROW_V}>{memberModalUser.businessCategory || memberModalUser.industry || '-'}</span></div>
+                    <div className={ROW}><span className={ROW_K}>직책</span><span className={ROW_V}>{memberModalUser.position || '-'}</span></div>
+                    <div className={ROW}><span className={ROW_K}>협업 업종</span><span className={ROW_V}>{memberModalUser.collaborationIndustry || '-'}</span></div>
+                    <div className={ROW}><span className={ROW_K}>핵심고객</span><span className={ROW_V}>{memberModalUser.keyCustomers || '-'}</span></div>
                   </div>
                 </div>
               )}
             </div>
-            <div className="p-5 border-t border-blue-100 flex gap-2 justify-end">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-4">
               {!memberModalEditing && (
                 <button
                   type="button"
@@ -777,20 +774,20 @@ export const UserManagement = ({ currentUser }) => {
                     const deleted = await handleDeleteUser(memberModalUser);
                     if (deleted) setMemberModalUser(null);
                   }}
-                  className="px-4 py-2 text-sm font-bold text-red-600 border border-red-200 rounded-xl hover:bg-red-50"
+                  className="mr-auto inline-flex h-11 items-center justify-center rounded-lg border border-red-200 bg-white px-4 text-[15px] font-semibold text-red-600 hover:bg-red-50"
                 >
                   강제 탈퇴
                 </button>
               )}
               {memberModalEditing ? (
                 <>
-                  <button type="button" onClick={() => setMemberModalEditing(false)} className="px-4 py-2 text-sm font-bold text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50">취소</button>
-                  <button type="button" onClick={handleMemberEditSave} disabled={savingMember} className="px-4 py-2 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50">저장</button>
+                  <button type="button" onClick={() => setMemberModalEditing(false)} className="inline-flex h-11 items-center justify-center rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink">취소</button>
+                  <button type="button" onClick={handleMemberEditSave} disabled={savingMember} className="inline-flex h-11 items-center justify-center rounded-lg bg-[#0c0c0e] px-5 text-[15px] font-bold text-white hover:bg-black disabled:opacity-50">저장</button>
                 </>
               ) : (
                 <>
-                  <button type="button" onClick={openMemberEdit} className="px-4 py-2 text-sm font-bold text-brand border border-brand rounded-xl hover:bg-brand/5">수정</button>
-                  <button type="button" onClick={() => setMemberModalUser(null)} className="px-4 py-2 bg-brand text-white font-bold rounded-xl hover:bg-blue-700">닫기</button>
+                  <button type="button" onClick={openMemberEdit} className="inline-flex h-11 items-center justify-center rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink">수정</button>
+                  <button type="button" onClick={() => setMemberModalUser(null)} className="inline-flex h-11 items-center justify-center rounded-lg bg-[#0c0c0e] px-5 text-[15px] font-bold text-white hover:bg-black">닫기</button>
                 </>
               )}
             </div>

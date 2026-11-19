@@ -29,6 +29,7 @@ import { buildSiteContent, getMenuStateFromSiteContent, mergeLiveContent } from 
 import PageTitle from './components/PageTitle';
 import NoticeView from './pages/NoticeView';
 import TopicsView from './pages/TopicsView';
+import CoffeeChatProvider from './components/coffee/CoffeeChatProvider';
 import AboutView from './pages/AboutView';
 import SupportProgramsView from './pages/SupportProgramsView';
 import HomeView from './pages/HomeView';
@@ -3567,6 +3568,7 @@ END:VCALENDAR`;
     }
 
     return (
+    <CoffeeChatProvider currentUser={currentUser} onRequireLogin={() => setShowLoginModal(true)}>
     <div className="app-main">
         {/* 모바일 메뉴: 상태가 있는 App에서 직접 렌더해 클릭 미반응 방지 */}
         {MobileMenu && (
@@ -3839,6 +3841,7 @@ END:VCALENDAR`;
             </ModalPortal>
         )}
     </div>
+    </CoffeeChatProvider>
     );
 }
 

@@ -119,8 +119,8 @@ export const MemberDetailView = ({ currentUser }) => {
     return (
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand mb-4" />
-          <p className="text-gray-600">회원 목록 로딩 중...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-royal mb-4" />
+          <p className="text-[15px] text-sub">회원 목록 로딩 중...</p>
         </div>
       </div>
     );
@@ -128,36 +128,37 @@ export const MemberDetailView = ({ currentUser }) => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-dark flex items-center gap-3 mb-6">
-        <Icons.FileSearch size={28} />
+      <h2 className="mb-2 flex items-center gap-2.5 text-[22px] font-bold text-ink md:text-[24px]">
+        <Icons.FileSearch size={24} />
         회원정보 상세
       </h2>
-      <p className="text-sm text-gray-600 mb-6">회원을 선택하면 기입한 정보를 한눈에 볼 수 있으며, 민감정보를 제외한 항목만 수정할 수 있습니다.</p>
+      <p className="mb-6 text-[15px] leading-relaxed text-sub">회원을 선택하면 기입한 정보를 한눈에 볼 수 있으며, 민감정보를 제외한 항목만 수정할 수 있습니다.</p>
 
       {/* 회원 선택 */}
       <div className="mb-6">
-        <label className="block text-sm font-bold text-gray-700 mb-2">회원 선택</label>
+        <label htmlFor="member-detail-search" className="mb-2 block text-[15px] font-semibold text-ink">회원 선택</label>
         <input
+          id="member-detail-search"
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="이름 또는 이메일로 검색"
-          className="w-full max-w-md px-4 py-2 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+          className="h-12 w-full max-w-md rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none"
         />
-        <div className="mt-2 max-h-48 overflow-y-auto border border-blue-200 rounded-xl bg-white">
+        <div className="mt-2 max-h-[264px] overflow-y-auto border border-line border-t-ink bg-white">
           {filteredUsers.length === 0 ? (
-            <div className="p-4 text-gray-500 text-sm">회원이 없거나 검색 결과가 없습니다.</div>
+            <div className="p-4 text-[15px] text-sub">회원이 없거나 검색 결과가 없습니다.</div>
           ) : (
             filteredUsers.slice(0, 50).map((u) => (
               <button
                 key={u.id || u.uid}
                 type="button"
                 onClick={() => setSelectedUser(u)}
-                className={`w-full text-left px-4 py-2.5 border-b border-gray-100 last:border-0 hover:bg-blue-50 transition-colors ${selectedUser && (selectedUser.id === u.id || selectedUser.uid === u.uid) ? 'bg-brand/10 font-bold text-brand' : ''}`}
+                className={`flex min-h-[52px] w-full items-center gap-2 border-b border-line px-4 text-left text-[15px] last:border-0 transition-colors ${selectedUser && (selectedUser.id === u.id || selectedUser.uid === u.uid) ? 'bg-[#0c0c0e] text-white' : 'hover:bg-card'}`}
               >
-                <span className="font-medium">{u.name || '-'}</span>
-                <span className="text-gray-500 text-sm ml-2">{u.email || ''}</span>
-                {u.memberGrade && <span className="ml-2 text-xs px-2 py-0.5 bg-gray-200 rounded">{u.memberGrade}</span>}
+                <span className="shrink-0 font-semibold">{u.name || '-'}</span>
+                <span className="min-w-0 truncate text-[14px] opacity-70" title={u.email || ''}>{u.email || ''}</span>
+                {u.memberGrade && <span className="ml-auto inline-flex h-7 shrink-0 items-center bg-sky px-2 text-[13px] text-royal">{u.memberGrade}</span>}
               </button>
             ))
           )}
@@ -165,95 +166,95 @@ export const MemberDetailView = ({ currentUser }) => {
       </div>
 
       {!selectedUser ? (
-        <div className="rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/50 p-12 text-center text-gray-600">
+        <div className="rounded-xl bg-card p-12 text-center text-[15px] text-sub">
           위에서 회원을 선택하면 상세 정보가 표시됩니다.
         </div>
       ) : (
         <div className="space-y-6">
           {/* 개인정보 (열람 전용) */}
-          <div className="rounded-xl bg-gray-50 border border-gray-200 p-6">
-            <h4 className="font-bold text-gray-700 mb-4">개인정보 (열람 전용)</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
-              <div className="flex"><span className="w-36 font-bold text-gray-600 shrink-0">회원명</span><span className="text-dark">{selectedUser.name || '-'}</span></div>
-              <div className="flex"><span className="w-36 font-bold text-gray-600 shrink-0">이메일</span><span className="text-dark">{selectedUser.email || '-'}</span></div>
-              <div className="flex"><span className="w-36 font-bold text-gray-600 shrink-0">연락처</span><span className="text-dark">{selectedUser.phone || selectedUser.phoneNumber || '-'}</span></div>
-              <div className="flex"><span className="w-36 font-bold text-gray-600 shrink-0">연락처 공개</span><span className="text-dark">{selectedUser.phonePublic ? '공개' : '비공개'}</span></div>
-              <div className="flex"><span className="w-36 font-bold text-gray-600 shrink-0">생년월일</span><span className="text-dark">{selectedUser.birthdate || '-'}</span></div>
-              <div className="flex"><span className="w-36 font-bold text-gray-600 shrink-0">성별</span><span className="text-dark">{selectedUser.gender === 'M' ? '남성' : selectedUser.gender === 'F' ? '여성' : (selectedUser.gender || '-')}</span></div>
-              <div className="flex md:col-span-2"><span className="w-36 font-bold text-gray-600 shrink-0">주소</span><span className="text-dark">{[selectedUser.roadAddress, selectedUser.detailAddress].filter(Boolean).join(' ') || selectedUser.address || selectedUser.region || '-'}</span></div>
-              {selectedUser.zipCode && <div className="flex"><span className="w-36 font-bold text-gray-600 shrink-0">우편번호</span><span className="text-dark">{selectedUser.zipCode}</span></div>}
-              <div className="flex"><span className="w-36 font-bold text-gray-600 shrink-0">가입일자</span><span className="text-dark">{selectedUser.createdAt?.toDate?.().toLocaleString('ko-KR') ?? (typeof selectedUser.createdAt === 'string' ? new Date(selectedUser.createdAt).toLocaleString('ko-KR') : selectedUser.createdAt) ?? '-'}</span></div>
+          <div>
+            <h4 className="mb-3 text-[18px] font-bold text-ink">개인정보 (열람 전용)</h4>
+            <div className="grid grid-cols-1 gap-x-8 border-t border-ink text-[15px] md:grid-cols-2">
+              <div className="grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 border-b border-line py-3 md:grid-cols-[130px_minmax(0,1fr)]"><span className="text-sub">회원명</span><span className="min-w-0 break-keep break-words text-ink">{selectedUser.name || '-'}</span></div>
+              <div className="grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 border-b border-line py-3 md:grid-cols-[130px_minmax(0,1fr)]"><span className="text-sub">이메일</span><span className="min-w-0 break-keep break-words text-ink">{selectedUser.email || '-'}</span></div>
+              <div className="grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 border-b border-line py-3 md:grid-cols-[130px_minmax(0,1fr)]"><span className="text-sub">연락처</span><span className="min-w-0 break-keep break-words text-ink">{selectedUser.phone || selectedUser.phoneNumber || '-'}</span></div>
+              <div className="grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 border-b border-line py-3 md:grid-cols-[130px_minmax(0,1fr)]"><span className="text-sub">연락처 공개</span><span className="min-w-0 break-keep break-words text-ink">{selectedUser.phonePublic ? '공개' : '비공개'}</span></div>
+              <div className="grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 border-b border-line py-3 md:grid-cols-[130px_minmax(0,1fr)]"><span className="text-sub">생년월일</span><span className="min-w-0 break-keep break-words text-ink">{selectedUser.birthdate || '-'}</span></div>
+              <div className="grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 border-b border-line py-3 md:grid-cols-[130px_minmax(0,1fr)]"><span className="text-sub">성별</span><span className="min-w-0 break-keep break-words text-ink">{selectedUser.gender === 'M' ? '남성' : selectedUser.gender === 'F' ? '여성' : (selectedUser.gender || '-')}</span></div>
+              <div className="grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 border-b border-line py-3 md:col-span-2 md:grid-cols-[130px_minmax(0,1fr)]"><span className="text-sub">주소</span><span className="min-w-0 break-keep break-words text-ink">{[selectedUser.roadAddress, selectedUser.detailAddress].filter(Boolean).join(' ') || selectedUser.address || selectedUser.region || '-'}</span></div>
+              {selectedUser.zipCode && <div className="grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 border-b border-line py-3 md:grid-cols-[130px_minmax(0,1fr)]"><span className="text-sub">우편번호</span><span className="min-w-0 break-keep break-words text-ink">{selectedUser.zipCode}</span></div>}
+              <div className="grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 border-b border-line py-3 md:grid-cols-[130px_minmax(0,1fr)]"><span className="text-sub">가입일자</span><span className="min-w-0 break-keep break-words text-ink">{selectedUser.createdAt?.toDate?.().toLocaleString('ko-KR') ?? (typeof selectedUser.createdAt === 'string' ? new Date(selectedUser.createdAt).toLocaleString('ko-KR') : selectedUser.createdAt) ?? '-'}</span></div>
               {selectedUser.isIdentityVerified && (
                 <>
-                  <div className="flex"><span className="w-36 font-bold text-gray-600 shrink-0">본인인증 이름</span><span className="text-dark">{selectedUser.verifiedName || '-'}</span></div>
-                  <div className="flex"><span className="w-36 font-bold text-gray-600 shrink-0">본인인증 전화</span><span className="text-dark">{selectedUser.verifiedPhone || '-'}</span></div>
+                  <div className="grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 border-b border-line py-3 md:grid-cols-[130px_minmax(0,1fr)]"><span className="text-sub">본인인증 이름</span><span className="min-w-0 break-keep break-words text-ink">{selectedUser.verifiedName || '-'}</span></div>
+                  <div className="grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 border-b border-line py-3 md:grid-cols-[130px_minmax(0,1fr)]"><span className="text-sub">본인인증 전화</span><span className="min-w-0 break-keep break-words text-ink">{selectedUser.verifiedPhone || '-'}</span></div>
                 </>
               )}
               {(selectedUser.businessRegistrationNumber || selectedUser.company) && (
-                <div className="flex"><span className="w-36 font-bold text-gray-600 shrink-0">사업자등록번호</span><span className="text-dark">{selectedUser.businessRegistrationNumber || '-'}</span></div>
+                <div className="grid min-h-[52px] grid-cols-[110px_minmax(0,1fr)] items-center gap-x-4 border-b border-line py-3 md:grid-cols-[130px_minmax(0,1fr)]"><span className="text-sub">사업자등록번호</span><span className="min-w-0 break-keep break-words text-ink">{selectedUser.businessRegistrationNumber || '-'}</span></div>
               )}
             </div>
           </div>
 
           {/* 수정 가능 항목 */}
-          <div className="rounded-xl bg-blue-50/50 border border-blue-200 p-6">
-            <h4 className="font-bold text-gray-700 mb-4">수정 가능 항목</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="w-36 font-bold text-gray-600 shrink-0">회원등급</span>
-                <select value={editForm.memberGrade ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, memberGrade: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none bg-white">
+          <div className="rounded-xl bg-card p-5 md:p-6">
+            <h4 className="mb-4 text-[18px] font-bold text-ink">수정 가능 항목</h4>
+            <div className="grid grid-cols-1 gap-x-8 gap-y-2 text-[15px] md:grid-cols-2">
+              <div className="flex min-h-[52px] items-center gap-3">
+                <span className="w-[110px] shrink-0 text-sub md:w-[130px]">회원등급</span>
+                <select value={editForm.memberGrade ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, memberGrade: e.target.value }))} className="h-12 min-w-0 flex-1 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none">
                   {MEMBER_GRADE_OPTIONS.map((opt) => <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>)}
                 </select>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-36 font-bold text-gray-600 shrink-0">승인 여부</span>
-                <select value={editForm.approvalStatus ?? 'pending'} onChange={(e) => setEditForm((f) => ({ ...f, approvalStatus: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none bg-white">
+              <div className="flex min-h-[52px] items-center gap-3">
+                <span className="w-[110px] shrink-0 text-sub md:w-[130px]">승인 여부</span>
+                <select value={editForm.approvalStatus ?? 'pending'} onChange={(e) => setEditForm((f) => ({ ...f, approvalStatus: e.target.value }))} className="h-12 min-w-0 flex-1 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none">
                   <option value="pending">대기</option>
                   <option value="approved">승인</option>
                   <option value="rejected">거절</option>
                 </select>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-36 font-bold text-gray-600 shrink-0">권한</span>
-                <select value={editForm.role ?? 'user'} onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none bg-white">
+              <div className="flex min-h-[52px] items-center gap-3">
+                <span className="w-[110px] shrink-0 text-sub md:w-[130px]">권한</span>
+                <select value={editForm.role ?? 'user'} onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))} className="h-12 min-w-0 flex-1 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none">
                   <option value="user">일반 회원</option>
                   <option value="admin">관리자</option>
                 </select>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-36 font-bold text-gray-600 shrink-0">회사명</span>
-                <input type="text" value={editForm.company ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, company: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="회사명" />
+              <div className="flex min-h-[52px] items-center gap-3">
+                <span className="w-[110px] shrink-0 text-sub md:w-[130px]">회사명</span>
+                <input type="text" value={editForm.company ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, company: e.target.value }))} className="h-12 min-w-0 flex-1 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none" placeholder="회사명" />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-36 font-bold text-gray-600 shrink-0">회사 전화</span>
-                <input type="text" value={editForm.companyPhone ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, companyPhone: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="회사 전화번호" />
+              <div className="flex min-h-[52px] items-center gap-3">
+                <span className="w-[110px] shrink-0 text-sub md:w-[130px]">회사 전화</span>
+                <input type="text" value={editForm.companyPhone ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, companyPhone: e.target.value }))} className="h-12 min-w-0 flex-1 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none" placeholder="회사 전화번호" />
               </div>
-              <div className="flex items-center gap-2 md:col-span-2">
-                <span className="w-36 font-bold text-gray-600 shrink-0">회사 사이트</span>
-                <input type="url" value={editForm.companyWebsite ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, companyWebsite: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="https://..." />
+              <div className="flex min-h-[52px] items-center gap-3 md:col-span-2">
+                <span className="w-[110px] shrink-0 text-sub md:w-[130px]">회사 사이트</span>
+                <input type="url" value={editForm.companyWebsite ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, companyWebsite: e.target.value }))} className="h-12 min-w-0 flex-1 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none" placeholder="https://..." />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-36 font-bold text-gray-600 shrink-0">업종/업태</span>
-                <select value={editForm.businessCategory ?? editForm.industry ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, businessCategory: e.target.value, industry: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none bg-white">
+              <div className="flex min-h-[52px] items-center gap-3">
+                <span className="w-[110px] shrink-0 text-sub md:w-[130px]">업종/업태</span>
+                <select value={editForm.businessCategory ?? editForm.industry ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, businessCategory: e.target.value, industry: e.target.value }))} className="h-12 min-w-0 flex-1 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none">
                   <option value="">선택</option>
                   {BUSINESS_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-36 font-bold text-gray-600 shrink-0">직책</span>
-                <input type="text" value={editForm.position ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, position: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="직책" />
+              <div className="flex min-h-[52px] items-center gap-3">
+                <span className="w-[110px] shrink-0 text-sub md:w-[130px]">직책</span>
+                <input type="text" value={editForm.position ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, position: e.target.value }))} className="h-12 min-w-0 flex-1 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none" placeholder="직책" />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-36 font-bold text-gray-600 shrink-0">협업 업종</span>
-                <input type="text" value={editForm.collaborationIndustry ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, collaborationIndustry: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="협업 업종" />
+              <div className="flex min-h-[52px] items-center gap-3">
+                <span className="w-[110px] shrink-0 text-sub md:w-[130px]">협업 업종</span>
+                <input type="text" value={editForm.collaborationIndustry ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, collaborationIndustry: e.target.value }))} className="h-12 min-w-0 flex-1 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none" placeholder="협업 업종" />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-36 font-bold text-gray-600 shrink-0">핵심고객</span>
-                <input type="text" value={editForm.keyCustomers ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, keyCustomers: e.target.value }))} className="flex-1 px-3 py-2 border border-blue-200 rounded-lg focus:border-brand focus:outline-none" placeholder="핵심고객" />
+              <div className="flex min-h-[52px] items-center gap-3">
+                <span className="w-[110px] shrink-0 text-sub md:w-[130px]">핵심고객</span>
+                <input type="text" value={editForm.keyCustomers ?? ''} onChange={(e) => setEditForm((f) => ({ ...f, keyCustomers: e.target.value }))} className="h-12 min-w-0 flex-1 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none" placeholder="핵심고객" />
               </div>
             </div>
             <div className="mt-6 flex justify-end">
-              <button type="button" onClick={handleSave} disabled={saving} className="px-6 py-2 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50">
+              <button type="button" onClick={handleSave} disabled={saving} className="inline-flex h-11 items-center justify-center rounded-lg bg-[#0c0c0e] px-6 text-[15px] font-bold text-white hover:bg-black disabled:opacity-50">
                 {saving ? '저장 중...' : '저장'}
               </button>
             </div>

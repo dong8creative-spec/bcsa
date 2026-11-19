@@ -13,6 +13,8 @@ import { buildPasswordResetEmailHtml, buildPasswordResetEmailText } from './emai
 import { isSmtpConfigured, sendMail } from './email/mailer.js';
 import { buildPublicProfile, buildPublicApplication, isApprovedMember } from './publicMirrors.js';
 import { createGroupHandlers } from './groups.js';
+import { createCoffeeChatHandlers } from './coffeechat.js';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 
 // Firebase Admin 초기화
 if (!admin.apps.length) {
@@ -1473,6 +1475,16 @@ app.post('/api/payment/webhook', async (req, res) => {
         await db.collection('paymentWebhookEvents').doc(String(merchantUid)).set({ completed: true }, { merge: true });
         await db.collection('pendingPayments').doc(String(merchantUid)).delete();
         console.log('[Payment Webhook] application completed', merchantUid, 'created:', created, 'appId:', applicationId);
+      } else if (String(merchantUid).startsWith('cc_') && (await db.collection('coffeeChats').doc(String(merchantUid)).get()).exists) {
+        // 선배 커피챗 결제: 포트원 실결제 확인 후 「선배 응답 대기」로 (결제 후 창을 닫아도 반영되도록)
+        try {
+          const r = await getCoffeeHandlers().finalizeCoffeeChatPayment(merchantUid);
+          console.log('[Payment Webhook] coffee chat', merchantUid, r.ok ? 'finalized' : r.error);
+        } catch (e) {
+          console.warn('[Payment Webhook] coffee chat verify unavailable', e.response?.status || e.message);
+          res.status(503).json({ received: false, error: 'verify_unavailable' });
+          return;
+        }
       } else if ((await db.collection('groupPayments').doc(String(merchantUid)).get()).exists) {
         // 소모임·스터디 QR 결제: 포트원 실결제 확인 후 출석+결제 기록 (결제 후 창을 닫아도 반영되도록)
         try {
@@ -2236,6 +2248,64 @@ export const issueCheckInPass = groupCallable('issueCheckInPass');
 export const checkInSession = groupCallable('checkInSession');
 export const completeGroupPayment = groupCallable('completeGroupPayment');
 export const refundGroupPayment = groupCallable('refundGroupPayment');
+
+// ==========================================
+// 선배 커피챗: 신청·결제 확인·수락/거절·취소·완료·후기 — 구현은 coffeechat.js
+// ==========================================
+// 가짜 Firebase(에뮬레이터)에서만 COFFEE_FAKE_PAY=1 이면 포트원 대신 「결제됨/환불됨」으로 본다(시험용). 운영에서는 절대 켜지지 않는다.
+const COFFEE_FAKE_PAY = process.env.FUNCTIONS_EMULATOR === 'true' && process.env.COFFEE_FAKE_PAY === '1';
+/**
+ * 커피챗 전용 환불: 포트원 V2만 쓴다(커피챗은 V2 결제뿐). 성공 응답이거나 「이미 취소됨」 오류 종류일 때만 ok.
+ * 기존 cancelPortOnePayment 는 V2 실패 시 V1 으로 넘어가는데, V1 이 「결제건 없음」 같은 실패 문구에 '취소'가 들어 있으면
+ * 성공으로 볼 수 있어 커피챗에는 쓰지 않는다.
+ */
+const cancelPortOneV2Strict = async ({ paymentId, reason }) => {
+  if (!PORTONE_V2_SECRET) return { ok: false, message: 'verify_config_missing' };
+  try {
+    await axios.post(
+      `https://api.portone.io/payments/${encodeURIComponent(paymentId)}/cancel`,
+      { reason: reason || '커피챗 환불' },
+      { headers: { Authorization: `PortOne ${PORTONE_V2_SECRET}`, 'Content-Type': 'application/json' }, timeout: 20000 }
+    );
+    return { ok: true, via: 'v2' };
+  } catch (e) {
+    const type = String(e.response?.data?.type || '');
+    if (type === 'PAYMENT_ALREADY_CANCELLED' || type === 'PaymentAlreadyCancelledError') return { ok: true, via: 'v2', alreadyCancelled: true };
+    console.warn('[CoffeeChat] V2 cancel failed', e.response?.status, type || e.message);
+    return { ok: false, message: e.response?.data?.message || e.message };
+  }
+};
+// 시험용 가짜 환불: 결제번호에 'refundfail' 이 들어간 건은 환불 실패로 흉내 낸다(실패 처리 시험)
+const fakeCoffeeCancel = async ({ paymentId, refundAmount }) => (String(paymentId).includes('refundfail') ? { ok: false, message: 'fake_refund_fail' } : { ok: true, via: 'fake', refundAmount });
+let coffeeHandlers = null;
+function getCoffeeHandlers() {
+  if (!coffeeHandlers) {
+    coffeeHandlers = createCoffeeChatHandlers({
+      db, admin, isCallerAdmin,
+      // 알림 메일: 서버 메일(SMTP) 설정이 있을 때만. 가짜 Firebase 시험에서는 보내지 않고 기록만
+      notify: process.env.FUNCTIONS_EMULATOR === 'true' ? async (m) => console.log('[CoffeeChat] (시험) 메일', m.to, m.subject) : (isSmtpConfigured() ? sendMail : null),
+      verifyPortOnePayment: COFFEE_FAKE_PAY ? async ({ expectedAmount }) => ({ verified: true, payment: { amount: { total: expectedAmount } } }) : verifyPortOnePayment,
+      cancelPortOnePayment: COFFEE_FAKE_PAY ? fakeCoffeeCancel : cancelPortOneV2Strict,
+    });
+  }
+  return coffeeHandlers;
+}
+const coffeeCallable = (name) => onCall(
+  { region: 'asia-northeast3', invoker: 'public' },
+  (request) => getCoffeeHandlers().callables[name](request)
+);
+export const requestCoffeeChat = coffeeCallable('requestCoffeeChat');
+export const completeCoffeeChatPayment = coffeeCallable('completeCoffeeChatPayment');
+export const respondCoffeeChat = coffeeCallable('respondCoffeeChat');
+export const cancelCoffeeChat = coffeeCallable('cancelCoffeeChat');
+export const completeCoffeeChat = coffeeCallable('completeCoffeeChat');
+export const reviewCoffeeChat = coffeeCallable('reviewCoffeeChat');
+export const runCoffeeChatSweep = coffeeCallable('runCoffeeChatSweep');
+// 1시간마다: 24시간 무응답 자동 환불, 약속 2시간 뒤 자동 완료, 버려진 결제 건 정리
+export const coffeeChatSweep = onSchedule({ schedule: 'every 60 minutes', region: 'asia-northeast3', timeZone: 'Asia/Seoul' }, async () => {
+  const r = await getCoffeeHandlers().sweep();
+  console.log('[CoffeeChat] sweep', r);
+});
 
 // Express 앱을 Firebase Functions로 내보내기
 // asia-northeast3 (서울) 지역 사용

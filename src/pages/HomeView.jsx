@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import { MgHero, MgWrap, MgSectionHead, MgTabs, MgCard, MgInfoCard } from '../components/mg/Mg';
 import { groupService, groupCoverUrl } from '../services/groupService';
 import { groupPoster } from '../constants/groupPosters';
+import { useCoffeeChat } from '../components/coffee/CoffeeChatProvider';
 
 /**
  * 홈 — 먼저가본 개편(2026-11). 가안(관리자 「개선」)과 같은 5구역:
@@ -49,6 +50,7 @@ const cardProps = ({ key, href, sort, ...rest }) => rest; // eslint-disable-line
 
 export default function HomeView({ seminars = [], partnerLogos = [], partnerNames = [], showPrograms = true }) {
     const navigate = useNavigate();
+    const cc = useCoffeeChat();
     const [groups, setGroups] = useState(null);
     const [tab, setTab] = useState('open');
     useEffect(() => groupService.subscribeApprovedGroups(setGroups), []);
@@ -63,7 +65,6 @@ export default function HomeView({ seminars = [], partnerLogos = [], partnerName
         .sort((a, b) => (a.state === '모집예정') - (b.state === '모집예정'))
         .slice(0, 6), [seminars, showPrograms]);
     const shown = cards.filter((c) => (tab === 'soon' ? c.state === '모집예정' : c.state !== '모집예정'));
-    const coffee = (groups || []).find((x) => x.poster === 'senior-coffeechat-1');
     const go = (path) => (e) => { e.preventDefault(); navigate(path); window.scrollTo({ top: 0 }); };
 
     return (
@@ -94,7 +95,7 @@ export default function HomeView({ seminars = [], partnerLogos = [], partnerName
                 <MgWrap>
                     <MgSectionHead id="home-can" title="먼저가본에서 할 수 있는 것" />
                     <div className="mt-[26px] grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
-                        <MgInfoCard en="Coffee Chat" title={<>같은 업종 선배에게<br />1:1로 묻기</>} foot="3만 원부터" onClick={go(coffee ? `/groups/${coffee.id}` : '/groups')} />
+                        <MgInfoCard en="Coffee Chat" title={<>같은 업종 선배에게<br />1:1로 묻기</>} foot="2만 원부터 · 노하우 무료" onClick={(e) => { e.preventDefault(); cc?.open('hub', { tab: 'feed' }); }} />
                         <MgInfoCard en="Club" title={<>스터디·소모임<br />함께하기</>} foot="소모임·스터디" onClick={go('/groups')} />
                         <MgInfoCard en="Pre-founders" title={<>예비창업 지원사업<br />한곳에서 찾기</>} foot="예비창업" onClick={go('/startup')} />
                         <MgInfoCard en="Support" title={<>부산 지원사업·<br />사업가 뉴스</>} foot="매일 아침 모음" onClick={go('/support')} />

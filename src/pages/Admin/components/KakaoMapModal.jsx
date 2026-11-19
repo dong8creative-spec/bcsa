@@ -242,15 +242,16 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
   if (isError) {
     return (
       <ModalPortal>
-      <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md">
-        <div className="bg-white rounded-3xl p-8 max-w-md">
+      <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50">
+        <div className="max-w-md rounded-[18px] bg-white p-8">
           <div className="text-center">
             <Icons.AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-dark mb-2">카카오맵 로드 오류</h3>
-            <p className="text-gray-600 mb-4">{error?.message || '카카오맵을 로드할 수 없습니다.'}</p>
+            <h3 className="mb-2 text-[20px] font-bold text-ink">카카오맵 로드 오류</h3>
+            <p className="mb-5 text-[15px] text-sub">{error?.message || '카카오맵을 로드할 수 없습니다.'}</p>
             <button
+              type="button"
               onClick={onClose}
-              className="px-6 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
+              className="inline-flex h-11 items-center justify-center rounded-lg bg-[#0c0c0e] px-6 text-[15px] font-bold text-white hover:bg-black"
             >
               닫기
             </button>
@@ -263,10 +264,10 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
 
   return (
     <ModalPortal>
-    <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => e.target === e.currentTarget && onClose()}>
-<div className="bg-white rounded-3xl max-w-4xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/50" onClick={(e) => e.target === e.currentTarget && onClose()}>
+<div className="bg-white rounded-[18px] max-w-4xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
       <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-6">
-          <h3 className="text-2xl font-bold text-dark mb-6">장소 선택 (카카오 맵)</h3>
+          <h3 className="mb-5 text-[20px] font-bold text-ink">장소 선택 (카카오 맵)</h3>
 
         {/* 검색 */}
         <div className="flex gap-2 mb-4">
@@ -276,12 +277,14 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
             onChange={(e) => setSearchKeyword(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="주소 또는 장소명 검색"
-            className="flex-1 p-3 border-2 border-blue-200 rounded-xl focus:border-brand focus:outline-none"
+            aria-label="주소 또는 장소명 검색"
+            className="h-12 min-w-0 flex-1 rounded-lg border border-line2 bg-white px-3 text-[15px] focus:border-royal focus:outline-none"
           />
           <button
+            type="button"
             onClick={handleSearch}
             disabled={!mapLoaded}
-            className="px-4 py-3 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex h-12 shrink-0 items-center justify-center rounded-lg bg-[#0c0c0e] px-5 text-[15px] font-bold text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
           >
             검색
           </button>
@@ -289,15 +292,15 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
 
         {/* 검색 결과 */}
         {searchResults.length > 0 && (
-          <div className="mb-4 max-h-40 overflow-y-auto border border-blue-200 rounded-xl">
+          <div className="mb-4 max-h-40 overflow-y-auto border-t border-ink">
             {searchResults.map((result, idx) => (
               <div
                 key={idx}
                 onClick={() => handleSelectResult(result)}
-                className="p-3 hover:bg-gray-50 cursor-pointer border-b border-blue-100 last:border-b-0"
+                className="flex min-h-[52px] cursor-pointer flex-col justify-center border-b border-line px-3 py-2.5 hover:bg-card"
               >
-                {result.name && <p className="font-bold text-sm text-dark">{result.name}</p>}
-                <p className="text-sm text-gray-600">{result.address}</p>
+                {result.name && <p className="truncate text-[15px] font-semibold text-ink" title={result.name}>{result.name}</p>}
+                <p className="truncate text-[14px] text-sub" title={result.address}>{result.address}</p>
               </div>
             ))}
           </div>
@@ -305,44 +308,45 @@ export const KakaoMapModal = ({ onClose, onSelectLocation, initialLocation }) =>
 
         {/* 지도 */}
         {!isLoaded ? (
-          <div className="flex-1 min-h-[400px] rounded-xl border-2 border-blue-200 flex items-center justify-center bg-gray-50">
+          <div className="flex flex-1 min-h-[400px] items-center justify-center border border-line bg-card">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-brand mb-2"></div>
-              <p className="text-gray-600">지도 로딩 중...</p>
+              <p className="text-[15px] text-sub">지도 로딩 중...</p>
             </div>
           </div>
         ) : (
           <div
             ref={mapContainerRef}
-            className="flex-1 min-h-[400px] rounded-xl border-2 border-blue-200 overflow-hidden"
+            className="flex-1 min-h-[400px] overflow-hidden border border-line"
           />
         )}
 
         {/* 선택된 장소 정보 */}
         {selectedPlace && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-300 rounded-xl">
-            <p className="text-sm font-bold text-yellow-700 mb-1">선택된 장소</p>
-            {selectedPlace.name && <p className="font-bold text-sm text-dark">{selectedPlace.name}</p>}
-            <p className="text-sm text-gray-700">{selectedPlace.address}</p>
-            <p className="text-xs text-gray-500 mt-1">
+          <div className="mt-4 rounded-xl bg-sky p-4">
+            <p className="mb-1 text-[14px] font-semibold text-royal">선택된 장소</p>
+            {selectedPlace.name && <p className="text-[15px] font-semibold text-ink">{selectedPlace.name}</p>}
+            <p className="text-[15px] text-ink">{selectedPlace.address}</p>
+            <p className="mt-1 text-[13px] text-sub">
               좌표: {selectedPlace.lat?.toFixed(6)}, {selectedPlace.lng?.toFixed(6)}
             </p>
           </div>
         )}
 
           <button
+            type="button"
             onClick={handleConfirm}
             disabled={!selectedPlace}
-            className={`w-full py-4 rounded-xl font-bold transition-colors mt-6 ${selectedPlace
-              ? 'bg-brand text-white hover:bg-blue-700'
+            className={`mt-6 h-12 w-full rounded-lg text-[16px] font-bold transition-colors ${selectedPlace
+              ? 'bg-[#0c0c0e] text-white hover:bg-black'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
           >
             선택 완료
           </button>
         </div>
-        <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
-          <button type="button" onClick={onClose} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+        <div className="shrink-0 border-t border-line p-4 flex justify-end">
+          <button type="button" onClick={onClose} className="inline-flex h-11 items-center justify-center rounded-lg border border-line2 bg-white px-6 text-[15px] font-semibold text-ink hover:border-ink">
             닫기
           </button>
         </div>
