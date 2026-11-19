@@ -15,6 +15,19 @@ const clamp = (v, min, max) => {
     return Math.min(Math.max(n, min), max);
 };
 
+/** 단계별 안내 — 머리줄 「단계별 안내」 버튼, 처음 한 번 자동 */
+const TOUR = {
+    id: 'prices',
+    steps: [
+        { title: '커피챗 가격 정하기', body: '30분 비대면과 60분 매장 방문, 두 가지 가격을 정하는 화면이에요. 5,000원 단위로 바꿀 수 있어요.' },
+        { target: 'pr-online30', title: '30분 비대면 가격', body: '2만~5만 원 사이에서 정해요. 권장은 3만 원이에요. −·+ 버튼을 누르거나 막대를 밀어 바꾸세요.' },
+        { target: 'pr-visit60', title: '60분 매장 방문 가격', body: '5만~10만 원 사이에서 정해요. 권장은 6만 원이에요.' },
+        { target: 'pr-payout', title: '내가 받는 금액', body: '결제 금액에서 수수료 10%를 뺀 금액이에요. 정산은 매월 10일이에요.' },
+        { target: 'pr-unlock', title: '가격 상한 올리기', body: '커피챗 10회와 평점 4.5를 모두 채우면 30분 커피챗도 10만 원까지 정할 수 있어요.' },
+        { target: 'pr-save', title: '저장하기', body: '누르면 새 가격이 바로 프로필에 보여요. 이미 받은 신청은 신청할 때의 가격 그대로예요.' },
+    ],
+};
+
 export default function PriceModal({ onClose, depth }) {
     const cc = useCoffeeChat();
     const senior = cc.mySenior;
@@ -55,7 +68,8 @@ export default function PriceModal({ onClose, depth }) {
 
     return (
         <CcModal title="커피챗 가격 설정" onClose={onClose} onBack={depth > 0 ? onClose : undefined} depth={depth}
-            footer={senior && prices ? <button type="button" className={ccBtn.primary} onClick={save} disabled={busy}>{busy ? '저장하는 중…' : '저장하기'}</button> : null}>
+            tour={senior && prices ? TOUR : undefined}
+            footer={senior && prices ? <button type="button" data-tour="pr-save" className={ccBtn.primary} onClick={save} disabled={busy}>{busy ? '저장하는 중…' : '저장하기'}</button> : null}>
             {senior === undefined ? <p role="status" className="py-10 text-center text-[15px] text-sub">불러오는 중이에요…</p> : null}
             {senior === null ? (
                 <div className="space-y-3">
@@ -71,7 +85,7 @@ export default function PriceModal({ onClose, depth }) {
                         const max = priceMax(k, senior);
                         const v = prices[k];
                         return (
-                            <section key={k} aria-labelledby={`cc-price-h-${k}`} className="mt-4 border border-line p-4">
+                            <section key={k} data-tour={`pr-${k}`} aria-labelledby={`cc-price-h-${k}`} className="mt-4 border border-line p-4">
                                 <h3 id={`cc-price-h-${k}`} className="text-[17px] font-bold text-ink">{label}</h3>
                                 <p className="mt-0.5 text-[15px] text-sub">{desc}</p>
                                 <div className="mt-3 bg-card px-3 py-4">
@@ -90,7 +104,7 @@ export default function PriceModal({ onClose, depth }) {
                                         <span className="text-right">최대 {won(max)}</span>
                                     </div>
                                 </div>
-                                <div className="mt-3 flex items-center justify-between gap-2 border border-line px-3 py-3">
+                                <div data-tour={k === 'online30' ? 'pr-payout' : undefined} className="mt-3 flex items-center justify-between gap-2 border border-line px-3 py-3">
                                     <span className="text-[15px] text-sub">내가 받는 금액(수수료 10% 차감)</span>
                                     <span className="text-[18px] font-bold text-ink">{won(payoutOf(v))}</span>
                                 </div>
@@ -98,7 +112,7 @@ export default function PriceModal({ onClose, depth }) {
                         );
                     })}
 
-                    <section aria-labelledby="cc-price-unlock" className="mt-4 border border-line bg-sky p-4">
+                    <section data-tour="pr-unlock" aria-labelledby="cc-price-unlock" className="mt-4 border border-line bg-sky p-4">
                         <h3 id="cc-price-unlock" className="text-[17px] font-bold text-ink">가격 상한 해금 조건</h3>
                         <p className="mt-0.5 text-[15px] text-[#1d2a55]">커피챗 10회 + 평점 4.5 달성 시 30분 커피챗도 최대 100,000원까지 정할 수 있어요.</p>
                         <div className="mt-3 bg-white px-3 py-3">

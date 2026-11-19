@@ -1,5 +1,5 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import coffeeChatService from '../../services/coffeeChatService';
+import React, { createContext, Suspense, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import coffeeChatService, { CC_FAKE_PAY } from '../../services/coffeeChatService';
 import HubModal from './HubModal';
 import PostDetailModal from './PostDetailModal';
 import SeniorProfileModal from './SeniorProfileModal';
@@ -29,6 +29,9 @@ import PayReturnModal from './PayReturnModal';
  *  prices {}                      커피챗 가격 설정
  *  payReturn {chatId}             모바일 결제 후 돌아와 확인
  */
+// 로컬 시험 도구: 개발 화면에서만 불러온다(운영 빌드에서는 코드째 빠짐)
+const DevTestPanel = import.meta.env.DEV ? React.lazy(() => import('./DevTestPanel')) : null;
+
 const REGISTRY = {
     hub: HubModal, post: PostDetailModal, senior: SeniorProfileModal, apply: ApplyModal, center: CenterModal,
     chat: ChatDetailModal, review: ReviewModal, register: SeniorRegisterModal, editor: PostEditorModal, prices: PriceModal, payReturn: PayReturnModal,
@@ -87,6 +90,7 @@ export default function CoffeeChatProvider({ currentUser, onRequireLogin, childr
     return (
         <Ctx.Provider value={value}>
             {children}
+            {CC_FAKE_PAY && DevTestPanel ? <Suspense fallback={null}><DevTestPanel uid={uid} currentUser={currentUser} /></Suspense> : null}
             {stack.map((m, i) => {
                 const C = REGISTRY[m.name];
                 return C ? <C key={m.key} {...m.props} depth={i} onClose={close} /> : null;

@@ -26,6 +26,50 @@ const EMPTY = {
     online30: CC_TYPES.online30.recommended, visit60: CC_TYPES.visit60.recommended, agree: false,
 };
 
+/** 단계별 안내 — 소개 / 새 등록 폼 / 프로필 고치기 / 가입 완료 따로. 머리줄 「단계별 안내」 버튼, 처음 한 번 자동 */
+const TOUR_INTRO = {
+    id: 'register-intro',
+    steps: [
+        { title: '선배 사장 등록', body: '업력 3년 이상 사장님이 노하우를 나누고 유료 커피챗을 열 수 있게 등록하는 과정이에요. 두 단계면 끝나요.' },
+        { target: 'reg-who', title: '누가 할 수 있나요', body: '업력 3년 이상 사장님이면 신청할 수 있어요. 승인되면 노하우 글을 쓰고 후배와 1:1 커피챗을 진행해요.' },
+        { target: 'reg-rules', title: '꼭 알아 둘 규칙', body: '결제 금액의 10%가 수수료이고 정산은 매월 10일이에요. 거절·무응답·제때 한 취소는 후배에게 전액 환불돼요.' },
+        { target: 'reg-start', title: '다음에 할 일', body: '「선배로 등록 시작」을 누르면 프로필 입력 화면이 나와요. 등록 신청 뒤 운영진이 승인하면 활동이 시작돼요.' },
+    ],
+};
+const TOUR_FORM = {
+    id: 'register-form',
+    steps: [
+        { title: '선배 프로필 입력', body: '후배들이 보고 선배를 고르는 정보예요. 실명 기반이라 정확히 써 주세요. 빨간 * 표시 칸은 꼭 채워야 해요.' },
+        { target: 'reg-name', title: '이름·상호', body: '이름(실명)과 가게 이름을 써 주세요. 후배들에게 공개돼요.' },
+        { target: 'reg-years', title: '업종·상권·업력', body: '업종을 고르고 상권(구·동)과 업력을 써 주세요. 업력은 3년 이상이어야 등록돼요.' },
+        { target: 'reg-topics', title: '잘 아는 주제', body: '1~4개를 골라 주세요. 후배들이 주제로 선배를 찾아요.' },
+        { target: 'reg-kakao', title: '카카오 오픈채팅 주소', body: 'https://open.kakao.com/ 으로 시작하는 1:1 오픈채팅 주소예요. 확정된 후배에게만 보이고, 없으면 신청을 수락할 수 없어요.' },
+        { target: 'reg-price', title: '첫 커피챗 가격', body: '30분은 2만~5만 원, 60분은 5만~10만 원에서 5천 원 단위로 골라요. 아래에 수수료 10%를 뺀 받는 금액이 보여요.' },
+        { target: 'reg-agree', title: '규정 동의', body: '수수료 10%, 매월 10일 정산, 환불 규정을 확인하고 체크해 주세요.' },
+        { target: 'reg-submit', title: '등록 신청하기', body: '누르면 운영진에게 심사가 요청돼요. 승인되면 노하우 글을 쓰고 커피챗 신청을 받을 수 있어요.' },
+    ],
+};
+const TOUR_EDIT = {
+    id: 'register-edit',
+    steps: [
+        { title: '선배 프로필 고치기', body: '후배에게 보이는 내 정보와 오픈채팅 주소를 고치는 화면이에요. 반려된 경우 고쳐서 저장하면 다시 심사를 받아요.' },
+        { target: 'reg-name', title: '기본 정보', body: '이름·상호·업종·상권·업력을 고칠 수 있어요. 업력은 3년 이상이어야 해요.' },
+        { target: 'reg-topics', title: '잘 아는 주제', body: '1~4개를 골라 주세요. 후배들이 주제로 선배를 찾아요.' },
+        { target: 'reg-intro', title: '한 줄 소개', body: '300자까지 쓸 수 있어요. 어떤 가게를 몇 년째 하는지, 무엇을 잘 도와줄 수 있는지 써 주세요.' },
+        { target: 'reg-kakao', title: '카카오 오픈채팅 주소', body: '확정된 후배에게만 보이는 주소예요. 바뀌었다면 꼭 고쳐 주세요. 없으면 신청을 수락할 수 없어요.' },
+        { target: 'reg-submit', title: '저장하기', body: '누르면 바로 반영돼요. 가격은 「내 커피챗 → 선배 활동 → 가격 수정」에서 바꿔요.' },
+    ],
+};
+const TOUR_DONE = {
+    id: 'register-done',
+    steps: [
+        { title: '등록 신청이 끝났어요', body: '운영진이 확인한 뒤 선배 활동이 시작돼요. 그 전까지 내 프로필은 다른 회원에게 보이지 않아요.' },
+        { target: 'reg-done-card', title: '심사 중인 내 프로필', body: '「심사 중」이 「인증 선배」로 바뀌면 승인된 거예요. 「내 커피챗 → 선배 활동」에서 확인할 수 있어요.' },
+        { target: 'reg-done-prices', title: '가격 정하기', body: '「커피챗 가격 정하러 가기」에서 30분·60분 가격을 바꿀 수 있어요.' },
+        { target: 'reg-done-hub', title: '노하우 둘러보기', body: '다른 선배들이 쓴 글을 둘러보며 내 글은 어떻게 쓸지 생각해 보세요.' },
+    ],
+};
+
 export default function SeniorRegisterModal({ onClose, depth }) {
     const cc = useCoffeeChat();
     const [step, setStep] = useState('loading'); // loading | intro | form | done
@@ -131,27 +175,28 @@ export default function SeniorRegisterModal({ onClose, depth }) {
 
     const title = step === 'done' ? '가입 완료' : step === 'form' ? (isNew ? '선배 프로필 설정' : '선배 프로필 고치기') : '선배 사장 등록';
     let footer = null;
-    if (step === 'intro') footer = <button type="button" className={ccBtn.primary} onClick={() => setStep('form')}>선배로 등록 시작</button>;
-    if (step === 'form') footer = <button type="button" className={ccBtn.primary} onClick={save} disabled={busy || uploading}>{busy ? '저장하는 중…' : isNew ? '등록 신청하기' : '저장하기'}</button>;
+    if (step === 'intro') footer = <button type="button" data-tour="reg-start" className={ccBtn.primary} onClick={() => setStep('form')}>선배로 등록 시작</button>;
+    if (step === 'form') footer = <button type="button" data-tour="reg-submit" className={ccBtn.primary} onClick={save} disabled={busy || uploading}>{busy ? '저장하는 중…' : isNew ? '등록 신청하기' : '저장하기'}</button>;
     if (step === 'done') {
         footer = (
             <div className="grid gap-2">
-                <button type="button" className={ccBtn.primary} onClick={() => { cc.closeAll(); cc.open('hub'); }}>노하우 둘러보기</button>
-                <button type="button" className={ccBtn.line} onClick={() => cc.replace('prices')}>커피챗 가격 정하러 가기</button>
+                <button type="button" data-tour="reg-done-hub" className={ccBtn.primary} onClick={() => { cc.closeAll(); cc.open('hub'); }}>노하우 둘러보기</button>
+                <button type="button" data-tour="reg-done-prices" className={ccBtn.line} onClick={() => cc.replace('prices')}>커피챗 가격 정하러 가기</button>
             </div>
         );
     }
+    const tour = step === 'intro' ? TOUR_INTRO : step === 'form' ? (isNew ? TOUR_FORM : TOUR_EDIT) : step === 'done' ? TOUR_DONE : undefined;
     const onBack = step === 'form' && isNew ? () => { setStep('intro'); setErr(''); } : depth > 0 ? onClose : undefined;
 
     return (
-        <CcModal title={title} onClose={onClose} onBack={onBack} depth={depth} footer={footer}>
+        <CcModal title={title} onClose={onClose} onBack={onBack} depth={depth} footer={footer} tour={tour}>
             {step === 'loading' ? <p role="status" className="py-10 text-center text-[15px] text-sub">불러오는 중이에요…</p> : null}
 
             {step === 'intro' ? (
                 <div>
                     <CcTag tone="sky">단계 1/2</CcTag>
                     <h3 className="mt-3 text-[22px] font-bold leading-snug text-ink">먼저가본에서 선배 사장으로<br />노하우를 나눠 주세요</h3>
-                    <section className="mt-5 border border-[#0c0c0e] p-4">
+                    <section data-tour="reg-who" className="mt-5 border border-[#0c0c0e] p-4">
                         <div className="flex items-center gap-2">
                             <p className="text-[18px] font-bold text-ink">선배 사장</p>
                             <CcTag tone="royal">경험 나눔 &amp; 수익 창출</CcTag>
@@ -162,7 +207,7 @@ export default function SeniorRegisterModal({ onClose, depth }) {
                         </dl>
                         <p className="mt-3 text-[15px] leading-relaxed text-ink">골목에서 버텨 낸 실전 노하우를 후배 사장에게 전하고, 유료 커피챗으로 보람과 가치를 얻으세요.</p>
                     </section>
-                    <section className="mt-4 border border-line p-4">
+                    <section data-tour="reg-rules" className="mt-4 border border-line p-4">
                         <h4 className="text-[16px] font-bold text-ink">운영 규칙 요약</h4>
                         <ul className="mt-2 space-y-1.5 text-[15px] leading-relaxed text-ink">
                             <li>· 수수료 10%: 결제 금액에서 10%를 빼고 받아요. (예: 30,000원 → {won(payoutOf(30000))})</li>
@@ -184,7 +229,7 @@ export default function SeniorRegisterModal({ onClose, depth }) {
                     {isNew ? <div className="mb-5"><CcNote title="기본 정보 입력">실명 기반 신뢰 커뮤니티를 위해 정확히 입력해 주세요.</CcNote></div> : null}
 
                     <CcField label="이름(실명)" required htmlFor="cc-reg-name" hint="활동할 때 후배들에게 공개되는 실명이에요.">
-                        <input id="cc-reg-name" value={form.name} maxLength={40} onChange={onText('name')} autoComplete="name" className={`${ccInput} h-12`} />
+                        <input id="cc-reg-name" data-tour="reg-name" value={form.name} maxLength={40} onChange={onText('name')} autoComplete="name" className={`${ccInput} h-12`} />
                     </CcField>
                     <CcField label="상호명" required htmlFor="cc-reg-biz">
                         <input id="cc-reg-biz" value={form.bizName} maxLength={60} onChange={onText('bizName')} placeholder="예: 전포 카페 브루어스" className={`${ccInput} h-12`} />
@@ -196,7 +241,7 @@ export default function SeniorRegisterModal({ onClose, depth }) {
                         <input id="cc-reg-area" value={form.area} maxLength={40} onChange={onText('area')} placeholder="예: 부산진구 전포동" className={`${ccInput} h-12`} />
                     </CcField>
                     <CcField label="업력(년)" required htmlFor="cc-reg-years" hint={yearsShort ? null : '3~60년, 숫자로 써 주세요.'}>
-                        <input id="cc-reg-years" type="number" inputMode="numeric" min={3} max={60} step={1} value={form.years} onChange={onText('years')}
+                        <input id="cc-reg-years" data-tour="reg-years" type="number" inputMode="numeric" min={3} max={60} step={1} value={form.years} onChange={onText('years')}
                             aria-invalid={yearsShort} aria-describedby={yearsShort ? 'cc-reg-years-err' : undefined} className={`${ccInput} h-12`} />
                         {yearsShort ? <p id="cc-reg-years-err" className="mt-1.5 text-[15px] text-red-600">업력 3년 미만은 선배로 등록할 수 없어요. 3년 이상부터 신청해 주세요.</p> : null}
                     </CcField>
@@ -205,14 +250,14 @@ export default function SeniorRegisterModal({ onClose, depth }) {
                             <p id="cc-reg-topics" className="text-[15px] font-semibold text-ink">관심(전문) 주제<span className="ml-0.5 text-red-600">*</span></p>
                             <span className="text-[13px] text-sub">{form.topics.length}/4개 선택</span>
                         </div>
-                        <div role="group" aria-labelledby="cc-reg-topics" className="flex flex-wrap gap-2">
+                        <div data-tour="reg-topics" role="group" aria-labelledby="cc-reg-topics" className="flex flex-wrap gap-2">
                             {CC_TOPICS.map((t) => (
                                 <CcChip key={t} on={form.topics.includes(t)} onClick={() => toggleTopic(t)} disabled={!form.topics.includes(t) && form.topics.length >= 4}>#{t}</CcChip>
                             ))}
                         </div>
                     </div>
                     <CcField label="한 줄 소개" htmlFor="cc-reg-intro" counter={`${form.intro.length}/300자`}>
-                        <textarea id="cc-reg-intro" value={form.intro} maxLength={300} rows={3} onChange={onText('intro')}
+                        <textarea id="cc-reg-intro" data-tour="reg-intro" value={form.intro} maxLength={300} rows={3} onChange={onText('intro')}
                             placeholder="예: 전포동에서 5년째 로스터리 카페를 운영하고 있어요." className={`${ccInput} min-h-[96px] py-3 leading-relaxed`} />
                     </CcField>
                     <div className="mb-5">
@@ -227,7 +272,7 @@ export default function SeniorRegisterModal({ onClose, depth }) {
                         </div>
                     </div>
                     <CcField label="카카오 오픈채팅 주소" required htmlFor="cc-reg-kakao" hint="확정된 후배에게만 보여요. 카카오톡 → 오픈채팅 → 1:1 채팅방 만들기 → 링크 복사로 받을 수 있어요.">
-                        <input id="cc-reg-kakao" type="url" inputMode="url" value={form.openChatUrl} maxLength={300} onChange={onText('openChatUrl')}
+                        <input id="cc-reg-kakao" data-tour="reg-kakao" type="url" inputMode="url" value={form.openChatUrl} maxLength={300} onChange={onText('openChatUrl')}
                             placeholder="https://open.kakao.com/o/..." className={`${ccInput} h-12`} />
                     </CcField>
 
@@ -235,7 +280,7 @@ export default function SeniorRegisterModal({ onClose, depth }) {
                         <>
                             <div className="mb-2 mt-2 text-[15px] font-semibold text-ink">첫 커피챗 가격</div>
                             <p className="mb-3 text-[15px] text-sub">권장 가격으로 시작해요. 5,000원 단위이며, 나중에 「가격 수정」에서 바꿀 수 있어요.</p>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div data-tour="reg-price" className="grid grid-cols-2 gap-2">
                                 {['online30', 'visit60'].map((k) => (
                                     <CcField key={k} label={`${CC_TYPES[k].short} 가격`} htmlFor={`cc-reg-price-${k}`} hint={`받는 금액 ${won(payoutOf(form[k]))}`}>
                                         <select id={`cc-reg-price-${k}`} value={form[k]} onChange={(e) => set(k)(Number(e.target.value))} className={`${ccInput} h-12`}>
@@ -244,7 +289,7 @@ export default function SeniorRegisterModal({ onClose, depth }) {
                                     </CcField>
                                 ))}
                             </div>
-                            <div className="mb-2 flex min-h-[48px] items-center gap-3 border border-line px-3">
+                            <div data-tour="reg-agree" className="mb-2 flex min-h-[48px] items-center gap-3 border border-line px-3">
                                 <input id="cc-reg-agree" type="checkbox" checked={form.agree} onChange={(e) => set('agree')(e.target.checked)} className="h-5 w-5 shrink-0 accent-[#2d4fe0]" />
                                 <label htmlFor="cc-reg-agree" className="py-2 text-[15px] text-ink">수수료 10%·정산·환불 규정에 동의합니다</label>
                             </div>
@@ -263,7 +308,7 @@ export default function SeniorRegisterModal({ onClose, depth }) {
                         <p className="mt-3 text-[20px] font-bold leading-snug text-ink">선배 등록 신청 완료 — 운영진 확인 후 활동이 시작돼요</p>
                         <p className="mt-2 text-[15px] text-sub">{form.name} 선배님, 먼저가본에 오신 것을 환영해요.</p>
                     </div>
-                    <section className="border border-line p-4">
+                    <section data-tour="reg-done-card" className="border border-line p-4">
                         <div className="flex items-center gap-3">
                             <CcAvatar src={form.photoUrl} name={form.name} size={56} />
                             <div className="min-w-0 flex-1">

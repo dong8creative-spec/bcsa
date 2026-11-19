@@ -2301,6 +2301,11 @@ export const cancelCoffeeChat = coffeeCallable('cancelCoffeeChat');
 export const completeCoffeeChat = coffeeCallable('completeCoffeeChat');
 export const reviewCoffeeChat = coffeeCallable('reviewCoffeeChat');
 export const runCoffeeChatSweep = coffeeCallable('runCoffeeChatSweep');
+// 로컬 시험 전용: 가짜 Firebase + 가짜 결제일 때만 동작. 운영에서는 항상 거절
+export const testCoffeeTimeTravel = onCall({ region: 'asia-northeast3', invoker: 'public' }, (request) => {
+  if (!COFFEE_FAKE_PAY) throw new HttpsError('permission-denied', '시험 환경에서만 쓸 수 있어요.');
+  return getCoffeeHandlers().testCallables.testCoffeeTimeTravel(request);
+});
 // 1시간마다: 24시간 무응답 자동 환불, 약속 2시간 뒤 자동 완료, 버려진 결제 건 정리
 export const coffeeChatSweep = onSchedule({ schedule: 'every 60 minutes', region: 'asia-northeast3', timeZone: 'Asia/Seoul' }, async () => {
   const r = await getCoffeeHandlers().sweep();

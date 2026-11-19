@@ -13,6 +13,21 @@ const STEPS = [
 ];
 const EMPTY = { topic: '', title: '', problem: '', solution: '', result: '', imageUrl: '' };
 
+/** 단계별 안내 — 머리줄 「단계별 안내」 버튼, 처음 한 번 자동 */
+const TOUR = {
+    id: 'post-editor',
+    steps: [
+        { title: '노하우 글 쓰기', body: '직접 겪은 실전 경험을 문제→해결→결과 3단계로 정리해 올리는 화면이에요. 승인된 선배만 쓸 수 있어요.' },
+        { target: 'ed-topic', title: '주제 고르기', body: '마케팅·브랜딩, AI·업무효율화, 재무·세무, 위기극복 중 1개를 골라 주세요. 후배들이 주제로 글을 찾아요.' },
+        { target: 'ed-title', title: '제목', body: '50자까지 쓸 수 있어요. 어떤 일을 어떻게 해냈는지 한눈에 보이게 써 주세요.' },
+        { target: 'ed-problem', title: '1단계 문제 상황', body: '어떤 어려움이 있었는지 써 주세요. 단계마다 1,500자까지 쓸 수 있어요.' },
+        { target: 'ed-solution', title: '2·3단계 해결과 결과', body: '어떻게 풀었는지 구체적으로 쓰고, 이어서 「결과」 칸에 최종 결과와 꼭 전하고 싶은 교훈을 적어 주세요.' },
+        { target: 'ed-photo', title: '사진 1장', body: '가게나 자료 사진을 1장 붙일 수 있어요. 10MB 이하 사진만 올라가요. 없어도 괜찮아요.' },
+        { target: 'ed-draft', title: '임시저장', body: '다 못 썼다면 「임시저장」을 눌러 두세요. 주제와 제목만 있으면 저장되고, 공개되지 않아요.' },
+        { target: 'ed-publish', title: '발행하기', body: '세 단계를 모두 채우고 누르면 공개돼요(고칠 때는 「수정 완료하기」). 글을 읽은 후배가 바로 커피챗을 신청할 수 있어요.' },
+    ],
+};
+
 export default function PostEditorModal({ postId, onClose, depth }) {
     const cc = useCoffeeChat();
     const [form, setForm] = useState(EMPTY);
@@ -103,9 +118,9 @@ export default function PostEditorModal({ postId, onClose, depth }) {
     else if (notMine) guard = <CcNote tone="alert">내가 쓴 글만 고칠 수 있어요.</CcNote>;
 
     return (
-        <CcModal title={title} onClose={onClose} onBack={depth > 0 ? onClose : undefined} depth={depth}
+        <CcModal title={title} onClose={onClose} onBack={depth > 0 ? onClose : undefined} depth={depth} tour={ready ? TOUR : undefined}
             footer={ready ? (
-                <button type="button" className={ccBtn.primary} onClick={() => save('published')} disabled={busy || uploading}>
+                <button type="button" data-tour="ed-publish" className={ccBtn.primary} onClick={() => save('published')} disabled={busy || uploading}>
                     {busy ? '저장하는 중…' : isEdit ? '수정 완료하기' : '발행하기'}
                 </button>
             ) : null}>
@@ -116,7 +131,7 @@ export default function PostEditorModal({ postId, onClose, depth }) {
                         <CcTag tone="sky">선배 사장 전용 작성 공간</CcTag>
                         <div className="flex gap-2">
                             {isEdit ? <button type="button" className={ccBtn.danger} onClick={() => setConfirmDel(true)} disabled={busy}>삭제</button> : null}
-                            <button type="button" className={ccBtn.small} onClick={() => save('draft')} disabled={busy || uploading}>임시저장</button>
+                            <button type="button" data-tour="ed-draft" className={ccBtn.small} onClick={() => save('draft')} disabled={busy || uploading}>임시저장</button>
                         </div>
                     </div>
                     {confirmDel ? (
@@ -134,17 +149,17 @@ export default function PostEditorModal({ postId, onClose, depth }) {
 
                     <div className="mt-5">
                         <CcField label="주제 태그 선택" required counter="필수 택1">
-                            <CcSegment label="주제 태그" cols={2} value={form.topic} onChange={set('topic')} items={CC_TOPICS.map((t) => [t, `#${t}`])} />
+                            <div data-tour="ed-topic"><CcSegment label="주제 태그" cols={2} value={form.topic} onChange={set('topic')} items={CC_TOPICS.map((t) => [t, `#${t}`])} /></div>
                         </CcField>
                         <CcField label="제목" required htmlFor="cc-ed-title" counter={`${form.title.length}/50자`}>
-                            <input id="cc-ed-title" value={form.title} maxLength={50} onChange={(e) => set('title')(e.target.value)}
+                            <input id="cc-ed-title" data-tour="ed-title" value={form.title} maxLength={50} onChange={(e) => set('title')(e.target.value)}
                                 placeholder="예: 오픈 3개월 차 인스타 마케팅 성공기" className={`${ccInput} h-12`} />
                         </CcField>
                     </div>
 
                     <h3 className="mb-3 mt-2 text-[17px] font-bold text-ink">실전 노하우 3단계 작성</h3>
                     {STEPS.map(([k, label, sub, ph], i) => (
-                        <section key={k} className="mb-3 border border-line p-4">
+                        <section key={k} data-tour={k === 'result' ? undefined : `ed-${k}`} className="mb-3 border border-line p-4">
                             <CcField label={label} required htmlFor={`cc-ed-${k}`} counter={`${i + 1}단계 · ${sub}`}
                                 hint={`${form[k].length}/1500자${form[k].trim().length < 20 ? ' · 20자 이상 쓰면 더 잘 전해져요' : ''}`}>
                                 <textarea id={`cc-ed-${k}`} value={form[k]} maxLength={1500} rows={5} onChange={(e) => set(k)(e.target.value)}
@@ -153,7 +168,7 @@ export default function PostEditorModal({ postId, onClose, depth }) {
                         </section>
                     ))}
 
-                    <div className="mb-5 mt-4">
+                    <div data-tour="ed-photo" className="mb-5 mt-4">
                         <label htmlFor="cc-ed-photo" className="mb-2 block text-[15px] font-semibold text-ink">사진 1장(선택)</label>
                         {form.imageUrl ? <img src={form.imageUrl} alt="첨부한 사진" className="mb-2 aspect-[3/2] w-full border border-line object-cover" /> : null}
                         <div className="flex flex-wrap gap-2">

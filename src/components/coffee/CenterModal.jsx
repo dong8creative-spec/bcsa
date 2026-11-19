@@ -13,6 +13,56 @@ import { CcModal, CcTag, CcSegment, CcNote, CcError, CcAvatar, ccBtn } from './u
 const TAB_LABEL = { mine: '신청 내역', received: '받은 신청', senior: '선배 활동', settle: '정산' };
 const SENIOR_STATE = { pending: ['심사 중', 'royal'], approved: ['인증 선배', 'ink'], rejected: ['반려됨', 'alert'] };
 
+/** 단계별 안내 — 탭마다 따로. 탭을 처음 열면 그 탭 안내가 한 번 자동으로 뜬다 */
+const TOURS = {
+    mine: {
+        id: 'center-mine',
+        steps: [
+            { title: '신청 내역', body: '내가 선배에게 낸 커피챗 신청이 모두 모여 있어요. 선배라면 위쪽 탭에서 받은 신청과 정산도 볼 수 있어요.' },
+            { target: 'mine-filter', title: '골라 보기', body: '전체, 진행 중(수락 대기·확정), 완료·종료(완료·거절·취소)로 나눠 볼 수 있어요.' },
+            { target: 'mine-card', title: '신청 한 건', body: '카드를 누르면 상세 화면이 열려요. 오른쪽 위 표시가 지금 상태예요(수락 대기, 확정, 진행 완료 등).' },
+            { target: 'mine-cancel', title: '확정 전 취소', body: '선배가 수락하기 전에는 언제든 취소할 수 있고, 결제 금액은 전액 환불돼요.' },
+            { target: 'mine-open', title: '확정되면', body: '「상세보기 & 오픈채팅 입장」에서 카카오 오픈채팅 주소를 확인하세요. 약속 24시간 전까지 취소하면 전액 환불돼요.' },
+            { target: 'mine-saved', title: '저장한 글', body: '노하우 글에서 「저장」을 누른 글이 여기 모여요. 누르면 다시 읽을 수 있어요.' },
+            { target: 'mine-review', title: '마친 뒤 후기', body: '선배가 「진행 완료」를 누르면(아니면 약속 2시간 뒤 자동) 「평점 남기기」가 생겨요. 별점과 한 줄 후기를 남겨 주세요.' },
+            { target: 'mine-find', title: '다음에 할 일', body: '「선배 찾아보기」를 눌러 나와 맞는 선배를 고르고 커피챗을 신청해 보세요.' },
+        ],
+    },
+    received: {
+        id: 'center-received',
+        steps: [
+            { title: '받은 신청', body: '후배가 나에게 낸 커피챗 신청이에요. 24시간 안에 일정을 골라 수락하거나 거절해 주세요.' },
+            { target: 'recv-banner', title: '답변 대기', body: '답하지 않고 24시간이 지나면 신청은 자동 취소되고 후배에게 전액 환불돼요. 대기 건수를 자주 확인해 주세요.' },
+            { target: 'recv-filter', title: '골라 보기', body: '대기(답할 신청), 확정(약속 잡힌 건), 종료(완료·거절·취소)로 나눠 볼 수 있어요.' },
+            { target: 'recv-card', title: '신청 한 건', body: '후배의 준비 단계·희망 업종·상권, 정산 예정액(수수료 10%를 뺀 금액), 남은 응답 시간이 보여요.' },
+            { target: 'recv-card', title: '다음에 할 일', body: '카드를 누르면 상세 화면이 열려요. 질문을 읽고 희망 일정 3개 중 1개를 골라 「일정 선택 및 수락하기」를 누르세요.' },
+        ],
+    },
+    senior: {
+        id: 'center-senior',
+        steps: [
+            { title: '선배 활동', body: '내 선배 프로필, 커피챗 가격, 신청 받기 켜고 끄기, 활동 뱃지, 내가 쓴 글을 한곳에서 관리해요.' },
+            { target: 'sen-profile', title: '내 프로필 상태', body: '오른쪽 위 표시가 심사 상태예요. 「심사 중」이면 운영진 승인을 기다리는 중이고, 승인되면 「인증 선배」가 돼요.' },
+            { target: 'sen-edit', title: '프로필 고치기', body: '소개·주제·사진·카카오 오픈채팅 주소를 바꿀 수 있어요. 오픈채팅 주소가 있어야 신청을 수락할 수 있어요.' },
+            { target: 'sen-price', title: '가격 수정', body: '30분은 2만~5만 원, 60분은 5만~10만 원에서 5천 원 단위로 정해요. 받는 금액은 수수료 10%를 뺀 금액이에요.' },
+            { target: 'sen-accepting', title: '신청 받기', body: '바쁠 때는 「꺼짐」으로 바꾸면 새 신청을 받지 않아요. 이미 받은 신청은 그대로 진행돼요.' },
+            { target: 'sen-badges', title: '활동 뱃지', body: '커피챗 10회와 평점 4.5를 모두 채우면 30분 커피챗 가격을 10만 원까지 올릴 수 있어요.' },
+            { target: 'sen-write', title: '노하우 글 쓰기', body: '「새 글 쓰기」로 문제→해결→결과 3단계 글을 올리세요. 글을 읽은 후배가 바로 커피챗을 신청할 수 있어요.' },
+        ],
+    },
+    settle: {
+        id: 'center-settle',
+        steps: [
+            { title: '정산', body: '커피챗으로 받을 돈과 받은 돈을 확인하는 화면이에요. 정산은 매월 10일, 운영진이 확인한 뒤 지급해요.' },
+            { target: 'settle-summary', title: '이번 달 정산 예정액', body: '이번 달 확정·완료된 커피챗에서 수수료 10%를 뺀 금액의 합계예요. 아직 지급 전인 금액만 더해요.' },
+            { target: 'settle-filter', title: '골라 보기', body: '정산 완료(지급됨), 정산 대기(지급 전), 취소됨(후배에게 환불)으로 나눠 볼 수 있어요.' },
+            { target: 'settle-list', title: '정산 내역', body: '한 줄에 후배, 진행 방식, 일정, 결제 금액이 보여요. 취소된 건은 금액에 줄이 그어져요.' },
+            { target: 'settle-refund', title: '환불 규칙', body: '후배가 약속 24시간 전까지 취소하거나 선배 사정으로 취소하면 전액 환불돼요. 일정 변경은 오픈채팅으로 미리 조율해 주세요.' },
+            { target: 'settle-help', title: '다음에 할 일', body: '정산 금액이 이상하거나 영수증이 필요하면 아래 고객센터 전화나 메일로 문의해 주세요.' },
+        ],
+    },
+};
+
 function useNow(step = 30000) {
     const [now, setNow] = useState(() => Date.now());
     useEffect(() => {
@@ -80,7 +130,7 @@ function MineCard({ c, now, cc, confirming, setConfirming, busy, onCancel, error
     const fixed = !!c.chosenSlot && ['confirmed', 'completed'].includes(c.status);
     const slots = Array.isArray(c.slots) ? c.slots : [];
     return (
-        <article className="border border-line bg-white">
+        <article data-tour="mine-card" className="border border-line bg-white">
             <button type="button" onClick={() => cc.open('chat', { chatId: c.id })}
                 aria-label={`${c.seniorName || ''} 선배 커피챗 상세 보기 (${st.label})`}
                 className="block w-full px-4 pb-3 pt-4 text-left">
@@ -118,14 +168,14 @@ function MineCard({ c, now, cc, confirming, setConfirming, busy, onCancel, error
                     ) : (
                         <div className="flex items-center justify-between gap-2">
                             <p className="text-[15px] text-sub">24시간 내 수락 응답 예정</p>
-                            <button type="button" className={ccBtn.small} onClick={() => setConfirming(c.id)}>신청 취소</button>
+                            <button type="button" data-tour="mine-cancel" className={ccBtn.small} onClick={() => setConfirming(c.id)}>신청 취소</button>
                         </div>
                     )
                 ) : null}
                 {c.status === 'confirmed' ? (
                     <div className="flex items-center gap-2">
                         <CcTag tone="royal">{dday(c.chosenSlot, now)}</CcTag>
-                        <button type="button" className={`${ccBtn.smallDark} flex-1`} onClick={() => cc.open('chat', { chatId: c.id })}>상세보기 &amp; 오픈채팅 입장</button>
+                        <button type="button" data-tour="mine-open" className={`${ccBtn.smallDark} flex-1`} onClick={() => cc.open('chat', { chatId: c.id })}>상세보기 &amp; 오픈채팅 입장</button>
                     </div>
                 ) : null}
                 {c.status === 'completed' ? (
@@ -134,7 +184,7 @@ function MineCard({ c, now, cc, confirming, setConfirming, busy, onCancel, error
                     ) : (
                         <div className="flex items-center justify-between gap-2">
                             <p className="text-[15px] text-sub">선배와의 대화는 어떠셨나요?</p>
-                            <button type="button" className={ccBtn.smallDark} onClick={() => cc.open('review', { chatId: c.id })}>평점 남기기</button>
+                            <button type="button" data-tour="mine-review" className={ccBtn.smallDark} onClick={() => cc.open('review', { chatId: c.id })}>평점 남기기</button>
                         </div>
                     )
                 ) : null}
@@ -220,7 +270,7 @@ function MineTab({ cc, mine, now, showSaved }) {
     return (
         <div>
             <CcNote title="선배와의 미팅 팁">대화 전 고민 질문 3가지를 미리 적어 두면 30분이 2시간처럼 유익해져요.</CcNote>
-            <div className="mt-4">
+            <div data-tour="mine-filter" className="mt-4">
                 <CcSegment label="신청 내역 거르기" value={filter} onChange={setFilter}
                     items={[['all', `전체 ${list.length}`], ['open', `진행 중 ${openN}`], ['done', `완료·종료 ${doneN}`]]} />
             </div>
@@ -228,7 +278,7 @@ function MineTab({ cc, mine, now, showSaved }) {
                 {mine === null ? <Loading /> : shown.length === 0 ? (
                     <div>
                         <Empty>{filter === 'all' ? '아직 신청한 커피챗이 없어요.' : '해당하는 신청이 없어요.'}</Empty>
-                        {filter === 'all' ? <button type="button" className={`${ccBtn.line} mt-3`} onClick={() => cc.open('hub', { tab: 'seniors' })}>선배 찾아보기</button> : null}
+                        {filter === 'all' ? <button type="button" data-tour="mine-find" className={`${ccBtn.line} mt-3`} onClick={() => cc.open('hub', { tab: 'seniors' })}>선배 찾아보기</button> : null}
                     </div>
                 ) : shown.map((c) => (
                     <MineCard key={c.id} c={c} now={now} cc={cc}
@@ -236,7 +286,7 @@ function MineTab({ cc, mine, now, showSaved }) {
                         busy={busyId === c.id} onCancel={onCancel} error={err[c.id]} />
                 ))}
             </div>
-            {showSaved ? <div className="mt-8"><SavedPosts uid={cc.uid} cc={cc} small /></div> : null}
+            {showSaved ? <div data-tour="mine-saved" className="mt-8"><SavedPosts uid={cc.uid} cc={cc} small /></div> : null}
         </div>
     );
 }
@@ -249,11 +299,11 @@ function ReceivedTab({ cc, received, now }) {
     const shown = list.filter((c) => (filter === 'wait' ? c.status === 'requested' : filter === 'open' ? c.status === 'confirmed' : filter === 'done' ? CC_DONE.includes(c.status) : true));
     return (
         <div>
-            <div className="flex items-center justify-between gap-2 border border-line bg-card px-4 py-3">
+            <div data-tour="recv-banner" className="flex items-center justify-between gap-2 border border-line bg-card px-4 py-3">
                 <p className="text-[15px] text-ink">받은 신청은 24시간 안에 답해 주세요.</p>
                 <CcTag tone={waiting ? 'royal' : 'muted'}>답변 대기 {waiting}건</CcTag>
             </div>
-            <div className="mt-4">
+            <div data-tour="recv-filter" className="mt-4">
                 <CcSegment label="받은 신청 거르기" value={filter} onChange={setFilter} cols={4}
                     items={[['all', '전체'], ['wait', `대기 ${waiting}`], ['open', '확정'], ['done', '종료']]} />
             </div>
@@ -262,7 +312,7 @@ function ReceivedTab({ cc, received, now }) {
                     const st = CC_STATUS[c.status] || { label: c.status, tone: 'muted' };
                     const j = c.junior || {};
                     return (
-                        <button key={c.id} type="button" onClick={() => cc.open('chat', { chatId: c.id })}
+                        <button key={c.id} type="button" data-tour="recv-card" onClick={() => cc.open('chat', { chatId: c.id })}
                             aria-label={`${c.juniorName || '후배'} 후배 신청 상세 보기 (${st.label})`}
                             className="block w-full border border-line bg-white p-4 text-left">
                             <div className="flex items-center justify-between gap-2">
@@ -308,7 +358,7 @@ function SeniorTab({ cc, senior }) {
     };
     return (
         <div>
-            <section aria-label="내 선배 프로필" className="border border-line bg-white p-4">
+            <section data-tour="sen-profile" aria-label="내 선배 프로필" className="border border-line bg-white p-4">
                 <div className="flex items-start gap-3">
                     <CcAvatar src={senior.photoUrl} name={senior.name} size={64} />
                     <div className="min-w-0 flex-1">
@@ -338,9 +388,9 @@ function SeniorTab({ cc, senior }) {
             {senior.status === 'rejected' ? (
                 <div className="mt-3"><CcNote tone="alert" title="등록이 반려됐어요">{senior.rejectReason ? `사유: ${senior.rejectReason}. ` : ''}프로필을 고쳐 저장하면 다시 심사를 받아요.</CcNote></div>
             ) : null}
-            <button type="button" className={`${ccBtn.line} mt-3`} onClick={() => cc.open('register')}>프로필 고치기</button>
+            <button type="button" data-tour="sen-edit" className={`${ccBtn.line} mt-3`} onClick={() => cc.open('register')}>프로필 고치기</button>
 
-            <SectionTitle right={<button type="button" className={ccBtn.small} onClick={() => cc.open('prices')}>가격 수정</button>}>내 커피챗 가격</SectionTitle>
+            <SectionTitle right={<button type="button" data-tour="sen-price" className={ccBtn.small} onClick={() => cc.open('prices')}>가격 수정</button>}>내 커피챗 가격</SectionTitle>
             <div className="grid grid-cols-2 gap-2">
                 {['online30', 'visit60'].map((k) => (
                     <div key={k} className="border border-line bg-card px-3 py-3">
@@ -353,7 +403,7 @@ function SeniorTab({ cc, senior }) {
 
             {approved ? (
                 <>
-                    <div className="mt-3 flex items-center justify-between gap-3 border border-line px-4 py-3">
+                    <div data-tour="sen-accepting" className="mt-3 flex items-center justify-between gap-3 border border-line px-4 py-3">
                         <div className="min-w-0">
                             <p id="cc-accepting-label" className="text-[15px] font-semibold text-ink">신청 받기</p>
                             <p className="text-[15px] text-sub">{accepting ? '지금 후배의 신청을 받고 있어요.' : '지금은 신청을 받지 않아요.'}</p>
@@ -366,7 +416,7 @@ function SeniorTab({ cc, senior }) {
                     <CcError>{err}</CcError>
 
                     <SectionTitle right={<span className="text-[15px] text-sub">수집 {earned}/4</span>}>활동 뱃지</SectionTitle>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div data-tour="sen-badges" className="grid grid-cols-2 gap-2">
                         {badges.map((b) => (
                             <div key={b.key} className={`flex min-h-[128px] flex-col border px-3 py-3 ${b.earned ? 'border-[#0c0c0e] bg-white' : 'border-line bg-card'}`}>
                                 <div className="flex items-center justify-between gap-1">
@@ -387,7 +437,7 @@ function SeniorTab({ cc, senior }) {
                     </div>
                     <div className="mt-3"><CcNote title="다음 레벨 혜택">커피챗 10회와 평점 4.5를 모두 달성하면 30분 상한이 100,000원으로 열려요</CcNote></div>
 
-                    <SectionTitle right={<button type="button" className={ccBtn.smallDark} onClick={() => cc.open('editor', {})}>새 글 쓰기</button>}>내가 쓴 글</SectionTitle>
+                    <SectionTitle right={<button type="button" data-tour="sen-write" className={ccBtn.smallDark} onClick={() => cc.open('editor', {})}>새 글 쓰기</button>}>내가 쓴 글</SectionTitle>
                     {posts === null ? <Loading /> : posts.length === 0 ? <Empty>아직 쓴 노하우 글이 없어요.</Empty> : (
                         <ul className="divide-y divide-line border border-line">
                             {posts.map((p) => (
@@ -429,7 +479,7 @@ function SettleTab({ received, now }) {
     const shown = rows.filter((c) => filter === 'all' || settleState(c) === filter);
     return (
         <div>
-            <section aria-label="이번 달 정산 요약" className="border border-[#0c0c0e] bg-white p-4">
+            <section data-tour="settle-summary" aria-label="이번 달 정산 요약" className="border border-[#0c0c0e] bg-white p-4">
                 <div className="flex items-start justify-between gap-2">
                     <p className="text-[15px] text-sub">이번 달 정산 예정액</p>
                     <CcTag tone="sky">정산일 매월 10일</CcTag>
@@ -440,19 +490,19 @@ function SettleTab({ received, now }) {
                     <span className="font-semibold text-ink">{monthLive.length}건 <span className="text-[13px] font-normal text-sub">(취소 {monthCancelled}건 제외)</span></span>
                 </div>
             </section>
-            <div className="mt-4">
+            <div data-tour="settle-filter" className="mt-4">
                 <CcSegment label="정산 내역 거르기" value={filter} onChange={setFilter} cols={4}
                     items={[['all', `전체 ${rows.length}`], ['settled', `정산 완료 ${count('settled')}`], ['waiting', `정산 대기 ${count('waiting')}`], ['cancelled', `취소됨 ${count('cancelled')}`]]} />
             </div>
             <div className="mt-4">
                 {received === null ? <Loading /> : shown.length === 0 ? <Empty>정산 내역이 없어요.</Empty> : (
                     <ul className="divide-y divide-line border border-line">
-                        {shown.map((c) => {
+                        {shown.map((c, n) => {
                             const s = settleState(c);
                             const [lab, tone] = SETTLE_LABEL[s];
                             const j = c.junior || {};
                             return (
-                                <li key={c.id} className={`grid h-[132px] grid-rows-[auto_auto_1fr] px-4 py-3 ${s === 'cancelled' ? 'bg-card' : 'bg-white'}`}>
+                                <li key={c.id} data-tour={n === 0 ? 'settle-list' : undefined} className={`grid h-[132px] grid-rows-[auto_auto_1fr] px-4 py-3 ${s === 'cancelled' ? 'bg-card' : 'bg-white'}`}>
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex min-w-0 items-center gap-2">
                                             <CcTag tone="sky">{typeShort(c.type)}</CcTag>
@@ -472,10 +522,10 @@ function SettleTab({ received, now }) {
                 )}
             </div>
             <div className="mt-6 space-y-3">
-                <CcNote title="신뢰 환불 보장제">
+                <div data-tour="settle-refund"><CcNote title="신뢰 환불 보장제">
                     후배가 약속 24시간 전까지 취소하면 결제 금액은 100% 전액 환불돼요. 선배 사정으로 취소해도 전액 환불되니, 일정 변경이 필요하면 오픈채팅으로 미리 조율해 주세요. 정산 금액은 결제 금액에서 수수료 10%를 뺀 금액이에요.
-                </CcNote>
-                <div className="border border-line px-4 py-3.5">
+                </CcNote></div>
+                <div data-tour="settle-help" className="border border-line px-4 py-3.5">
                     <p className="text-[15px] font-semibold text-ink">도움이 필요하신가요? 1:1 문의</p>
                     <p className="mt-1 text-[15px] leading-relaxed text-sub">정산 내역에 오류가 있거나 영수증이 필요하면 고객센터 070-8064-7238 또는 pujar@naver.com 으로 문의해 주세요.</p>
                 </div>
@@ -504,9 +554,12 @@ export default function CenterModal({ tab, onClose, depth }) {
     const tabs = ['mine', ...(approved ? ['received', 'senior', 'settle'] : senior ? ['senior'] : [])];
     const active = tabs.includes(cur) ? cur : 'mine';
     const waiting = (received || []).filter((c) => c.status === 'requested').length;
+    // 목록을 다 불러온 뒤에 안내를 시작해야 카드·버튼 단계가 빠지지 않는다
+    const tourReady = active === 'mine' ? mine !== null : active === 'senior' ? !!senior : received !== null;
+    const tour = tourReady ? TOURS[active] : undefined;
 
     return (
-        <CcModal title="내 커피챗" onClose={onClose} onBack={depth > 0 ? onClose : undefined} depth={depth} wide>
+        <CcModal title="내 커피챗" onClose={onClose} onBack={depth > 0 ? onClose : undefined} depth={depth} wide tour={tour}>
             <div role="tablist" aria-label="내 커피챗" className="-mt-1 mb-5 grid border-b border-line" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0,1fr))` }}>
                 {tabs.map((t) => (
                     <button key={t} type="button" role="tab" id={`cc-center-tab-${t}`} aria-controls="cc-center-panel" aria-selected={active === t}

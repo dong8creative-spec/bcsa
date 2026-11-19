@@ -17,6 +17,32 @@ const agoLabel = (ts) => {
 
 const selectCls = `${ccInput} h-12 pr-8`;
 
+/** 단계별 안내(탭마다 따로) — 머리줄 「단계별 안내」 버튼, 처음 한 번 자동 */
+const TOUR_FEED = {
+    id: 'hub-feed',
+    steps: [
+        { title: '선배 커피챗은 이런 곳이에요', body: '업력 3년 이상 선배 사장님의 실전 노하우를 읽고, 궁금한 점은 1:1 유료 커피챗으로 직접 물어볼 수 있어요.' },
+        { target: 'hub-tabs', title: '두 가지 보기', body: '「선배 노하우」는 선배들이 쓴 글 모음이고, 「선배 찾기」는 커피챗을 신청할 선배 목록이에요.' },
+        { target: 'hub-my', title: '내 커피챗', body: '내가 낸 신청과 진행 상황을 여기서 봐요. 선배라면 받은 신청과 정산도 함께 볼 수 있어요.' },
+        { target: 'hub-senior-box', title: '선배 사장님 자리', body: '업력 3년 이상이면 여기서 선배로 등록해요. 운영진이 승인하면 「작성」으로 노하우 글을 올릴 수 있어요.' },
+        { target: 'hub-topics', title: '원하는 글만 골라 보기', body: '주제 칩을 눌러 보세요. 아래 칸에서 업종을 고르거나 상권(예: 전포동)을 검색해도 맞는 글만 보여요.' },
+        { target: 'hub-post-card', title: '노하우 글 한 편', body: '글은 문제→해결→결과 3단계로 쓰여 있어요. 카드를 누르면 전체 글을 읽고 좋아요·저장도 할 수 있어요.' },
+        { target: 'hub-post-apply', title: '바로 물어보기', body: '「선배와 대화 →」를 누르면 이 글을 쓴 선배에게 보낼 커피챗 신청서가 열려요. 결제는 신청할 때 미리 해요.' },
+    ],
+};
+const TOUR_SENIORS = {
+    id: 'hub-seniors',
+    steps: [
+        { title: '선배 찾기', body: '운영진이 승인한 선배 사장님 목록이에요. 나와 맞는 선배를 골라 1:1 커피챗을 신청할 수 있어요.' },
+        { target: 'hub-s-filters', title: '주제·업종으로 거르기', body: '고민 주제 칩과 업종을 고르면 그 분야 선배만 보여요. 커피챗을 많이 마친 선배가 위에 나와요.' },
+        { target: 'hub-senior-card', title: '선배 카드', body: '사진 옆에 상호·상권, 업종·업력이 보여요. # 표시는 선배가 잘 아는 주제예요.' },
+        { target: 'hub-senior-rating', title: '평점과 완료 횟수', body: '★ 평점은 후배들이 남긴 별점 평균이에요. 후기 수와 마친 커피챗 횟수도 함께 보세요.' },
+        { target: 'hub-senior-price', title: '가격 두 가지', body: '30분 비대면(오픈채팅 보이스톡·화상)과 60분 매장 방문 가격이에요. 선배마다 5천 원 단위로 정해요.' },
+        { target: 'hub-my', title: '내 커피챗', body: '내가 낸 신청과 진행 상황은 여기서 확인해요.' },
+        { target: 'hub-senior-card', title: '선배를 골랐다면', body: '카드를 누르면 선배 프로필이 열려요. 후기를 읽어 보고 아래 「커피챗 신청하기」를 누르면 신청서가 나와요.' },
+    ],
+};
+
 /**
  * 선배 커피챗 첫 창: 「선배 노하우」(지식피드) · 「선배 찾기」
  * 창 이름 'hub' {tab:'feed'|'seniors'}
@@ -55,21 +81,22 @@ export default function HubModal({ tab: initialTab = 'feed', onClose, depth }) {
     const mySenior = cc.mySenior;
 
     return (
-        <CcModal title="선배 커피챗" onClose={onClose} onBack={depth > 0 ? onClose : undefined} depth={depth} wide><div className="w-0 min-w-full">
+        <CcModal title="선배 커피챗" onClose={onClose} onBack={depth > 0 ? onClose : undefined} depth={depth} wide
+            tour={tab === 'feed' ? (posts !== null ? TOUR_FEED : undefined) : (seniors !== null ? TOUR_SENIORS : undefined)}><div className="w-0 min-w-full">
             <div className="mb-4 flex items-center justify-between gap-3">
                 <p className="min-w-0 text-[15px] leading-snug text-sub">먼저 가 본 선배 사장님의 실전 노하우를 읽고, 1:1로 물어보세요.</p>
                 {cc.uid ? (
-                    <button type="button" className={`${ccBtn.small} shrink-0`} onClick={() => cc.open('center', { tab: cc.isSenior ? 'received' : 'mine' })}>내 커피챗</button>
+                    <button type="button" data-tour="hub-my" className={`${ccBtn.small} shrink-0`} onClick={() => cc.open('center', { tab: cc.isSenior ? 'received' : 'mine' })}>내 커피챗</button>
                 ) : null}
             </div>
 
-            <MgTabs label="선배 커피챗 보기" value={tab} onChange={setTab} items={[['feed', '선배 노하우'], ['seniors', '선배 찾기']]} className="mb-5" />
+            <div data-tour="hub-tabs"><MgTabs label="선배 커피챗 보기" value={tab} onChange={setTab} items={[['feed', '선배 노하우'], ['seniors', '선배 찾기']]} className="mb-5" /></div>
 
             {tab === 'feed' ? (
                 <div role="tabpanel" aria-label="선배 노하우">
                     {/* 선배 칸: 승인된 선배면 글쓰기, 아니면 선배 등록 */}
                     {mySenior === undefined && cc.uid ? null : cc.isSenior ? (
-                        <div className="mb-5 flex items-center gap-3 rounded-xl bg-sky px-4 py-3.5">
+                        <div data-tour="hub-senior-box" className="mb-5 flex items-center gap-3 rounded-xl bg-sky px-4 py-3.5">
                             <div className="min-w-0 flex-1">
                                 <p className="text-[16px] font-semibold text-ink">선배 사장님, 내 노하우 공유하기</p>
                                 <p className="mt-0.5 text-[14px] leading-snug text-[#1d2a55]">후배 창업자의 길잡이가 되고, 1:1 커피챗으로 이어져요.</p>
@@ -77,7 +104,7 @@ export default function HubModal({ tab: initialTab = 'feed', onClose, depth }) {
                             <button type="button" className={`${ccBtn.smallDark} shrink-0`} onClick={() => cc.open('editor', {})}>작성</button>
                         </div>
                     ) : mySenior?.status === 'pending' ? (
-                        <div className="mb-5 flex items-center gap-3 rounded-xl bg-sky px-4 py-3.5">
+                        <div data-tour="hub-senior-box" className="mb-5 flex items-center gap-3 rounded-xl bg-sky px-4 py-3.5">
                             <div className="min-w-0 flex-1">
                                 <p className="text-[16px] font-semibold text-ink">선배 등록 심사 중</p>
                                 <p className="mt-0.5 text-[14px] leading-snug text-[#1d2a55]">운영진이 확인하면 노하우 글을 쓰고 커피챗 신청을 받을 수 있어요.</p>
@@ -85,7 +112,7 @@ export default function HubModal({ tab: initialTab = 'feed', onClose, depth }) {
                             <button type="button" className={`${ccBtn.small} shrink-0`} onClick={() => cc.open('register', {})}>등록 내용 보기</button>
                         </div>
                     ) : (
-                        <div className="mb-5 flex items-center gap-3 rounded-xl bg-sky px-4 py-3.5">
+                        <div data-tour="hub-senior-box" className="mb-5 flex items-center gap-3 rounded-xl bg-sky px-4 py-3.5">
                             <div className="min-w-0 flex-1">
                                 <p className="text-[16px] font-semibold text-ink">업력 3년 이상 사장님이신가요?</p>
                                 <p className="mt-0.5 text-[14px] leading-snug text-[#1d2a55]">
@@ -96,7 +123,7 @@ export default function HubModal({ tab: initialTab = 'feed', onClose, depth }) {
                         </div>
                     )}
 
-                    <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="주제">
+                    <div data-tour="hub-topics" className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="주제">
                         <span className="shrink-0"><CcChip on={!topic} onClick={() => setTopic('')}>전체</CcChip></span>
                         {CC_TOPICS.map((t) => <span key={t} className="shrink-0"><CcChip on={topic === t} onClick={() => setTopic(t)}>#{t}</CcChip></span>)}
                     </div>
@@ -125,7 +152,7 @@ export default function HubModal({ tab: initialTab = 'feed', onClose, depth }) {
                 </div>
             ) : (
                 <div role="tabpanel" aria-label="선배 찾기">
-                    <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="주제">
+                    <div data-tour="hub-s-filters" className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="주제">
                         <span className="shrink-0"><CcChip on={!sTopic} onClick={() => setSTopic('')}>전체</CcChip></span>
                         {CC_TOPICS.map((t) => <span key={t} className="shrink-0"><CcChip on={sTopic === t} onClick={() => setSTopic(t)}>#{t}</CcChip></span>)}
                     </div>
@@ -154,7 +181,7 @@ function PostCard({ post, cc }) {
     const a = post.author || {};
     const openPost = () => cc.open('post', { postId: post.id });
     return (
-        <article className="flex w-full cursor-pointer flex-col border border-line bg-white p-4" onClick={openPost}>
+        <article data-tour="hub-post-card" className="flex w-full cursor-pointer flex-col border border-line bg-white p-4" onClick={openPost}>
             <div className="mb-2 flex items-center gap-2">
                 <CcTag tone="sky">#{post.topic}</CcTag>
                 <span className="min-w-0 flex-1 truncate text-[13px] text-sub">{a.area}</span>
@@ -182,7 +209,7 @@ function PostCard({ post, cc }) {
             <div className="mt-auto flex items-center gap-3 pt-3">
                 <span className="text-[14px] text-sub"><span aria-hidden="true" className="text-royal">♥</span> <span className="sr-only">좋아요 </span>{Number(post.likeCount) || 0}</span>
                 <span className="text-[14px] text-sub">조회 {Number(post.viewCount) || 0}</span>
-                <button type="button" className={`${ccBtn.smallDark} ml-auto`} onClick={(e) => { e.stopPropagation(); cc.open('apply', { seniorUid: post.authorUid, postId: post.id }); }}>선배와 대화 →</button>
+                <button type="button" data-tour="hub-post-apply" className={`${ccBtn.smallDark} ml-auto`} onClick={(e) => { e.stopPropagation(); cc.open('apply', { seniorUid: post.authorUid, postId: post.id }); }}>선배와 대화 →</button>
             </div>
         </article>
     );
@@ -191,7 +218,7 @@ function PostCard({ post, cc }) {
 function SeniorCard({ senior: s, me, onOpen }) {
     const r = ratingOf(s);
     return (
-        <button type="button" onClick={onOpen} className="flex w-full flex-col border border-line bg-white p-4 text-left">
+        <button type="button" data-tour="hub-senior-card" onClick={onOpen} className="flex w-full flex-col border border-line bg-white p-4 text-left">
             <div className="flex w-full items-start gap-3">
                 <CcAvatar src={s.photoUrl} name={s.name} size={56} />
                 <div className="min-w-0 flex-1">
@@ -206,11 +233,11 @@ function SeniorCard({ senior: s, me, onOpen }) {
             <div className="mt-2.5 flex h-6 w-full gap-1.5 overflow-hidden">
                 {(s.topics || []).map((t) => <CcTag key={t}>#{t}</CcTag>)}
             </div>
-            <p className="mt-2.5 text-[14px] text-ink">
+            <p data-tour="hub-senior-rating" className="mt-2.5 text-[14px] text-ink">
                 <span className="text-royal" aria-hidden="true">★</span> {r !== null ? r.toFixed(1) : '-'}<span className="text-sub">(후기 {Number(s.ratingCount) || 0})</span>
                 <span className="text-sub"> · 완료 {Number(s.completedCount) || 0}회</span>
             </p>
-            <div className="mt-auto grid w-full grid-cols-2 gap-2 pt-3">
+            <div data-tour="hub-senior-price" className="mt-auto grid w-full grid-cols-2 gap-2 pt-3">
                 <div className="bg-card px-3 py-2">
                     <p className="text-[12.5px] text-sub">30분 비대면</p>
                     <p className="text-[15px] font-semibold text-ink">{s.prices?.online30 ? won(s.prices.online30) : '-'}</p>

@@ -9,7 +9,14 @@ import {
   serverTimestamp, writeBatch, increment,
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import app, { db } from '../firebase';
+import app, { db, USE_EMULATORS } from '../firebase';
+
+/**
+ * 로컬 시험 모드: 개발 서버를 VITE_USE_EMULATORS=1 VITE_FAKE_PAY=1 로 켰을 때만.
+ * 포트원 결제창을 열지 않고 바로 「결제됨」으로 넘어간다(가짜 Firebase 서버도 COFFEE_FAKE_PAY=1 일 때만 받아 준다).
+ * 운영 빌드에서는 import.meta.env.DEV 가 false 라 절대 켜지지 않는다.
+ */
+export const CC_FAKE_PAY = USE_EMULATORS && import.meta.env.VITE_FAKE_PAY === '1';
 import { PORTONE_IMP_CODE, PORTONE_CHANNEL_KEY } from '../constants';
 import { useRedirectPayment } from '../utils/paymentEnv';
 
@@ -202,12 +209,15 @@ export const coffeeChatService = {
   complete: (chatId) => call('completeCoffeeChat', { chatId }),
   review: (chatId, { rating, text, tags }) => call('reviewCoffeeChat', { chatId, rating, text, tags }),
   runSweepAdmin: () => call('runCoffeeChatSweep', {}),
+  /** 로컬 시험 모드 전용: 시간 앞당기기(가짜 Firebase 에서만 동작) */
+  testTimeTravel: (chatId, what) => call('testCoffeeTimeTravel', { chatId, what }),
 
   /**
    * 포트원 결제창. 모바일은 같은 화면 주소에 ?ccpay=1 로 돌아오고(CoffeeChatProvider 가 이어서 확인),
    * PC는 결제 직후 completePayment 로 확인한다.
    */
   async pay({ chatId, amount, orderName, customer }) {
+    if (CC_FAKE_PAY) return coffeeChatService.confirmPaid(chatId);
     if (typeof window === 'undefined' || !window.PortOne) return { ok: false, error: '결제 모듈을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.' };
     if (!PORTONE_IMP_CODE || !PORTONE_CHANNEL_KEY) return { ok: false, error: '결제 설정이 되어 있지 않습니다. 관리자에게 문의해 주세요.' };
     const req = {

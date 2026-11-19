@@ -42,6 +42,30 @@ function Heading({ children, aside, id }) {
     );
 }
 
+/** 단계별 안내 — 신청서 / 신청 완료 따로. 머리줄 「단계별 안내」 버튼, 처음 한 번 자동 */
+const TOUR_FORM = {
+    id: 'apply-form',
+    steps: [
+        { title: '커피챗 신청서', body: '방식과 희망 일정 3개, 내 상황과 질문을 쓰고 결제하면 신청이 끝나요. 선배가 24시간 안에 답해요.\n답을 기다리는 신청은 3건까지 낼 수 있어요.' },
+        { target: 'apply-type', title: '미팅 방식 고르기', body: '30분 비대면(오픈채팅 보이스톡·화상)과 60분 매장 방문 중 하나를 고르세요. 오른쪽 숫자가 가격이에요.' },
+        { target: 'apply-slots', title: '희망 일정 3개', body: '서로 다른 날짜·시간 3개를 고르세요. 지금부터 48시간 뒤~60일 안에서 고를 수 있고, 선배가 이 중 1개를 골라요.' },
+        { target: 'apply-stage', title: '내 상황 알려 주기', body: '준비 단계는 꼭 골라 주세요. 희망 업종과 타깃 상권도 적으면 선배가 미리 보고 준비해요.' },
+        { target: 'apply-question', title: '미리 묻고 싶은 내용', body: '10~300자로 지금 상황과 꼭 듣고 싶은 조언을 써 주세요. 구체적일수록 답이 알차져요.' },
+        { target: 'apply-note', title: '환불 규칙', body: '거절되거나 24시간 안에 답이 없으면 전액 환불돼요. 확정 전엔 언제든, 확정 후엔 약속 24시간 전까지 취소해도 전액 환불이에요.' },
+        { target: 'apply-submit', title: '신청하고 결제하기', body: '누르면 결제창이 열려요. 결제가 끝나면 신청이 선배에게 전달되고 「신청 완료」 화면이 나와요.' },
+    ],
+};
+const TOUR_DONE = {
+    id: 'apply-done',
+    steps: [
+        { title: '신청이 끝났어요', body: '결제까지 마쳐 신청이 선배에게 전달됐어요. 이제 선배의 답을 기다리면 돼요.' },
+        { target: 'done-status', title: '지금 상태', body: '「선배 수락 대기 중」이에요. 선배가 24시간 안에 내 일정 중 1개를 골라 수락하면 확정돼요.' },
+        { target: 'done-slots', title: '내가 낸 후보 일정', body: '보낸 일정 3개예요. 선배가 이 중 하나를 고르면 그 시간으로 약속이 잡혀요.' },
+        { target: 'done-note', title: '거절되거나 답이 없으면', body: '선배가 거절하거나 24시간 안에 답하지 않으면 결제 금액은 자동으로 전액 환불돼요.' },
+        { target: 'done-center', title: '다음에 할 일', body: '「신청 내역 확인하기」에서 진행 상황을 볼 수 있어요. 확정되면 그곳에 카카오 오픈채팅 주소가 나타나요.' },
+    ],
+};
+
 /** 커피챗 신청서 → 결제 → 신청 완료 — 창 이름 'apply' {seniorUid, postId?} */
 export default function ApplyModal({ seniorUid, postId, onClose, depth }) {
     const cc = useCoffeeChat();
@@ -135,14 +159,14 @@ export default function ApplyModal({ seniorUid, postId, onClose, depth }) {
     // ── 신청 완료 ──
     if (done) {
         return (
-            <CcModal title="신청 완료" onClose={onClose} depth={depth}
+            <CcModal title="신청 완료" onClose={onClose} depth={depth} tour={TOUR_DONE}
                 footer={(
                     <div className="grid gap-2">
-                        <button type="button" className={ccBtn.primary} onClick={() => cc.replace('center', { tab: 'mine' })}>신청 내역 확인하기</button>
+                        <button type="button" data-tour="done-center" className={ccBtn.primary} onClick={() => cc.replace('center', { tab: 'mine' })}>신청 내역 확인하기</button>
                         <button type="button" className={ccBtn.line} onClick={() => { cc.closeAll(); cc.open('hub'); }}>노하우 더 보기</button>
                     </div>
                 )}><div className="w-0 min-w-full">
-                <div className="mb-5 text-center">
+                <div data-tour="done-status" className="mb-5 text-center">
                     <CcTag tone="royal">선배 수락 대기 중</CcTag>
                     <p className="mt-2.5 text-[16px] text-ink">선배 사장님이 일정을 살펴보고 있어요.</p>
                 </div>
@@ -152,7 +176,7 @@ export default function ApplyModal({ seniorUid, postId, onClose, depth }) {
                         <dt className="text-[15px] text-sub">진행 방식</dt>
                         <dd className="text-right text-[15px] font-semibold text-ink">{CC_TYPES[done.type]?.label}</dd>
                     </div>
-                    <div className="py-3">
+                    <div data-tour="done-slots" className="py-3">
                         <dt className="text-[15px] text-sub">제안한 후보 일정 (3개)</dt>
                         <dd>
                             <ol className="mt-2 space-y-1.5">
@@ -170,7 +194,7 @@ export default function ApplyModal({ seniorUid, postId, onClose, depth }) {
                         <dd className="text-[20px] font-bold text-ink">{won(done.amount)}</dd>
                     </div>
                 </dl>
-                <div className="mt-4">
+                <div data-tour="done-note" className="mt-4">
                     <CcNote title="안내">선배가 24시간 안에 일정을 골라 수락하면 확정돼요. 거절하거나 답이 없으면 결제는 자동으로 전액 환불돼요.</CcNote>
                 </div>
             </div></CcModal>
@@ -183,11 +207,11 @@ export default function ApplyModal({ seniorUid, postId, onClose, depth }) {
     const dupIdx = (i) => slots[i] && slots.some((x, j) => j !== i && x === slots[i]);
 
     return (
-        <CcModal title="커피챗 신청서" onClose={onClose} onBack={depth > 0 ? onClose : undefined} depth={depth}
+        <CcModal title="커피챗 신청서" onClose={onClose} onBack={depth > 0 ? onClose : undefined} depth={depth} tour={canForm ? TOUR_FORM : undefined}
             footer={canForm ? (
                 <>
                     <CcError>{err}</CcError>
-                    <button type="button" className={`${ccBtn.royal} ${err ? 'mt-2.5' : ''}`} onClick={submit} disabled={busy || !accepting || !type}>
+                    <button type="button" data-tour="apply-submit" className={`${ccBtn.royal} ${err ? 'mt-2.5' : ''}`} onClick={submit} disabled={busy || !accepting || !type}>
                         {busy ? '신청하는 중…' : `커피챗 신청하기 (${won(price)})`}
                     </button>
                 </>
@@ -202,7 +226,7 @@ export default function ApplyModal({ seniorUid, postId, onClose, depth }) {
                     {!accepting ? <div className="mt-3"><CcNote tone="alert">선배가 지금은 신청을 받지 않고 있어요.</CcNote></div> : null}
 
                     <Heading id="cc-apply-type">미팅 방식 선택</Heading>
-                    <div role="radiogroup" aria-labelledby="cc-apply-type" className="grid gap-2">
+                    <div data-tour="apply-type" role="radiogroup" aria-labelledby="cc-apply-type" className="grid gap-2">
                         {['online30', 'visit60'].map((t) => {
                             const ok = available(t);
                             const on = type === t;
@@ -222,7 +246,7 @@ export default function ApplyModal({ seniorUid, postId, onClose, depth }) {
                     </div>
 
                     <Heading aside="필수 3지망 · 48시간 뒤부터 60일 안">희망 미팅 일정</Heading>
-                    <div className="grid gap-2">
+                    <div data-tour="apply-slots" className="grid gap-2">
                         {[0, 1, 2].map((i) => (
                             <div key={i} className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${dupIdx(i) ? 'border-red-300' : 'border-line2'}`}>
                                 <label htmlFor={`cc-apply-slot-${i}`} className="w-12 shrink-0 text-[15px] font-semibold text-ink">{i + 1}지망</label>
@@ -237,7 +261,7 @@ export default function ApplyModal({ seniorUid, postId, onClose, depth }) {
                     <p className="mt-2 text-[13px] text-sub">선배가 이 가운데 1개를 골라 수락해요.</p>
 
                     <Heading aside="선배가 미리 보고 준비해요">내 상황</Heading>
-                    <div className="mb-5">
+                    <div data-tour="apply-stage" className="mb-5">
                         <p className="mb-2 text-[15px] font-semibold text-ink">준비 단계<span className="ml-0.5 text-red-600">*</span></p>
                         <CcSegment label="준비 단계" cols={3} value={stage} onChange={setStage} items={CC_STAGES.map((v) => [v, STAGE_SHORT[v] || v])} />
                     </div>
@@ -256,12 +280,12 @@ export default function ApplyModal({ seniorUid, postId, onClose, depth }) {
                         </h3>
                         <span className={`text-[13px] ${qLen > 300 ? 'text-red-600' : 'text-sub'}`} aria-live="polite">{qLen}/300자</span>
                     </div>
-                    <textarea id="cc-apply-question" required rows={5} maxLength={300} value={question} onChange={(e) => setQuestion(e.target.value)}
+                    <textarea id="cc-apply-question" data-tour="apply-question" required rows={5} maxLength={300} value={question} onChange={(e) => setQuestion(e.target.value)}
                         placeholder="지금 상황과 꼭 듣고 싶은 조언을 구체적으로 써 주세요. (10자 이상)"
                         className={`${ccInput} min-h-[132px] resize-y py-3 leading-[1.6]`} />
                     <p className="mt-1.5 text-[13px] text-sub">구체적일수록 답변이 알차져요.</p>
 
-                    <div className="mt-6">
+                    <div data-tour="apply-note" className="mt-6">
                         <CcNote title="안심 매칭 안내">선배가 24시간 안에 일정을 골라 수락하면 확정돼요. 거절하거나 답이 없으면 결제는 자동으로 전액 환불돼요. 확정 후에는 약속 24시간 전까지 취소하면 전액 환불돼요.</CcNote>
                     </div>
                 </div>

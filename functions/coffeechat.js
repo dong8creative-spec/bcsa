@@ -455,9 +455,37 @@ export function createCoffeeChatHandlers({ db, admin, verifyPortOnePayment, canc
     return sweep();
   }
 
+  /**
+   * 로컬 시험 전용(가짜 Firebase + 가짜 결제일 때만 index.js 가 연결): 기다려야 하는 단계를 바로 볼 수 있게 시간을 앞당긴다.
+   *  what = 'respond'  → 선배 응답 기한(24시간)이 지난 것으로 하고 정기 점검 실행(자동 취소·환불)
+   *         'meeting'  → 약속 시간이 1시간 전에 지난 것으로(선배가 「진행 완료로 표시」 가능)
+   *         'autodone' → 약속이 3시간 전에 끝난 것으로 하고 정기 점검 실행(자동 진행 완료)
+   */
+  async function testCoffeeTimeTravel(request) {
+    const uid = requireAuth(request);
+    const id = str(request.data?.chatId, 80);
+    const what = str(request.data?.what, 20);
+    const chat = await loadChat(id);
+    if (![chat.juniorUid, chat.seniorUid].includes(uid) && !(await callerIsAdmin(request))) throw new HttpsError('permission-denied', '내 신청만 바꿀 수 있어요.');
+    const now = Date.now();
+    if (what === 'respond') {
+      if (chat.status !== 'requested') throw new HttpsError('failed-precondition', '「선배 수락 대기 중」인 신청만 됩니다.');
+      await chatRef(id).set({ respondBy: admin.firestore.Timestamp.fromMillis(now - 60 * 1000) }, { merge: true });
+    } else if (what === 'meeting' || what === 'autodone') {
+      if (chat.status !== 'confirmed') throw new HttpsError('failed-precondition', '「커피챗 확정」인 신청만 됩니다.');
+      const back = what === 'meeting' ? 60 * 60 * 1000 : 3 * 60 * 60 * 1000;
+      await chatRef(id).set({ chosenSlot: new Date(now - back).toISOString() }, { merge: true });
+    } else {
+      throw new HttpsError('invalid-argument', '알 수 없는 시험 동작');
+    }
+    const swept = what === 'meeting' ? null : await sweep();
+    return { ok: true, swept };
+  }
+
   return {
     finalizeCoffeeChatPayment,
     sweep,
     callables: { requestCoffeeChat, completeCoffeeChatPayment, respondCoffeeChat, cancelCoffeeChat, completeCoffeeChat, reviewCoffeeChat, runCoffeeChatSweep },
+    testCallables: { testCoffeeTimeTravel },
   };
 }
