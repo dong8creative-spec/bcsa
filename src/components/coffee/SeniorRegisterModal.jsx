@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import coffeeChatService, { CC_TYPES, CC_TOPICS, CC_INDUSTRIES, CC_PRICE_STEP, won, payoutOf } from '../../services/coffeeChatService';
+import React, { useEffect, useRef, useState } from 'react';
+import coffeeChatService, { CC_TYPES, CC_TOPICS, CC_INDUSTRIES, CC_PRICE_STEP, won, payoutOf, toMs, checkOpenChat } from '../../services/coffeeChatService';
 import { uploadImage } from '../../utils/imageUtils';
 import { useCoffeeChat } from './CoffeeChatProvider';
 import { CcModal, CcTag, CcChip, CcSegment, CcField, CcNote, CcError, CcAvatar, ccBtn, ccInput } from './ui';
@@ -7,9 +7,14 @@ import { CcModal, CcTag, CcChip, CcSegment, CcField, CcNote, CcError, CcAvatar, 
 /**
  * 선배 등록·프로필 수정 (창 이름 'register')
  * 새 등록: 1/2 안내 → 2/2 프로필 → 가입 완료. 기존 선배: 같은 폼으로 수정(반려면 저장 시 다시 심사).
+ * 작성 중인 내용은 이 기기(브라우저)에 자동 저장 → 창을 닫거나 새로고침해도 다시 열면 이어 쓴다(2026-11-20). 저장에 성공하면 지운다.
  */
 
-const KAKAO_RE = /^https:\/\/open\.kakao\.com\/\S+$/;
+const draftKeyOf = (uid) => `bcsa_cc_reg_draft_${uid}`;
+const readDraft = (uid) => { try { const v = JSON.parse(localStorage.getItem(draftKeyOf(uid)) || 'null'); return v && v.form ? v : null; } catch (_) { return null; } };
+const writeDraft = (uid, mode, form) => { try { localStorage.setItem(draftKeyOf(uid), JSON.stringify({ mode, at: Date.now(), form: { ...form, agree: false } })); return true; } catch (_) { return false; } };
+const clearDraft = (uid) => { try { localStorage.removeItem(draftKeyOf(uid)); } catch (_) { /* 저장소를 못 쓰는 브라우저 */ } };
+const hhmm = (ms) => new Date(ms).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
 const priceOptions = (type) => {
     const out = [];
     for (let v = CC_TYPES[type].min; v <= CC_TYPES[type].max; v += CC_PRICE_STEP) out.push(v);
@@ -78,7 +83,14 @@ export default function SeniorRegisterModal({ onClose, depth }) {
     const [uploading, setUploading] = useState(false);
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState('');
+    const [kakaoTouched, setKakaoTouched] = useState(false);
+    const [restoredAt, setRestoredAt] = useState(0); // 불러온 임시 저장 시각(0이면 안내 안 함)
+    const [savedAt, setSavedAt] = useState(0);
     const senior = cc.mySenior;
+    const dirty = useRef(false); // 사용자가 직접 고친 뒤에만 임시 저장
+    const done = useRef(false); // 저장에 성공하면 더 저장하지 않음
+    const latest = useRef({ form: EMPTY, isNew: false, step: 'loading' });
+    const contactUrl = useRef('');
 
     useEffect(() => {
         if (!cc.uid) { cc.requireLogin(); onClose?.(); }
@@ -86,15 +98,23 @@ export default function SeniorRegisterModal({ onClose, depth }) {
 
     useEffect(() => {
         if (step !== 'loading' || !cc.uid || senior === undefined) return undefined;
-        if (senior === null) { setIsNew(true); setStep('intro'); return undefined; }
+        const d = readDraft(cc.uid);
+        if (senior === null) {
+            setIsNew(true);
+            // 쓰다 만 등록이 있으면 안내를 건너뛰고 이어 쓰기
+            if (d && d.mode === 'new') { setForm({ ...EMPTY, ...d.form, agree: false }); setRestoredAt(d.at); setStep('form'); } else { setForm({ ...EMPTY, openChatUrl: contactUrl.current }); setStep('intro'); }
+            return undefined;
+        }
         setIsNew(false);
-        setForm({
+        const base = {
             ...EMPTY,
             name: senior.name || '', bizName: senior.bizName || '', industry: senior.industry || '', area: senior.area || '',
             years: senior.years ? String(senior.years) : '', topics: Array.isArray(senior.topics) ? senior.topics : [], intro: senior.intro || '',
-            photoUrl: senior.photoUrl || '',
+            photoUrl: senior.photoUrl || '', openChatUrl: contactUrl.current,
             online30: okPrice('online30', senior.prices?.online30), visit60: okPrice('visit60', senior.prices?.visit60),
-        });
+        };
+        // 고치다 만 내용이 저장된 프로필보다 나중 것이면 이어 쓰기
+        if (d && d.mode === 'edit' && d.at > toMs(senior.updatedAt)) { setForm({ ...base, ...d.form, agree: false }); setRestoredAt(d.at); } else setForm(base);
         setStep('form');
         return undefined;
     }, [senior, cc.uid, step]);
@@ -104,21 +124,43 @@ export default function SeniorRegisterModal({ onClose, depth }) {
         if (!cc.uid) return undefined;
         let alive = true;
         coffeeChatService.getMyContact(cc.uid).then((c) => {
-            if (alive && c?.openChatUrl) setForm((f) => (f.openChatUrl ? f : { ...f, openChatUrl: c.openChatUrl }));
+            if (alive && c?.openChatUrl) { contactUrl.current = c.openChatUrl; setForm((f) => (f.openChatUrl ? f : { ...f, openChatUrl: c.openChatUrl })); }
         }).catch(() => {});
         return () => { alive = false; };
     }, [cc.uid]);
 
+    // 자동 임시 저장: 고친 뒤 0.5초 멈추면 저장. 창을 닫거나 페이지를 떠날 때도 바로 저장
+    latest.current = { form, isNew, step };
+    useEffect(() => {
+        if (step !== 'form' || !cc.uid || !dirty.current || done.current) return undefined;
+        const t = setTimeout(() => { if (writeDraft(cc.uid, isNew ? 'new' : 'edit', form)) setSavedAt(Date.now()); }, 500);
+        return () => clearTimeout(t);
+    }, [form, step, isNew, cc.uid]);
+    useEffect(() => {
+        if (!cc.uid) return undefined;
+        const flush = () => {
+            const { form: f, isNew: n, step: st } = latest.current;
+            if (st === 'form' && dirty.current && !done.current) writeDraft(cc.uid, n ? 'new' : 'edit', f);
+        };
+        window.addEventListener('pagehide', flush);
+        return () => { window.removeEventListener('pagehide', flush); flush(); };
+    }, [cc.uid]);
+
     if (!cc.uid) return null;
 
-    const set = (k) => (v) => { setForm((f) => ({ ...f, [k]: v })); setErr(''); };
+    const set = (k) => (v) => { dirty.current = true; setForm((f) => ({ ...f, [k]: v })); setErr(''); };
     const onText = (k) => (e) => set(k)(e.target.value);
+    const kakao = checkOpenChat(form.openChatUrl);
+    const kakaoErr = kakaoTouched && form.openChatUrl.trim() ? kakao.error : '';
+    // 칸을 벗어나면 공유 문구에서 주소만 남기고 https 로 맞춘다
+    const onKakaoBlur = () => { setKakaoTouched(true); if (!kakao.error && kakao.url && kakao.url !== form.openChatUrl) set('openChatUrl')(kakao.url); };
+    const discardDraft = () => { clearDraft(cc.uid); dirty.current = false; setRestoredAt(0); setSavedAt(0); setErr(''); setKakaoTouched(false); setStep('loading'); };
     const yearsN = Number(form.years);
     const yearsShort = form.years !== '' && Number.isFinite(yearsN) && yearsN < 3;
-    const toggleTopic = (t) => setForm((f) => {
+    const toggleTopic = (t) => { dirty.current = true; setForm((f) => {
         if (f.topics.includes(t)) return { ...f, topics: f.topics.filter((x) => x !== t) };
         return f.topics.length >= 4 ? f : { ...f, topics: [...f.topics, t] };
-    });
+    }); };
 
     const onPhoto = async (e) => {
         const file = e.target.files?.[0];
@@ -129,6 +171,7 @@ export default function SeniorRegisterModal({ onClose, depth }) {
         setUploading(true); setErr('');
         try {
             const url = await uploadImage(file, 'community');
+            dirty.current = true;
             setForm((f) => ({ ...f, photoUrl: url || '' }));
         } catch (x) {
             setErr(x?.message || '사진을 올리지 못했어요.');
@@ -147,7 +190,7 @@ export default function SeniorRegisterModal({ onClose, depth }) {
         if (yearsN > 60) return '업력은 60년까지 쓸 수 있어요.';
         if (form.topics.length < 1 || form.topics.length > 4) return '관심(전문) 주제를 1~4개 골라 주세요.';
         if (form.intro.trim().length > 300) return '한 줄 소개는 300자까지 쓸 수 있어요.';
-        if (!KAKAO_RE.test(form.openChatUrl.trim())) return '카카오 오픈채팅 주소는 https://open.kakao.com/ 으로 시작해야 해요.';
+        if (kakao.error) { setKakaoTouched(true); return kakao.error; }
         if (uploading) return '사진을 올리는 중이에요. 잠시만 기다려 주세요.';
         if (isNew && !form.agree) return '수수료·정산·환불 규정에 동의해 주세요.';
         return '';
@@ -165,7 +208,9 @@ export default function SeniorRegisterModal({ onClose, depth }) {
                 accepting: isNew ? true : senior?.accepting !== false,
                 resubmit: !isNew && senior?.status === 'rejected',
             };
-            await coffeeChatService.saveSenior(cc.uid, data, { isNew, contact: { openChatUrl: form.openChatUrl.trim() } });
+            await coffeeChatService.saveSenior(cc.uid, data, { isNew, contact: { openChatUrl: kakao.url } });
+            done.current = true;
+            clearDraft(cc.uid);
             if (isNew) { setStep('done'); setBusy(false); } else onClose?.();
         } catch (x) {
             setErr(x?.message || '저장하지 못했어요. 입력값을 확인해 주세요.');
@@ -227,6 +272,12 @@ export default function SeniorRegisterModal({ onClose, depth }) {
                     ) : null}
                     {!isNew && senior?.status === 'pending' ? <div className="mb-5"><CcNote>운영진이 프로필을 확인하고 있어요. 고친 내용도 함께 확인해요.</CcNote></div> : null}
                     {isNew ? <div className="mb-5"><CcNote title="기본 정보 입력">실명 기반 신뢰 커뮤니티를 위해 정확히 입력해 주세요.</CcNote></div> : null}
+                    {restoredAt ? (
+                        <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line px-4 py-3 text-[14px]">
+                            <span className="text-ink"><b>쓰던 내용을 불러왔어요</b> <span className="text-sub">({hhmm(restoredAt)} 저장)</span></span>
+                            <button type="button" className={ccBtn.small} onClick={discardDraft}>처음부터 다시 쓰기</button>
+                        </div>
+                    ) : null}
 
                     <CcField label="이름(실명)" required htmlFor="cc-reg-name" hint="활동할 때 후배들에게 공개되는 실명이에요.">
                         <input id="cc-reg-name" data-tour="reg-name" value={form.name} maxLength={40} onChange={onText('name')} autoComplete="name" className={`${ccInput} h-12`} />
@@ -271,9 +322,12 @@ export default function SeniorRegisterModal({ onClose, depth }) {
                             </div>
                         </div>
                     </div>
-                    <CcField label="카카오 오픈채팅 주소" required htmlFor="cc-reg-kakao" hint="확정된 후배에게만 보여요. 카카오톡 → 오픈채팅 → 1:1 채팅방 만들기 → 링크 복사로 받을 수 있어요.">
-                        <input id="cc-reg-kakao" data-tour="reg-kakao" type="url" inputMode="url" value={form.openChatUrl} maxLength={300} onChange={onText('openChatUrl')}
-                            placeholder="https://open.kakao.com/o/..." className={`${ccInput} h-12`} />
+                    <CcField label="카카오 1:1 오픈채팅 주소" required htmlFor="cc-reg-kakao" hint={kakaoErr ? null : '확정된 후배에게만 보여요. 카카오톡 → 오픈채팅 → 1:1 채팅방 만들기 → 링크 복사로 받을 수 있어요.'}>
+                        <input id="cc-reg-kakao" data-tour="reg-kakao" type="url" inputMode="url" value={form.openChatUrl} maxLength={300} onChange={onText('openChatUrl')} onBlur={onKakaoBlur}
+                            aria-invalid={!!kakaoErr} aria-describedby={kakaoErr || kakao.warn ? 'cc-reg-kakao-msg' : undefined}
+                            placeholder="https://open.kakao.com/o/..." className={`${ccInput} h-12 ${kakaoErr ? 'border-red-500' : ''}`} />
+                        {kakaoErr ? <p id="cc-reg-kakao-msg" role="alert" className="mt-1.5 text-[15px] text-red-600">{kakaoErr}</p>
+                            : kakao.warn && form.openChatUrl.trim() ? <p id="cc-reg-kakao-msg" className="mt-1.5 text-[15px] text-[#92400e]">{kakao.warn}</p> : null}
                     </CcField>
 
                     {isNew ? (
@@ -298,6 +352,7 @@ export default function SeniorRegisterModal({ onClose, depth }) {
                         <p className="text-[15px] text-sub">커피챗 가격은 「내 커피챗 → 선배 활동 → 가격 수정」에서 바꿀 수 있어요.</p>
                     )}
                     <CcError>{err}</CcError>
+                    <p className="mt-3 text-[13px] text-sub" aria-live="polite">{savedAt ? `작성 중인 내용은 이 기기에 자동 저장돼요 · ${hhmm(savedAt)} 저장됨` : '작성 중인 내용은 이 기기에 자동 저장돼요.'}</p>
                 </div>
             ) : null}
 

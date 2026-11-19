@@ -52,6 +52,26 @@ export const CC_SETTLE = ['confirmed', 'completed'];
 const PAY_RETURN_KEY = 'bcsa_cc_last_payment';
 const withId = (d) => ({ id: d.id, ...d.data() });
 export const toMs = (v) => (v?.toMillis ? v.toMillis() : (v?.seconds ? v.seconds * 1000 : (v ? new Date(v).getTime() : 0)));
+/**
+ * 카카오 1:1 오픈채팅 주소 검사(2026-11-20). 공유 문구째 붙여 넣어도 주소만 뽑아 https 로 맞춘다.
+ * error: 저장을 막는 잘못된 양식 / warn: 저장은 되지만 확인을 권하는 경우(그룹방으로 보이는 주소)
+ */
+export function checkOpenChat(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return { url: '', error: '카카오 1:1 오픈채팅 주소를 넣어 주세요.', warn: '' };
+    const m = s.match(/(?:https?:\/\/)?open\.kakao\.com\/[^\s"'<>]+/i);
+    if (!m) {
+        if (/pf\.kakao\.com/i.test(s)) return { url: s, error: '카카오톡 채널 주소예요. 채널이 아니라 1:1 오픈채팅방 링크를 넣어 주세요.', warn: '' };
+        if (/^0\d{1,2}-?\d{3,4}-?\d{4}$/.test(s.replace(/\s/g, ''))) return { url: s, error: '전화번호는 넣을 수 없어요. 1:1 오픈채팅방 링크를 넣어 주세요.', warn: '' };
+        if (/^https?:\/\//i.test(s) || /^[\w-]+(\.[\w-]+)+\//.test(s)) return { url: s, error: '카카오 오픈채팅 주소가 아니에요. https://open.kakao.com/ 으로 시작하는 링크를 넣어 주세요.', warn: '' };
+        return { url: s, error: '주소 양식이 아니에요. 카카오톡 아이디나 이름이 아니라 1:1 오픈채팅방 링크(https://open.kakao.com/o/...)를 넣어 주세요.', warn: '' };
+    }
+    const url = m[0].replace(/[)\].,;:!?。、]+$/, '').replace(/^(?:https?:\/\/)?/i, 'https://');
+    const path = url.replace(/^https:\/\/open\.kakao\.com/i, '');
+    if (!/^\/(o|me)\/[A-Za-z0-9_-]{4,}$/.test(path)) return { url, error: '링크가 잘렸거나 양식이 달라요. 오픈채팅방의 「링크 복사」로 받은 주소를 그대로 붙여 넣어 주세요.', warn: '' };
+    const warn = /^\/o\/g/.test(path) ? '여러 명이 함께 들어오는 그룹 오픈채팅방 주소일 수 있어요. 1:1 오픈채팅방 링크가 맞는지 확인해 주세요.' : '';
+    return { url, error: '', warn };
+}
 export const won = (n) => `${(Number(n) || 0).toLocaleString('ko-KR')}원`;
 export const feeOf = (price) => Math.round((Number(price) || 0) * CC_FEE_RATE);
 export const payoutOf = (price) => (Number(price) || 0) - feeOf(price);
