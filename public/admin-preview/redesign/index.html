@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>먼저가본 가안</title>
+<style>
+/* 글꼴: 프리젠테이션(Freesentation) — 사용자 지정(11/19). 먼저가본 화면 전부 이 글꼴 */
+@font-face{font-family:'Presentation';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-1Thin.woff2') format('woff2');font-weight:100;font-display:swap}
+@font-face{font-family:'Presentation';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-2ExtraLight.woff2') format('woff2');font-weight:200;font-display:swap}
+@font-face{font-family:'Presentation';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-3Light.woff2') format('woff2');font-weight:300;font-display:swap}
+@font-face{font-family:'Presentation';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-4Regular.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'Presentation';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-5Medium.woff2') format('woff2');font-weight:500;font-display:swap}
+@font-face{font-family:'Presentation';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-6SemiBold.woff2') format('woff2');font-weight:600;font-display:swap}
+@font-face{font-family:'Presentation';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-7Bold.woff2') format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:'Presentation';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-8ExtraBold.woff2') format('woff2');font-weight:800;font-display:swap}
+@font-face{font-family:'Presentation';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-9Black.woff2') format('woff2');font-weight:900;font-display:swap}
+@font-face{font-family:'PresentationVariable';src:url('https://cdn.jsdelivr.net/gh/Project-Noonnu/2611030111@font-variable-1369/variable-1369/FreesentationVF.woff2') format('woff2');font-weight:100 800;font-display:swap}
+/* 로고 전용 글꼴: 원스토어 모바일 고딕 제목체 — 「먼저가본」 로고에만 쓴다(사용자 지정 11/19) */
+@font-face{font-family:'OneStoreMobileGothicTitleFont';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/ONE-Mobile-Title.woff') format('woff');font-weight:normal;font-display:swap}
+/*
+ * 디자인 규칙 — 참고 사이트(insight-er.com 인사이터 클럽)에서 잰 값을 그대로 쓴다. 새 장치를 더하지 않는다.
+ *  색: 검정·흰색·하늘·로얄블루 (참고의 베이지 → 하늘, 오렌지 → 로얄블루)
+ *  머리글 검정 88px · 메뉴 14px · 현재 메뉴는 글자색만
+ *  첫 화면: 화면 가득 사진 + 왼쪽 글씨(머리말 18/600 · 제목 46/700 · 부제 22/400), 버튼 없음
+ *  구역 제목 28/700 · 설명 17 회색 · 본문 폭 1100
+ *  모집 카드: 3열 간격 12 · 3:2 그림 모서리 0 · 1px 테두리 · 제목 15/600 · 정보 14 · 상태는 그림 아래 띠
+ *  안내 카드: 연한 바탕 · 둥글림 12 · 여백 26/24/30 · 영문 라벨 14/600 강조색 · 제목 18/600 · ↗
+ *  탭: 직사각형(사용자 지시) · 17/700 · 높이 48
+ *  신청 칸: 하늘 띠 위 흰 판(둥글림 18 · 여백 56/60/48) · 제목 32/400 · 입력 52 둥글림 8 · 검은 버튼 둥글림 8
+ */
+:root{
+  --black:#0c0c0e; --ink:#0c0c0b; --text:#333; --sub:#5b5a56; --muted:#8c8989; --line:#dddddd; --line2:#dcd7d0;
+  --white:#fff; --card:#f3f5f8; --sky:#e8f1fd; --sky-line:#dce6f3;
+  --royal:#2d4fe0; --royal-on-black:#8fb0ff;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--white);color:var(--ink);font-family:'Presentation',-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;word-break:keep-all}
+button,input,select,textarea{font-family:inherit}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+[hidden]{display:none!important}
+.wrap{max-width:1100px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right));box-sizing:content-box}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:2px solid var(--royal);outline-offset:3px}
+
+/* 가안 메모 */
+.memo{background:var(--sky);font-size:13px;color:var(--sub)}
+.memo .wrap{display:flex;flex-wrap:wrap;gap:6px 16px;padding-block:8px}
+.memo b{color:var(--royal)}
+.sw{display:inline-flex;align-items:center;gap:5px}.sw i{width:12px;height:12px;border:1px solid rgba(0,0,0,.15)}
+
+/* 머리글 */
+.util{background:var(--black);color:#9a9a9a;font-size:12px;border-bottom:1px solid #1e1e22}
+.util .bar{display:flex;justify-content:space-between;height:34px;align-items:center;max-width:1100px;margin:0 auto;padding:0 20px;box-sizing:content-box}
+.util a{white-space:nowrap}.util a:hover{color:#fff}
+header.top{position:sticky;top:0;z-index:20;background:var(--black)}
+header.top .bar{display:flex;align-items:center;height:88px;max-width:1100px;margin:0 auto;padding:0 20px;gap:24px;box-sizing:content-box}
+.wordmark{color:#fff;font-family:'OneStoreMobileGothicTitleFont','Presentation',sans-serif;font-size:26px;font-weight:normal;letter-spacing:-.01em;line-height:1}
+nav.main{margin-left:auto;display:flex;gap:30px;font-size:15px}
+nav.main a{color:#fff}
+nav.main a:hover,nav.main a[aria-current]{color:var(--royal-on-black)}
+.menu-btn{display:none;margin-left:auto;background:none;border:1px solid #444;color:#fff;font-size:14px;padding:6px 12px;border-radius:8px}
+
+/* 첫 화면 */
+.hero{background:var(--black);color:#fff}
+.hero .frame{position:relative;max-width:1100px;height:430px;margin:0 auto;overflow:hidden;background:#111}
+.hero .frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:70% 55%}
+.hero .frame::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.74) 0%,rgba(0,0,0,.46) 38%,rgba(0,0,0,.08) 70%)}
+.hero .copy{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;justify-content:center;padding:0 56px}
+.hero .eyebrow{font-size:18px;font-weight:600;margin:0 0 14px}
+.hero h1{font-size:46px;line-height:1.36;font-weight:700;letter-spacing:-.01em;margin:0}
+.hero .lede{font-size:22px;line-height:1.4;margin:22px 0 0;font-weight:400}
+
+/* 구역 */
+.sec{padding:100px 0 60px}
+.sec.tight{padding:50px 0}
+.sec h2{font-size:28px;line-height:1.4;font-weight:700;margin:0;color:var(--ink)}
+.sec .desc{font-size:17px;line-height:1.6;color:var(--sub);margin:8px 0 0}
+.tag-ex{font-size:12px;font-weight:600;color:var(--royal);margin-left:8px;vertical-align:middle}
+
+/* 탭: 직사각형 */
+.tabs{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--black);margin:26px 0 30px}
+.tabs button{height:48px;border:0;background:#fff;font-size:17px;font-weight:700;color:#666;cursor:pointer;letter-spacing:-.5px}
+.tabs button[aria-selected="true"]{background:var(--black);color:#fff}
+
+/* 모집 카드 */
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px 12px}
+.card{display:block}
+.card .ph{position:relative;aspect-ratio:3/2;border:1px solid var(--line);overflow:hidden;background:#f6f6f6}
+.card .ph img{width:100%;height:100%;object-fit:cover}
+.card .state{display:block;background:var(--royal);color:#fff;font-size:12px;text-align:center;padding:6px 10px}
+.card h3{font-size:16px;font-weight:600;color:#444;margin:14px 0 4px;line-height:1.4}
+.card .meta{font-size:14px;color:var(--text);margin:0;line-height:1.65}
+.empty{grid-column:1/-1;background:var(--card);border-radius:12px;padding:44px 20px;text-align:center;color:var(--sub);font-size:15px}
+
+/* 안내 카드 */
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:26px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:26px}
+.info{position:relative;display:flex;flex-direction:column;background:var(--card);border-radius:12px;padding:26px 24px 30px;color:var(--ink);min-height:150px}
+a.info:hover{background:#e9edf3}
+.info .en{font-size:14px;font-weight:600;color:var(--royal);margin-bottom:10px}
+.info .arw{position:absolute;right:22px;top:24px;font-size:15px;color:var(--royal)}
+.info h3{font-size:18px;font-weight:600;line-height:1.5;margin:0;padding-right:24px}
+.info p{font-size:14px;color:var(--sub);margin:10px 0 0;line-height:1.6}
+.info .price{margin-top:auto;padding-top:16px;font-size:15px;font-weight:600;color:var(--ink)}
+.note{font-size:14px;color:var(--sub);margin:14px 0 0}
+
+/* 지식피드 찾기 */
+.find{display:flex;gap:8px;margin-top:26px}
+.find input{flex:1;min-width:0;height:52px;border:1px solid var(--line2);border-radius:8px;padding:0 16px;font-size:15px;color:#222}
+.find input:focus{outline:none;border-color:var(--royal)}
+.find button{height:52px;padding:0 26px;border:0;border-radius:8px;background:#1a1a1a;color:#fff;font-size:16px;font-weight:700}
+
+/* 협력기관 */
+.logos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:26px 0 0;padding:0;list-style:none}
+.logos li{border:1px solid #eee;display:grid;place-items:center;height:110px;padding:18px}
+.logos img{max-height:50px;width:auto;max-width:100%;object-fit:contain;filter:grayscale(1);opacity:.8}
+.logos li:hover img{filter:none;opacity:1}
+.logos .wide{grid-column:span 2}.logos .wide img{max-height:40px}
+
+/* 알림 신청 */
+.notify{background:var(--sky);padding:60px 0}
+.panel{max-width:1040px;margin:0 auto;background:#fff;border:1px solid var(--sky-line);border-radius:18px;padding:56px 60px 48px}
+.panel h2{font-size:32px;font-weight:400;text-align:center;color:#1a1a1a;margin:0;letter-spacing:-.5px}
+.panel .lead{text-align:center;color:var(--sub);font-size:15px;margin:10px 0 36px}
+.flabel{display:block;font-size:14px;font-weight:700;margin:24px 0 10px;color:#1a1a1a;padding:0}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{position:relative}
+.chip input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.chip span{display:inline-block;border:1px solid var(--line2);border-radius:999px;padding:8px 16px;font-size:14px;color:#333;background:#fff}
+.chip input:checked + span{border-color:var(--royal);color:var(--royal);font-weight:600}
+.chip input:focus-visible + span{outline:2px solid var(--royal);outline-offset:2px}
+.inp{width:100%;height:52px;border:1px solid var(--line2);border-radius:8px;padding:0 16px;font-size:15px;color:#222}
+.inp:focus{outline:none;border-color:var(--royal)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.agree{display:flex;align-items:center;gap:8px;margin-top:22px;font-size:14px;color:#333}
+.agree input{width:18px;height:18px;accent-color:var(--royal)}
+.submit{display:block;width:100%;margin-top:26px;height:53px;border:0;border-radius:8px;background:#1a1a1a;color:#fff;font-size:17px;font-weight:700;letter-spacing:-.3px;cursor:pointer}
+.msg{text-align:center;font-size:14px;color:var(--royal);min-height:1em;margin:12px 0 0}
+
+/* 푸터 (사용자가 보낸 형태) */
+footer.site{background:#f4f5f7;font-size:14px;color:var(--ink)}
+.f-links{display:flex;flex-wrap:wrap;gap:8px 28px;padding:24px 0;border-bottom:1px solid #dfe2e8}
+.f-links a{color:#3b4150}.f-links .strong{font-weight:700;color:var(--ink)}.f-links .accent{font-weight:700;color:var(--royal)}
+.f-cols{display:grid;grid-template-columns:1.45fr 1fr 1fr;gap:40px;padding:44px 0}
+.f-word{font-family:'OneStoreMobileGothicTitleFont','Presentation',sans-serif;font-size:28px;font-weight:normal;letter-spacing:-.01em;margin:0;line-height:1.1}
+.f-tag{color:#555c6a;margin:12px 0 28px}
+.f-h{font-size:16px;font-weight:700;margin:0 0 16px}
+.dl{display:grid;grid-template-columns:118px 1fr;gap:8px 14px;margin:0}
+.dl dt{color:#6b7280}.dl dd{margin:0}
+.f-phone{font-size:30px;font-weight:700;color:#2b2f38;margin:0 0 18px}
+.u{text-decoration:underline;text-underline-offset:4px}
+.f-note{margin:0 0 10px;color:#3b4150}
+.f-bottom{border-top:1px solid #dfe2e8;padding:22px 0;font-size:12px;color:var(--muted)}
+.f-bottom p{margin:0 0 8px;line-height:1.7}
+
+/* 반응형 */
+@media (max-width:1024px){
+  nav.main{display:none}.menu-btn{display:inline-block}
+  .hero .frame{max-width:none}
+  .hero .copy{padding:0 40px}
+  .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid3{grid-template-columns:1fr}
+  .f-cols{grid-template-columns:1fr 1fr}.f-cols > div:first-child{grid-column:1/-1}
+}
+@media (max-width:640px){
+  .util .bar,header.top .bar{padding:0 20px;max-width:none}
+  .util .bar span{display:none}.util .bar{justify-content:flex-end}
+  header.top .bar{height:64px}
+  .hero .frame{height:340px}
+  .hero .frame img{object-position:58% 40%}
+  .hero .frame::after{background:linear-gradient(90deg,rgba(0,0,0,.72) 0%,rgba(0,0,0,.5) 60%,rgba(0,0,0,.35) 100%)}
+  .hero .copy{justify-content:center;padding:0 20px}
+  .hero .eyebrow{font-size:14px;margin-bottom:10px}
+  .hero h1{font-size:27px;line-height:1.4}
+  .hero .lede{font-size:15px;margin-top:14px}
+  .sec{padding:64px 0 40px}.sec h2{font-size:23px}.sec .desc{font-size:15px}
+  .tabs button{font-size:15px}
+  .cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 10px}
+  .card h3{font-size:14px;margin-top:10px}
+  .card .meta{font-size:12.5px;line-height:1.55}
+  .card .state{font-size:11px;padding:5px 6px}
+  .grid4{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .info{min-height:0;padding:20px 16px 22px}
+  .info h3{font-size:15.5px;padding-right:14px}
+  .info .en{font-size:13px}
+  .info .arw{right:14px;top:18px}
+  .info p{font-size:13px}
+  .info .price{font-size:14px}
+  .logos{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .panel{padding:36px 20px 32px;border-radius:14px}.panel h2{font-size:24px}
+  .row2{grid-template-columns:1fr}
+  .f-cols{grid-template-columns:1fr;gap:32px}.dl{grid-template-columns:104px 1fr}.f-phone{font-size:26px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<div class="memo" role="note"><div class="wrap">
+  <span><b>가안</b> · 서비스 이름 「먼저가본」(임시) · 실제 사이트 아님 · 「예시」는 실제 정보가 아님</span>
+  <span class="sw"><i style="background:#0c0c0e"></i>검정</span><span class="sw"><i style="background:#fff"></i>흰색</span><span class="sw"><i style="background:#e8f1fd"></i>하늘</span><span class="sw"><i style="background:#2d4fe0"></i>로얄블루</span>
+</div></div>
+
+<div class="util"><div class="bar"><span>먼저 가본 선배의 경험을 사고파는 부산 사업가 커뮤니티</span><a href="#">로그인 / 회원가입</a></div></div>
+<header class="top"><div class="bar">
+  <a class="wordmark" href="#">먼저가본</a>
+  <nav class="main" aria-label="주 메뉴">
+    <a href="#clubs" aria-current="page">지금 모집 중</a><a href="#seniors">선배 찾기</a><a href="#chat">커피챗·런치</a><a href="#feed">지식피드</a><a href="#">예비창업</a><a href="#">지원사업</a><a href="#">뉴스</a>
+  </nav>
+  <button class="menu-btn" type="button" aria-label="메뉴 열기">메뉴</button>
+</div></header>
+
+<main>
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="frame">
+    <img src="img/hero-full.jpg" alt="" onerror="this.remove()">
+    <div class="copy">
+      <p class="eyebrow">부산 사업가 커뮤니티</p>
+      <h1 id="hero-title">혼자 내리던 첫 결정,<br>먼저 가본 선배와 함께</h1>
+      <p class="lede">커피챗 · 런치 · 스터디 · 지식피드</p>
+    </div>
+    </div>
+  </section>
+
+  <section class="sec" id="clubs" aria-labelledby="clubs-title">
+    <div class="wrap">
+      <h2 id="clubs-title">지금 모집 중</h2>
+      <p class="desc">먼저가본에서 열고 있는 모집을 살펴보세요.</p>
+      <div class="tabs" role="tablist" aria-label="모집 상태">
+        <button role="tab" id="t-open" aria-selected="true" aria-controls="p-open" type="button">모집중인 클럽</button>
+        <button role="tab" id="t-soon" aria-selected="false" aria-controls="p-soon" type="button" tabindex="-1">모집예정인 클럽</button>
+      </div>
+      <div class="cards" id="p-open" role="tabpanel" aria-labelledby="t-open">
+        <a class="card" href="#"><div class="ph"><img src="img/card-coffeechat.jpg" alt=""></div><span class="state">모집중 · 파일럿</span>
+          <h3>먼저 가본 선배 1:1 커피챗</h3><p class="meta">같은 업종 현직 대표 ㅣ 3만 원부터<br>대상 ㅣ 업력 3년 이내 사장님 · 예비창업자</p></a>
+        <a class="card" href="#"><div class="ph"><img src="img/card-host.jpg" alt=""></div><span class="state">모집중</span>
+          <h3>먼저 가본 선배 모집</h3><p class="meta">1:1 커피챗 · 런치 호스트<br>대상 ㅣ 업력 3년 이상 대표님</p></a>
+        <a class="card" href="#"><div class="ph"><img src="img/card-study.jpg" alt=""></div><span class="state">모집중</span>
+          <h3>먼저가본 사업스터디 1기</h3><p class="meta">월 1회 90분 ㅣ 3~5명 ㅣ 3개월 3만원<br>대상 ㅣ 사업을 키우고 싶은 대표</p></a>
+        <a class="card" href="#"><div class="ph"><img src="img/card-workshop.jpg" alt=""></div><span class="state">모집중</span>
+          <h3>예비창업자를 위한 클로드 코드 업무 자동화 워크숍</h3><p class="meta">강사 ㅣ 블루필드매뉴얼픽쳐스 이동헌 대표<br>일정 추후 안내</p></a>
+      </div>
+      <div class="cards" id="p-soon" role="tabpanel" aria-labelledby="t-soon" hidden>
+        <div class="empty">곧 열릴 모임을 준비하고 있어요. 아래에서 알림을 신청하시면 먼저 알려 드릴게요.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec tight" aria-labelledby="how-title">
+    <div class="wrap">
+      <h2 id="how-title">먼저가본에서는 이렇게 묻고 남깁니다</h2>
+      <div class="grid4">
+        <a class="info" href="#feed"><span class="en">Find</span><span class="arw" aria-hidden="true">↗</span><h3>내 업종 선배 사례는<br>어디서 찾나요?</h3></a>
+        <a class="info" href="#chat"><span class="en">Ask</span><span class="arw" aria-hidden="true">↗</span><h3>선배에게는<br>어떻게 묻나요?</h3></a>
+        <a class="info" href="#feed"><span class="en">Keep</span><span class="arw" aria-hidden="true">↗</span><h3>나눈 이야기는<br>어떻게 남나요?</h3></a>
+        <a class="info" href="#clubs"><span class="en">Club</span><span class="arw" aria-hidden="true">↗</span><h3>스터디·소모임은<br>어떻게 진행되나요?</h3></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec tight" id="seniors" aria-labelledby="seniors-title">
+    <div class="wrap">
+      <h2 id="seniors-title">먼저 가본 선배<span class="tag-ex">예시</span></h2>
+      <p class="desc">같은 업종 현직 대표가 직접 정한 가격으로 답합니다.</p>
+      <div class="grid4">
+        <article class="info"><span class="en">카페 · 업력 8년</span><h3>상권 고르기,<br>첫 직원 뽑을 때</h3><p>부산 2개 매장 운영 · 대화 12회</p><span class="price">커피챗 3만 원</span></article>
+        <article class="info"><span class="en">쇼핑몰 · 업력 6년</span><h3>상세페이지,<br>재구매 고객 만들기</h3><p>의류 자사몰 · 대화 9회</p><span class="price">커피챗 4만 원</span></article>
+        <article class="info"><span class="en">프랜차이즈 · 업력 10년+</span><h3>가맹 확장,<br>지점 관리</h3><p>전국 지점 운영 경험</p><span class="price">프리미엄 런치 경매</span></article>
+        <article class="info"><span class="en">B2B 유통 · 업력 10년+</span><h3>기업 영업,<br>첫 거래처 뚫기</h3><p>산업용품 유통 · 대화 4회</p><span class="price">커피챗 5만 원</span></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec tight" id="chat" aria-labelledby="chat-title">
+    <div class="wrap">
+      <h2 id="chat-title">커피챗 · 런치</h2>
+      <p class="desc">가볍게 묻는 커피챗부터, 성공한 대표와 마주 앉는 런치까지.</p>
+      <div class="grid3">
+        <div class="info"><span class="en">Coffee Chat</span><h3>1:1 커피챗</h3><p>같은 업종 현직 대표와 1:1. 가격은 선배가 정해요.</p><span class="price">3만 원부터</span></div>
+        <div class="info"><span class="en">Lunch</span><h3>일반 런치</h3><p>선배 1명과 6명 안팎이 함께하는 점심 대화.</p><span class="price">1인 4만 원부터</span></div>
+        <div class="info"><span class="en">Premium Lunch</span><h3>프리미엄 런치</h3><p>연매출 수십억 원대 대표와의 점심. 가장 높은 값을 낸 분이 참여해요.</p><span class="price">경매</span></div>
+      </div>
+      <p class="note">48시간 전 취소 시 전액 환불 · 경매 참여 2명 이하면 유찰·자동 환불 · 확정 전 연락처 비공개</p>
+    </div>
+  </section>
+
+  <section class="sec tight" id="feed" aria-labelledby="feed-title">
+    <div class="wrap">
+      <h2 id="feed-title">지식피드<span class="tag-ex">예시</span></h2>
+      <p class="desc">선배들이 실제로 겪은 판단을 무료로 찾아보세요.</p>
+      <form class="find" role="search" onsubmit="event.preventDefault()"><label class="sr" for="feed-q">지식피드 찾기</label><input id="feed-q" type="search" placeholder="업종이나 고민을 적어 보세요 (예: 카페 상권, 첫 직원)"><button type="submit">찾기</button></form>
+      <div class="grid3">
+        <a class="info" href="#"><span class="en">카페 · 상권</span><span class="arw" aria-hidden="true">↗</span><h3>유동인구 많은 자리가<br>늘 좋은 자리일까요?</h3><p>카페 8년차 선배</p></a>
+        <a class="info" href="#"><span class="en">쇼핑몰 · 재구매</span><span class="arw" aria-hidden="true">↗</span><h3>첫 구매 고객을 두 번째로<br>오게 한 한 가지</h3><p>쇼핑몰 6년차 선배</p></a>
+        <a class="info" href="#"><span class="en">인사 · 첫 직원</span><span class="arw" aria-hidden="true">↗</span><h3>첫 직원은 매출이<br>얼마일 때 뽑았나요?</h3><p>유통 10년차 선배</p></a>
+      </div>
+      <p class="note">팟캐스트 준비 중 · 멤버십(월 3,900원) 준비 중</p>
+    </div>
+  </section>
+
+  <section class="sec tight" aria-labelledby="hub-title">
+    <div class="wrap">
+      <h2 id="hub-title">먼저가본 한눈에</h2>
+      <p class="desc">사업에 필요한 소식을 매일 모아 둡니다.</p>
+      <div class="grid3">
+        <a class="info" href="#"><span class="en">Support</span><span class="arw" aria-hidden="true">↗</span><h3>부산 지원사업</h3><p>부산 신규 공고와 마감 임박 사업을 핵심만.</p></a>
+        <a class="info" href="#"><span class="en">Pre-founders</span><span class="arw" aria-hidden="true">↗</span><h3>예비창업 지원 찾기</h3><p>청년창업사관학교·예비창업패키지 등을 지역별로.</p></a>
+        <a class="info" href="#"><span class="en">News</span><span class="arw" aria-hidden="true">↗</span><h3>사업가 뉴스</h3><p>창업·상권·세무 소식을 매일 아침.</p></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec tight" aria-labelledby="partners-title" style="padding-bottom:100px">
+    <div class="wrap">
+      <h2 id="partners-title">협력기관</h2>
+      <p class="desc">2017년부터 함께해 온 기관입니다.</p>
+      <ul class="logos">
+        <li><img src="img/partners/partner1.png" alt="15분도시 부산"></li>
+        <li><img src="img/partners/partner2.png" alt="부산광역시"></li>
+        <li><img src="img/partners/partner3.png" alt="중소벤처기업부"></li>
+        <li><img src="img/partners/partner4.png" alt="나라장터 국가종합전자조달"></li>
+        <li><img src="img/partners/partner5.png" alt="부산경제진흥원"></li>
+        <li><img src="img/partners/partner6.png" alt="KOTRA 대한무역투자진흥공사"></li>
+        <li class="wide"><img src="img/partners/partner7.png" alt="연제청년창업나래센터"></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="notify" aria-labelledby="notify-title">
+    <div class="wrap">
+      <form class="panel" id="notify-form" novalidate>
+        <h2 id="notify-title">찾는 모임이 없으셨나요?</h2>
+        <p class="lead">아래 항목을 선택해 주시면 관련 모임이 열릴 때 알려 드리겠습니다.</p>
+        <fieldset><legend class="flabel">지금 상황 *</legend>
+          <div class="chips"><label class="chip"><input type="radio" name="who"><span>사업을 하고 있어요</span></label><label class="chip"><input type="radio" name="who"><span>창업을 준비 중이에요</span></label></div>
+        </fieldset>
+        <fieldset><legend class="flabel">찾고 있는 분야 (복수 선택 가능)</legend>
+          <div class="chips">
+            <label class="chip"><input type="checkbox"><span>마케팅·홍보</span></label><label class="chip"><input type="checkbox"><span>자금·세무</span></label><label class="chip"><input type="checkbox"><span>AI·업무 자동화</span></label><label class="chip"><input type="checkbox"><span>브랜딩</span></label><label class="chip"><input type="checkbox"><span>판로·커머스</span></label><label class="chip"><input type="checkbox"><span>인사·운영</span></label><label class="chip"><input type="checkbox"><span>네트워킹</span></label><label class="chip"><input type="checkbox"><span>기타</span></label>
+          </div>
+        </fieldset>
+        <label class="flabel" for="n-topic">원하는 모임 주제가 있다면 입력해 주세요 (선택)</label>
+        <input class="inp" id="n-topic" placeholder="예) 스마트스토어 상세페이지 스터디, 세무 기초 모임">
+        <div class="row2">
+          <div><label class="flabel" for="n-phone">알림받으실 전화번호 *</label><input class="inp" id="n-phone" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000"></div>
+          <div><label class="flabel" for="n-mail">알림받으실 이메일</label><input class="inp" id="n-mail" type="email" autocomplete="email" placeholder="name@example.com"></div>
+        </div>
+        <label class="agree"><input type="checkbox" id="n-agree"> 개인정보 수집·이용에 동의합니다 (필수)</label>
+        <button class="submit" type="submit">알림 신청하기</button>
+        <p class="msg" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer class="site"><div class="wrap">
+  <nav class="f-links" aria-label="사이트 정보">
+    <a href="#" class="accent">소개</a><a href="#">공지사항</a><a href="#">서비스 이용약관</a><a href="#" class="strong">개인정보 처리방침</a><a href="#">취소/환불 규정</a><a href="http://www.ftc.go.kr/bizCommPop.do?wrkr_no=7927200616" target="_blank" rel="noopener noreferrer">사업자정보 조회 ↗</a>
+  </nav>
+  <div class="f-cols">
+    <div>
+      <p class="f-word">먼저가본</p>
+      <p class="f-tag">먼저 가본 선배의 경험을 사고파는 지역 기반 경험 거래 플랫폼.</p>
+      <h2 class="f-h">사업자 정보</h2>
+      <dl class="dl">
+        <dt>상호</dt><dd>부산청년사업가 포럼</dd><dt>대표자</dt><dd>정은지</dd><dt>사업자등록번호</dt><dd>792-72-00616</dd>
+        <dt>통신판매업 신고</dt><dd>제 2026-부산연제-0018 호</dd><dt>사업장 주소</dt><dd>부산광역시 연제구 법원남로9번길 17(거제동)</dd><dt>호스팅 제공</dt><dd>GitHub, Inc. · Google LLC(Firebase)</dd>
+      </dl>
+    </div>
+    <div>
+      <h2 class="f-h">고객센터</h2>
+      <p class="f-phone">070-8064-7238</p>
+      <dl class="dl" style="grid-template-columns:90px 1fr"><dt>이메일</dt><dd><a class="u" href="mailto:pujar@naver.com">pujar@naver.com</a></dd><dt>운영시간</dt><dd>평일 09:00~18:00 · 주말·공휴일 휴무</dd></dl>
+    </div>
+    <div>
+      <h2 class="f-h">참가·환불 안내</h2>
+      <p class="f-note"><b>참가비는 결제 화면에서 안내합니다.</b></p>
+      <p class="f-note">취소·환불은 취소/환불 규정에 따릅니다. 궁금한 점은 고객센터로 먼저 연락해 주세요.</p>
+      <p class="f-note" style="margin-top:16px"><a class="u" href="#">취소·환불 기준 자세히 보기</a></p>
+      <p class="f-note"><a class="u" href="https://open.kakao.com/o/gMWryRA" target="_blank" rel="noopener noreferrer">먼저가본 오픈채팅방 ↗</a></p>
+    </div>
+  </div>
+  <div class="f-bottom"><p>먼저가본은 통신판매중개자로서 선배와 이용자 사이 거래의 당사자가 아닙니다. 커피챗·런치의 내용과 이행은 각 선배에게 책임이 있습니다. (가안 문구 — 법률 검토 전)</p>Copyright © 2026 먼저가본 · 부산청년사업가 포럼. All Rights Reserved</div>
+</div></footer>
+
+<script>
+const tabs = [...document.querySelectorAll('[role=tab]')];
+function sel(t) { tabs.forEach((x) => { const on = x === t; x.setAttribute('aria-selected', on); x.tabIndex = on ? 0 : -1; document.getElementById(x.getAttribute('aria-controls')).hidden = !on; }); t.focus(); }
+tabs.forEach((t, i) => { t.addEventListener('click', () => sel(t)); t.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); sel(tabs[(i + 1) % tabs.length]); } }); });
+document.getElementById('notify-form').addEventListener('submit', (e) => { e.preventDefault(); e.target.querySelector('.msg').textContent = '가안 화면이라 실제로 신청되지는 않아요.'; });
+</script>
+</body>
+</html>

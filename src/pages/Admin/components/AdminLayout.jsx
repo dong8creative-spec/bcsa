@@ -40,6 +40,17 @@ export const AdminLayout = ({ children, activeTab, onTabChange, onLogout, curren
                   <p className="text-xs text-gray-500">{currentUser.email}</p>
                 </div>
               )}
+              {/* 「개선」: 사이트 개편 디자인 가안(public/admin-preview/redesign, 검색 노출 막음)을 새 창으로 */}
+              <a
+                href="/admin-preview/redesign/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-xl border border-brand text-brand font-bold hover:bg-brand hover:text-white transition-colors flex items-center gap-2"
+                title="사이트 개편 디자인 가안 보기 (새 창)"
+              >
+                <Icons.Eye size={18} />
+                <span>개선</span>
+              </a>
               <button
                 onClick={() => window.location.href = '/'}
                 className="px-4 py-2 text-gray-600 hover:text-brand transition-colors flex items-center gap-2"
