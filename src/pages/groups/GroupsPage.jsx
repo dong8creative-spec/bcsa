@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Icons } from '../../components/Icons';
 import { groupService, GROUP_TYPE_LABEL, GROUP_MODE_LABEL, GROUP_STATUS_LABEL, GROUP_COVERS, groupCoverUrl } from '../../services/groupService';
+import { groupPoster, GROUP_POSTERS } from '../../constants/groupPosters';
 
 const GroupDetail = lazy(() => import('./GroupDetail'));
 const GroupCheckIn = lazy(() => import('./GroupCheckIn'));
@@ -92,7 +93,9 @@ function GroupList({ currentUser, onRequireLogin }) {
         groupService.getMyLedGroups(uid).then(setMyGroups).catch(() => setMyGroups([]));
     }, [uid]);
 
-    const visible = useMemo(() => (groups || []).filter((g) => filter === 'all' || g.type === filter), [groups, filter]);
+    // 포스터를 붙인 그룹은 「지금 모집 중」으로 맨 위에 크게 보이고, 아래 카드 목록에서는 빼서 두 번 나오지 않게 한다
+    const recruiting = useMemo(() => (groups || []).filter((g) => groupPoster(g)), [groups]);
+    const visible = useMemo(() => (groups || []).filter((g) => !groupPoster(g) && (filter === 'all' || g.type === filter)), [groups, filter]);
     const myPending = myGroups.filter((g) => g.status !== 'approved');
 
     const onCreate = () => {
@@ -132,9 +135,38 @@ function GroupList({ currentUser, onRequireLogin }) {
                 </div>
             ) : null}
 
+            {recruiting.map((g) => {
+                const p = groupPoster(g);
+                return (
+                    <section key={g.id} aria-labelledby={`recruit-${g.id}`} className="mb-8 overflow-hidden rounded-[28px] border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-sky-50">
+                        <div className="grid gap-0 sm:grid-cols-[minmax(0,240px)_1fr] md:grid-cols-[minmax(0,300px)_1fr]">
+                            <button type="button" onClick={() => navigate(`/groups/${g.id}`)} className="block p-4 sm:p-5 sm:pr-0" aria-label={`${p.headline} 포스터 — 모집 안내 보기`}>
+                                <img src={p.image} width={p.width} height={p.height} alt="" className="block w-full h-auto rounded-2xl shadow-[0_10px_30px_rgba(0,40,100,.15)]" loading="eager" decoding="async" />
+                            </button>
+                            <div className="flex flex-col p-6 md:p-8">
+                                <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[13px] font-bold text-emerald-700">
+                                    <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" /> 지금 모집 중
+                                </p>
+                                <h2 id={`recruit-${g.id}`} className="mt-3 text-[24px] md:text-[30px] font-bold leading-tight text-dark break-keep">{p.headline}</h2>
+                                <p className="mt-2 text-[16px] md:text-[17px] font-semibold text-brand break-keep">{p.tagline}</p>
+                                <ul className="mt-4 flex flex-wrap gap-2">
+                                    {p.facts.filter(([k]) => ['모집 인원', '모임 주기', '참여비'].includes(k)).map(([k, v]) => (
+                                        <li key={k} className="rounded-full bg-white px-3.5 py-1.5 text-[14px] text-gray-700 ring-1 ring-black/[0.06]"><span className="text-gray-500">{k}</span> <b className="text-dark">{v}</b></li>
+                                    ))}
+                                </ul>
+                                <button type="button" onClick={() => navigate(`/groups/${g.id}`)}
+                                    className="mt-6 md:mt-auto w-full sm:w-fit inline-flex items-center justify-center gap-2 rounded-full bg-brand px-7 py-3.5 text-[16px] font-bold text-white hover:bg-[#00327a]">
+                                    모집 안내 보고 신청하기 <Icons.ArrowRight size={18} aria-hidden="true" />
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+                );
+            })}
+
             {groups === null ? (
                 <div className="py-20 text-center text-gray-400 text-sm">불러오는 중…</div>
-            ) : visible.length === 0 ? (
+            ) : visible.length === 0 && recruiting.length > 0 ? null : visible.length === 0 ? (
                 <div className="py-16 text-center rounded-[24px] bg-soft">
                     <p className="text-lg font-semibold text-dark">아직 열린 그룹이 없어요</p>
                     <p className="mt-2 text-sm text-gray-500 break-keep">첫 번째 소모임이나 스터디를 직접 만들어 보세요.</p>
@@ -168,7 +200,12 @@ function GroupList({ currentUser, onRequireLogin }) {
 
 function GroupCreate({ currentUser, onRequireLogin }) {
     const navigate = useNavigate();
-    const [form, setForm] = useState({ type: 'meetup', title: '', description: '', region: '부산', mode: 'offline', schedule: '', capacity: 0, joinPolicy: 'approval' });
+    const location = useLocation();
+    // ?template=<포스터 키> 로 열면 그 포스터 내용으로 미리 채운다(운영진이 모집 그룹을 빨리 여는 용도)
+    const [form, setForm] = useState(() => {
+        const t = GROUP_POSTERS[new URLSearchParams(location.search).get('template') || '']?.createDefaults;
+        return { type: 'meetup', title: '', description: '', region: '부산', mode: 'offline', schedule: '', capacity: 0, joinPolicy: 'approval', ...(t || {}) };
+    });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
     const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));

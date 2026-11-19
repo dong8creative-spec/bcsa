@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import AdSlot, { hasAdSlot } from '../components/AdSlot';
+import AdSlot, { useAnyAdVisible } from '../components/AdSlot';
 import { firestoreLikeToMillis, getSupportProgramDdayInfo, bucketSupportPrograms } from '../appHelpers';
 import Pager from '../components/Pager';
 import ContentDetailModal from '../components/ContentDetailModal';
@@ -302,7 +302,7 @@ const TABS = [
 
 export default function SupportProgramsView({ supportPrograms, content, onBack }) {
     // 우측 배너 레일에 실제로 등록된 광고가 하나도 없으면 레일을 아예 접고 본문 폭을 넓힌다.
-    const hasSidebarAd = hasAdSlot(content, 'support-sidebar-1') || hasAdSlot(content, 'support-sidebar-1b') || hasAdSlot(content, 'support-sidebar-2');
+    const hasSidebarAd = useAnyAdVisible(content, ['support-sidebar-1', 'support-sidebar-1b', 'support-sidebar-2']);
     const [selected, setSelected] = useState(null);
     const [orgModalOrg, setOrgModalOrg] = useState(null); // 기관별 보기에서 타일을 누르면 이 기관명이 들어가 모달이 뜬다
     const [busanFreshPage, setBusanFreshPage] = useState(1);

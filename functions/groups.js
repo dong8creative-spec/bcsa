@@ -182,11 +182,21 @@ export function createGroupHandlers({ db, admin, verifyPortOnePayment, cancelPor
     if (existing.exists && ['active', 'pending'].includes(existing.data().status)) {
       return { status: existing.data().status };
     }
+    // 가입 신청 메모(사업 분야·지금 고민): 멤버 문서는 로그인한 누구나 읽을 수 있어서 따로 둔다.
+    // groups/{gid}/joinNotes/{uid} — 그룹장·운영진·본인만 읽고(firestore.rules), 쓰기는 서버만.
+    const note = request.data?.note || {};
+    const field = str(note.field, 60);
+    const concern = str(note.concern, 500);
+    const profile = await getProfile(uid);
+    if (field || concern) {
+      await groupRef(gid).collection('joinNotes').doc(uid).set({
+        uid, name: profile.name, field, concern, createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
     if (group.joinPolicy === 'open') {
       await ensureMember(gid, group, uid, { autoJoin: true });
       return { status: 'active' };
     }
-    const profile = await getProfile(uid);
     await memberRef(gid, uid).set({
       uid, name: profile.name, img: profile.img, role: 'member', status: 'pending',
       joinedAt: admin.firestore.FieldValue.serverTimestamp(),

@@ -8,6 +8,8 @@ import {
 import { PageShell, TypeBadge, Field, inputClass, REGIONS, CoverPicker } from './GroupsPage';
 import GroupQrModal from './GroupQrModal';
 import GroupReportModal from './GroupReportModal';
+import { PosterHero, PosterText, JoinDialog, StickyJoinBar } from './GroupPoster';
+import { groupPoster } from '../../constants/groupPosters';
 
 const won = (n) => `${(Number(n) || 0).toLocaleString()}원`;
 const fmtDate = (s) => {
@@ -26,7 +28,8 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
     // 마이페이지 '운영하는 모임'에서 ?tab=sessions 처럼 관리 탭으로 바로 들어올 수 있다
     const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') || 'info');
     const [busy, setBusy] = useState(false);
-    const [reportOpen, setReportOpen] = useState(false);
+    const [joinOpen, setJoinOpen] = useState(false);
+    const [joinMsg, setJoinMsg] = useState('');
 
     useEffect(() => groupService.subscribeGroup(groupId, setGroup), [groupId]);
     useEffect(() => (currentUser ? groupService.subscribeMembers(groupId, setMembers) : undefined), [groupId, currentUser]);
@@ -47,13 +50,18 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
         );
     }
 
+    const poster = groupPoster(group);
+    const sendJoin = async (note) => {
+        const r = await groupService.joinGroup(groupId, note);
+        setJoinOpen(false);
+        setJoinMsg(r.status === 'active' ? '가입되었어요. 환영합니다!' : '가입 신청을 보냈어요. 그룹장이 승인하면 멤버가 됩니다.');
+    };
     const join = async () => {
         if (!currentUser) { onRequireLogin(); return; }
+        // 승인제 그룹은 그룹장이 보고 판단할 수 있게 사업 분야·고민을 함께 받는다
+        if (group.joinPolicy !== 'open') { setJoinOpen(true); return; }
         setBusy(true);
-        try {
-            const r = await groupService.joinGroup(groupId);
-            alert(r.status === 'active' ? '가입되었습니다.' : '가입 신청을 보냈어요. 그룹장이 승인하면 멤버가 됩니다.');
-        } catch (e) { alert(e.message); } finally { setBusy(false); }
+        try { await sendJoin(null); } catch (e) { setJoinMsg(e.message); } finally { setBusy(false); }
     };
     const leave = async () => {
         if (!confirm('그룹에서 나갈까요?')) return;
@@ -71,7 +79,12 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
             title={group.title}
             desc={[group.region, GROUP_MODE_LABEL[group.mode], group.schedule, `그룹장 ${group.leaderName || ''}`].filter(Boolean).join(' · ')}
         >
-            <img src={groupCoverUrl(group)} alt="" className="w-full aspect-[16/9] md:aspect-[21/8] object-cover rounded-[24px] mb-8" decoding="async" />
+            {poster && group.status === 'approved' ? (
+                <PosterHero group={group} poster={poster}
+                    joinAction={<JoinAction group={group} me={me} isLeader={isLeader} busy={busy} onJoin={join} onLeave={leave} message={joinMsg} large />} />
+            ) : (
+                <img src={groupCoverUrl(group)} alt="" className="w-full aspect-[16/9] md:aspect-[21/8] object-cover rounded-[24px] mb-8" decoding="async" />
+            )}
             {group.status === 'pending' ? (
                 <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 break-keep">
                     운영진 승인을 기다리고 있어요. 승인되면 목록에 공개되고 가입·출석을 받을 수 있습니다.
@@ -92,20 +105,51 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
 
             {shownTab === 'info' ? (
                 <InfoTab
-                    group={group} sessions={sessions} me={me} isLeader={isLeader} uid={uid}
-                    activeCount={activeMembers.length} onJoin={join} onLeave={leave} busy={busy} currentUser={currentUser}
+                    group={group} sessions={sessions} me={me} isLeader={isLeader} uid={uid} poster={poster}
+                    activeCount={activeMembers.length} onJoin={join} onLeave={leave} busy={busy} currentUser={currentUser} joinMsg={joinMsg}
                 />
             ) : null}
             {shownTab === 'sessions' && canManage ? <SessionsTab group={group} sessions={sessions} members={activeMembers} /> : null}
             {shownTab === 'members' && canManage ? <MembersTab group={group} members={members} /> : null}
             {shownTab === 'payments' && canManage ? <PaymentsTab group={group} sessions={sessions} /> : null}
             {shownTab === 'settings' && canManage ? <SettingsTab group={group} /> : null}
+            {joinOpen ? <JoinDialog group={group} poster={poster} onSubmit={sendJoin} onClose={() => setJoinOpen(false)} /> : null}
+            {poster && group.status === 'approved' && !isLeader && !me ? (
+                <>
+                    <div className="h-24 md:hidden" aria-hidden="true" />
+                    <StickyJoinBar><JoinAction group={group} me={me} isLeader={isLeader} busy={busy} onJoin={join} onLeave={leave} /></StickyJoinBar>
+                </>
+            ) : null}
         </PageShell>
     );
 }
 
-function InfoTab({ group, sessions, me, isLeader, uid, activeCount, onJoin, onLeave, busy, currentUser }) {
+/** 가입 버튼(상태별): 그룹장이면 없음, 멤버면 나가기, 신청했으면 대기, 아니면 가입(신청) */
+function JoinAction({ group, me, isLeader, busy, onJoin, onLeave, message, large = false }) {
+    if (group.status !== 'approved' || isLeader) return null;
+    const status = me?.status;
+    return (
+        <div>
+            {status === 'active' ? (
+                large ? <p className="w-full py-3.5 rounded-full bg-emerald-50 text-center text-[16px] font-bold text-emerald-700">이 그룹 멤버예요</p>
+                    : <button type="button" onClick={onLeave} className="w-full py-3 rounded-full border border-black/10 text-sm font-semibold text-gray-600">그룹 나가기</button>
+            ) : status === 'pending' ? (
+                <p className="w-full py-3.5 rounded-full bg-amber-50 text-center text-[15px] font-semibold text-amber-700">가입 승인 대기 중</p>
+            ) : (
+                <button type="button" disabled={busy} onClick={onJoin}
+                    className={`w-full rounded-full bg-brand text-white font-bold disabled:opacity-60 hover:bg-[#00327a] ${large ? 'py-4 text-[17px]' : 'py-3.5 text-[16px]'}`}>
+                    {group.joinPolicy === 'open' ? '가입하기' : '가입 신청하기'}
+                </button>
+            )}
+            {message ? <p role="status" aria-live="polite" className="mt-2 text-[14px] font-semibold text-dark break-keep">{message}</p> : null}
+        </div>
+    );
+}
+
+function InfoTab({ group, sessions, me, isLeader, uid, activeCount, onJoin, onLeave, busy, currentUser, poster, joinMsg }) {
     const [myAttendance, setMyAttendance] = useState({});
+    // 신고 창 상태는 이 조각 안에 둔다(예전에 바깥에만 있어 그룹 화면이 흰 화면이 되던 문제)
+    const [reportOpen, setReportOpen] = useState(false);
     useEffect(() => {
         if (!uid || !me || me.status !== 'active') return;
         let alive = true;
@@ -119,7 +163,8 @@ function InfoTab({ group, sessions, me, isLeader, uid, activeCount, onJoin, onLe
 
     return (
         <div className="grid gap-6 md:grid-cols-[1fr_300px]">
-            <div className="space-y-6">
+            <div className="space-y-6 min-w-0">
+                {poster ? <PosterText poster={poster} /> : null}
                 {group.notice ? (
                     <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4">
                         <p className="text-xs font-bold text-brand mb-1">공지</p>
@@ -157,16 +202,9 @@ function InfoTab({ group, sessions, me, isLeader, uid, activeCount, onJoin, onLe
                         <p><span className="text-gray-500">내 출석</span> · <b>{attendedCount}</b> / {pastCount || sessions.length}회</p>
                     ) : null}
                 </div>
-                {group.status === 'approved' && !isLeader ? (
-                    me?.status === 'active' ? (
-                        <button type="button" onClick={onLeave} className="w-full py-3 rounded-full border border-black/10 text-sm font-semibold text-gray-600">그룹 나가기</button>
-                    ) : me?.status === 'pending' ? (
-                        <div className="w-full py-3 rounded-full bg-amber-50 text-center text-sm font-semibold text-amber-700">가입 승인 대기 중</div>
-                    ) : (
-                        <button type="button" disabled={busy} onClick={onJoin} className="w-full py-3.5 rounded-full bg-brand text-white font-semibold disabled:opacity-60">
-                            {group.joinPolicy === 'open' ? '가입하기' : '가입 신청하기'}
-                        </button>
-                    )
+                {/* 포스터 그룹은 위 포스터 옆에 큰 가입 버튼이 있다. 멤버의 「그룹 나가기」만 여기 둔다 */}
+                {!poster || me?.status === 'active' ? (
+                    <JoinAction group={group} me={me} isLeader={isLeader} busy={busy} onJoin={onJoin} onLeave={onLeave} message={poster ? '' : joinMsg} />
                 ) : null}
                 <p className="text-xs text-gray-500 break-keep">모임 현장에서는 그룹장 화면의 QR을 휴대폰 카메라로 찍으면 출석(참가비가 있으면 결제까지)이 됩니다.</p>
                 {currentUser && !isLeader ? (
@@ -289,6 +327,14 @@ function Roster({ group, session, members }) {
 function MembersTab({ group, members }) {
     const pending = members.filter((m) => m.status === 'pending');
     const active = members.filter((m) => m.status === 'active');
+    const [notes, setNotes] = useState({});
+    useEffect(() => { groupService.getJoinNotes(group.id).then(setNotes).catch(() => setNotes({})); }, [group.id, members.length]);
+    const Note = ({ uid }) => (notes[uid] && (notes[uid].field || notes[uid].concern) ? (
+        <dl className="mt-1.5 space-y-0.5 text-[13px] text-gray-600 break-keep">
+            {notes[uid].field ? <div><dt className="inline text-gray-400">사업 분야 </dt><dd className="inline">{notes[uid].field}</dd></div> : null}
+            {notes[uid].concern ? <div><dt className="inline text-gray-400">지금 고민 </dt><dd className="inline whitespace-pre-wrap">{notes[uid].concern}</dd></div> : null}
+        </dl>
+    ) : null);
     const act = (uid, status) => groupService.setMemberStatus(group.id, uid, status).catch((e) => alert(e.message));
     return (
         <div className="space-y-8">
@@ -297,9 +343,9 @@ function MembersTab({ group, members }) {
                 {pending.length === 0 ? <p className="text-sm text-gray-500">대기 중인 신청이 없어요.</p> : (
                     <ul className="space-y-2">
                         {pending.map((m) => (
-                            <li key={m.uid} className="flex items-center justify-between rounded-2xl bg-soft px-4 py-3 text-sm">
-                                <span>{m.name}</span>
-                                <span className="flex gap-2">
+                            <li key={m.uid} className="flex items-start justify-between gap-3 rounded-2xl bg-soft px-4 py-3 text-sm">
+                                <span className="min-w-0"><span className="font-semibold">{m.name}</span><Note uid={m.uid} /></span>
+                                <span className="flex shrink-0 gap-2">
                                     <button type="button" onClick={() => act(m.uid, 'active')} className="px-3 py-1.5 rounded-full bg-brand text-white text-xs font-semibold">승인</button>
                                     <button type="button" onClick={() => act(m.uid, 'rejected')} className="px-3 py-1.5 rounded-full bg-white text-xs font-semibold text-gray-600">거절</button>
                                 </span>
@@ -312,8 +358,8 @@ function MembersTab({ group, members }) {
                 <h3 className="font-semibold text-dark mb-2">멤버 {active.length}명</h3>
                 <ul className="divide-y divide-black/[0.05]">
                     {active.map((m) => (
-                        <li key={m.uid} className="flex items-center justify-between py-2.5 text-sm">
-                            <span>{m.name}{m.role === 'leader' ? <span className="ml-2 text-xs font-bold text-brand">그룹장</span> : null}</span>
+                        <li key={m.uid} className="flex items-start justify-between gap-3 py-2.5 text-sm">
+                            <span className="min-w-0">{m.name}{m.role === 'leader' ? <span className="ml-2 text-xs font-bold text-brand">그룹장</span> : null}<Note uid={m.uid} /></span>
                             {m.role !== 'leader' ? <button type="button" onClick={() => { if (confirm(`${m.name}님을 내보낼까요?`)) act(m.uid, 'left'); }} className="text-xs text-gray-400">내보내기</button> : null}
                         </li>
                     ))}

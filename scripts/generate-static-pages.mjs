@@ -123,6 +123,47 @@ const fieldValue = (f) => {
   return null;
 };
 
+/** 운영 중(approved) 그룹 — 공유 미리보기용 정적 페이지. 규칙상 비로그인은 approved 만 읽을 수 있어 그 조건으로 묻는다 */
+async function fetchApprovedGroups() {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents:runQuery`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ structuredQuery: {
+        from: [{ collectionId: 'groups' }],
+        where: { fieldFilter: { field: { fieldPath: 'status' }, op: 'EQUAL', value: { stringValue: 'approved' } } },
+        select: { fields: ['title', 'description', 'region', 'schedule', 'cover', 'poster', 'type'].map((fieldPath) => ({ fieldPath })) },
+        limit: 300,
+      } }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rows = await res.json();
+    return rows.filter((r) => r.document).map(({ document: doc }) => {
+      const f = doc.fields || {};
+      return {
+        id: doc.name.split('/').pop(),
+        title: fieldValue(f.title) || '그룹',
+        description: fieldValue(f.description) || '',
+        region: fieldValue(f.region) || '',
+        schedule: fieldValue(f.schedule) || '',
+        cover: fieldValue(f.cover) || '',
+        poster: fieldValue(f.poster) || '',
+        type: fieldValue(f.type) || '',
+      };
+    });
+  } catch (e) {
+    console.warn('⚠️  그룹 목록 조회 실패 (그룹 공유 페이지 생략):', e.message);
+    return [];
+  }
+}
+
+// 그룹 공유 그림: 모집 포스터가 있으면 포스터(src/constants/groupPosters.js 와 같은 파일), 없으면 커버
+const GROUP_POSTER_IMAGES = { 'bcsa-study-1': '/assets/images/groups/poster-bcsa-study-1.jpg' };
+const GROUP_COVER_KEYS = ['study', 'meetup', 'networking', 'workshop', 'online', 'busan'];
+const groupShareImage = (g) => BASE_URL + (GROUP_POSTER_IMAGES[g.poster]
+  || `/assets/images/groups/cover-${GROUP_COVER_KEYS.includes(g.cover) ? g.cover : (g.type === 'study' ? 'study' : 'meetup')}.jpg`);
+
 async function fetchSeminars() {
   try {
     const fields = ['title', 'desc', 'images', 'imageUrls', 'imageUrl', 'img', 'date', 'location'];
@@ -245,6 +286,24 @@ for (const sem of seminars) {
   writeFileSync(join(outDir, 'index.html'), html, 'utf-8');
 }
 console.log(`    → 프로그램 상세 ${seminars.length}개 HTML 생성`);
+
+// 2-1. 그룹 화면 HTML (카톡 등으로 모집 주소를 보내면 그룹 이름·포스터가 미리보기에 나오도록)
+// GitHub Pages 는 dist/groups/<id>/index.html 이 있어야 그 주소에 200 으로 답한다(없으면 404.html).
+const groups = await fetchApprovedGroups();
+for (const g of groups) {
+  const path = `/groups/${g.id}`;
+  const canonicalUrl = BASE_URL + toCanonicalPath(path);
+  const title = `${g.title} | 부청사 소모임·스터디`;
+  const description = summarize([g.region, g.schedule, g.description].filter(Boolean).join(' · ')) || '부청사 소모임·스터디';
+  const html = replaceMeta(baseHtml, {
+    title, description, canonical: canonicalUrl, ogTitle: title, ogDescription: description, ogUrl: canonicalUrl,
+    ogImage: groupShareImage(g),
+  });
+  const outDir = join(distDir, path);
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(join(outDir, 'index.html'), html, 'utf-8');
+}
+console.log(`    → 그룹 화면 ${groups.length}개 HTML 생성`);
 
 // 3. sitemap.xml 업데이트
 const sitemap = buildSitemap(seminars.map((sem) => sem.id));

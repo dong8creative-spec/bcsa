@@ -2,6 +2,29 @@ import React, { useEffect, useState } from 'react';
 import { Icons } from '../../../components/Icons';
 import { groupService, GROUP_TYPE_LABEL, GROUP_MODE_LABEL, GROUP_STATUS_LABEL, JOIN_POLICY_LABEL } from '../../../services/groupService';
 import { firestoreLikeToMillis } from '../../../appHelpers';
+import { GROUP_POSTERS, HOUSE_AD_POSTER } from '../../../constants/groupPosters';
+
+/** 운영진만: 그룹에 모집 포스터 붙이기/떼기. 붙인 그룹은 화면 맨 위 포스터·목록 「지금 모집 중」, 광고 자리 모집 광고로 이어진다 */
+const PosterPicker = ({ group }) => {
+  const [saving, setSaving] = useState(false);
+  const change = async (e) => {
+    const poster = e.target.value;
+    setSaving(true);
+    try { await groupService.setGroupPosterAdmin(group.id, poster); }
+    catch (err) { alert(`포스터를 바꾸지 못했습니다: ${err.message}`); }
+    finally { setSaving(false); }
+  };
+  return (
+    <label className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+      <span className="font-semibold text-gray-700">모집 포스터</span>
+      <select value={group.poster || ''} onChange={change} disabled={saving} className="rounded-lg border border-black/10 bg-soft px-2.5 py-1.5 text-sm">
+        <option value="">없음</option>
+        {Object.entries(GROUP_POSTERS).map(([k, p]) => <option key={k} value={k}>{p.label}</option>)}
+      </select>
+      {group.poster === HOUSE_AD_POSTER && group.status === 'approved' ? <span className="text-xs font-semibold text-emerald-700">사이트 광고 자리에 모집 광고가 나가는 중</span> : null}
+    </label>
+  );
+};
 
 const STATUS_CLASS = {
   pending: 'bg-amber-100 text-amber-700',
@@ -96,6 +119,7 @@ export const GroupManagement = () => {
                   <p className="text-sm text-gray-500">그룹장 {g.leaderName} · {[g.region, GROUP_MODE_LABEL[g.mode], g.schedule, JOIN_POLICY_LABEL[g.joinPolicy], Number(g.capacity) > 0 ? `정원 ${g.capacity}명` : '정원 제한 없음'].filter(Boolean).join(' · ')}</p>
                   <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap line-clamp-4">{g.description}</p>
                   {g.rejectReason ? <p className="text-xs text-red-600 mt-1">반려 사유: {g.rejectReason}</p> : null}
+                  <PosterPicker group={g} />
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
                   <a href={`/groups/${g.id}`} target="_blank" rel="noopener noreferrer" className="px-3 py-2 rounded-lg bg-soft text-sm font-semibold inline-flex items-center gap-1"><Icons.ExternalLink size={14} />보기</a>

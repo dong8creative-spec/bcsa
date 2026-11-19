@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import AdSlot, { hasAdSlot } from '../components/AdSlot';
+import AdSlot, { useAnyAdVisible } from '../components/AdSlot';
 import { firestoreLikeToMillis } from '../appHelpers';
 import Pager from '../components/Pager';
 import NewsDetailModal from '../components/NewsDetailModal';
@@ -145,7 +145,7 @@ export default function NewsView({ content, onBack, newsItems }) {
     const [categoryFilter, setCategoryFilter] = useState('all'); // 카테고리 필터 — '전체' 또는 지원사업 등 특정 카테고리
     const [sortMode, setSortMode] = useState('date'); // 'date'(최신순, 기본) | 'source'(신문사순)
     // 우측 배너 레일에 실제로 등록된 광고가 하나도 없으면 레일을 아예 접고 본문 폭을 넓힌다.
-    const hasSidebarAd = hasAdSlot(content, 'news-sidebar-1') || hasAdSlot(content, 'news-sidebar-1b') || hasAdSlot(content, 'news-sidebar-2');
+    const hasSidebarAd = useAnyAdVisible(content, ['news-sidebar-1', 'news-sidebar-1b', 'news-sidebar-2']);
 
     // "1년 지난 기사 숨기기" 기준 시각 — 마운트 시 한 번만 고정한다.
     // 예전에는 매 렌더마다 Date.now()를 새로 읽어 useMemo 의존성 배열에 넣었는데, 밀리초 단위로

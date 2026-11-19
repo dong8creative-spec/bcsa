@@ -1,0 +1,191 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { Icons } from '../../components/Icons';
+
+/**
+ * 포스터가 붙은 그룹 화면 조각들 (constants/groupPosters.js)
+ * - PosterHero: 포스터 크게 + 핵심 정보 + 가입 버튼 + 공유
+ * - PosterText: 포스터 내용을 글로 (화면 읽기 프로그램·확대가 필요한 분, 검색)
+ * - PosterViewer: 포스터 원본 크기 보기 창
+ * - JoinDialog: 가입 신청(사업 분야·지금 고민) 창
+ * - StickyJoinBar: 휴대폰에서 화면 아래에 늘 보이는 가입 버튼
+ */
+
+/** 창(대화 상자) 공통: Esc 로 닫기, 열릴 때 창 안으로 초점, 닫으면 원래 자리로, Tab 이 창 밖으로 나가지 않게 */
+function useDialog(onClose) {
+    const ref = useRef(null);
+    useEffect(() => {
+        const before = document.activeElement;
+        const box = ref.current;
+        const focusables = () => [...box.querySelectorAll('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])')].filter((el) => !el.disabled);
+        (box.querySelector('[data-autofocus]') || focusables()[0] || box).focus();
+        const onKey = (e) => {
+            if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
+            if (e.key !== 'Tab') return;
+            const list = focusables();
+            if (!list.length) return;
+            const first = list[0], last = list[list.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        };
+        document.addEventListener('keydown', onKey);
+        const overflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            document.body.style.overflow = overflow;
+            if (before && before.focus) before.focus();
+        };
+    }, [onClose]);
+    return ref;
+}
+
+export function PosterViewer({ poster, onClose }) {
+    const ref = useDialog(onClose);
+    return (
+        <div className="fixed inset-0 z-[300] bg-black/85 overflow-y-auto" onClick={onClose}>
+            <div ref={ref} role="dialog" aria-modal="true" aria-label={`${poster.label} 크게 보기`} tabIndex={-1}
+                className="min-h-full flex flex-col items-center justify-start gap-3 p-4 pt-[max(16px,env(safe-area-inset-top))] outline-none">
+                <button type="button" onClick={onClose} data-autofocus
+                    className="self-end inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-dark">
+                    <Icons.X size={16} aria-hidden="true" /> 닫기
+                </button>
+                <img src={poster.image} alt={`${poster.headline}. ${poster.tagline}. 내용은 그룹 화면의 「모집 안내」에 글로도 있어요.`}
+                    width={poster.width} height={poster.height} onClick={(e) => e.stopPropagation()}
+                    className="w-full max-w-[794px] h-auto rounded-xl bg-white" />
+            </div>
+        </div>
+    );
+}
+
+export function PosterHero({ group, poster, joinAction }) {
+    const [viewer, setViewer] = useState(false);
+    const [shareMsg, setShareMsg] = useState('');
+    const share = async () => {
+        const url = `${window.location.origin}/groups/${group.id}`;
+        const data = { title: poster.headline, text: `${poster.headline} — ${poster.tagline}`, url };
+        try {
+            if (navigator.share) { await navigator.share(data); return; }
+        } catch (e) { if (e?.name === 'AbortError') return; }
+        try { await navigator.clipboard.writeText(url); setShareMsg('주소를 복사했어요. 카톡에 붙여 넣어 알려 주세요.'); }
+        catch { setShareMsg(`이 주소를 알려 주세요: ${url}`); }
+    };
+    return (
+        <section aria-labelledby="poster-headline" className="grid gap-6 md:gap-10 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] items-start mb-10">
+            <div>
+                <button type="button" onClick={() => setViewer(true)}
+                    className="group relative block w-full overflow-hidden rounded-[20px] bg-soft shadow-[0_12px_40px_rgba(0,40,100,.14)] ring-1 ring-black/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand">
+                    <img src={poster.image} width={poster.width} height={poster.height} className="block w-full h-auto" decoding="async" fetchpriority="high"
+                        alt={`${poster.label}. ${poster.headline}, ${poster.tagline}. 자세한 내용은 아래 「모집 안내」에 글로 있어요.`} />
+                    <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-dark/85 px-3.5 py-2 text-[13px] font-semibold text-white">
+                        <Icons.ZoomIn size={15} aria-hidden="true" /> 포스터 크게 보기
+                    </span>
+                </button>
+            </div>
+            <div className="md:sticky md:top-28">
+                <p className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[13px] font-bold text-emerald-700">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" /> 지금 모집 중
+                </p>
+                <h2 id="poster-headline" className="mt-3 text-[26px] md:text-[32px] leading-tight font-bold text-dark break-keep">{poster.headline}</h2>
+                <p className="mt-2 text-[17px] md:text-lg font-semibold text-brand break-keep">{poster.tagline}</p>
+                <p className="mt-3 text-[16px] leading-relaxed text-gray-700 break-keep">{poster.lead}</p>
+                <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-black/[0.06] bg-black/[0.06]">
+                    {poster.facts.map(([k, v], i) => (
+                        <div key={k} className={`bg-white px-4 py-3.5 ${i === poster.facts.length - 1 && poster.facts.length % 2 ? 'col-span-2' : ''}`}>
+                            <dt className="text-[13px] text-gray-500">{k}</dt>
+                            <dd className="mt-0.5 text-[16px] font-bold text-dark break-keep">{v}</dd>
+                        </div>
+                    ))}
+                </dl>
+                <p className="mt-4 rounded-xl bg-blue-50 px-4 py-3 text-[15px] text-dark break-keep">{poster.howTo}</p>
+                <div className="mt-5 space-y-3">
+                    {joinAction}
+                    <button type="button" onClick={share}
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-black/10 bg-white py-3 text-[15px] font-semibold text-dark hover:bg-soft">
+                        <Icons.Share2 size={17} aria-hidden="true" /> 이 모집 알리기
+                    </button>
+                    <p role="status" aria-live="polite" className="text-[13px] text-gray-500 break-all">{shareMsg}</p>
+                </div>
+            </div>
+            {viewer ? <PosterViewer poster={poster} onClose={() => setViewer(false)} /> : null}
+        </section>
+    );
+}
+
+export function PosterText({ poster }) {
+    return (
+        <section aria-labelledby="poster-text-title" className="rounded-[24px] bg-soft p-5 md:p-6">
+            <h2 id="poster-text-title" className="text-lg font-semibold text-dark mb-4">모집 안내</h2>
+            <div className="grid gap-4 md:grid-cols-3">
+                {poster.sections.map((s) => (
+                    <div key={s.title} className="rounded-2xl bg-white p-4">
+                        <h3 className="text-[16px] font-bold text-dark mb-2.5 break-keep">{s.title}</h3>
+                        <ul className="space-y-2">
+                            {s.items.map((it) => (
+                                <li key={it} className="flex gap-2 text-[15px] leading-snug text-gray-700 break-keep">
+                                    <Icons.CheckCircle size={17} className="mt-0.5 shrink-0 text-brand" aria-hidden="true" />{it}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                ))}
+            </div>
+            <p className="mt-4 text-[15px] font-semibold text-gray-700 break-keep">{poster.closing}</p>
+        </section>
+    );
+}
+
+export function JoinDialog({ group, poster, onSubmit, onClose }) {
+    const ref = useDialog(onClose);
+    const [field, setField] = useState('');
+    const [concern, setConcern] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState('');
+    const required = !!poster;
+    const submit = async (e) => {
+        e.preventDefault();
+        setError('');
+        if (required && (!field.trim() || !concern.trim())) { setError('사업 분야와 지금 고민 1가지를 적어 주세요.'); return; }
+        setBusy(true);
+        try { await onSubmit({ field: field.trim(), concern: concern.trim() }); }
+        catch (err) { setError(err.message || '신청하지 못했어요. 잠시 뒤 다시 눌러 주세요.'); setBusy(false); }
+    };
+    const input = 'w-full border border-black/15 bg-white text-dark rounded-xl px-3.5 py-3 text-[16px] outline-none focus:border-brand focus:ring-2 focus:ring-brand/20';
+    return (
+        <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" onClick={onClose}>
+            <div ref={ref} role="dialog" aria-modal="true" aria-labelledby="join-dialog-title" tabIndex={-1} onClick={(e) => e.stopPropagation()}
+                className="w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-[24px] sm:rounded-[24px] bg-white p-6 pb-[max(24px,env(safe-area-inset-bottom))] outline-none">
+                <h2 id="join-dialog-title" className="text-xl font-bold text-dark break-keep">{group.title} 가입 신청</h2>
+                <p className="mt-2 text-[15px] text-gray-600 break-keep">그룹장이 보고 승인하면 멤버가 돼요. 적은 내용은 그룹장과 운영진만 봐요.</p>
+                <form onSubmit={submit} className="mt-5 space-y-4" noValidate>
+                    <label className="block">
+                        <span className="text-[15px] font-semibold text-dark">사업 분야{required ? '' : ' (선택)'}</span>
+                        <input className={`${input} mt-2`} value={field} onChange={(e) => setField(e.target.value)} maxLength={60}
+                            placeholder="예: 온라인 쇼핑몰(의류), 카페, 세무사무소" data-autofocus aria-required={required} autoComplete="organization-title" />
+                    </label>
+                    <label className="block">
+                        <span className="text-[15px] font-semibold text-dark">지금 고민 1가지{required ? '' : ' (선택)'}</span>
+                        <textarea className={`${input} mt-2 min-h-[110px]`} value={concern} onChange={(e) => setConcern(e.target.value)} maxLength={500}
+                            placeholder="예: 재구매 고객을 늘리고 싶은데 방법을 모르겠어요." aria-required={required} />
+                        <span className="mt-1 block text-right text-[12px] text-gray-400">{concern.length}/500</span>
+                    </label>
+                    <p role="alert" className="text-[14px] font-semibold text-red-600 min-h-[1px]">{error}</p>
+                    <div className="flex gap-2">
+                        <button type="button" onClick={onClose} className="flex-1 rounded-full bg-soft py-3.5 text-[15px] font-semibold text-gray-700">닫기</button>
+                        <button type="submit" disabled={busy} className="flex-[2] rounded-full bg-brand py-3.5 text-[16px] font-bold text-white disabled:opacity-60">
+                            {busy ? '보내는 중…' : '가입 신청 보내기'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+/** 휴대폰: 포스터 그룹 화면을 내려 읽는 동안에도 가입 버튼이 아래에 보이게 */
+export function StickyJoinBar({ children }) {
+    return (
+        <div className="md:hidden fixed inset-x-0 bottom-0 z-[90] border-t border-black/[0.06] bg-white/95 backdrop-blur px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+            {children}
+        </div>
+    );
+}

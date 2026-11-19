@@ -1,4 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { GROUP_POSTERS, HOUSE_AD_POSTER, HOUSE_AD_SLOTS } from '../constants/groupPosters';
+import { groupService } from '../services/groupService';
 
 /**
  * AdSlot — 광고 슬롯 컴포넌트
@@ -48,11 +51,51 @@ export function hasAdSlot(content, slotId) {
     return Boolean(content?.[`ad_${slotId}_image`]);
 }
 
+/**
+ * 자체 모집 광고(하우스 광고): 유료 광고가 없는 자리를 부청사 모집 광고로 채운다(constants/groupPosters.js).
+ * 포스터를 지정한 그룹이 「운영 중」일 때만 보이고, 그 그룹 화면으로 이어진다. 그룹이 없으면 아무것도 안 보인다.
+ */
+function useHouseAdGroup() {
+    const [group, setGroup] = useState(null);
+    useEffect(() => {
+        let alive = true;
+        groupService.findApprovedGroupByPoster(HOUSE_AD_POSTER).then((g) => { if (alive) setGroup(g); });
+        return () => { alive = false; };
+    }, []);
+    return group;
+}
+
+/** 이 자리들 가운데 실제로 보이는 광고(유료 또는 자체 모집 광고)가 하나라도 있는지 — 사이드바 레일을 펼칠지 정할 때 */
+export function useAnyAdVisible(content, slotIds) {
+    const group = useHouseAdGroup();
+    return slotIds.some((id) => hasAdSlot(content, id) || (group && HOUSE_AD_SLOTS[id]));
+}
+
+function HouseAd({ slotId, className }) {
+    const group = useHouseAdGroup();
+    const kind = HOUSE_AD_SLOTS[slotId];
+    const poster = GROUP_POSTERS[HOUSE_AD_POSTER];
+    if (!group || !kind || !poster?.houseAd) return null;
+    const ad = poster.houseAd[kind];
+    return (
+        <div className={className} data-ad-slot={slotId} data-house-ad={HOUSE_AD_POSTER}>
+            <Link to={`/groups/${group.id}`} className="block w-full overflow-hidden rounded-2xl ring-1 ring-black/[0.05] transition-shadow hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+                <picture>
+                    {ad.mobile ? <source media="(max-width: 767px)" srcSet={ad.mobile} /> : null}
+                    <img src={ad.image} alt={poster.houseAd.alt} width={ad.width} height={ad.height} className="block w-full h-auto" loading="lazy" decoding="async" />
+                </picture>
+            </Link>
+        </div>
+    );
+}
+
 export default function AdSlot({ slotId, content, className = '', showPlaceholder = false, placeholderSize = '' }) {
     const imageUrl = content?.[`ad_${slotId}_image`];
 
     if (!imageUrl) {
-        if (!showPlaceholder) return null;
+        if (HOUSE_AD_SLOTS[slotId]) return <HouseAd slotId={slotId} className={className.replace(/\bh-\[\d+px\]/g, '')} />;
+        // 자리 확인용 점선 박스는 개발 화면에서만(방문자에게 빈 광고 박스를 보이지 않는다)
+        if (!showPlaceholder || !import.meta.env.DEV) return null;
         return (
             <div className={className} data-ad-slot={slotId} data-ad-placeholder="true">
                 <div className="w-full h-full min-h-[120px] flex flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-red-400 bg-red-500/5">

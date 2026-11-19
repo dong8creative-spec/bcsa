@@ -38,6 +38,7 @@ const call = async (name, data) => {
 };
 
 const withId = (d) => ({ id: d.id, ...d.data() });
+const posterLookups = new Map();
 const toMs = (v) => (v?.toMillis ? v.toMillis() : (v?.seconds ? v.seconds * 1000 : (v ? new Date(v).getTime() : 0)));
 
 export const groupService = {
@@ -65,6 +66,17 @@ export const groupService = {
     return onSnapshot(doc(db, 'groups', groupId), (d) => callback(d.exists() ? withId(d) : null), () => callback(null));
   },
   createGroupRequest: (data) => call('createGroupRequest', data),
+  /** 포스터를 지정한 「운영 중」 그룹 하나 (광고 자리의 모집 광고가 이어질 곳). 한 번만 읽고 기억한다 */
+  findApprovedGroupByPoster(posterKey) {
+    if (!posterKey) return Promise.resolve(null);
+    if (!posterLookups.has(posterKey)) {
+      const q = query(collection(db, 'groups'), where('status', '==', 'approved'), where('poster', '==', posterKey));
+      posterLookups.set(posterKey, getDocs(q)
+        .then((snap) => (snap.empty ? null : snap.docs.map(withId).sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt))[0]))
+        .catch(() => null));
+    }
+    return posterLookups.get(posterKey);
+  },
   updateGroupSettings(groupId, data) {
     return updateDoc(doc(db, 'groups', groupId), { ...data, updatedAt: serverTimestamp() });
   },
@@ -75,11 +87,23 @@ export const groupService = {
     });
   },
 
+  /** 운영진: 모집 포스터 붙이기('' 이면 떼기). 규칙상 운영진만 poster 칸을 바꿀 수 있다 */
+  setGroupPosterAdmin(groupId, poster) {
+    posterLookups.clear();
+    return updateDoc(doc(db, 'groups', groupId), { poster: poster || '', updatedAt: serverTimestamp() });
+  },
+
   // ── 멤버 ──
   subscribeMembers(groupId, callback) {
     return onSnapshot(collection(db, 'groups', groupId, 'members'), (snap) => callback(snap.docs.map(withId)), () => callback([]));
   },
-  joinGroup: (groupId) => call('joinGroup', { groupId }),
+  /** note: { field, concern } — 승인제 그룹에 가입 신청할 때 그룹장에게만 보이는 자기소개(사업 분야·지금 고민) */
+  joinGroup: (groupId, note) => call('joinGroup', { groupId, ...(note ? { note } : {}) }),
+  /** 그룹장·운영진: 가입 신청자가 남긴 사업 분야·고민 (groups/{id}/joinNotes, 서버만 씀) */
+  async getJoinNotes(groupId) {
+    const snap = await getDocs(collection(db, 'groups', groupId, 'joinNotes'));
+    return Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]));
+  },
   setMemberStatus(groupId, uid, status) {
     return updateDoc(doc(db, 'groups', groupId, 'members', uid), { status });
   },

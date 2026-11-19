@@ -236,6 +236,12 @@ service cloud.firestore {
         allow delete: if isAdmin() || (isGroupLeader(gid) && resource.data.role != 'leader');
       }
 
+      // 가입 신청 메모(사업 분야·지금 고민) — 서버(joinGroup)만 쓴다. 그룹장·운영진·본인만 읽는다.
+      match /joinNotes/{uid} {
+        allow read: if isGroupLeader(gid) || isAdmin() || isSelf(uid);
+        allow write: if false;
+      }
+
       match /sessions/{sid} {
         allow read: if groupData(gid).status == 'approved' || isGroupLeader(gid) || isAdmin();
         allow create, update: if isAdmin() || (isGroupLeader(gid) && validSession());
