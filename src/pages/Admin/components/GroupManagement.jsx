@@ -4,6 +4,52 @@ import { groupService, GROUP_TYPE_LABEL, GROUP_MODE_LABEL, GROUP_STATUS_LABEL, J
 import { firestoreLikeToMillis } from '../../../appHelpers';
 import { GROUP_POSTERS, HOUSE_AD_POSTER } from '../../../constants/groupPosters';
 
+/**
+ * 운영진만: 포스터에 딸린 모집 그룹을 한 번에 연다(개설 → 승인 → 포스터 지정). 그룹장은 누른 운영진.
+ * 이미 그 포스터를 단 그룹이 있으면 버튼 대신 「열려 있음」을 보여 준다.
+ */
+const QuickRecruitGroups = ({ groups }) => {
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState('');
+  const templates = Object.entries(GROUP_POSTERS).filter(([, p]) => p.createDefaults && !p.imagesPending);
+  const create = async (key, p) => {
+    if (!confirm(`「${p.createDefaults.title}」 그룹을 만들고 바로 공개할까요? 그룹장은 지금 로그인한 운영진 계정이 됩니다.`)) return;
+    setBusy(key); setMsg('');
+    try {
+      const { groupId } = await groupService.createGroupRequest(p.createDefaults);
+      await groupService.setGroupStatusAdmin(groupId, 'approved');
+      await groupService.setGroupPosterAdmin(groupId, key);
+      setMsg(`「${p.createDefaults.title}」을 열었어요. 소모임·스터디 목록 맨 위에 보입니다.`);
+    } catch (e) { setMsg(`만들지 못했습니다: ${e.message}`); }
+    finally { setBusy(''); }
+  };
+  if (!templates.length) return null;
+  return (
+    <div className="bg-white rounded-2xl p-5 border border-blue-100">
+      <h3 className="font-bold text-dark">모집 그룹 바로 만들기</h3>
+      <p className="text-sm text-gray-500 mt-1">포스터·소개가 미리 채워진 그룹을 한 번에 열어요. 일정·참가비는 그룹 화면의 회차·설정에서 넣으세요.</p>
+      <ul className="mt-3 space-y-2">
+        {templates.map(([key, p]) => {
+          const existing = (groups || []).find((g) => g.poster === key && g.status !== 'closed' && g.status !== 'rejected');
+          return (
+            <li key={key} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-soft px-4 py-3">
+              <span className="text-sm font-semibold text-dark">{p.createDefaults.title}</span>
+              {existing ? (
+                <a href={`/groups/${existing.id}`} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-emerald-700">열려 있음 · 보기</a>
+              ) : (
+                <button type="button" disabled={!!busy} onClick={() => create(key, p)} className="px-3 py-2 rounded-lg bg-brand text-white text-sm font-semibold disabled:opacity-50">
+                  {busy === key ? '만드는 중…' : '만들고 공개하기'}
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {msg ? <p role="status" className="mt-2 text-sm font-semibold text-dark">{msg}</p> : null}
+    </div>
+  );
+};
+
 /** 운영진만: 그룹에 모집 포스터 붙이기/떼기. 붙인 그룹은 화면 맨 위 포스터·목록 「지금 모집 중」, 광고 자리 모집 광고로 이어진다 */
 const PosterPicker = ({ group }) => {
   const [saving, setSaving] = useState(false);
@@ -19,7 +65,7 @@ const PosterPicker = ({ group }) => {
       <span className="font-semibold text-gray-700">모집 포스터</span>
       <select value={group.poster || ''} onChange={change} disabled={saving} className="rounded-lg border border-black/10 bg-soft px-2.5 py-1.5 text-sm">
         <option value="">없음</option>
-        {Object.entries(GROUP_POSTERS).map(([k, p]) => <option key={k} value={k}>{p.label}</option>)}
+        {Object.entries(GROUP_POSTERS).filter(([k, p]) => !p.imagesPending || group.poster === k).map(([k, p]) => <option key={k} value={k}>{p.label}</option>)}
       </select>
       {group.poster === HOUSE_AD_POSTER && group.status === 'approved' ? <span className="text-xs font-semibold text-emerald-700">사이트 광고 자리에 모집 광고가 나가는 중</span> : null}
     </label>
@@ -101,6 +147,8 @@ export const GroupManagement = () => {
           </ul>
         </div>
       ) : null}
+
+      <QuickRecruitGroups groups={groups} />
 
       {groups === null ? <p className="text-gray-400">불러오는 중…</p> : list.length === 0 ? (
         <div className="bg-white rounded-2xl p-10 text-center text-gray-500">해당하는 그룹이 없습니다.</div>

@@ -55,6 +55,7 @@ export const GROUP_POSTERS = {
    * (정해지면 그룹 설정의 「모임 주기」·회차에 넣고, 여기 facts 에도 더한다). 포스터·광고는 Codex(image_gen)로 만들었다.
    */
   'claude-workshop-1': {
+    imagesPending: true, // 포스터·광고 이미지를 Codex 로 만드는 중 — 들어오면 이 줄을 지운다
     label: '예비창업자 클로드 코드 업무 자동화 워크숍 포스터',
     image: '/assets/images/groups/poster-claude-workshop-1.jpg',
     width: 1024,
