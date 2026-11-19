@@ -95,10 +95,10 @@ export default function HomeView({ seminars = [], partnerLogos = [], partnerName
                 <MgWrap>
                     <MgSectionHead id="home-can" title="먼저가본에서 할 수 있는 것" />
                     <div className="mt-[26px] grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3">
-                        <MgInfoCard en="Coffee Chat" title={<>같은 업종 선배에게<br />1:1로 묻기</>} foot="2만 원부터 · 노하우 무료" onClick={(e) => { e.preventDefault(); cc?.open('hub', { tab: 'feed' }); }} />
-                        <MgInfoCard en="Club" title={<>스터디·소모임<br />함께하기</>} foot="소모임·스터디" onClick={go('/groups')} />
-                        <MgInfoCard en="Pre-founders" title={<>예비창업 지원사업<br />한곳에서 찾기</>} foot="예비창업" onClick={go('/startup')} />
-                        <MgInfoCard en="Support" title={<>부산 지원사업·<br />사업가 뉴스</>} foot="매일 아침 모음" onClick={go('/support')} />
+                        <MgInfoCard image="/assets/images/home/can-coffee.webp" en="Coffee Chat" title={<>같은 업종 선배에게<br />1:1로 묻기</>} foot="2만 원부터 · 노하우 무료" onClick={(e) => { e.preventDefault(); cc?.open('hub', { tab: 'feed' }); }} />
+                        <MgInfoCard image="/assets/images/home/can-club.webp" en="Club" title={<>스터디·소모임<br />함께하기</>} foot="소모임·스터디" onClick={go('/groups')} />
+                        <MgInfoCard image="/assets/images/home/can-prefounder.webp" en="Pre-founders" title={<>예비창업 지원사업<br />한곳에서 찾기</>} foot="예비창업" onClick={go('/startup')} />
+                        <MgInfoCard image="/assets/images/home/can-support.webp" en="Support" title={<>부산 지원사업·<br />사업가 뉴스</>} foot="매일 아침 모음" onClick={go('/support')} />
                     </div>
                 </MgWrap>
             </section>

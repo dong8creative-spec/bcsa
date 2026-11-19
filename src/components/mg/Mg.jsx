@@ -94,12 +94,14 @@ export function MgCard({ image, imagePosition, state, stateTone = 'royal', title
 }
 
 /** 안내 카드: 연한 바탕 · 영문 라벨 · 제목 · (설명) · (아래 한 줄) · ↗ */
-export function MgInfoCard({ en, title, desc, foot, onClick, href, newTab = false, arrow = true }) {
+export function MgInfoCard({ en, title, desc, foot, onClick, href, newTab = false, arrow = true, image }) {
     const clickable = !!(onClick || href);
     const Tag = href ? 'a' : clickable ? 'button' : 'div';
     return (
         <Tag {...(href ? { href, ...(newTab ? { target: '_blank', rel: 'noopener noreferrer' } : {}) } : clickable ? { type: 'button', onClick } : {})}
             className={`relative flex h-full min-h-[132px] w-full flex-col rounded-xl bg-card px-4 pb-5 pt-5 text-left text-ink md:min-h-[150px] md:px-6 md:pb-[30px] md:pt-[26px] ${clickable ? 'transition-colors hover:bg-[#e9edf3]' : ''}`}>
+            {/* 일러스트(선택): 흰 바탕 그림을 카드 색에 곱하기로 섞어 바탕이 안 보이게 한다 */}
+            {image ? <span className="-mx-1 mb-3 flex h-[96px] items-end justify-center md:mb-4 md:h-[132px]" aria-hidden="true"><img src={image} alt="" loading="lazy" decoding="async" className="h-full w-auto max-w-full object-contain mix-blend-multiply" /></span> : null}
             {en ? <span className="mb-2.5 text-[13px] font-semibold text-royal md:text-[14px]">{en}</span> : null}
             {clickable && arrow ? <span className="absolute right-4 top-[18px] text-[15px] text-royal md:right-[22px] md:top-6" aria-hidden="true">↗</span> : null}
             <span className="line-clamp-2 min-h-[3em] pr-4 text-[15.5px] font-semibold leading-[1.5] md:text-[18px]">{title}</span>
