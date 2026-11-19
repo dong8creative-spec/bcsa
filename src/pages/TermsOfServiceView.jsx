@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icons } from '../components/Icons';
+import { MgWrap, MgPageHead } from '../components/mg/Mg';
 import { BUSINESS_INFO, TERMS_SECTIONS, TERMS_EFFECTIVE_DATE } from '../constants/legal';
 
 // 약관 원문은 가입 화면과 같은 것을 쓰도록 constants/legal.js에서 관리
@@ -12,35 +13,35 @@ const EFFECTIVE_DATE = TERMS_EFFECTIVE_DATE;
  */
 export default function TermsOfServiceView({ onBack }) {
   return (
-    <div className="min-h-screen bg-soft pt-24 pb-20 px-4 md:px-6">
-      <div className="container mx-auto max-w-3xl">
-        <div className="bg-white rounded-[28px] border border-black/[0.06] overflow-hidden">
-          <div className="p-6 md:p-8 border-b border-black/[0.06] text-center">
-            <h1 className="text-[22px] md:text-[26px] font-semibold tracking-tight text-dark">{TITLE}</h1>
-            <p className="text-sm text-brand mt-2">* 시행일: {EFFECTIVE_DATE}</p>
-          </div>
-          <div className="p-6 md:p-8 space-y-8">
+    <div className="min-h-screen bg-white">
+      <MgPageHead eyebrow="TERMS" title="서비스 이용약관" desc={`시행일: ${EFFECTIVE_DATE}`} />
+      <MgWrap className="py-12 md:py-16">
+        <article className="mx-auto max-w-[760px]">
+          <header className="border-b border-[#0c0c0e] pb-6">
+            <h2 className="break-keep text-[24px] font-bold leading-[1.4] text-ink md:text-[28px]">{TITLE}</h2>
+          </header>
+          <div className="divide-y divide-line">
             {SECTIONS.map((section, index) => (
-              <section key={index}>
-                <h2 className="text-[15px] md:text-base font-semibold text-dark mb-3">{section.title}</h2>
-                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+              <section key={index} className="py-7 md:py-8">
+                <h3 className="mb-3 break-keep text-[18px] font-semibold leading-snug text-ink">{section.title}</h3>
+                <div className="text-[16px] leading-[1.85] text-[#333] whitespace-pre-line break-keep">
                   {section.body}
                 </div>
               </section>
             ))}
           </div>
-          <div className="p-6 md:p-8 border-t border-black/[0.06] flex justify-center">
+          <div className="flex justify-center border-t border-line pt-8">
             <button
               type="button"
               onClick={() => (onBack ? onBack() : window.history.back())}
-              className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors flex items-center gap-2"
+              className="inline-flex h-12 items-center gap-2 rounded-lg border border-line2 bg-white px-6 text-[16px] font-bold text-ink transition-colors hover:border-ink"
             >
               <Icons.ArrowLeft size={20} />
               이전으로
             </button>
           </div>
-        </div>
-      </div>
+        </article>
+      </MgWrap>
     </div>
   );
 }

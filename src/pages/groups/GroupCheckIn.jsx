@@ -2,16 +2,17 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Icons } from '../../components/Icons';
 import { groupService } from '../../services/groupService';
+import { HEADER_OFFSET_CLASS } from '../../components/mg/Mg';
 
 const PASS_KEY = (gid, sid) => `bcsa_group_pass_${gid}_${sid}`;
 const LAST_PAY_KEY = 'bcsa_group_last_payment';
 
 const Screen = ({ icon, tone = 'brand', title, children }) => (
-    <div className="min-h-screen bg-soft pt-28 pb-16 px-5">
-        <div className="mx-auto max-w-md rounded-[28px] bg-white p-7 text-center shadow-sm">
-            {icon ? <div className={`mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full ${tone === 'ok' ? 'bg-emerald-50 text-emerald-600' : tone === 'bad' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-brand'}`}>{icon}</div> : null}
-            <h1 className="text-xl font-semibold text-dark break-keep">{title}</h1>
-            <div className="mt-3 text-sm text-gray-600 break-keep">{children}</div>
+    <div className={`min-h-screen bg-card px-5 pb-16 ${HEADER_OFFSET_CLASS}`}>
+        <div className="mx-auto mt-10 max-w-md rounded-[18px] border border-line bg-white p-7 text-center md:mt-14">
+            {icon ? <div className={`mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full ${tone === 'bad' ? 'bg-red-50 text-red-600' : 'bg-sky text-royal'}`} aria-hidden="true">{icon}</div> : null}
+            <h1 className="break-keep text-[22px] font-bold text-ink">{title}</h1>
+            <div className="mt-3 break-keep text-[15px] text-sub">{children}</div>
         </div>
     </div>
 );
@@ -134,10 +135,10 @@ export default function GroupCheckIn({ mode, groupId, currentUser, onRequireLogi
     const info = state.info;
     const sessionLine = info ? `${info.group?.title || ''} · ${info.session?.title || ''}` : '';
     const backGid = groupId || state.groupId;
-    const backBtn = backGid ? <button type="button" onClick={() => navigate(`/groups/${backGid}`)} className="mt-6 w-full py-3 rounded-full bg-soft font-semibold text-dark">그룹 화면으로</button> : null;
+    const backBtn = backGid ? <button type="button" onClick={() => navigate(`/groups/${backGid}`)} className="mt-6 h-12 w-full rounded-lg border border-line2 bg-white text-[16px] font-semibold text-ink hover:border-ink">그룹 화면으로</button> : null;
 
     if (state.step === 'loading' || state.step === 'working') return <Screen icon={<Icons.Clock size={28} />} title="출석 확인 중…">{sessionLine}</Screen>;
-    if (state.step === 'needLogin') return <Screen icon={<Icons.Lock size={28} />} title="로그인이 필요해요"><button type="button" onClick={onRequireLogin} className="mt-4 w-full py-3.5 rounded-full bg-brand text-white font-semibold">로그인</button></Screen>;
+    if (state.step === 'needLogin') return <Screen icon={<Icons.Lock size={28} />} title="로그인이 필요해요"><button type="button" onClick={onRequireLogin} className="mt-4 h-[52px] w-full rounded-lg bg-royal text-[16px] font-bold text-white hover:bg-royalDark">로그인</button></Screen>;
     if (state.step === 'error') return <Screen icon={<Icons.AlertCircle size={28} />} tone="bad" title="출석하지 못했어요"><p>{state.message}</p>{backBtn}</Screen>;
     if (state.step === 'done') {
         return (
@@ -151,8 +152,8 @@ export default function GroupCheckIn({ mode, groupId, currentUser, onRequireLogi
         return (
             <Screen icon={<Icons.Users size={28} />} title="로그인하면 출석이 완료돼요">
                 <p>{sessionLine}</p>
-                <p className="mt-1 text-xs text-gray-400">QR을 찍은 뒤 10분 안에 로그인해 주세요.</p>
-                <button type="button" onClick={onRequireLogin} className="mt-5 w-full py-3.5 rounded-full bg-brand text-white font-semibold">로그인하고 출석하기</button>
+                <p className="mt-1 text-[13px] text-sub">QR을 찍은 뒤 10분 안에 로그인해 주세요.</p>
+                <button type="button" onClick={onRequireLogin} className="mt-5 h-[52px] w-full rounded-lg bg-royal text-[16px] font-bold text-white hover:bg-royalDark">로그인하고 출석하기</button>
             </Screen>
         );
     }
@@ -161,12 +162,12 @@ export default function GroupCheckIn({ mode, groupId, currentUser, onRequireLogi
         return (
             <Screen icon={<Icons.DollarSign size={28} />} title="참가비를 결제하면 출석이 완료돼요">
                 <p>{sessionLine}</p>
-                <p className="mt-4 text-3xl font-semibold text-dark">{amount.toLocaleString()}원</p>
-                {state.message ? <p className="mt-3 text-red-600 font-semibold">{state.message}</p> : null}
-                <button type="button" disabled={state.step === 'paying'} onClick={pay} className="mt-5 w-full py-3.5 rounded-full bg-brand text-white font-semibold disabled:opacity-60">
+                <p className="mt-4 text-[30px] font-bold text-ink">{amount.toLocaleString()}원</p>
+                {state.message ? <p role="alert" className="mt-3 font-semibold text-red-600">{state.message}</p> : null}
+                <button type="button" disabled={state.step === 'paying'} onClick={pay} className="mt-5 h-[52px] w-full rounded-lg bg-royal text-[16px] font-bold text-white hover:bg-royalDark disabled:opacity-60">
                     {state.step === 'paying' ? '결제 진행 중…' : '결제하고 출석하기'}
                 </button>
-                <p className="mt-3 text-xs text-gray-400">결제 금액은 부청사가 받아 그룹장에게 정산합니다.</p>
+                <p className="mt-3 text-[13px] text-sub">결제 금액은 운영사(부산청년사업가 포럼)가 받아 그룹장에게 정산합니다.</p>
             </Screen>
         );
     }

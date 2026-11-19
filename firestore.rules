@@ -88,6 +88,12 @@ service cloud.firestore {
     // 지원사업 자동 수집 피드: 읽기 공개. 관리자 브라우저 UI에서의 수동 등록/수정/삭제는 isAdmin()만 허용.
     // 주의: 향후 자동 수집 스크립트(scripts/ingest-support-programs.mjs)는 Admin SDK(서비스 계정)로
     // 쓰기 때문에 이 규칙을 완전히 우회함 — 아래 규칙은 브라우저 클라이언트 쓰기에만 적용됨.
+    // 토픽(대표 인터뷰, 2026-11): 공개 글은 누구나 읽기, 임시저장 글 읽기와 모든 쓰기는 관리자만
+    match /topics/{topicId} {
+      allow read: if resource.data.status == 'published' || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /supportPrograms/{programId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
@@ -258,6 +264,20 @@ service cloud.firestore {
           allow delete: if isAdmin() || (isGroupLeader(gid) && resource.data.get('paid', false) != true);
         }
       }
+    }
+
+    // 모임 알림 신청(홈 「찾는 모임이 없으셨나요?」): 누구나 신청만(형식 검사), 열람·처리는 관리자만
+    match /interestAlerts/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['who', 'topics', 'wish', 'phone', 'email', 'agree', 'createdAt', 'status'])
+        && request.resource.data.who in ['owner', 'pre']
+        && request.resource.data.topics is list && request.resource.data.topics.size() <= 8
+        && request.resource.data.wish is string && request.resource.data.wish.size() <= 200
+        && request.resource.data.phone is string && request.resource.data.phone.matches('^01[0-9]{8,9}$')
+        && request.resource.data.email is string && request.resource.data.email.size() <= 120
+        && request.resource.data.agree == true
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isAdmin();
     }
 
     // 신고: 로그인 회원은 본인 이름으로 접수만, 열람·처리는 관리자만

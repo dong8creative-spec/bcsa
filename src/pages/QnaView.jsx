@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { MgWrap, MgPageHead, MgSectionHead, MgTabs } from '../components/mg/Mg';
 
 /**
  * QnaView — 전문가 Q&A 페이지 (1단계: 목업 콘텐츠 그대로)
@@ -8,11 +9,11 @@ import React, { useMemo, useState } from 'react';
  */
 
 const QUESTIONS = [
-    { category: '세무', badgeClass: 'bg-purple-600', bg: '#E7A6A0', title: '간이과세자에서 일반과세자로 바뀌면 가장 먼저 챙길 게 뭔가요?', meta: '✓ 답변 3 · 조회 128 · 3시간 전' },
-    { category: '마케팅', badgeClass: 'bg-orange-500', bg: '#EBBB8C', title: '네이버 플레이스 광고를 월 30만원부터 시작해도 효과가 있을까요?', meta: '✓ 답변 7 · 조회 246 · 오늘' },
-    { category: '지원사업', badgeClass: 'bg-sky-500', bg: '#E9D48C', title: '창업 5년차인데 부산에서 신청 가능한 마케팅 지원사업이 있을까요?', meta: '✓ 답변 2 · 조회 94 · 오늘' },
-    { category: '노무', badgeClass: 'bg-emerald-600', bg: '#A9CB9B', title: '직원을 처음 채용하는데 4대보험 신고는 언제까지 해야 하나요?', meta: '✓ 답변 5 · 조회 61 · 어제' },
-    { category: '세무', badgeClass: 'bg-purple-600', bg: '#9DC3E0', title: '간이과세 매출 기준이 올해 바뀌었다고 들었는데 정확한 기준이 궁금합니다.', meta: '답변 대기중 · 조회 33 · 방금 전' },
+    { category: '세무', badgeClass: 'text-royal', bg: '#E7A6A0', title: '간이과세자에서 일반과세자로 바뀌면 가장 먼저 챙길 게 뭔가요?', meta: '✓ 답변 3 · 조회 128 · 3시간 전' },
+    { category: '마케팅', badgeClass: 'text-royal', bg: '#EBBB8C', title: '네이버 플레이스 광고를 월 30만원부터 시작해도 효과가 있을까요?', meta: '✓ 답변 7 · 조회 246 · 오늘' },
+    { category: '지원사업', badgeClass: 'text-royal', bg: '#E9D48C', title: '창업 5년차인데 부산에서 신청 가능한 마케팅 지원사업이 있을까요?', meta: '✓ 답변 2 · 조회 94 · 오늘' },
+    { category: '노무', badgeClass: 'text-royal', bg: '#A9CB9B', title: '직원을 처음 채용하는데 4대보험 신고는 언제까지 해야 하나요?', meta: '✓ 답변 5 · 조회 61 · 어제' },
+    { category: '세무', badgeClass: 'text-royal', bg: '#9DC3E0', title: '간이과세 매출 기준이 올해 바뀌었다고 들었는데 정확한 기준이 궁금합니다.', meta: '답변 대기중 · 조회 33 · 방금 전' },
 ];
 
 const CATEGORIES = ['전체', '세무', '마케팅', '지원사업', '노무'];
@@ -35,93 +36,62 @@ export default function QnaView({ onBack }) {
     };
 
     return (
-        <div className="min-h-screen bg-white overflow-y-auto">
-            <section
-                className="pt-32 pb-16 md:pt-40 md:pb-20 px-6 relative overflow-hidden"
-                style={{ background: 'radial-gradient(circle at 82% 0%, rgba(0,70,165,.12), transparent 55%), #ffffff' }}
-            >
-                <div className="container mx-auto max-w-7xl">
-                    <p className="text-[12.5px] text-gray-500 mb-5">
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="hover:text-dark transition-colors">홈</button>
-                        <span className="mx-1">/</span> Q&amp;A
-                    </p>
-                    <p className="text-[13px] font-bold text-brand tracking-wide mb-4">EXPERT Q&amp;A</p>
-                    <h1 className="text-[32px] leading-[1.15] md:text-[52px] md:leading-[1.1] font-semibold tracking-tight text-dark break-keep max-w-2xl">
-                        혼자 고민하지 마세요,<br />가장 가까운 답
-                    </h1>
-                    <p className="mt-5 text-base md:text-lg text-gray-500 max-w-lg break-keep">
-                        지역 전문가와 실제 사업자의 경험이 쌓이는 지식 커뮤니티입니다.
-                    </p>
-                    <div className="flex items-center gap-2 flex-wrap mt-8">
-                        {CATEGORIES.map((c) => (
-                            <button
-                                key={c}
-                                type="button"
-                                onClick={() => setCategory(c)}
-                                className={`text-xs font-semibold rounded-full px-3.5 py-2 transition-colors ${category === c ? 'text-white bg-brand' : 'text-gray-500 bg-soft hover:bg-[#eceef2]'}`}
-                            >
-                                {c}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </section>
+        <div className="min-h-screen overflow-y-auto bg-white">
+            <MgPageHead
+                crumbs={
+                    <>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="hover:text-white">홈</button>
+                        <span className="mx-1.5" aria-hidden="true">/</span> Q&amp;A
+                    </>
+                }
+                eyebrow="EXPERT Q&A"
+                title={<>혼자 고민하지 마세요,<br />가장 가까운 답</>}
+                desc="지역 전문가와 실제 사업자의 경험이 쌓이는 지식 커뮤니티입니다."
+            />
 
-            <section className="pb-10 px-6">
-                <div className="container mx-auto max-w-7xl">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg md:text-xl font-semibold text-dark">최근 질문</h2>
-                        <span className="text-xs text-gray-400">최신순</span>
-                    </div>
+            <section className="py-14 md:py-20" aria-labelledby="qna-list">
+                <MgWrap>
+                    <MgSectionHead id="qna-list" title="최근 질문" extra={<span className="text-[13px] text-sub">최신순</span>} />
+                    <MgTabs className="mb-2 mt-[26px]" label="질문 분류" value={category} onChange={setCategory} items={CATEGORIES.map((c) => [c, c])} />
                     {filtered.length > 0 ? (
-                        <div className="flex gap-4 overflow-x-auto pb-3 -mx-6 px-6">
+                        <ul className="border-t border-[#0c0c0e]">
                             {filtered.map((q) => (
-                                <a
-                                    key={q.title}
-                                    href="#"
-                                    onClick={(e) => e.preventDefault()}
-                                    className="group shrink-0 w-[220px] sm:w-[240px] transition-transform duration-300 hover:-translate-y-1"
-                                >
-                                    <div className="relative rounded-2xl overflow-hidden aspect-[4/3] mb-3 grid place-items-center" style={{ background: q.bg }}>
-                                        <span className={`absolute top-3 left-3 inline-flex items-center justify-center h-5 px-2.5 rounded-full text-[11px] font-bold text-white whitespace-nowrap ${q.badgeClass}`}>{q.category}</span>
-                                        <span className="text-5xl font-black text-black/10">?</span>
-                                    </div>
-                                    <p className="text-sm font-semibold leading-snug break-keep line-clamp-2 min-h-[2.5em] text-dark group-hover:text-brand transition-colors">{q.title}</p>
-                                    <p className="text-xs text-gray-500 mt-1">{q.meta}</p>
-                                </a>
+                                <li key={q.title} className="border-b border-line py-5 md:py-6">
+                                    <span className={`text-[14px] font-semibold ${q.badgeClass}`}>{q.category}</span>
+                                    <p className="mt-1.5 break-keep text-[16px] font-semibold leading-snug text-ink md:text-[17px]">{q.title}</p>
+                                    <p className="mt-1.5 text-[14px] text-sub">{q.meta}</p>
+                                </li>
                             ))}
-                        </div>
+                        </ul>
                     ) : (
-                        <div className="py-10 text-center text-gray-400 bg-soft rounded-2xl">
-                            <p className="text-sm">해당 카테고리의 질문이 아직 없습니다.</p>
-                        </div>
+                        <p className="rounded-xl bg-card px-5 py-11 text-center text-[15px] text-sub">해당 카테고리의 질문이 아직 없습니다.</p>
                     )}
-                    <p className="text-center text-xs text-gray-400 mt-8">※ 위 항목은 준비 중인 예시 데이터입니다. 실제 질문/답변 기능은 순차 적용될 예정입니다.</p>
-                </div>
+                    <p className="mt-6 break-keep text-[13px] text-sub">※ 위 항목은 준비 중인 예시 데이터입니다. 실제 질문/답변 기능은 순차 적용될 예정입니다.</p>
+                </MgWrap>
             </section>
 
-            <section className="px-6 pb-24 md:pb-32">
-                <div
-                    className="max-w-[760px] mx-auto rounded-[32px] p-8 md:p-10 text-white relative overflow-hidden border border-white/10"
-                    style={{ background: 'linear-gradient(160deg,#0b0b0c,#071a37 90%)' }}
-                >
-                    <span className="absolute -right-4 -bottom-14 text-[190px] font-bold text-white/[0.04] select-none leading-none pointer-events-none">?</span>
-                    <h3 className="relative z-10 text-xl md:text-2xl font-semibold mb-2 break-keep text-white">사업하면서 지금 가장 막힌 게 뭔가요?</h3>
-                    <p className="relative z-10 text-sm text-white/50 break-keep">질문을 남기면 카테고리에 맞는 전문가와 사업자가 답할 수 있도록 연결합니다.</p>
-                    <textarea
-                        value={question}
-                        onChange={(e) => setQuestion(e.target.value)}
-                        placeholder="예: 직원 한 명을 처음 채용하려고 하는데 4대보험부터 어떻게 준비해야 하나요?"
-                        className="relative z-10 w-full h-28 my-5 border border-white/10 bg-white/5 outline-none rounded-2xl p-3.5 resize-none text-sm text-white placeholder:text-white/30"
-                    />
-                    <button
-                        type="button"
-                        onClick={handleSubmit}
-                        className="relative z-10 w-full border-0 bg-brand hover:bg-[#00327a] transition-colors text-white font-semibold rounded-xl py-3"
-                    >
-                        질문 등록하기
-                    </button>
-                </div>
+            <section className="bg-sky py-10 md:py-[60px]" aria-labelledby="qna-ask">
+                <MgWrap>
+                    <div className="mx-auto max-w-[760px] rounded-[18px] border border-skyLine bg-white px-5 pb-8 pt-9 md:px-[60px] md:pb-12 md:pt-14">
+                        <h2 id="qna-ask" className="break-keep text-center text-[22px] font-bold tracking-tight text-ink md:text-[28px]">사업하면서 지금 가장 막힌 게 뭔가요?</h2>
+                        <p className="mt-2.5 break-keep text-center text-[15px] text-sub">질문을 남기면 카테고리에 맞는 전문가와 사업자가 답할 수 있도록 연결합니다.</p>
+                        <label htmlFor="qna-question" className="mb-2.5 mt-7 block text-[14px] font-bold text-[#1a1a1a]">질문 내용</label>
+                        <textarea
+                            id="qna-question"
+                            value={question}
+                            onChange={(e) => setQuestion(e.target.value)}
+                            placeholder="예: 직원 한 명을 처음 채용하려고 하는데 4대보험부터 어떻게 준비해야 하나요?"
+                            className="h-32 w-full resize-none rounded-lg border border-line2 p-4 text-[15px] text-[#222] outline-none focus:border-royal"
+                        />
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            className="mt-5 h-[53px] w-full rounded-lg bg-[#1a1a1a] text-[17px] font-bold tracking-tight text-white transition-colors hover:bg-black"
+                        >
+                            질문 등록하기
+                        </button>
+                    </div>
+                </MgWrap>
             </section>
         </div>
     );

@@ -93,6 +93,18 @@ export const groupService = {
     return updateDoc(doc(db, 'groups', groupId), { poster: poster || '', updatedAt: serverTimestamp() });
   },
 
+  /** 운영진: 홈 표시(모집중 open / 모집예정 soon / 숨김 hidden) */
+  setGroupRecruitAdmin(groupId, recruit) {
+    return updateDoc(doc(db, 'groups', groupId), { recruit: ['open', 'soon', 'hidden'].includes(recruit) ? recruit : 'open', updatedAt: serverTimestamp() });
+  },
+  /** 운영진: 홈 알림 신청 목록 */
+  subscribeInterestAlerts(callback) {
+    return onSnapshot(collection(db, 'interestAlerts'), (snap) => callback(snap.docs.map(withId).sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt))), () => callback([]));
+  },
+  deleteInterestAlert(id) {
+    return deleteDoc(doc(db, 'interestAlerts', id));
+  },
+
   // ── 멤버 ──
   subscribeMembers(groupId, callback) {
     return onSnapshot(collection(db, 'groups', groupId, 'members'), (snap) => callback(snap.docs.map(withId)), () => callback([]));

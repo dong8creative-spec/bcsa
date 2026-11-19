@@ -234,7 +234,7 @@ export const NewsManagement = () => {
             type="button"
             disabled={saving}
             onClick={handleSave}
-            className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors disabled:opacity-50"
+            className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#1f3bb8] transition-colors disabled:opacity-50"
           >
             {saving ? '저장 중…' : editingId ? '수정 저장' : '등록'}
           </button>

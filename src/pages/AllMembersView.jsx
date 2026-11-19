@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 import { firebaseService } from '../services/firebaseService';
 import { translateFirebaseError } from '../utils/errorUtils';
 import ModalPortal from '../components/ModalPortal';
+import { MgWrap, MgPageHead, MgInfoTable } from '../components/mg/Mg';
 
 const PAGE_SIZE = 10;
 
@@ -78,6 +78,31 @@ const formatPhoneDisplay = (phone) => {
     if (digits.length < 8) return '010-0000-0000';
     return digits.slice(0, 3) + '-' + digits.slice(3, 7) + '-' + digits.slice(-4);
 };
+
+/** 등급 표시(개편 규칙: 검정·로얄블루·하늘·회색만 사용) */
+const gradeBadgeClass = (grade) => (
+    grade === '마스터' ? 'bg-[#0c0c0e] text-white' :
+    grade === '운영진' ? 'bg-royal text-white' :
+    grade === '파트너사' ? 'border border-royal bg-white text-royal' :
+    grade === '사업자' ? 'bg-sky text-royal' :
+    'bg-card text-sub'
+);
+
+const formatJoinDate = (member) => (
+    member.createdAt?.toDate?.().toLocaleDateString('ko-KR') ?? (typeof member.createdAt === 'string' ? new Date(member.createdAt).toLocaleDateString('ko-KR') : null) ?? '-'
+);
+
+const SORT_OPTIONS = [
+    ['memberGrade', '회원등급'],
+    ['name', '회원명'],
+    ['district', '지역구'],
+    ['company', '회사명'],
+    ['industry', '업종/업태'],
+    ['createdAt', '가입일자'],
+];
+
+const FIELD_LABEL = 'mb-2 flex items-center gap-1.5 text-[14px] font-bold text-[#1a1a1a]';
+const FIELD_INPUT = 'h-12 w-full rounded-lg border border-line2 bg-white px-3.5 text-[15px] text-[#222] outline-none placeholder:text-[#9a9893] focus:border-royal';
 
 const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage: currentPageProp, onPageChange }) => {
     const [searchName, setSearchName] = useState('');
@@ -249,294 +274,198 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
         setCurrentPage(1);
     };
 
+    // 관리자가 바꾼 화면 제목(pageTitles.members)이 있으면 그 글을 쓴다(글 크기·굵기는 개편 규칙을 따름)
+    const pageTitleText = pageTitles?.members?.text || '먼저가본 회원';
+
     return (
-        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in overflow-y-auto min-h-0">
-            <div className="container mx-auto max-w-7xl">
-                <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-                    <div className="w-full text-center md:text-left">
-                        <PageTitle pageKey="members" pageTitles={pageTitles} defaultText="부청사 회원" />
-                        <p className="text-gray-500 text-sm">신뢰 기반의 인맥 네트워킹</p>
-                    </div>
-                    <div className="w-full flex justify-end">
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-bold hover:underline px-4 py-2 rounded-lg hover:bg-brand/5 transition-colors">
-                            <Icons.ArrowLeft size={20} /> 메인으로 돌아가기
-                        </button>
-                    </div>
-                </div>
+        <div className="min-h-screen min-h-0 overflow-y-auto bg-white">
+            <MgPageHead
+                eyebrow="MEMBERS"
+                title={<span style={{ whiteSpace: 'pre-line' }}>{pageTitleText}</span>}
+                desc="신뢰 기반의 인맥 네트워킹"
+            >
+                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="mt-6 inline-flex h-11 items-center gap-2 rounded-lg border border-white/30 px-4 text-[15px] font-semibold text-white transition-colors hover:border-white">
+                    <Icons.ArrowLeft size={18} /> 메인으로 돌아가기
+                </button>
+            </MgPageHead>
 
-                {/* 검색바 */}
-                <div className="bg-white rounded-[24px] border border-black/[0.06] p-6 mb-8">
-                    <div className="flex flex-col md:flex-row gap-0 items-center">
-                        <div className="flex-1 w-full px-4 border-b md:border-b-0 md:border-r border-black/[0.06] py-3">
-                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
-                                <Icons.Search size={14} className="text-gray-400" /> 이름 검색
+            <section className="py-10 md:py-14" aria-label="회원 명단">
+                <MgWrap>
+                    {/* 검색·거르기 */}
+                    <div className="rounded-xl bg-card p-4 md:p-6">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 md:gap-4">
+                            <div>
+                                <label htmlFor="members-search-name" className={FIELD_LABEL}><Icons.Search size={15} className="text-royal" aria-hidden="true" /> 이름 검색</label>
+                                <input id="members-search-name" type="text" placeholder="이름을 입력하세요" className={FIELD_INPUT} value={searchName} onChange={e => setSearchName(e.target.value)} />
                             </div>
-                            <input 
-                                type="text" 
-                                placeholder="이름을 입력하세요" 
-                                className="w-full font-medium text-gray-900 bg-transparent outline-none text-sm placeholder-gray-300" 
-                                value={searchName} 
-                                onChange={e => setSearchName(e.target.value)}
-                            />
-                        </div>
-                        <div className="w-full md:w-48 px-4 border-b md:border-b-0 md:border-r border-black/[0.06] py-3">
-                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
-                                <Icons.Briefcase size={14} className="text-gray-400" /> 업종 검색
+                            <div>
+                                <label htmlFor="members-search-industry" className={FIELD_LABEL}><Icons.Briefcase size={15} className="text-royal" aria-hidden="true" /> 업종 검색</label>
+                                <input id="members-search-industry" type="text" placeholder="업종을 입력하세요" className={FIELD_INPUT} value={searchIndustry} onChange={e => setSearchIndustry(e.target.value)} />
                             </div>
-                            <input 
-                                type="text" 
-                                placeholder="업종을 입력하세요" 
-                                className="w-full font-medium text-gray-900 bg-transparent outline-none text-sm placeholder-gray-300" 
-                                value={searchIndustry} 
-                                onChange={e => setSearchIndustry(e.target.value)}
-                            />
-                        </div>
-                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-black/[0.06] py-3">
-                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
-                                <Icons.MapPin size={14} className="text-gray-400" /> 지역
+                            <div>
+                                <label htmlFor="members-search-region" className={FIELD_LABEL}><Icons.MapPin size={15} className="text-royal" aria-hidden="true" /> 지역</label>
+                                <input id="members-search-region" type="text" placeholder="지역을 입력하세요" className={FIELD_INPUT} value={searchRegion} onChange={e => setSearchRegion(e.target.value)} />
                             </div>
-                            <input 
-                                type="text" 
-                                placeholder="지역을 입력하세요" 
-                                className="w-full font-medium text-gray-900 bg-transparent outline-none text-sm placeholder-gray-300" 
-                                value={searchRegion} 
-                                onChange={e => setSearchRegion(e.target.value)}
-                            />
-                        </div>
-                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-black/[0.06] py-3">
-                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
-                                <Icons.MapPin size={14} className="text-gray-400" /> 지역구
+                            <div>
+                                <label htmlFor="members-filter-district" className={FIELD_LABEL}><Icons.MapPin size={15} className="text-royal" aria-hidden="true" /> 지역구</label>
+                                <select id="members-filter-district" className={`cursor-pointer ${FIELD_INPUT}`} value={selectedDistrictFilter} onChange={e => setSelectedDistrictFilter(e.target.value)}>
+                                    {districts.map(district => (
+                                        <option key={district} value={district}>{district}</option>
+                                    ))}
+                                </select>
                             </div>
-                            <select 
-                                className="w-full font-medium text-gray-900 bg-transparent outline-none cursor-pointer text-sm" 
-                                value={selectedDistrictFilter} 
-                                onChange={e => setSelectedDistrictFilter(e.target.value)}
-                            >
-                                {districts.map(district => (
-                                    <option key={district} value={district}>{district}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="w-full md:w-40 px-4 border-b md:border-b-0 md:border-r border-black/[0.06] py-3">
-                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
-                                <Icons.Tag size={14} className="text-gray-400" /> 업종
+                            <div>
+                                <label htmlFor="members-filter-industry" className={FIELD_LABEL}><Icons.Tag size={15} className="text-royal" aria-hidden="true" /> 업종</label>
+                                <select id="members-filter-industry" className={`cursor-pointer ${FIELD_INPUT}`} value={selectedIndustryFilter} onChange={e => setSelectedIndustryFilter(e.target.value)}>
+                                    {industries.map(industry => (
+                                        <option key={industry} value={industry}>{industry}</option>
+                                    ))}
+                                </select>
                             </div>
-                            <select 
-                                className="w-full font-medium text-gray-900 bg-transparent outline-none cursor-pointer text-sm" 
-                                value={selectedIndustryFilter} 
-                                onChange={e => setSelectedIndustryFilter(e.target.value)}
-                            >
-                                {industries.map(industry => (
-                                    <option key={industry} value={industry}>{industry}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="w-full md:w-32 px-4 py-3">
-                            <div className="flex items-center gap-2 mb-1 text-gray-400 text-xs font-bold uppercase tracking-wider">
-                                <Icons.Award size={14} className="text-gray-400" /> 등급
+                            <div>
+                                <label htmlFor="members-filter-grade" className={FIELD_LABEL}><Icons.Award size={15} className="text-royal" aria-hidden="true" /> 등급</label>
+                                <select id="members-filter-grade" className={`cursor-pointer ${FIELD_INPUT}`} value={selectedGradeFilter} onChange={e => setSelectedGradeFilter(e.target.value)}>
+                                    {grades.map(grade => (
+                                        <option key={grade} value={grade}>{grade}</option>
+                                    ))}
+                                </select>
                             </div>
-                            <select 
-                                className="w-full font-medium text-gray-900 bg-transparent outline-none cursor-pointer text-sm" 
-                                value={selectedGradeFilter} 
-                                onChange={e => setSelectedGradeFilter(e.target.value)}
-                            >
-                                {grades.map(grade => (
-                                    <option key={grade} value={grade}>{grade}</option>
-                                ))}
-                            </select>
                         </div>
                     </div>
-                    <div className="text-xs text-gray-500 mt-4 px-4 text-center">
-                        {hasActiveFilter ? (
-                            <>검색 결과: <span className="font-bold text-brand">{filteredMembers.length}</span>명</>
-                        ) : (
-                            <>전체: <span className="font-bold text-brand">{filteredMembers.length}</span>명</>
-                        )}
-                    </div>
-                </div>
 
-                {/* 회원명단: 회원등급 | 회원명 | 지역구 | 회사명 | 업종/업태 | 가입일자 */}
-                <div className="bg-white rounded-[24px] border border-black/[0.06] overflow-hidden mb-6">
-                    <div className="overflow-x-auto">
-                        <div role="grid" aria-label="회원명단" className="min-w-0">
-                            {/* 헤더 행 — 회원등급·지역구·가입일자 축소, 회사명 확대 */}
-                            <div role="row" className="grid border-b border-black/[0.06] bg-soft h-14 min-h-[3.5rem] grid-cols-[0.5fr_1fr_0.6fr_1.7fr] md:grid-cols-[0.5fr_1fr_0.6fr_1.9fr_1fr_0.75fr]">
-                                <div role="columnheader" aria-sort={sortKey === 'memberGrade' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="relative flex items-center justify-center px-2 md:px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('memberGrade')}>
-                                    <span className="text-center">회원등급</span>
-                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
-                                            {sortKey === 'memberGrade' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} className="text-brand" /> : <Icons.ChevronDown size={14} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-50" />}
-                                        </span>
-                                    </div>
-                                    <div role="columnheader" aria-sort={sortKey === 'name' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="relative flex items-center justify-center px-2 md:px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('name')}>
-                                        <span className="text-center">회원명</span>
-                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
-                                            {sortKey === 'name' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} className="text-brand" /> : <Icons.ChevronDown size={14} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-50" />}
-                                        </span>
-                                    </div>
-                                    <div role="columnheader" aria-sort={sortKey === 'district' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="relative flex items-center justify-center px-2 md:px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('district')}>
-                                        <span className="text-center">지역구</span>
-                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
-                                            {sortKey === 'district' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} className="text-brand" /> : <Icons.ChevronDown size={14} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-50" />}
-                                        </span>
-                                    </div>
-                                    <div role="columnheader" aria-sort={sortKey === 'company' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="relative flex items-center justify-center px-2 md:px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('company')}>
-                                        <span className="text-center">회사명</span>
-                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
-                                            {sortKey === 'company' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} className="text-brand" /> : <Icons.ChevronDown size={14} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-50" />}
-                                        </span>
-                                    </div>
-                                    <div role="columnheader" aria-sort={sortKey === 'industry' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="hidden md:flex relative items-center justify-center px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('industry')}>
-                                        <span className="text-center">업종/업태</span>
-                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
-                                            {sortKey === 'industry' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} className="text-brand" /> : <Icons.ChevronDown size={14} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-50" />}
-                                        </span>
-                                    </div>
-                                    <div role="columnheader" aria-sort={sortKey === 'createdAt' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined} className="hidden md:flex relative items-center justify-center px-4 py-3 text-sm font-bold text-gray-700 cursor-pointer hover:bg-brand/10 select-none" onClick={() => handleSort('createdAt')}>
-                                        <span className="text-center">가입일자</span>
-                                        <span className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 shrink-0" aria-hidden="true">
-                                            {sortKey === 'createdAt' ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} className="text-brand" /> : <Icons.ChevronDown size={14} className="text-brand" />) : <Icons.ChevronUp size={14} className="opacity-50" />}
-                                        </span>
-                                </div>
-                            </div>
-                            {/* 데이터 행 */}
-                            {paginatedMembers.length === 0 ? (
-                                <div role="row" className="grid h-14 min-h-[3.5rem] border-b border-black/[0.06] grid-cols-[0.5fr_1fr_0.6fr_1.7fr] md:grid-cols-[0.5fr_1fr_0.6fr_1.9fr_1fr_0.75fr]">
-                                    <div role="gridcell" className="col-span-4 md:col-span-6 flex items-center justify-center px-4 py-3 text-gray-500 text-sm">
-                                        조건에 맞는 회원이 없습니다.
-                                    </div>
-                                </div>
-                            ) : (
-                                paginatedMembers.map((member, idx) => (
-                                    <div
-                                        key={member.id || member.uid || idx}
-                                        role="row"
-                                        className="grid border-b border-black/[0.06] hover:bg-brand/5 cursor-pointer transition-colors h-14 min-h-[3.5rem] grid-cols-[0.5fr_1fr_0.6fr_1.7fr] md:grid-cols-[0.5fr_1fr_0.6fr_1.9fr_1fr_0.75fr]"
-                                        onClick={() => setSelectedMember(member)}
+                    {/* 인원 · 정렬 */}
+                    <div className="mt-6 flex flex-col gap-3 border-b border-[#0c0c0e] pb-4 md:flex-row md:items-center md:justify-between">
+                        <p className="text-[16px] text-ink" aria-live="polite">
+                            {hasActiveFilter ? '검색 결과' : '전체'} <span className="font-bold text-royal">{filteredMembers.length}</span>명
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="정렬">
+                            <span className="mr-1 text-[14px] text-sub">정렬</span>
+                            {SORT_OPTIONS.map(([key, label]) => {
+                                const on = sortKey === key;
+                                return (
+                                    <button
+                                        key={key}
+                                        type="button"
+                                        aria-pressed={on}
+                                        aria-label={`${label} ${on ? (sortOrder === 'asc' ? '오름차순' : '내림차순') : ''}으로 정렬`}
+                                        onClick={() => handleSort(key)}
+                                        className={`inline-flex min-h-[40px] items-center gap-1 rounded-full border px-3.5 text-[14px] transition-colors ${on ? 'border-royal font-semibold text-royal' : 'border-line2 text-[#333] hover:border-ink'}`}
                                     >
-                                        <div role="gridcell" className="flex items-center justify-center px-2 md:px-4 py-3 text-sm text-gray-700">
-                                            {member.memberGrade ? (
-                                                <>
-                                                    <span
-                                                        className={`md:hidden inline-block w-4 h-4 rounded-full flex-shrink-0 ${
-                                                            member.memberGrade === '마스터' ? 'bg-gradient-to-r from-yellow-500 to-yellow-700' :
-                                                            member.memberGrade === '운영진' ? 'bg-red-600 border border-red-700' :
-                                                            member.memberGrade === '파트너사' ? 'bg-brand' :
-                                                            member.memberGrade === '사업자' ? 'bg-blue-600' :
-                                                            member.memberGrade === '예창' ? 'bg-gray-500' :
-                                                            'bg-gray-400'
-                                                        }`}
-                                                        title={member.memberGrade}
-                                                        aria-label={member.memberGrade}
-                                                    />
-                                                    <span className={`hidden md:inline-block px-2 py-0.5 text-xs font-bold rounded-full ${
-                                                        member.memberGrade === '마스터' ? 'bg-gradient-to-r from-yellow-500 to-yellow-700 text-white' :
-                                                        member.memberGrade === '운영진' ? 'bg-white text-red-600 border border-red-600' :
-                                                        member.memberGrade === '파트너사' ? 'bg-brand text-white' :
-                                                        member.memberGrade === '사업자' ? 'bg-gray-200 text-blue-700' :
-                                                        member.memberGrade === '예창' ? 'bg-gray-200 text-gray-700' :
-                                                        'bg-gray-200 text-gray-600'
-                                                    }`}>
-                                                        {member.memberGrade}
-                                                    </span>
-                                                </>
-                                            ) : (
-                                                <span>-</span>
-                                            )}
-                                        </div>
-                                        <div role="gridcell" className="flex items-center justify-center px-2 md:px-4 py-3 text-sm font-medium text-dark">{member.name || '-'}</div>
-                                        <div role="gridcell" className="flex items-center justify-center px-2 md:px-4 py-3 text-sm text-gray-600">{getDistrictFromAddress(getMemberAddressString(member)) || '-'}</div>
-                                        <div role="gridcell" className="flex items-center justify-center px-2 md:px-4 py-3 text-sm text-gray-600">{member.company || '-'}</div>
-                                        <div role="gridcell" className="hidden md:flex items-center justify-center px-4 py-3 text-sm text-gray-600">{member.industry || member.businessCategory || '-'}</div>
-                                        <div role="gridcell" className="hidden md:flex items-center justify-center px-4 py-3 text-sm text-gray-600">
-                                            {member.createdAt?.toDate?.().toLocaleDateString('ko-KR') ?? (typeof member.createdAt === 'string' ? new Date(member.createdAt).toLocaleDateString('ko-KR') : null) ?? '-'}
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+                                        {label}
+                                        {on ? (sortOrder === 'asc' ? <Icons.ChevronUp size={14} aria-hidden="true" /> : <Icons.ChevronDown size={14} aria-hidden="true" />) : null}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
-                    {/* 페이지네이션: 10명 초과 시 표시 */}
+                    {/* 회원 카드 목록: 회원등급 | 회원명 | 지역구 | 회사명 | 업종/업태 | 가입일자 */}
+                    {paginatedMembers.length === 0 ? (
+                        <p className="mt-6 rounded-xl bg-card px-5 py-11 text-center text-[15px] text-sub">조건에 맞는 회원이 없습니다.</p>
+                    ) : (
+                        <ul className="mt-5 grid gap-2.5 md:grid-cols-2 md:gap-3">
+                            {paginatedMembers.map((member, idx) => {
+                                const district = getDistrictFromAddress(getMemberAddressString(member));
+                                return (
+                                    <li key={member.id || member.uid || idx} className="min-w-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedMember(member)}
+                                            className="flex h-full min-h-[108px] w-full min-w-0 flex-col rounded-xl border border-line bg-white px-4 py-4 text-left transition-colors hover:border-ink md:px-5"
+                                        >
+                                            <span className="flex w-full items-center gap-2">
+                                                {member.memberGrade ? (
+                                                    <span className={`shrink-0 px-2 py-0.5 text-[13px] font-semibold ${gradeBadgeClass(member.memberGrade)}`}>{member.memberGrade}</span>
+                                                ) : null}
+                                                <span className="min-w-0 truncate text-[17px] font-semibold text-ink md:text-[18px]">{member.name || '-'}</span>
+                                                <span className="ml-auto shrink-0 text-[13px] text-sub">{formatJoinDate(member)}</span>
+                                            </span>
+                                            <span className="mt-2 block w-full truncate text-[15px] text-[#333]">{member.company || '-'}</span>
+                                            <span className="mt-1 block w-full truncate text-[14px] text-sub">
+                                                {[district || null, member.industry || member.businessCategory || null].filter(Boolean).join(' · ') || '-'}
+                                            </span>
+                                        </button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
+
+                    {/* 페이지 넘기기: 10명 초과 시 표시 */}
                     {totalPages > 1 && (
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 px-4 py-3 border-t border-black/[0.06] bg-gray-50/50 text-center">
-                            <p className="text-sm text-gray-600 text-center order-2 sm:order-1">
-                                전체 <span className="font-bold text-brand">{sortedMembers.length}</span>명
+                        <div className="mt-8 flex flex-col items-center justify-center gap-3 text-center sm:flex-row sm:gap-6">
+                            <p className="order-2 text-[14px] text-sub sm:order-1">
+                                전체 <span className="font-bold text-royal">{sortedMembers.length}</span>명
                                 {sortedMembers.length > PAGE_SIZE && (
                                     <> · {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, sortedMembers.length)}번 표시</>
                                 )}
                             </p>
-                            <div className="flex items-center justify-center gap-2 order-1 sm:order-2">
+                            <div className="order-1 flex items-center justify-center gap-3 sm:order-2">
                                 <button
                                     type="button"
                                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                     disabled={currentPage <= 1}
-                                    className="px-3 py-1.5 rounded-full border border-black/[0.06] text-sm font-semibold text-gray-600 hover:bg-brand/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="h-11 rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                     이전
                                 </button>
-                                <span className="text-sm text-gray-600 text-center">
+                                <span className="min-w-[56px] text-[15px] text-ink">
                                     {currentPage} / {totalPages}
                                 </span>
                                 <button
                                     type="button"
                                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                     disabled={currentPage >= totalPages}
-                                    className="px-3 py-1.5 rounded-full border border-black/[0.06] text-sm font-semibold text-gray-600 hover:bg-brand/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="h-11 rounded-lg border border-line2 bg-white px-4 text-[15px] font-semibold text-ink hover:border-ink disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                     다음
                                 </button>
                             </div>
                         </div>
                     )}
-                </div>
+                </MgWrap>
+            </section>
 
-                {/* 회원 상세 모달 (ESC로 닫기) */}
-                {selectedMember && (
-                    <ModalPortal>
-                    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedMember(null); }}>
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-                        <div className={`bg-white rounded-2xl shadow-sm border border-black/[0.06] w-full z-10 flex flex-col max-md:scale-[0.8] origin-center ${hasSite ? 'max-w-7xl max-h-[92vh]' : 'max-w-6xl max-h-[calc(90vh-100px)]'}`} style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
-                            <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
-                            {/* 선택된 회원 상세 정보 */}
-                            <div className="border-t border-black/[0.06] pt-6">
-                                <div className="flex flex-col md:flex-row gap-6 mb-6">
-                                    <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-brand/20 shrink-0 mx-auto md:mx-0">
-                                        <img 
-                                            src={selectedMember.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name || '회원')}&background=random`} 
-                                            alt={selectedMember.name || '회원 프로필'} 
-                                            className="w-full h-full object-cover" 
+            {/* 회원 상세 창 (ESC로 닫기) */}
+            {selectedMember && (
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedMember(null); }}>
+                        {/* 예전 구조 유지: 바깥 눌러 닫기 동작이 바뀌지 않도록 덮개 층을 그대로 둔다 */}
+                        <div className="absolute inset-0" aria-hidden="true"></div>
+                        <div role="dialog" aria-modal="true" aria-labelledby="member-detail-name" className={`z-10 flex w-full flex-col rounded-[18px] bg-white ${hasSite ? 'max-h-[calc(100dvh-32px)] max-w-7xl md:max-h-[92vh]' : 'max-h-[calc(100dvh-32px)] max-w-6xl md:max-h-[calc(90vh-100px)]'}`} style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-scroll min-h-0 flex-1 overflow-y-auto p-5 md:p-8">
+                                {/* 선택된 회원 상세 정보 */}
+                                <div className="mb-6 flex flex-col gap-5 md:flex-row md:gap-6">
+                                    <div className="mx-auto h-28 w-28 shrink-0 overflow-hidden rounded-xl border border-line bg-card md:mx-0 md:h-32 md:w-32">
+                                        <img
+                                            src={selectedMember.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name || '회원')}&background=random`}
+                                            alt={selectedMember.name || '회원 프로필'}
+                                            className="h-full w-full object-cover"
                                             loading="lazy"
                                             decoding="async"
-                                            onError={(e) => { 
-                                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name || '회원')}&background=random`; 
-                                            }} 
+                                            onError={(e) => {
+                                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedMember.name || '회원')}&background=random`;
+                                            }}
                                         />
                                     </div>
-                                    <div className="flex-1">
-                                    <h3 className="text-2xl font-bold text-dark mb-2">{selectedMember.name || '이름 없음'}</h3>
-                                    <p className="text-brand font-medium mb-2">
-                                        {selectedMember.company || selectedMember.role 
-                                            ? [selectedMember.company, selectedMember.role].filter(Boolean).join(' | ')
-                                            : '정보 없음'}
-                                    </p>
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <span className="inline-block px-3 py-1 bg-brand/10 text-brand text-sm font-bold rounded-full">{selectedMember.industry || selectedMember.businessCategory || '업종 미지정'}</span>
-                                        {selectedMember.memberGrade && (
-                                            <span className={`inline-block px-3 py-1 text-sm font-bold rounded-full ${
-                                                selectedMember.memberGrade === '마스터' ? 'bg-gradient-to-r from-yellow-500 to-yellow-700 text-white shadow-lg' :
-                                                selectedMember.memberGrade === '운영진' ? 'bg-white text-red-600 border-2 border-red-600' :
-                                                selectedMember.memberGrade === '파트너사' ? 'bg-brand text-white' :
-                                                selectedMember.memberGrade === '사업자' ? 'bg-gray-200 text-blue-700' :
-                                                selectedMember.memberGrade === '예창' ? 'bg-gray-200 text-gray-700' :
-                                                'bg-gray-200 text-gray-600'
-                                            }`} style={selectedMember.memberGrade === '마스터' ? { textShadow: '0 1px 2px rgba(0,0,0,0.3)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.2)' } : {}}>
-                                                {selectedMember.memberGrade}
-                                            </span>
-                                        )}
-                                    </div>
-                                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                                            <div className="flex items-center gap-1">
-                                                <Icons.Phone className="w-4 h-4" />
+                                    <div className="min-w-0 flex-1">
+                                        <h3 id="member-detail-name" className="mb-1.5 text-[24px] font-bold text-ink md:text-[28px]">{selectedMember.name || '이름 없음'}</h3>
+                                        <p className="mb-3 text-[16px] font-semibold text-royal">
+                                            {selectedMember.company || selectedMember.role
+                                                ? [selectedMember.company, selectedMember.role].filter(Boolean).join(' | ')
+                                                : '정보 없음'}
+                                        </p>
+                                        <div className="mb-4 flex flex-wrap items-center gap-2">
+                                            <span className="inline-block bg-sky px-3 py-1 text-[14px] font-semibold text-royal">{selectedMember.industry || selectedMember.businessCategory || '업종 미지정'}</span>
+                                            {selectedMember.memberGrade && (
+                                                <span className={`inline-block px-3 py-1 text-[14px] font-semibold ${gradeBadgeClass(selectedMember.memberGrade)}`}>
+                                                    {selectedMember.memberGrade}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="mb-3 flex flex-wrap items-center gap-4 text-[15px] text-[#333]">
+                                            <div className="flex items-center gap-1.5">
+                                                <Icons.Phone className="h-4 w-4 text-sub" aria-hidden="true" />
                                                 <span>
                                                     {selectedMember.phonePublic
                                                         ? (selectedMember.phone || '010-****-****')
@@ -552,112 +481,89 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                                 </span>
                                             </div>
                                             {selectedMember.companyPhone && (
-                                                <div className="flex items-center gap-1">
-                                                    <Icons.Phone className="w-4 h-4 text-gray-500" />
-                                                    <span className="text-gray-600">회사 {selectedMember.companyPhone}</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Icons.Phone className="h-4 w-4 text-sub" aria-hidden="true" />
+                                                    <span>회사 {selectedMember.companyPhone}</span>
                                                 </div>
                                             )}
                                         </div>
                                         {/* PortOne 본인인증 상태 표시 */}
                                         {selectedMember.isIdentityVerified ? (
-                                            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg">
-                                                <Icons.CheckCircle className="w-4 h-4 text-green-600" />
-                                                <span className="text-xs font-bold text-green-700">PortOne 본인인증 완료</span>
+                                            <div className="inline-flex items-center gap-2 rounded-lg border border-skyLine bg-sky px-3 py-2">
+                                                <Icons.CheckCircle className="h-4 w-4 text-royal" aria-hidden="true" />
+                                                <span className="text-[14px] font-semibold text-royal">PortOne 본인인증 완료</span>
                                             </div>
                                         ) : (
-                                            <div className="flex items-center gap-2 px-3 py-1.5 bg-soft border border-black/[0.06] rounded-lg">
-                                                <Icons.X className="w-4 h-4 text-gray-400" />
-                                                <span className="text-xs text-gray-500">본인인증 미완료</span>
+                                            <div className="inline-flex items-center gap-2 rounded-lg border border-line bg-card px-3 py-2">
+                                                <Icons.X className="h-4 w-4 text-sub" aria-hidden="true" />
+                                                <span className="text-[14px] text-sub">본인인증 미완료</span>
                                             </div>
                                         )}
                                     </div>
                                 </div>
-                                
+
                                 {/* PortOne 본인인증 정보 상세 (인증 완료 시에만 표시) */}
                                 {selectedMember.isIdentityVerified && (
-                                    <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                                                <Icons.CheckCircle className="w-6 h-6 text-white" />
-                                            </div>
+                                    <div className="mb-6 rounded-xl bg-sky p-4 md:p-6">
+                                        <div className="mb-4 flex items-center gap-2.5">
+                                            <Icons.CheckCircle className="h-5 w-5 text-royal" aria-hidden="true" />
                                             <div>
-                                                <h4 className="font-bold text-green-700 text-lg">PortOne 본인인증 정보</h4>
-                                                <p className="text-xs text-green-600">인증된 개인정보 확인</p>
+                                                <h4 className="text-[18px] font-semibold text-ink">PortOne 본인인증 정보</h4>
+                                                <p className="text-[13px] text-sub">인증된 개인정보 확인</p>
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-white rounded-2xl p-4 border border-green-100">
-                                                <div className="text-xs text-gray-500 mb-2">인증된 이름</div>
-                                                <div className="font-bold text-lg text-green-600">{selectedMember.verifiedName || selectedMember.name}</div>
-                                            </div>
-                                            <div className="bg-white rounded-2xl p-4 border border-green-100">
-                                                <div className="text-xs text-gray-500 mb-2">인증된 전화번호</div>
-                                                <div className="font-bold text-lg text-green-600">
-                                                {selectedMember.phonePublic
-                                                    ? (selectedMember.verifiedPhone || selectedMember.phone || '-')
-                                                    : (
-                                                        <span
-                                                            className="inline-block select-none"
-                                                            style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }}
-                                                            aria-label="연락처 비공개"
-                                                        >
-                                                            {formatPhoneDisplay(selectedMember.verifiedPhone || selectedMember.phone)}
-                                                        </span>
-                                                    )}
-                                            </div>
-                                            </div>
-                                            {selectedMember.verifiedBirthday && (
-                                                <div className="bg-white rounded-2xl p-4 border border-green-100">
-                                                    <div className="text-xs text-gray-500 mb-2">생년월일</div>
-                                                    <div className="font-bold text-lg text-green-600">
-                                                        {selectedMember.verifiedBirthday && typeof selectedMember.verifiedBirthday === 'string' && /^\d{8}$/.test(selectedMember.verifiedBirthday)
-                                                            ? selectedMember.verifiedBirthday.replace(/(\d{4})(\d{2})(\d{2})/, '$1년 $2월 $3일')
-                                                            : selectedMember.verifiedBirthday || '-'}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {selectedMember.verifiedGender && (
-                                                <div className="bg-white rounded-2xl p-4 border border-green-100">
-                                                    <div className="text-xs text-gray-500 mb-2">성별</div>
-                                                    <div className="font-bold text-lg text-green-600">{selectedMember.verifiedGender === 'M' ? '남성' : '여성'}</div>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {selectedMember.impUid && (
-                                            <div className="mt-4 pt-4 border-t border-green-200">
-                                                <div className="flex items-center justify-between bg-white/60 rounded-lg p-3">
-                                                    <span className="text-xs text-gray-500">인증 거래 고유번호</span>
-                                                    <span className="text-xs font-mono text-gray-700 bg-white px-3 py-1 rounded border border-green-100">{selectedMember.impUid}</span>
-                                                </div>
-                                            </div>
-                                        )}
+                                        {/* 이름-값 정보 표: 이름 칸 너비·줄 높이 고정(MgInfoTable) */}
+                                        <MgInfoTable
+                                            className="bg-white px-4 md:px-5"
+                                            rows={[
+                                                ['이름', <span className="font-semibold">{selectedMember.verifiedName || selectedMember.name || '-'}</span>],
+                                                ['전화번호', <span className="font-semibold">
+                                                    {selectedMember.phonePublic
+                                                        ? (selectedMember.verifiedPhone || selectedMember.phone || '-')
+                                                        : (
+                                                            <span
+                                                                className="inline-block select-none"
+                                                                style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }}
+                                                                aria-label="연락처 비공개"
+                                                            >
+                                                                {formatPhoneDisplay(selectedMember.verifiedPhone || selectedMember.phone)}
+                                                            </span>
+                                                        )}
+                                                </span>],
+                                                ['생년월일', selectedMember.verifiedBirthday ? <span className="font-semibold">
+                                                    {typeof selectedMember.verifiedBirthday === 'string' && /^\d{8}$/.test(selectedMember.verifiedBirthday)
+                                                        ? selectedMember.verifiedBirthday.replace(/(\d{4})(\d{2})(\d{2})/, '$1년 $2월 $3일')
+                                                        : selectedMember.verifiedBirthday}
+                                                </span> : null],
+                                                ['성별', selectedMember.verifiedGender ? <span className="font-semibold">{selectedMember.verifiedGender === 'M' ? '남성' : '여성'}</span> : null],
+                                                ['고유번호', selectedMember.impUid ? <span className="break-all font-mono text-[13px] text-[#333]">{selectedMember.impUid}</span> : null],
+                                            ]}
+                                        />
                                     </div>
                                 )}
-                                
+
                                 {/* 사이트 (기입한 경우에만 노출) */}
                                 {selectedMember.companyWebsite && (
-                                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-6">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center">
-                                                <Icons.Info className="w-6 h-6 text-white" />
-                                            </div>
+                                    <div className="mb-6 rounded-xl bg-card p-4 md:p-6">
+                                        <div className="mb-3 flex items-center gap-2.5">
+                                            <Icons.Info className="h-5 w-5 text-royal" aria-hidden="true" />
                                             <div>
-                                                <h4 className="font-bold text-yellow-700 text-lg">사이트</h4>
-                                                <p className="text-xs text-yellow-600">회원이 등록한 사이트</p>
+                                                <h4 className="text-[18px] font-semibold text-ink">사이트</h4>
+                                                <p className="text-[13px] text-sub">회원이 등록한 사이트</p>
                                             </div>
                                         </div>
                                         <div className="mb-2">
-                                            <a href={selectedMember.companyWebsite.startsWith('http') ? selectedMember.companyWebsite : `https://${selectedMember.companyWebsite}`} target="_blank" rel="noopener noreferrer" className="text-sm text-brand font-medium hover:underline break-all">
+                                            <a href={selectedMember.companyWebsite.startsWith('http') ? selectedMember.companyWebsite : `https://${selectedMember.companyWebsite}`} target="_blank" rel="noopener noreferrer" className="break-all text-[15px] font-semibold text-royal hover:underline">
                                                 {selectedMember.companyWebsite}
                                             </a>
                                         </div>
-                                        <p className="text-xs text-gray-500 mb-2">아래에서 미리보기 (일부 사이트는 보안 설정으로 표시되지 않을 수 있습니다)</p>
-                                        <div className={`rounded-xl overflow-hidden border border-yellow-200 bg-white w-full ${isOwnProfile ? 'aspect-video' : ''}`} style={isOwnProfile ? undefined : { height: '320px' }}>
+                                        <p className="mb-2 text-[13px] text-sub">아래에서 미리보기 (일부 사이트는 보안 설정으로 표시되지 않을 수 있습니다)</p>
+                                        <div className={`w-full overflow-hidden border border-line bg-white ${isOwnProfile ? 'aspect-video' : ''}`} style={isOwnProfile ? undefined : { height: '320px' }}>
                                             <div style={{ width: '125%', height: '125%', transform: 'scale(0.8)', transformOrigin: '0 0' }}>
                                                 <iframe
                                                     title="회사 홈페이지 미리보기"
                                                     src={selectedMember.companyWebsite.startsWith('http') ? selectedMember.companyWebsite : `https://${selectedMember.companyWebsite}`}
-                                                    className="w-full h-full"
+                                                    className="h-full w-full"
                                                     style={{ width: '100%', height: '100%' }}
                                                     sandbox="allow-scripts allow-same-origin allow-forms"
                                                     referrerPolicy="no-referrer"
@@ -666,19 +572,16 @@ const AllMembersView = ({ onBack, members, currentUser, pageTitles, currentPage:
                                         </div>
                                     </div>
                                 )}
-
                             </div>
-                            </div>
-                            <div className="shrink-0 border-t border-black/[0.06] p-4 flex justify-end">
-                                <button type="button" onClick={() => setSelectedMember(null)} className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors">
+                            <div className="flex shrink-0 justify-end border-t border-line p-4">
+                                <button type="button" onClick={() => setSelectedMember(null)} className="h-12 rounded-lg bg-[#1a1a1a] px-6 text-[16px] font-bold text-white transition-colors hover:bg-black">
                                     닫기
                                 </button>
                             </div>
                         </div>
                     </div>
-                    </ModalPortal>
-                )}
-            </div>
+                </ModalPortal>
+            )}
         </div>
     );
 };

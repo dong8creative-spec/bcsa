@@ -26,11 +26,11 @@ const escapeHtml = (v) => String(v ?? '')
 const PAGES = [
   {
     path: '/about',
-    title: '소개 | 부청사 - 부산 청년 사업가 커뮤니티',
-    description: '2017년부터 부산·경남 청년 사업가들의 성장과 연결을 돕는 비즈니스 플랫폼 부청사를 소개합니다. 부산사업자모임, 부산창업 커뮤니티의 중심.',
+    title: '소개 | 먼저가본 - 부산 청년 사업가 커뮤니티',
+    description: '2017년부터 부산·경남 청년 사업가들의 성장과 연결을 돕는 비즈니스 플랫폼 먼저가본을 소개합니다. 부산사업자모임, 부산창업 커뮤니티의 중심.',
     bodyAppend: `
 <div id="seo-about" style="position:absolute;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
-  <h2>부청사와 함께하는 분들</h2>
+  <h2>먼저가본과 함께하는 분들</h2>
   <p>부산·경남 지역에서 사업을 운영하거나 창업을 준비하는 누구나 환영합니다.</p>
   <ul>
     <li>부산 청년 사업가·자영업자·소상공인</li>
@@ -38,48 +38,48 @@ const PAGES = [
     <li>부산창업을 계획 중인 예비 창업자</li>
     <li>부산비즈니스모임·부산사업자모임을 찾는 분</li>
   </ul>
-  <p>부청사(부산청년사업가들)는 부산청년플랫폼·부산비즈니스모임·부산사업자모임으로서 마케팅 세미나, 정기 네트워킹, 창업 교육 등 실전 프로그램을 운영합니다. 경남 사업자·경남 자영업자도 함께하는 광역 비즈니스 커뮤니티입니다.</p>
+  <p>먼저가본은 부산청년플랫폼·부산비즈니스모임·부산사업자모임으로서 마케팅 세미나, 정기 네트워킹, 창업 교육 등 실전 프로그램을 운영합니다. 경남 사업자·경남 자영업자도 함께하는 광역 비즈니스 커뮤니티입니다.</p>
 </div>`,
   },
   {
     path: '/programs',
-    title: '프로그램 | 부산 사업자 세미나·네트워킹 모임 - 부청사',
+    title: '프로그램 | 부산 사업자 세미나·네트워킹 모임 - 먼저가본',
     description: '부산·경남 청년 사업가, 자영업자를 위한 마케팅 세미나, 네트워킹 모임, 창업 교육 프로그램 목록입니다. 부산비즈니스모임·부산청년플랫폼 대표 프로그램.',
   },
   {
     path: '/notice',
-    title: '공지사항 | 부청사',
-    description: '부청사의 새로운 소식과 공지사항을 확인하세요.',
+    title: '공지사항 | 먼저가본',
+    description: '먼저가본의 새로운 소식과 공지사항을 확인하세요.',
   },
   {
     path: '/news',
-    title: '뉴스 | 부산 창업·소상공인 경제 소식 - 부청사',
+    title: '뉴스 | 부산 창업·소상공인 경제 소식 - 먼저가본',
     description: '부산 창업가·소상공인이 놓치기 쉬운 지원·상권·판로 소식을 매일 모아 보여드립니다.',
   },
   {
     path: '/support',
-    title: '지원사업 | 부산 신규·마감임박 정부 지원사업 - 부청사',
+    title: '지원사업 | 부산 신규·마감임박 정부 지원사업 - 먼저가본',
     description: '부산 지역 신규 지원사업과 마감이 다가온 정부·지자체 지원사업을 핵심만 요약해 보여드립니다.',
   },
   {
     path: '/startup',
-    title: '예비창업 | 청년창업사관학교·예비창업패키지 등 창업지원 찾기 - 부청사',
+    title: '예비창업 | 청년창업사관학교·예비창업패키지 등 창업지원 찾기 - 먼저가본',
     description: '예비창업자를 위한 창업 지원사업과 소식을 매일 모아 둡니다. 부산·경남부터 전국까지 청년창업사관학교, 예비창업패키지 등을 한곳에서 찾아보세요.',
   },
   {
     path: '/groups',
-    title: '소모임·스터디 | 부산 사업가 그룹 - 부청사',
-    description: '부청사 회원이 직접 여는 사업가 소모임과 스터디. 일정 확인, QR 출석, 참가비 결제까지 한 곳에서.',
+    title: '소모임·스터디 | 부산 사업가 그룹 - 먼저가본',
+    description: '먼저가본 회원이 직접 여는 사업가 소모임과 스터디. 일정 확인, QR 출석, 참가비 결제까지 한 곳에서.',
   },
   {
-    path: '/tools',
-    title: '사업도구 | 부가세·마진·3.3%·손익분기점 계산기 - 부청사',
-    description: '부가세, 마진율, 3.3% 원천징수, 손익분기점, 광고 ROAS를 바로 계산하는 사업자 도구함입니다.',
+    path: '/topics',
+    title: '토픽 | 먼저 가본 대표 인터뷰 - 먼저가본',
+    description: '부산에서 먼저 사업을 해 본 대표들을 만나 들은 이야기를 기록합니다.',
   },
   {
     path: '/members',
-    title: '부청사 회원 | 부산 청년 사업가 멤버십 - 부청사',
-    description: '부청사에서 활동 중인 부산 청년 사업가 회원 목록입니다.',
+    title: '먼저가본 회원 | 부산 청년 사업가 멤버십 - 먼저가본',
+    description: '먼저가본에서 활동 중인 부산 청년 사업가 회원 목록입니다.',
   },
 ];
 
@@ -214,8 +214,8 @@ function buildSitemap(seminarIds) {
     { loc: '/news',        priority: '0.8', changefreq: 'daily' },
     { loc: '/support',     priority: '0.9', changefreq: 'daily' },
     { loc: '/startup',     priority: '0.8', changefreq: 'daily' },
-    { loc: '/tools',       priority: '0.7', changefreq: 'monthly' },
     { loc: '/groups',      priority: '0.7', changefreq: 'weekly' },
+    { loc: '/topics',      priority: '0.7', changefreq: 'weekly' },
     { loc: '/members',     priority: '0.5', changefreq: 'weekly' },
     { loc: '/privacy',     priority: '0.3', changefreq: 'yearly' },
     { loc: '/terms',       priority: '0.3', changefreq: 'yearly' },
@@ -276,8 +276,8 @@ const seminars = await fetchSeminars();
 for (const sem of seminars) {
   const path = `/programs/${sem.id}`;
   const canonicalUrl = BASE_URL + toCanonicalPath(path);
-  const title = `${sem.title} | 부청사 프로그램`;
-  const description = summarize([sem.date, sem.location, sem.desc].filter(Boolean).join(' · ')) || '부청사 프로그램 안내';
+  const title = `${sem.title} | 먼저가본 프로그램`;
+  const description = summarize([sem.date, sem.location, sem.desc].filter(Boolean).join(' · ')) || '먼저가본 프로그램 안내';
   const html = replaceMeta(baseHtml, {
     title,
     description,
@@ -299,8 +299,8 @@ const groups = await fetchApprovedGroups();
 for (const g of groups) {
   const path = `/groups/${g.id}`;
   const canonicalUrl = BASE_URL + toCanonicalPath(path);
-  const title = `${g.title} | 부청사 소모임·스터디`;
-  const description = summarize([g.region, g.schedule, g.description].filter(Boolean).join(' · ')) || '부청사 소모임·스터디';
+  const title = `${g.title} | 먼저가본 소모임·스터디`;
+  const description = summarize([g.region, g.schedule, g.description].filter(Boolean).join(' · ')) || '먼저가본 소모임·스터디';
   const html = replaceMeta(baseHtml, {
     title, description, canonical: canonicalUrl, ogTitle: title, ogDescription: description, ogUrl: canonicalUrl,
     ogImage: groupShareImage(g),

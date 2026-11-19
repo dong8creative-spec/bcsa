@@ -6,22 +6,13 @@ import Pager from '../components/Pager';
 import ContentDetailModal from '../components/ContentDetailModal';
 import ModalPortal from '../components/ModalPortal';
 import { Icons } from '../components/Icons';
-
-const THUMB_COLORS = ['#E7A6A0', '#EBBB8C', '#E9D48C', '#A9CB9B', '#9DC3E0', '#BFA8D9', '#C7C7CC'];
+import { MgPageHead, MgWrap, MgTabs } from '../components/mg/Mg';
 
 const PAGE_SIZE = 10;
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
-function colorForId(id) {
-    let hash = 0;
-    const s = String(id || '');
-    for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
-    return THUMB_COLORS[hash % THUMB_COLORS.length];
-}
-
-// 기관별 "로고 자리" — 실제 기관 로고 이미지가 없으니(기업마당 API는 로고를 제공하지 않음), 같은
-// 기관이면 항상 같은 색+이니셜이 나오도록 해서 카드들을 훑어볼 때 "이건 어느 기관 공고구나"를
-// 색으로 먼저 구분할 수 있게 한다. 실제 로고 이미지는 관리자가 개별 공고에 thumbnailUrl을 직접
+// 기관별 "로고 자리" — 실제 기관 로고 이미지가 없으니(기업마당 API는 로고를 제공하지 않음),
+// 기관 이름 앞 두 글자를 보여준다. 실제 로고 이미지는 관리자가 개별 공고에 thumbnailUrl을 직접
 // 등록하면(관리자 화면 "지원사업 피드") 이 자리를 대체한다.
 function orgMonogram(org) {
     const s = String(org || '').trim();
@@ -66,111 +57,120 @@ function extractPerCompanyBudget(p) {
     return `${m[1]} ${m[2] ? '최대 ' : ''}${unit}${m[4] ? ' ' + m[4].trim() : ''}`.replace(/\s+/g, ' ').trim();
 }
 
-// 예전에는 카드마다 aspect-[4/3] 큰 이미지 칸을 통째로 차지했는데, 실제로는 기관 로고 이미지가
-// 거의 없어서(기업마당 API가 로고를 안 줌) 그 자리 대부분이 의미 없는 단색 배경 + 이니셜 두 글자
-// 뿐이었다 — 화면 공간만 크게 쓰고 정보는 없는 "불필요한 썸네일 칸"이었던 셈이다. 뉴스 페이지의
-// 목록 줄(NewsRow)과 같은 방식으로, 작은 48px 배지 하나만 남기고 나머지 자리에 정보(제목·기관·
-// 마감일)를 더 넣었다 — 한 화면에 더 많은 공고가 보이고, 실제 로고를 등록했을 때도 잘 보인다.
-// 한 줄에 제목·비용·마감기한이 전부 들어가도록 다시 짰다 — 예전에는 2번째 줄에 기관/태그를
-// 따로 보여줬는데, 그러면서 오른쪽 비용·마감일도 2줄로 쌓여 카드 하나가 세로로 길었다. 지금은
-// 제목이 길면 자리를 다 차지하지 못하고 말줄임(truncate)되더라도, 비용·마감일은 항상 같은
-// 자리(오른쪽 끝)에 있어서 목록을 위아래로 훑을 때 제목→비용→마감일 순서가 줄마다 똑같이 반복된다.
-function ProgramCard({ p, isLast, onOpen }) {
-    const { label: ddayLabel, badgeClass } = getSupportProgramDdayInfo(p);
-    const orgLabel = p.org || '';
-    const budget = extractPerCompanyBudget(p); // 명확할 때만 채워짐 — 캡슐 배지로 표시
-    const deadline = formatDeadlineLabel(p);
+// 먼저가본 개편(2026-11): D-day 표시는 작은 네모 하나로 — 평소 로얄블루, 마감 임박(D-10 이내·오늘
+// 마감)은 빨강, 마감은 회색, 상시는 로얄블루 테두리. 계산은 appHelpers.getSupportProgramDdayInfo 그대로.
+function ddayTone(info) {
+    if (!info || !info.label) return '';
+    if (info.label === '마감') return 'bg-[#8a8a8a] text-white';
+    if (info.label === '상시') return 'border border-royal bg-white text-royal';
+    if (info.isUrgent) return 'bg-red-600 text-white';
+    return 'bg-royal text-white';
+}
 
+function DdayMark({ info }) {
+    if (!info || !info.label) return null;
     return (
-        <button
-            type="button"
-            onClick={() => onOpen(p)}
-            className={`w-full flex items-center gap-3 py-3.5 px-2 -mx-2 rounded-xl hover:bg-soft/70 transition-colors text-left ${isLast ? '' : 'border-b border-black/[0.06]'}`}
-        >
-            <div
-                className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0"
-                style={p.thumbnailUrl ? undefined : { background: colorForId(orgLabel || p.id) }}
-            >
-                {p.thumbnailUrl ? (
-                    <img src={p.thumbnailUrl} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" />
-                ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-white/90 font-extrabold text-[10px] tracking-tight select-none">{orgMonogram(orgLabel)}</span>
-                    </div>
-                )}
-            </div>
-            {ddayLabel ? (
-                <span className={`inline-flex items-center justify-center h-5 px-2 rounded-full text-[10px] font-bold text-white shrink-0 whitespace-nowrap ${badgeClass}`}>
-                    {ddayLabel}
-                </span>
-            ) : null}
-            {/* 제목이 이 자리를 다 채우려 들지만, 아래 min-w-0 + truncate 덕에 필요하면 축약되고
-                뒤(비용·마감일)는 절대 밀려나지 않는다. */}
-            <p className="min-w-0 flex-1 text-base md:text-lg font-bold text-dark truncate">{p.title}</p>
-            {budget ? (
-                <span className="shrink-0 inline-flex items-center h-7 px-3 rounded-full bg-brand text-white text-xs font-bold whitespace-nowrap">
-                    {budget}
-                </span>
-            ) : null}
-            {deadline ? (
-                <span className="shrink-0 text-xs font-semibold text-gray-500 whitespace-nowrap">{deadline}</span>
-            ) : null}
-        </button>
+        <span className={`inline-flex h-6 shrink-0 items-center whitespace-nowrap px-2 text-[12.5px] font-semibold leading-none ${ddayTone(info)}`}>
+            {info.label}
+        </span>
     );
 }
 
-function ProgramRow({ title, hint, items, page, totalPages, onPageChange, onOpen, emptyText }) {
+// 기관 로고 자리 — 관리자가 thumbnailUrl(실제 로고)을 등록하면 그 그림, 없으면 기관 이름 앞 두 글자.
+// (예전 기관별 파스텔 색은 개편 색 규칙에 맞춰 하늘 바탕 + 로얄블루 글자 하나로 통일)
+function OrgMark({ org, src, size = 'w-10 h-10', text = 'text-[12px]' }) {
     return (
-        <div className="pb-10 last:pb-0">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg md:text-xl font-bold text-dark">{title}</h2>
-                <span className="text-xs text-gray-400">{hint}</span>
-            </div>
-            {items.length > 0 ? (
-                <>
-                    <div className="border-t border-black/[0.06]">
-                        {items.map((p, i) => <ProgramCard key={p.id} p={p} isLast={i === items.length - 1} onOpen={onOpen} />)}
-                    </div>
-                    <Pager page={page} totalPages={totalPages} onChange={onPageChange} />
-                </>
+        <div className={`relative ${size} shrink-0 overflow-hidden ${src ? 'border border-line bg-white' : 'bg-sky'}`} aria-hidden="true">
+            {src ? (
+                // 로고는 잘리지 않게(object-contain) — 모든 로고 칸이 같은 크기·같은 비율
+                <img src={src} alt="" className="absolute inset-0 h-full w-full object-contain p-0.5" loading="lazy" decoding="async" />
             ) : (
-                <div className="py-10 text-center text-gray-400 bg-soft rounded-2xl">
-                    <p className="text-sm">{emptyText || '현재 등록된 지원사업이 없습니다.'}</p>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <span className={`select-none font-bold tracking-tight text-royal ${text}`}>{orgMonogram(org)}</span>
                 </div>
             )}
         </div>
     );
 }
 
-// 기관별 보기 — "전체 기관" 드롭다운은 이름을 이미 아는 사람에게만 쓸모 있고, 어떤 기관들이
-// 올라와 있는지 훑어보고 싶을 땐 도움이 안 된다. 기관마다 타일 하나(이니셜 + 이름 + 공고 건수)로
-// 늘어놓고, 누르면 그 기관으로 필터가 걸린 채 기존 3단 목록(마감임박/신규/부산)으로 돌아간다 —
-// 필터링·페이지네이션 로직은 그대로 재사용하고, "둘러보는 진입점"만 하나 더 생기는 구조.
+// 목록 한 줄: [로고] [D-day 네모 + 제목] / 아래 곁정보(기관 · 기업당 예산 · 마감일).
+// 얇은 구분선 목록 — 제목 16/600, 곁정보 14 회색. 누르면 사이트 안 상세 창(ContentDetailModal).
+function ProgramCard({ p, onOpen }) {
+    const info = getSupportProgramDdayInfo(p);
+    const orgLabel = p.org || '';
+    const budget = extractPerCompanyBudget(p); // 명확할 때만 채워짐
+    const deadline = formatDeadlineLabel(p);
+
+    return (
+        <li className="border-b border-line">
+            <button
+                type="button"
+                onClick={() => onOpen(p)}
+                className="flex min-h-[78px] w-full items-center gap-3.5 py-4 text-left transition-colors hover:bg-card md:gap-4 md:px-2"
+            >
+                <OrgMark org={orgLabel || p.id} src={p.thumbnailUrl} />
+                <span className="min-w-0 flex-1">
+                    <span className="flex min-w-0 items-center gap-2">
+                        <DdayMark info={info} />
+                        <span className="min-w-0 flex-1 truncate text-[16px] font-semibold text-ink">{p.title}</span>
+                    </span>
+                    {/* 곁정보는 늘 한 줄(넘치면 …) — 글 양과 상관없이 줄 높이가 같다 */}
+                    <span className="mt-1 flex min-w-0 items-center gap-x-2 overflow-hidden whitespace-nowrap text-[13.5px] text-sub md:text-[14px]">
+                        {orgLabel ? <span className="min-w-0 truncate">{orgLabel}</span> : null}
+                        {budget ? <>{orgLabel ? <span aria-hidden="true" className="shrink-0 text-line2">|</span> : null}<span className="min-w-0 truncate font-semibold text-royal">{budget}</span></> : null}
+                        {deadline ? <>{(orgLabel || budget) ? <span aria-hidden="true" className="shrink-0 text-line2">|</span> : null}<span className="shrink-0">{deadline}</span></> : null}
+                        {!(orgLabel || budget || deadline) ? '\u00a0' : null}
+                    </span>
+                </span>
+            </button>
+        </li>
+    );
+}
+
+function ProgramRow({ title, hint, items, page, totalPages, onPageChange, onOpen, emptyText }) {
+    return (
+        <div className="pb-10 last:pb-0">
+            <div className="mb-4 flex items-end justify-between gap-3">
+                <h2 className="text-[20px] font-bold text-ink md:text-[22px]">{title}</h2>
+                <span className="text-[13px] text-sub">{hint}</span>
+            </div>
+            {items.length > 0 ? (
+                <>
+                    <ul className="border-t border-ink">
+                        {items.map((p) => <ProgramCard key={p.id} p={p} onOpen={onOpen} />)}
+                    </ul>
+                    <Pager page={page} totalPages={totalPages} onChange={onPageChange} />
+                </>
+            ) : (
+                <p className="rounded-xl bg-card px-5 py-11 text-center text-[15px] text-sub">
+                    {emptyText || '현재 등록된 지원사업이 없습니다.'}
+                </p>
+            )}
+        </div>
+    );
+}
+
+// 기관별 보기 — 기관마다 타일 하나(이니셜 + 이름 + 공고 건수). 누르면 기관 안내 창(OrgDetailModal)이 뜬다.
 function OrgTile({ org, count, onSelect }) {
     return (
         <button
             type="button"
             onClick={() => onSelect(org)}
-            className="flex items-center gap-3 p-3.5 rounded-2xl border border-black/[0.06] hover:border-brand/30 hover:bg-soft/70 transition-colors text-left"
+            className="flex h-full min-h-[68px] w-full min-w-0 items-center gap-3 border border-line bg-white p-3 text-left transition-colors hover:border-ink hover:bg-card"
         >
-            <div className="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center" style={{ background: colorForId(org) }}>
-                <span className="text-white/90 font-extrabold text-[10px]">{orgMonogram(org)}</span>
-            </div>
-            <div className="min-w-0">
-                <p className="text-sm font-semibold text-dark truncate">{org}</p>
-                <p className="text-xs text-gray-400">{count}건</p>
-            </div>
+            <OrgMark org={org} />
+            <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-semibold text-ink" title={org}>{org}</span>
+                <span className="block truncate text-[13px] text-sub">{count}건</span>
+            </span>
         </button>
     );
 }
 
-// 지자체(부산광역시·경상북도 등)와 중앙부처·공공기관(중소벤처기업부·산업통상부 등)을 한 줄에
-// 섞어두면 "이게 지역 공고인지 전국 공고인지"가 한눈에 안 들어온다는 지적이 있어 소제목으로
-// 나눴다 — "우리 동네(부산·지자체) 공고만 보고 싶다" / "업종·전국 단위 지원사업을 보고 싶다"는
-// 서로 다른 탐색 의도라서, 묶어서 보여주는 것 자체가 더 정확한 분류다.
+// 지자체(부산광역시 등)와 중앙부처·공공기관을 소제목으로 나눠 보여준다.
 function OrgBrowser({ orgGroups, onSelect }) {
     if (orgGroups.length === 0) {
-        return <p className="text-sm text-gray-400 py-10 text-center bg-soft rounded-2xl">등록된 공고가 없습니다.</p>;
+        return <p className="rounded-xl bg-card px-5 py-11 text-center text-[15px] text-sub">등록된 공고가 없습니다.</p>;
     }
     const localGovs = orgGroups.filter((g) => g.isLocalGov);
     const agencies = orgGroups.filter((g) => !g.isLocalGov);
@@ -178,16 +178,16 @@ function OrgBrowser({ orgGroups, onSelect }) {
         <div className="space-y-8">
             {localGovs.length > 0 && (
                 <div>
-                    <p className="text-xs font-bold text-gray-400 tracking-wide mb-3">지자체 · {localGovs.length}곳</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    <h3 className="mb-3 text-[15px] font-semibold text-ink">지자체 <span className="font-normal text-sub">· {localGovs.length}곳</span></h3>
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
                         {localGovs.map(({ org, count }) => <OrgTile key={org} org={org} count={count} onSelect={onSelect} />)}
                     </div>
                 </div>
             )}
             {agencies.length > 0 && (
                 <div>
-                    <p className="text-xs font-bold text-gray-400 tracking-wide mb-3">중앙부처 · 공공기관 · {agencies.length}곳</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    <h3 className="mb-3 text-[15px] font-semibold text-ink">중앙부처 · 공공기관 <span className="font-normal text-sub">· {agencies.length}곳</span></h3>
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
                         {agencies.map(({ org, count }) => <OrgTile key={org} org={org} count={count} onSelect={onSelect} />)}
                     </div>
                 </div>
@@ -196,74 +196,70 @@ function OrgBrowser({ orgGroups, onSelect }) {
     );
 }
 
-// 기관 타일을 누르면 바로 목록으로 넘어가지 않고, 이 모달이 먼저 뜬다. 그 기관 공고가 지금
-// 두 탭(부산 신규사업/마감임박 사업) 중 어디에 몇 건 있는지부터 보여주고, 실제 "페이지 이동"은
-// 사용자가 버튼을 눌렀을 때 일어난다 — 예전처럼 눌렀을 때 바로 탭이 바뀌면, 하필 그 기관이
-// 두 탭 다 0건이어도(예: 오래된 상시공고만 있는 기관) 곧장 빈 목록 화면으로 튕겨가 버렸다.
+// 기관 타일을 누르면 바로 목록으로 넘어가지 않고, 이 창이 먼저 뜬다. 그 기관 공고가 지금
+// 두 탭(부산 신규사업/마감임박 사업) 중 어디에 몇 건 있는지부터 보여주고, 실제 이동은
+// 버튼을 눌렀을 때 일어난다(두 탭 다 0건인 기관이 빈 목록으로 튕기는 문제 방지).
 function OrgDetailModal({ org, counts, onClose, onGoTo, onViewAll }) {
     if (!org) return null;
     const { total, busanFresh, urgent } = counts;
     return (
         <ModalPortal>
             <div
-                className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md"
+                className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4"
                 onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
             >
                 <div
-                    className="bg-white rounded-[28px] border border-black/[0.06] max-w-sm w-full p-7"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`${org} 공고 보기`}
+                    className="w-full max-w-sm rounded-[18px] bg-white p-6 md:p-7"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="flex items-start justify-between gap-4 mb-5">
-                        <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center" style={{ background: colorForId(org) }}>
-                                <span className="text-white/90 font-extrabold text-[11px]">{orgMonogram(org)}</span>
-                            </div>
+                    <div className="mb-5 flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <OrgMark org={org} size="w-11 h-11" />
                             <div className="min-w-0">
-                                <p className="font-bold text-dark truncate">{org}</p>
-                                <p className="text-xs text-gray-400">등록된 공고 {total}건</p>
+                                <p className="truncate text-[18px] font-bold text-ink">{org}</p>
+                                <p className="text-[13px] text-sub">등록된 공고 {total}건</p>
                             </div>
                         </div>
                         <button
                             type="button"
                             onClick={onClose}
-                            className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-soft hover:bg-[#eceef2] transition-colors"
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line2 bg-white text-ink transition-colors hover:border-ink"
                             aria-label="닫기"
                         >
-                            <Icons.X size={16} className="text-gray-500" />
+                            <Icons.X size={18} />
                         </button>
                     </div>
 
-                    {/* 예전에는 이 모달에 "부산 신규사업에서 보기 / 마감임박 사업에서 보기" 두 버튼만
-                        있었는데, 두 탭 다 0건인 기관(상시모집만 있거나 최근 등록이 아닌 경우)은
-                        눌러도 볼 게 없어 결국 이 기관 공고를 볼 방법이 없었다. 조건과 무관하게
-                        전부 모아 보여주는 전용 페이지(/support?org=...)를 만들고, 그걸 기본 동작으로
-                        올렸다. */}
+                    {/* 조건과 무관하게 그 기관 공고를 전부 모아 보여주는 전용 페이지(/support?org=...)가 기본 동작 */}
                     <button
                         type="button"
                         onClick={onViewAll}
-                        className="w-full flex items-center justify-between gap-3 rounded-xl bg-brand hover:bg-[#00327a] transition-colors px-4 py-3.5 text-left mb-4"
+                        className="mb-5 flex h-[52px] w-full items-center justify-between gap-3 rounded-lg bg-royal px-4 text-left text-white transition-colors hover:bg-royalDark"
                     >
-                        <span className="text-sm font-bold text-white">이 기관 공고 전체 모아보기</span>
-                        <span className="text-xs font-bold text-white/80">{total}건</span>
+                        <span className="text-[16px] font-bold">이 기관 공고 전체 모아보기</span>
+                        <span className="text-[14px] font-semibold text-white/85">{total}건</span>
                     </button>
 
-                    <p className="text-xs font-bold text-gray-400 tracking-wide mb-2.5">지금 뜬 탭에서 바로 보기</p>
+                    <p className="mb-2.5 text-[13px] font-semibold text-sub">지금 뜬 탭에서 바로 보기</p>
                     <div className="space-y-2">
                         <button
                             type="button"
                             onClick={() => onGoTo('busanFresh')}
-                            className="w-full flex items-center justify-between gap-3 rounded-xl border border-black/[0.06] hover:border-brand/30 hover:bg-soft/70 transition-colors px-4 py-3 text-left"
+                            className="flex h-12 w-full items-center justify-between gap-3 rounded-lg border border-line2 bg-white px-4 text-left transition-colors hover:border-ink"
                         >
-                            <span className="text-sm font-semibold text-dark">부산 신규사업에서 보기</span>
-                            <span className={`text-xs font-bold ${busanFresh > 0 ? 'text-brand' : 'text-gray-300'}`}>{busanFresh}건</span>
+                            <span className="text-[15px] font-semibold text-ink">부산 신규사업에서 보기</span>
+                            <span className={`text-[14px] font-semibold ${busanFresh > 0 ? 'text-royal' : 'text-sub'}`}>{busanFresh}건</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => onGoTo('urgent')}
-                            className="w-full flex items-center justify-between gap-3 rounded-xl border border-black/[0.06] hover:border-brand/30 hover:bg-soft/70 transition-colors px-4 py-3 text-left"
+                            className="flex h-12 w-full items-center justify-between gap-3 rounded-lg border border-line2 bg-white px-4 text-left transition-colors hover:border-ink"
                         >
-                            <span className="text-sm font-semibold text-dark">마감임박 사업에서 보기</span>
-                            <span className={`text-xs font-bold ${urgent > 0 ? 'text-brand' : 'text-gray-300'}`}>{urgent}건</span>
+                            <span className="text-[15px] font-semibold text-ink">마감임박 사업에서 보기</span>
+                            <span className={`text-[14px] font-semibold ${urgent > 0 ? 'text-royal' : 'text-sub'}`}>{urgent}건</span>
                         </button>
                     </div>
                 </div>
@@ -420,11 +416,11 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
     }
 
     function openDetail(p) {
-        const { label: badgeLabel, badgeClass } = getSupportProgramDdayInfo(p);
+        const info = getSupportProgramDdayInfo(p);
         setSelected({
             title: p.title || '',
-            badgeLabel,
-            badgeClass,
+            badgeLabel: info.label,
+            badgeClass: ddayTone(info),
             org: p.org || '',
             dateLabel: formatDeadlineLabel(p),
             tags: [...(p.region || []), ...(p.industry || [])],
@@ -435,100 +431,91 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
         });
     }
 
+    const crumbBtn = 'underline-offset-2 hover:text-white hover:underline';
+
     return (
-        <div className="min-h-screen bg-white overflow-y-auto">
-            <section
-                className="pt-32 pb-16 md:pt-40 md:pb-20 px-6 relative overflow-hidden"
-                style={{ background: 'radial-gradient(circle at 82% 0%, rgba(0,70,165,.12), transparent 55%), #ffffff' }}
-            >
-                <div className="container mx-auto max-w-7xl">
+        <div className="min-h-screen overflow-y-auto bg-white">
+            {orgPageName ? (
+                <MgPageHead
+                    crumbs={(
+                        <>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className={crumbBtn}>홈</button>
+                            <span className="mx-1.5" aria-hidden="true">/</span>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); closeOrgPage(); }} className={crumbBtn}>지원사업</button>
+                            <span className="mx-1.5" aria-hidden="true">/</span>{orgPageName}
+                        </>
+                    )}
+                    eyebrow="SUPPORT PROGRAMS"
+                    title={<span className="break-keep">{orgPageName}</span>}
+                    desc={`이 기관이 올린 공고 ${orgPageAll.length}건을 조건 없이 전부 모았어요.`}
+                />
+            ) : (
+                <MgPageHead
+                    crumbs={(
+                        <>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className={crumbBtn}>홈</button>
+                            <span className="mx-1.5" aria-hidden="true">/</span>지원사업
+                        </>
+                    )}
+                    eyebrow="SUPPORT PROGRAMS"
+                    title={<span className="break-keep">놓치면 아까운 지원사업</span>}
+                    desc="긴 공고문은 저희가 읽을게요. 대표님은 핵심만 보세요."
+                />
+            )}
+
+            <section className="pb-16 pt-8 md:pb-[100px] md:pt-12">
+                <MgWrap>
                     <AdSlot slotId="support-top-banner" content={content} className="mb-8" />
                     <a href="/startup" onClick={(e) => { e.preventDefault(); navigate('/startup'); }}
-                        className="mb-8 flex items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-5 py-4 hover:bg-emerald-50">
+                        className="mb-10 flex flex-col gap-2 rounded-xl bg-card px-5 py-4 transition-colors hover:bg-[#e9edf3] sm:flex-row sm:items-center sm:justify-between sm:gap-4 md:px-6 md:py-5">
                         <span className="min-w-0">
-                            <span className="block text-[16px] font-bold text-dark break-keep">창업을 준비 중이신가요?</span>
-                            <span className="block text-[14px] text-gray-600 break-keep">청년창업사관학교·예비창업패키지처럼 예비창업자가 신청할 수 있는 지원만 모아 봤어요.</span>
+                            <span className="block break-keep text-[16px] font-semibold text-ink md:text-[17px]">창업을 준비 중이신가요?</span>
+                            <span className="mt-1 block break-keep text-[14px] text-sub md:text-[15px]">청년창업사관학교·예비창업패키지처럼 예비창업자가 신청할 수 있는 지원만 모아 봤어요.</span>
                         </span>
-                        <span className="shrink-0 text-[15px] font-semibold text-brand">예비창업 지원 찾기 →</span>
+                        <span className="shrink-0 text-[15px] font-semibold text-royal">예비창업 지원 찾기 ↗</span>
                     </a>
-                    {orgPageName ? (
-                        <>
-                            <p className="text-[12.5px] text-gray-500 mb-5">
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="hover:text-dark transition-colors">홈</button>
-                                <span className="mx-1">/</span>
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); closeOrgPage(); }} className="hover:text-dark transition-colors">지원사업</button>
-                                <span className="mx-1">/</span> {orgPageName}
-                            </p>
-                            <div className="flex items-center gap-4">
-                                <div className="w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center" style={{ background: colorForId(orgPageName) }}>
-                                    <span className="text-white/90 font-extrabold text-sm">{orgMonogram(orgPageName)}</span>
-                                </div>
-                                <div>
-                                    <p className="text-[13px] font-bold text-brand tracking-wide">SUPPORT PROGRAMS</p>
-                                    <h1 className="text-[26px] md:text-[36px] font-semibold tracking-tight text-dark break-keep">{orgPageName}</h1>
-                                </div>
-                            </div>
-                            <p className="mt-5 text-base md:text-lg text-gray-500 max-w-lg break-keep">
-                                이 기관이 올린 공고 {orgPageAll.length}건을 조건 없이 전부 모았어요.
-                            </p>
-                        </>
-                    ) : (
-                        <>
-                            <p className="text-[12.5px] text-gray-500 mb-5">
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="hover:text-dark transition-colors">홈</button>
-                                <span className="mx-1">/</span> 지원사업
-                            </p>
-                            <p className="text-[13px] font-bold text-brand tracking-wide mb-4">SUPPORT PROGRAMS</p>
-                            <h1 className="text-[32px] leading-[1.15] md:text-[52px] md:leading-[1.1] font-semibold tracking-tight text-dark break-keep max-w-2xl">
-                                놓치면 아까운<br />지원사업
-                            </h1>
-                            <p className="mt-5 text-base md:text-lg text-gray-500 max-w-lg break-keep">
-                                긴 공고문은 저희가 읽을게요. 대표님은 핵심만 보세요.
-                            </p>
 
-                            {/* 화면 맨 위 탭 3개 — 한 번에 하나만 보여준다. 기본은 "부산 신규사업".
-                                옆의 "전체 기관" 드롭다운은 부산 신규사업·마감임박 사업 탭의 목록을
-                                특정 기관으로 좁힐 때 쓴다. */}
-                            <div className="flex items-center justify-between gap-3 mt-8 flex-wrap">
-                                <div className="inline-flex rounded-lg border border-black/10 p-0.5 bg-white">
-                                    {TABS.map((tab) => (
-                                        <button
-                                            key={tab.key}
-                                            type="button"
-                                            onClick={() => setViewMode(tab.key)}
-                                            className={`text-xs md:text-sm font-semibold rounded-md px-3.5 py-1.5 transition-colors whitespace-nowrap ${viewMode === tab.key ? 'bg-brand text-white' : 'text-gray-500 hover:text-dark'}`}
-                                        >
-                                            {tab.label}
-                                            <span className={`ml-1.5 ${viewMode === tab.key ? 'text-white/70' : 'text-gray-400'}`}>
-                                                {tab.key === 'busanFresh' ? busanFreshCount : tab.key === 'urgent' ? urgentCount : orgGroups.length}
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
+                    {!orgPageName ? (
+                        <div className="mb-10">
+                            {/* 탭 3개 — 한 번에 하나만 보여준다. 기본은 "부산 신규사업".
+                                아래 "전체 기관" 고르기는 부산 신규사업·마감임박 사업 탭의 목록을 특정 기관으로 좁힐 때 쓴다. */}
+                            <MgTabs
+                                label="지원사업 보기 방식"
+                                value={viewMode}
+                                onChange={setViewMode}
+                                items={TABS.map((tab) => [
+                                    tab.key,
+                                    <span key={tab.key} className="whitespace-nowrap">
+                                        {tab.key === 'busanFresh' ? <>부산 신규<span className="hidden sm:inline">사업</span></> : tab.label}
+                                        <span className="ml-1.5 hidden text-[14px] font-semibold opacity-60 sm:inline">
+                                            {tab.key === 'busanFresh' ? busanFreshCount : tab.key === 'urgent' ? urgentCount : orgGroups.length}
+                                        </span>
+                                    </span>,
+                                ])}
+                            />
+                            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                                <label htmlFor="support-org-filter" className="text-[15px] font-semibold text-ink">기관</label>
                                 <select
+                                    id="support-org-filter"
                                     value={orgFilter}
                                     onChange={(e) => setOrgFilter(e.target.value)}
-                                    className="text-xs md:text-sm border border-black/10 rounded-lg px-2.5 py-1.5 bg-white text-dark focus:outline-none focus:ring-1 focus:ring-brand"
+                                    className="h-12 min-w-0 max-w-full flex-1 rounded-lg border border-line2 bg-white px-3 text-[15px] text-ink focus:border-royal focus:outline-none sm:max-w-[320px]"
                                 >
                                     <option value="all">전체 기관</option>
                                     {orgOptions.map((o) => <option key={o} value={o}>{o}</option>)}
                                 </select>
+                                {orgFilter !== 'all' ? (
+                                    <p className="w-full text-[14px] text-sub">
+                                        <span className="font-semibold text-royal">{orgFilter}</span> 기관 공고만 보는 중 ·{' '}
+                                        <button type="button" onClick={() => setOrgFilter('all')} className="underline underline-offset-2 hover:text-ink">전체 기관 다시 보기</button>
+                                    </p>
+                                ) : null}
                             </div>
-                            {orgFilter !== 'all' ? (
-                                <p className="text-xs text-gray-400 mt-3">
-                                    <span className="font-semibold text-brand">{orgFilter}</span> 기관 공고만 보는 중 ·{' '}
-                                    <button type="button" onClick={() => setOrgFilter('all')} className="underline hover:text-dark">전체 기관 다시 보기</button>
-                                </p>
-                            ) : null}
-                        </>
-                    )}
-                </div>
-            </section>
+                        </div>
+                    ) : null}
 
-            <section className="pb-14 md:pb-20 px-6">
-                <div className="container mx-auto max-w-7xl">
-                    <div className="xl:flex xl:gap-10 xl:items-start">
-                        <div className="flex-1 min-w-0">
+                    <div className="xl:flex xl:items-start xl:gap-10">
+                        <div className="min-w-0 flex-1">
                             {orgPageName ? (
                                 <ProgramRow
                                     title={`${orgPageName} 전체 공고`}
@@ -567,9 +554,9 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
                                     )}
                                     {viewMode === 'byOrg' && (
                                         <div className="pb-10">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <h2 className="text-lg md:text-xl font-bold text-dark">기관별 지원사업</h2>
-                                                <span className="text-xs text-gray-400">{orgGroups.length}개 기관</span>
+                                            <div className="mb-4 flex items-end justify-between gap-3">
+                                                <h2 className="text-[20px] font-bold text-ink md:text-[22px]">기관별 지원사업</h2>
+                                                <span className="text-[13px] text-sub">{orgGroups.length}개 기관</span>
                                             </div>
                                             <OrgBrowser
                                                 orgGroups={orgGroups}
@@ -602,7 +589,7 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
                             </aside>
                         ) : null}
                     </div>
-                </div>
+                </MgWrap>
             </section>
 
             <ContentDetailModal item={selected} onClose={() => setSelected(null)} />

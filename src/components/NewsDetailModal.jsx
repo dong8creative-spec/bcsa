@@ -28,67 +28,69 @@ export default function NewsDetailModal({ item, onClose }) {
     return (
         <ModalPortal>
             <div
-                className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md"
+                className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4"
                 onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
             >
                 <div
-                    className="bg-white rounded-[28px] border border-black/[0.06] max-w-3xl w-full flex flex-col max-h-[90vh] max-md:scale-[0.97] origin-center shadow-2xl"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="news-detail-title"
+                    className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-[18px] bg-white"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="flex-1 min-h-0 overflow-y-auto modal-scroll px-7 py-8 md:px-12 md:py-10">
-                        <div className="flex items-start justify-between gap-4 mb-6">
+                    <div className="modal-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-7 pt-5 md:px-10 md:pb-10 md:pt-8">
+                        <div className="mb-5 flex items-start justify-between gap-4">
                             {item.badgeLabel ? (
-                                <span className={`inline-flex items-center justify-center h-6 px-3 rounded-full text-xs font-bold text-white whitespace-nowrap ${item.badgeClass || 'bg-brand'}`}>
+                                <span className={`mt-2.5 inline-flex h-6 items-center whitespace-nowrap px-2 text-[12.5px] font-semibold leading-none ${item.badgeClass || 'bg-royal text-white'} ${/\btext-/.test(item.badgeClass || '') ? '' : 'text-white'}`}>
                                     {item.badgeLabel}
                                 </span>
                             ) : <span />}
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-soft hover:bg-[#eceef2] transition-colors"
+                                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line2 bg-white text-ink transition-colors hover:border-ink"
                                 aria-label="닫기"
                             >
-                                <Icons.X size={18} className="text-gray-500" />
+                                <Icons.X size={20} />
                             </button>
                         </div>
 
-                        {/* 목록 줄에서는 제목을 한 줄로 줄였지만, 여기서는 안 잘리고 전부 보여준다 —
-                            목록의 "요약 미리보기"를 없앤 대신, 여기서 제목 자체를 크고 분명하게 읽게 한다. */}
-                        <h1 className="text-2xl md:text-4xl font-bold text-dark leading-[1.3] break-keep mb-3">{item.title}</h1>
-                        {metaLine ? <p className="text-sm text-gray-400 mb-8">{metaLine}</p> : null}
+                        {/* 목록 줄에서는 제목을 한 줄로 줄였지만, 여기서는 안 잘리고 전부 보여준다. */}
+                        <h1 id="news-detail-title" className="mb-3 break-keep text-[22px] font-bold leading-[1.4] text-ink md:text-[24px]">{item.title}</h1>
+                        {metaLine ? <p className="mb-7 text-[13px] text-sub md:text-[14px]">{metaLine}</p> : null}
 
                         {item.amountText ? (
-                            <div className="bg-brand/5 border border-brand/10 rounded-2xl p-4 mb-6">
-                                <p className="text-sm font-semibold text-brand">{item.amountText}</p>
+                            <div className="mb-6 rounded-xl bg-sky px-4 py-3.5">
+                                <p className="text-[15px] font-semibold text-royal">{item.amountText}</p>
                             </div>
                         ) : null}
 
                         {tags.length > 0 ? (
-                            <div className="flex items-center gap-1.5 flex-wrap mb-6">
+                            <div className="mb-6 flex flex-wrap items-center gap-1.5">
                                 {tags.map((t, i) => (
-                                    <span key={i} className="text-[11px] font-semibold text-gray-500 bg-soft rounded-full px-2.5 py-1">{t}</span>
+                                    <span key={i} className="rounded-full border border-line px-2.5 py-1 text-[13px] text-sub">{t}</span>
                                 ))}
                             </div>
                         ) : null}
 
                         {item.keySentence ? (
-                            <div className="mb-6 pl-5 border-l-[3px] border-brand/30">
-                                <p className="text-xs font-bold text-gray-400 tracking-wide mb-2">핵심 문장</p>
-                                <p className="text-base md:text-lg text-dark leading-relaxed break-keep whitespace-pre-line font-medium">{item.keySentence}</p>
+                            <div className="mb-6 border-l-[3px] border-royal pl-5">
+                                <p className="mb-2 text-[13px] font-semibold text-sub">핵심 문장</p>
+                                <p className="whitespace-pre-line break-keep text-[16px] font-semibold leading-relaxed text-ink md:text-[18px]">{item.keySentence}</p>
                             </div>
                         ) : item.summary ? (
                             <div className="mb-6">
-                                <p className="text-xs font-bold text-gray-400 tracking-wide mb-2">요약</p>
-                                <p className="text-base md:text-lg text-dark leading-relaxed break-keep whitespace-pre-line">{item.summary}</p>
+                                <p className="mb-2 text-[13px] font-semibold text-sub">요약</p>
+                                <p className="whitespace-pre-line break-keep text-[16px] leading-relaxed text-ink md:text-[18px]">{item.summary}</p>
                             </div>
                         ) : null}
 
                         {item.description && item.description !== item.summary ? (
-                            <p className="text-sm md:text-base text-gray-600 leading-relaxed break-keep whitespace-pre-line">{item.description}</p>
+                            <p className="whitespace-pre-line break-keep border-t border-line pt-6 text-[15px] leading-relaxed text-[#333] md:text-[16px]">{item.description}</p>
                         ) : null}
 
                         {!item.keySentence && !item.summary && !item.description ? (
-                            <p className="text-sm text-gray-400">등록된 상세 내용이 없습니다.</p>
+                            <p className="text-[15px] text-sub">등록된 상세 내용이 없습니다.</p>
                         ) : null}
 
                         {item.showCoinAnimation ? (
@@ -116,11 +118,11 @@ export default function NewsDetailModal({ item, onClose }) {
                         ) : null}
                     </div>
 
-                    <div className="shrink-0 border-t border-black/[0.06] p-5 flex items-center justify-end gap-2.5">
+                    <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-line px-5 py-4 md:px-10">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="text-sm font-semibold rounded-full px-5 py-2.5 bg-soft text-gray-600 hover:bg-[#eceef2] transition-colors"
+                            className="h-12 rounded-lg border border-line2 bg-white px-5 text-[15px] font-bold text-ink transition-colors hover:border-ink"
                         >
                             닫기
                         </button>
@@ -129,10 +131,11 @@ export default function NewsDetailModal({ item, onClose }) {
                                 href={safeExternalUrl(item.externalUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 text-sm font-semibold rounded-full px-5 py-2.5 bg-brand text-white hover:bg-[#00327a] transition-colors"
+                                className="inline-flex h-12 items-center gap-1.5 rounded-lg bg-royal px-5 text-[15px] font-bold text-white transition-colors hover:bg-royalDark"
                             >
                                 원문 보기
-                                <Icons.ExternalLink size={15} />
+                                <Icons.ExternalLink size={16} />
+                                <span className="sr-only">(새 창)</span>
                             </a>
                         ) : null}
                     </div>

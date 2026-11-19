@@ -10,11 +10,12 @@
  */
 export const GROUP_POSTERS = {
   'bcsa-study-1': {
-    label: '부청사 사업스터디 1기 포스터',
+    card: '/assets/images/groups/cards/card-study.jpg', // 먼저가본 개편: 목록 카드용 3:2 그림(Codex)
+    label: '먼저가본 사업스터디 1기 포스터',
     image: '/assets/images/groups/poster-bcsa-study-1.jpg',
     width: 794,
     height: 1123,
-    headline: '부청사 사업스터디 1기 모집',
+    headline: '먼저가본 사업스터디 1기 모집',
     tagline: '사업을 키우고 싶은 대표들의 작은 사업모임',
     lead: '좋은 사람들이 모여, 각자의 경험과 고민을 나누고 실행으로 이어가는 3개월의 성장 여정에 함께하세요.',
     facts: [
@@ -34,7 +35,7 @@ export const GROUP_POSTERS = {
     /** 「그룹 만들기」를 /groups/new?template=bcsa-study-1 로 열면 미리 채워지는 값(포스터 내용 그대로) */
     createDefaults: {
       type: 'study',
-      title: '부청사 사업스터디 1기',
+      title: '먼저가본 사업스터디 1기',
       description: '사업을 키우고 싶은 대표들의 작은 사업모임입니다.\n좋은 사람들이 모여, 각자의 경험과 고민을 나누고 실행으로 이어가는 3개월의 성장 여정에 함께하세요.\n\n· 운영 기간: 2026년 10월 ~ 12월 (3개월 파일럿)\n· 모집 인원: 3~5명\n· 모임 주기: 월 1회 / 90분\n· 참여비: 3개월 3만원\n\n이런 이야기를 나눕니다: 매출 증대와 고객 확보, 자금·세금·인건비 관리, 운영 체계와 대표의 고민, 서로의 경험과 실행 아이디어\n이런 분들과 함께합니다: 사업을 키우고 싶은 대표님, 체계적 관리가 필요한 사업자, 자기 고민을 나눌 수 있는 분, 실질적 도움을 줄 수 있는 전문가\n운영 원칙: 친목보다 성장과 실행, 모임 내 직접 영업 지양, 개별 자문은 별도 진행\n\n가입 신청할 때 사업 분야와 현재 고민 1가지를 적어 주세요.',
       region: '부산',
       mode: 'offline',
@@ -57,6 +58,7 @@ export const GROUP_POSTERS = {
    * (정해지면 그룹 설정의 「모임 주기」·회차에 넣고, 여기 facts 에도 더한다). 포스터·광고는 Codex(image_gen)로 만들었다.
    */
   'claude-workshop-1': {
+    card: '/assets/images/groups/cards/card-workshop.jpg', // 먼저가본 개편: 목록 카드용 3:2 그림(Codex)
     label: '예비창업자 클로드 코드 업무 자동화 워크숍 포스터',
     image: '/assets/images/groups/poster-claude-workshop-1.jpg',
     width: 1024,
@@ -76,11 +78,11 @@ export const GROUP_POSTERS = {
     ],
     howTo: '가입 신청할 때 사업 분야(준비 중인 분야)와 자동화하고 싶은 업무 1가지를 적어 주세요.',
     joinLabels: { field: '사업 분야(준비 중인 분야)', concern: '자동화하고 싶은 업무 1가지', concernPlaceholder: '예: 매일 주문 내역을 엑셀로 옮기는 일' },
-    closing: '부청사 파트너사 블루필드매뉴얼픽쳐스와 함께합니다.',
+    closing: '먼저가본 파트너사 블루필드매뉴얼픽쳐스와 함께합니다.',
     createDefaults: {
       type: 'study',
       title: '예비창업자들을 위한 클로드 코드 업무 자동화 워크숍',
-      description: '창업을 준비하며 늘어나는 반복 업무를 AI 도구 클로드 코드로 자동화해 보는 워크숍입니다.\n\n· 대상: 예비창업자\n· 강사: 블루필드매뉴얼픽쳐스 이동헌 대표 (부청사 파트너사)\n· 일정·장소·참가비: 정해지면 이 화면에 안내합니다.\n\n가입 신청할 때 사업 분야(준비 중인 분야)와 자동화하고 싶은 업무 1가지를 적어 주세요.',
+      description: '창업을 준비하며 늘어나는 반복 업무를 AI 도구 클로드 코드로 자동화해 보는 워크숍입니다.\n\n· 대상: 예비창업자\n· 강사: 블루필드매뉴얼픽쳐스 이동헌 대표 (먼저가본 파트너사)\n· 일정·장소·참가비: 정해지면 이 화면에 안내합니다.\n\n가입 신청할 때 사업 분야(준비 중인 분야)와 자동화하고 싶은 업무 1가지를 적어 주세요.',
       region: '부산',
       mode: 'offline',
       schedule: '',
@@ -100,6 +102,7 @@ export const GROUP_POSTERS = {
    * 결제는 아직 사이트에서 받지 않는다(연결 뒤 운영진이 안내). 가입 신청 메모 = 업종·업력 + 질문 1가지.
    */
   'senior-coffeechat-1': {
+    card: '/assets/images/groups/cards/card-coffeechat.jpg', // 먼저가본 개편: 목록 카드용 3:2 그림(Codex)
     label: '먼저 가본 선배 커피챗 파일럿 포스터',
     image: '/assets/images/groups/poster-senior-coffeechat-1.jpg',
     width: 1024,
@@ -119,7 +122,7 @@ export const GROUP_POSTERS = {
     ],
     howTo: '가입 신청할 때 업종·업력과 선배에게 묻고 싶은 것 1가지를 적어 주세요.',
     joinLabels: { field: '업종·업력', concern: '선배에게 묻고 싶은 것 1가지', concernPlaceholder: '예: 첫 직원을 언제 뽑아야 할지 모르겠어요' },
-    closing: '부청사 × 먼저 가본 — 선배의 경험이 후배에게 이어지도록.',
+    closing: '먼저가본 — 선배의 경험이 후배에게 이어지도록.',
     createDefaults: {
       type: 'meetup',
       title: '먼저 가본 선배 1:1 커피챗 (파일럿)',
@@ -133,6 +136,7 @@ export const GROUP_POSTERS = {
     },
   },
   'senior-host-1': {
+    card: '/assets/images/groups/cards/card-host.jpg', // 먼저가본 개편: 목록 카드용 3:2 그림(Codex)
     label: '먼저 가본 선배 모집 포스터',
     image: '/assets/images/groups/poster-senior-host-1.jpg',
     width: 1024,
@@ -151,7 +155,7 @@ export const GROUP_POSTERS = {
     ],
     howTo: '가입 신청할 때 업종·업력과 나눌 수 있는 경험 1가지를 적어 주세요.',
     joinLabels: { field: '업종·업력', concern: '나눌 수 있는 경험 1가지', concernPlaceholder: '예: 오프라인 매장을 온라인 판매로 넓힌 경험' },
-    closing: '부청사 × 먼저 가본 — 선배의 경험이 후배에게 이어지도록.',
+    closing: '먼저가본 — 선배의 경험이 후배에게 이어지도록.',
     createDefaults: {
       type: 'meetup',
       title: '먼저 가본 선배 모집 (커피챗·런치 호스트)',

@@ -28,9 +28,10 @@ import { defaultContent, defaultMenuOrder, defaultMenuNames } from './constants/
 import { buildSiteContent, getMenuStateFromSiteContent, mergeLiveContent } from './utils/siteContent';
 import PageTitle from './components/PageTitle';
 import NoticeView from './pages/NoticeView';
+import TopicsView from './pages/TopicsView';
 import AboutView from './pages/AboutView';
-import ToolsView from './pages/ToolsView';
 import SupportProgramsView from './pages/SupportProgramsView';
+import HomeView from './pages/HomeView';
 const PreFounderView = lazy(() => import('./pages/PreFounderView'));
 import AdSlot from './components/AdSlot';
 import NewsView from './pages/NewsView';
@@ -223,8 +224,8 @@ const App = () => {
         news: '/news',
         supportPage: '/support',
         startup: '/startup',
-        tools: '/tools',
         groups: '/groups',
+        topics: '/topics',
         requests: '/requests',
         qna: '/qna',
     };
@@ -241,8 +242,8 @@ const App = () => {
         '/news': 'news',
         '/support': 'supportPage',
         '/startup': 'startup',
-        '/tools': 'tools',
         '/groups': 'groups',
+        '/topics': 'topics',
         '/requests': 'requests',
         '/qna': 'qna',
     };
@@ -482,7 +483,17 @@ const App = () => {
         // /programs/:id 는 ProgramDetailPage가 처리
         if (path.match(/^\/programs\/[^/]+$/)) return;
         if (path.startsWith('/program/apply/')) return;
+        // 사업도구(/tools)는 2026-11 개편 때 운영자 지시로 완전히 없앴다 — 예전 주소로 오면 홈으로
+        if (path === '/tools' || path.startsWith('/tools/')) {
+            navigate('/', { replace: true });
+            return;
+        }
         // /groups 아래(상세·QR 출석·결제 복귀)는 GroupsPage가 경로를 직접 나눈다
+        // 토픽(대표 인터뷰): /topics 목록, /topics/:id 본문 — TopicsView가 경로를 직접 나눈다
+        if (path === '/topics' || path.startsWith('/topics/')) {
+            setCurrentView('topics');
+            return;
+        }
         if (path === '/groups' || path.startsWith('/groups/')) {
             setCurrentView('groups');
             return;
@@ -2980,6 +2991,9 @@ END:VCALENDAR`;
         } else if (item === '소개') {
             goTo('about');
             scroll();
+        } else if (item === '토픽') {
+            goTo('topics');
+            scroll();
         } else if (item === '프로그램') {
             goTo('allSeminars');
             scroll();
@@ -3019,9 +3033,6 @@ END:VCALENDAR`;
         } else if (item === '그룹') {
             goTo('groups');
             scroll();
-        } else if (item === '사업도구') {
-            goTo('tools');
-            scroll();
         } else if (item === '의뢰') {
             goTo('requests');
             scroll();
@@ -3040,6 +3051,7 @@ END:VCALENDAR`;
         let isActive = false;
         if (item === '홈' && currentView === 'home') isActive = true;
         else if (item === '소개' && currentView === 'about') isActive = true;
+        else if (item === '토픽' && currentView === 'topics') isActive = true;
         else if (item === '프로그램' && currentView === 'allSeminars') isActive = true;
         else if (item === '부청사 회원' && currentView === 'allMembers') isActive = true;
         else if (item === '커뮤니티' && (currentView === 'community' || currentView === 'notice')) isActive = true;
@@ -3048,12 +3060,12 @@ END:VCALENDAR`;
         else if (item === '뉴스' && currentView === 'news') isActive = true;
         else if (item === '지원사업' && currentView === 'supportPage') isActive = true;
         else if (item === '예비창업' && currentView === 'startup') isActive = true;
-        else if (item === '사업도구' && currentView === 'tools') isActive = true;
         else if (item === '그룹' && currentView === 'groups') isActive = true;
         else if (item === '의뢰' && currentView === 'requests') isActive = true;
         else if (item === 'Q&A' && currentView === 'qna') isActive = true;
-        const baseClass = "text-[12.5px] font-medium tracking-tight transition-colors";
-        return `${baseClass} ${isActive ? 'text-ink font-semibold' : 'text-sub hover:text-ink'}`;
+        // 먼저가본 개편: 검은 머리글 위 메뉴(15px), 현재 메뉴는 글자색만 바뀜
+        const baseClass = "text-[15px] tracking-tight transition-colors";
+        return `${baseClass} ${isActive ? 'text-royalOnBlack' : 'text-white hover:text-royalOnBlack'}`;
     }
 
     // 비활성화된 메뉴로 들어오면 홈으로 돌려보낸다.
@@ -3074,7 +3086,7 @@ END:VCALENDAR`;
             community: '커뮤니티',
             restaurants: '부산맛집',
             about: '소개',
-            tools: '사업도구',
+            topics: '토픽',
         };
         const requiredKey = requiredMenuByView[currentView];
         if (requiredKey && !menuEnabled[requiredKey]) {
@@ -3456,11 +3468,6 @@ END:VCALENDAR`;
             return null;
         }
         if (currentView === 'about') return <AboutView onBack={() => goTo('home')} content={content} pageTitles={pageTitles} />;
-        if (currentView === 'tools' && !menuEnabled['사업도구']) {
-            // 알림·홈 이동은 위 useEffect가 처리 — 여기서는 그리지 않고 대기만 한다.
-            return null;
-        }
-        if (currentView === 'tools') return <ToolsView onBack={() => goTo('home')} />;
         if (currentView === 'startup') return <PreFounderView supportPrograms={supportPrograms} newsItems={newsItems} content={content} />;
         if (currentView === 'supportPage') return <SupportProgramsView supportPrograms={supportPrograms} content={content} onBack={() => goTo('home')} />;
         // 뉴스: newsItems(관리자 수동 등록 + 매일 07:00 KST 언론사 RSS 자동 수집) 실시간 데이터만 사용.
@@ -3468,6 +3475,8 @@ END:VCALENDAR`;
         // 데이터를 동시에 보여주면 콘텐츠가 중복 노출되므로, 뉴스 페이지는 여기서 supportPrograms를 받지 않는다.
         if (currentView === 'news') return <NewsView content={content} onBack={() => goTo('home')} newsItems={newsItems} />;
         // 의뢰/Q&A: 아직 실제 수집·등록 기능이 없어 공사중 화면으로 대체.
+        if (currentView === 'topics' && !menuEnabled['토픽']) return null;
+        if (currentView === 'topics') return <TopicsView />;
         if (currentView === 'groups') return <GroupsPage currentUser={currentUser} onRequireLogin={() => setShowLoginModal(true)} />;
         if (currentView === 'requests') return <UnderConstructionView eyebrow="REQUESTS" pageLabel="의뢰" onBack={() => goTo('home')} />;
         if (currentView === 'qna') return <UnderConstructionView eyebrow="EXPERT Q&A" pageLabel="Q&A" onBack={() => goTo('home')} />;
@@ -3508,276 +3517,9 @@ END:VCALENDAR`;
         }
         
         // currentView가 'home'이거나 null/undefined인 경우 홈 화면 렌더링 (모바일 스크롤 보장)
+        // 먼저가본 개편(2026-11): 홈은 src/pages/HomeView.jsx (가안 5구역)
         const homeView = (
-            <div className="min-h-screen overflow-y-auto">
-            <Fragment>
-                {/* ============================================
-                    HERO & SEARCH (bento redesign: minimal hero + simple search)
-                    ============================================ */}
-                <section className="pt-[130px] pb-12 md:pt-[168px] md:pb-16 px-6 text-center" style={{ background: 'linear-gradient(to bottom, #ffffff 0%, #ffffff 60%, #f5f5f7 100%)' }}>
-                    <div className="container mx-auto max-w-3xl">
-                        <p className="text-[13px] font-semibold text-brand tracking-wide mb-4">BCSA BUSINESS HUB</p>
-                        <h1 className="text-[42px] leading-[1.08] md:text-[76px] md:leading-[1.05] font-semibold tracking-tight text-dark break-keep whitespace-pre-line">
-                            {content.hero_title ? content.hero_title.split('\n').map((line, idx, arr) => (
-                                <span key={idx}>
-                                    {idx === arr.length - 1 ? (
-                                        <span className="text-gray-400">{line}</span>
-                                    ) : (
-                                        <Fragment>{line}<br/></Fragment>
-                                    )}
-                                </span>
-                            )) : (
-                                <Fragment>부산에서 사업하기<br/><span className="text-gray-400">서로 함께, 단디</span></Fragment>
-                            )}
-                        </h1>
-                        <p className="mt-6 text-base md:text-xl text-gray-500 max-w-xl mx-auto break-keep">{content.hero_desc || '흩어진 정보를 BCSA 하나로 — 지원사업, 실무, 부산 B2B까지'}</p>
-                        <div className="flex items-center justify-center gap-6 mt-7 text-[15px] md:text-[17px] font-medium">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="text-brand hover:opacity-70 transition-opacity whitespace-nowrap">지원사업 보기 <span aria-hidden="true">›</span></button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('tools'); }} className="text-brand hover:opacity-70 transition-opacity whitespace-nowrap">도구 써보기 <span aria-hidden="true">›</span></button>
-                        </div>
-                        <div className="mt-10 max-w-md mx-auto">
-                            <div className="flex items-center gap-2 bg-soft rounded-full px-5 py-3 border border-black/[0.06]">
-                                <Icons.Search size={16} className="text-gray-400 shrink-0" />
-                                <input
-                                    type="text"
-                                    className="flex-1 bg-transparent border-0 outline-none text-sm text-dark placeholder-gray-400 min-w-0"
-                                    placeholder="예: 수영구 카페가 받을 수 있는 지원사업"
-                                    value={searchKeyword}
-                                    onChange={(e) => setSearchKeyword(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                                />
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSearch(); }} className="text-brand text-sm font-bold whitespace-nowrap shrink-0">찾기</button>
-                            </div>
-                            {isSearchExpanded ? (
-                                <div className="mt-3 bg-white rounded-2xl shadow-float text-left overflow-hidden">
-                                    <div className="p-4 md:p-6 max-h-[400px] overflow-y-auto">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h3 className="text-sm font-bold text-gray-500">검색 결과 <span className="text-brand">{searchResults.length}</span>건</h3>
-                                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsSearchExpanded(false); }} className="text-xs text-gray-400 hover:text-dark flex items-center gap-1">닫기 <Icons.X size={14}/></button>
-                                        </div>
-                                        {searchResults.length > 0 ? (
-                                            <div className="grid grid-cols-1 gap-3">
-                                                {searchResults.map((result, idx) => (
-                                                    <div key={idx} className="bg-soft p-4 rounded-2xl hover:shadow-sm transition-all cursor-pointer flex flex-col md:flex-row md:items-center gap-4" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}>
-                                                        <div className="flex-1">
-                                                            <div className="flex gap-2 mb-2">
-                                                                <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${result.status === '모집중' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>{result.status}</span>
-                                                                <span className="text-[10px] font-bold px-2 py-1 bg-brand/10 text-brand rounded-full">{result.category}</span>
-                                                            </div>
-                                                            <h4 className="font-bold text-dark text-base mb-1 break-keep">{result.title}</h4>
-                                                            <p className="text-xs text-gray-500 line-clamp-1 break-keep">{result.desc}</p>
-                                                        </div>
-                                                        <span className="text-xs text-brand font-bold flex items-center gap-1 shrink-0">상세보기 <Icons.ArrowRight size={12} /></span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="py-10 text-center text-gray-400"><p className="text-sm">조건에 맞는 세미나가 없습니다.</p></div>
-                                        )}
-                                    </div>
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
-                </section>
-
-                {/* ============================================
-                    HOME CARDS — 12칸 격자 + 간격 규칙 (index.css의 .home-card 참고)
-                    규칙: 간격 8px 배수, 카드 사이 16px, 카드 안 여백 32px(모바일 24px),
-                    라벨 → 8px → 제목, 숫자·링크는 항상 카드 바닥에 정렬, 같은 줄 카드는 같은 높이
-                    ============================================ */}
-                <section className="px-5 md:px-6 pt-0 pb-16 md:pb-24" style={{ backgroundColor: '#f5f5f7' }}>
-                    <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-4">
-                        {/* 1줄: 지원사업 목록(8) + 숫자 카드 2개(4) */}
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="home-card md:col-span-8 md:min-h-[392px] min-w-0 text-white" style={{ background: 'linear-gradient(150deg,#071a37,#0046a5 85%)' }}>
-                            <p className="home-eyebrow text-blue-200">SUPPORT PROGRAMS</p>
-                            <h3 className="home-title">지금 신청해 볼 만한 지원사업</h3>
-                            <ul className="mt-6 w-full space-y-2">
-                                {supportProgramsPublic.length > 0 ? supportProgramsPublic.slice(0, 3).map((p) => {
-                                    const { label } = getSupportProgramDdayInfo(p);
-                                    return (
-                                        <li key={p.id} className="flex w-full min-w-0 items-center justify-between gap-4 rounded-2xl bg-white/10 px-4 h-12 text-sm">
-                                            <span className="min-w-0 flex-1 truncate">{p.title}</span>
-                                            {label ? <span className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">{label}</span> : null}
-                                        </li>
-                                    );
-                                }) : (
-                                    <li className="rounded-2xl bg-white/10 px-4 h-12 flex items-center text-sm text-white/80">새 공고를 모으는 중이에요. 매일 아침 채워 둘게요.</li>
-                                )}
-                            </ul>
-                            <span className="home-link mt-auto pt-6 text-white">지원사업 더 보러 가기 →</span>
-                        </button>
-
-                        <div className="md:col-span-4 grid grid-cols-2 md:grid-cols-1 gap-4">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="home-card bg-white text-left hover:bg-[#eceef2]">
-                                <p className="home-eyebrow text-gray-500">마감임박 · 10일 이내</p>
-                                <p className="home-stat mt-auto pt-6 text-dark">{supportBuckets.urgentAll.length}<span className="home-unit text-gray-500">건</span></p>
-                            </button>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('supportPage'); }} className="home-card bg-brand text-white text-left hover:bg-[#00327a]">
-                                <p className="home-eyebrow text-blue-100">부산 신규 · 7일</p>
-                                <p className="home-stat mt-auto pt-6">{supportBuckets.busanFreshAll.length}<span className="home-unit text-blue-100">건</span></p>
-                            </button>
-                        </div>
-
-                        {/* 2줄: 소모임·스터디(6) + 사업자 도구함(6) */}
-                        {menuEnabled['그룹'] ? (
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('groups'); }} className="home-card md:col-span-6 md:min-h-[320px] bg-white text-left hover:bg-[#eceef2] !p-0 overflow-hidden">
-                                <img src="/assets/images/groups/cover-meetup.jpg" alt="" className="w-full h-40 md:h-44 object-cover" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                                <div className="flex flex-col flex-1 w-full p-6 md:p-8">
-                                    <p className="home-eyebrow text-gray-500">SMALL GROUPS</p>
-                                    <h3 className="home-title text-dark">소모임·스터디</h3>
-                                    <span className="home-link mt-auto pt-6 text-brand">같이 할 모임 찾아보기 →</span>
-                                </div>
-                            </button>
-                        ) : null}
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('tools'); }} className={`home-card ${menuEnabled['그룹'] ? 'md:col-span-6' : 'md:col-span-12'} md:min-h-[320px] bg-[#0b0b0c] text-white text-left`}>
-                            <p className="home-eyebrow text-white/50">DAILY TOOLS</p>
-                            <h3 className="home-title">매일 꺼내 쓰는 사업자 도구함</h3>
-                            <div className="mt-6 flex flex-wrap gap-2">
-                                {[['🧾', '부가세'], ['📈', '마진'], ['💸', '3.3%'], ['⚖️', '손익분기점'], ['📣', 'ROAS']].map(([icon, label]) => (
-                                    <span key={label} className="inline-flex items-center gap-2 h-10 rounded-full bg-white/10 px-4 text-sm"><span aria-hidden="true">{icon}</span>{label}</span>
-                                ))}
-                            </div>
-                            <span className="home-link mt-auto pt-6 text-white/80">도구 써 보기 →</span>
-                        </button>
-
-                        {/* 3줄: 회원(4) + 프로그램(4) + 가입(4) */}
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allMembers'); }} className="home-card md:col-span-4 md:min-h-[240px] bg-white text-left hover:bg-[#eceef2]">
-                            <p className="home-eyebrow text-gray-500">BUSAN PARTNERS</p>
-                            <h3 className="home-title text-dark">함께하는 부산 사업가</h3>
-                            {membersData.length > 0 ? (
-                                <p className="home-stat mt-auto pt-6 text-dark">{membersData.length}<span className="home-unit text-gray-500">명</span></p>
-                            ) : (
-                                <span className="home-link mt-auto pt-6 text-brand">회원명단 →</span>
-                            )}
-                        </button>
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="home-card md:col-span-4 md:min-h-[240px] bg-white text-left hover:bg-[#eceef2]">
-                            <p className="home-eyebrow text-gray-500">PROGRAMS</p>
-                            {/* 0건을 큰 숫자로 보여주면 "활동이 없다"는 인상을 줘서 모집 공백일 땐 문장으로 안내 */}
-                            {(() => {
-                                const openCount = seminarsDataPublic.filter((s) => s.status === '모집중').length;
-                                return openCount > 0 ? (
-                                    <>
-                                        <h3 className="home-title text-dark">지금 모집 중인 프로그램</h3>
-                                        <p className="home-stat mt-auto pt-6 text-dark">{openCount}<span className="home-unit text-gray-500">건</span></p>
-                                    </>
-                                ) : (
-                                    <>
-                                        <h3 className="home-title text-dark">다음 모임을 준비하고 있어요</h3>
-                                        <span className="home-link mt-auto pt-6 text-brand">지난 프로그램 보기 →</span>
-                                    </>
-                                );
-                            })()}
-                        </button>
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSignUpChoiceModal(true); }} className="home-card md:col-span-4 md:min-h-[240px] bg-dark text-white text-left">
-                            <p className="home-eyebrow text-white/50">JOIN US</p>
-                            <h3 className="home-title">부산 사업가들과 함께하기</h3>
-                            <p className="mt-2 text-sm text-white/60 break-keep">가입하면 세미나·소모임에 참여하고, 회원명단도 볼 수 있어요.</p>
-                            <span className="home-link mt-auto pt-6 text-white">같이 하기 →</span>
-                        </button>
-                    </div>
-                    <AdSlot slotId="home-bento-divider" content={content} className="max-w-[1200px] mx-auto mt-4" />
-                </section>
-
-                {/* 협력기관 */}
-                <section className="py-16 md:py-20 px-6 bg-white">
-                    <div className="max-w-[1240px] mx-auto text-center">
-                        <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-2">PARTNERS</p>
-                        <h2 className="text-xl md:text-2xl font-semibold tracking-tight text-dark mb-10 break-keep">협력기관</h2>
-                        <div className="flex justify-center">
-                            <div className="flex flex-wrap justify-center items-center gap-y-12 gap-x-4 sm:gap-x-12 md:gap-16 max-w-full">
-                            {PARTNER_LOGOS.map((src, i) => (
-                                <div
-                                    key={i}
-                                    className={`flex shrink-0 items-center justify-center ${i === 6 ? 'w-56 sm:w-[17.6rem] md:w-[19.2rem]' : 'w-36 sm:w-44 md:w-48'}`}
-                                >
-                                    <img
-                                        src={src}
-                                        alt={PARTNER_NAMES[i] || `협력기관 ${i + 1}`}
-                                        className={`w-full object-contain ${i === 6 ? 'max-h-[6.4rem]' : 'max-h-16'}`}
-                                    />
-                                </div>
-                            ))}
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* ============================================
-                    지금 모집 중 & 최근 진행된 프로그램 + CTA (하나의 다크 섹션으로 병합)
-                    ============================================ */}
-                {menuEnabled['프로그램'] && Array.isArray(seminarsDataPublic) && seminarsDataPublic.length > 0 ? (
-                <section className="px-6 py-20 md:py-28 text-white text-center" style={{ backgroundColor: '#0b0b0c' }}>
-                    <div className="max-w-[1240px] mx-auto">
-                        <p className="text-[12px] font-semibold text-white/40 tracking-wide mb-2">PROGRAMS</p>
-                        <h2 className="text-2xl md:text-4xl font-semibold tracking-tight mb-2 break-keep">지금 모집 중 &amp; 최근 진행된 프로그램</h2>
-                        <p className="text-white/40 text-xs mb-10">진행 중인 프로그램을 확인하세요</p>
-
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-[18px] text-left">
-                            {seminarsDataPublic.slice(0, 4).map((seminar) => {
-                                const img = (seminar.images && seminar.images[0]) || (seminar.imageUrls && seminar.imageUrls[0]) || seminar.imageUrl || seminar.img;
-                                const fee = seminar.applicationFee != null ? Number(seminar.applicationFee) : 0;
-                                const price = seminar.price != null ? Number(seminar.price) : 0;
-                                const isPaid = fee > 0 || (seminar.requiresPayment && price > 0);
-                                const amount = fee > 0 ? fee : price;
-                                const max = getSeminarCapacity(seminar);
-                                const current = getDisplayedParticipantCurrent(seminar);
-                                const isPopular = (seminar.title || '').includes('정모') || (max > 0 && current / max >= 0.8);
-                                const statusLabel = seminar.status || '모집중';
-                                const statusClass = statusLabel === '종료' ? 'bg-white/10 text-white/70' : statusLabel === '마감임박' ? 'bg-red-500 text-white' : 'bg-white/15 text-white';
-                                return (
-                                    <button
-                                        key={seminar.id}
-                                        type="button"
-                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/program/apply/${seminar.id}`); }}
-                                        className="group relative rounded-[28px] overflow-hidden aspect-[4/5] block hover:-translate-y-1 transition-transform duration-300 bg-gray-800 text-left"
-                                    >
-                                        {img ? <img src={img} alt={seminar.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" decoding="async" /> : null}
-                                        <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent"></span>
-                                        <div className="absolute top-4 left-4 flex items-center gap-2">
-                                            <span className={`font-bold rounded-full px-2.5 py-1 text-xs whitespace-nowrap ${statusClass}`}>{statusLabel}</span>
-                                            {isPopular ? <span className="font-bold text-white bg-white/15 rounded-full px-2.5 py-1 text-xs whitespace-nowrap">인기</span> : null}
-                                        </div>
-                                        <div className="absolute bottom-0 left-0 right-0 p-5">
-                                            <h3 className="text-lg font-semibold text-white leading-snug break-keep mb-1 line-clamp-2">{seminar.title}</h3>
-                                            <p className="text-sm text-white/70">{seminar.date} · {isPaid ? `${amount.toLocaleString()}원` : '무료'}</p>
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        <div className="mt-20 md:mt-24">
-                            <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-4 break-keep">{content.cta_title || '정보만 얻고 끝나지 않게.'}</h2>
-                            <p className="text-white/60 text-base md:text-lg max-w-xl mx-auto break-keep">{content.cta_desc || 'BCSA의 세미나·네트워킹 경험을 실제 사업 협업과 성장으로 연결합니다.'}</p>
-                            <div className="flex items-center justify-center gap-3 mt-9 flex-wrap">
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allSeminars'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="bg-white text-dark font-semibold rounded-full px-6 py-3.5 text-sm">이번 달 프로그램 보기</button>
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSignUpChoiceModal(true); }} className="border border-white/25 text-white font-semibold rounded-full px-6 py-3.5 text-sm hover:bg-white/10 transition-colors">{content.cta_join_button || 'BCSA 가입하기'}</button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-                ) : null}
-
-                {/* ============================================
-                    후원 섹션
-                    ============================================ */}
-                {!DONATION_FEATURE_DISABLED && menuEnabled['후원'] ? (
-                <section className="py-12 md:py-24 px-6 bg-gradient-to-br from-green-50 to-emerald-50">
-                    <div className="container mx-auto max-w-6xl">
-                        <div className="relative rounded-4xl overflow-hidden bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center text-center px-6 shadow-2xl shadow-green-500/40" style={{ aspectRatio: '16/9' }}>
-                            {content.donation_image && <div className="absolute inset-0"><img src={content.donation_image} className="w-full h-full object-cover opacity-20 mix-blend-overlay" alt="Support" loading="lazy" decoding="async" /></div>}
-                            <div className="relative z-10 max-w-2xl">
-                                <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 leading-tight break-keep">{content.donation_title || '부청사와 함께 성장하세요'}</h2>
-                                <p className="text-green-100 text-base md:text-lg mb-10 break-keep">{content.donation_desc || '후원을 통해 더 많은 청년 사업가들이 꿈을 이룰 수 있도록 도와주세요'}</p>
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('donation'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="px-8 py-4 bg-white text-green-600 font-bold rounded-2xl hover:bg-green-50 transition-all shadow-lg btn-hover">{content.donation_button || '후원하기'}</button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-                ) : null}
-            </Fragment>
-            </div>
+            <HomeView seminars={seminarsDataPublic} partnerLogos={PARTNER_LOGOS} partnerNames={PARTNER_NAMES} showPrograms={!!menuEnabled['프로그램']} />
         );
         // currentView가 'home'이거나 null/undefined인 경우 홈 화면 렌더링
         // homeView는 항상 유효한 React 요소이므로 null 체크 불필요

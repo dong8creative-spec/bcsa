@@ -50,6 +50,59 @@ const QuickRecruitGroups = ({ groups }) => {
   );
 };
 
+/** 홈에서 이 모임을 「모집중 / 모집예정 / 숨김」 중 어디에 보일지 (groups/{id}.recruit) */
+const RecruitPicker = ({ group }) => {
+  const [saving, setSaving] = useState(false);
+  const change = async (e) => {
+    setSaving(true);
+    try { await groupService.setGroupRecruitAdmin(group.id, e.target.value); }
+    catch (err) { alert(`바꾸지 못했습니다: ${err.message}`); }
+    finally { setSaving(false); }
+  };
+  return (
+    <label className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+      <span className="font-semibold text-gray-700">홈 표시</span>
+      <select value={group.recruit || 'open'} onChange={change} disabled={saving} className="rounded-lg border border-black/10 bg-soft px-2.5 py-1.5 text-sm">
+        <option value="open">모집중</option>
+        <option value="soon">모집예정</option>
+        <option value="hidden">홈에서 숨김</option>
+      </select>
+    </label>
+  );
+};
+
+/** 홈 「찾는 모임이 없으셨나요?」 알림 신청 목록 (interestAlerts, 관리자만 읽음) */
+const InterestAlerts = () => {
+  const [rows, setRows] = useState(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => (open ? groupService.subscribeInterestAlerts(setRows) : undefined), [open]);
+  const WHO = { owner: '사업 중', pre: '예비창업' };
+  return (
+    <div className="bg-white rounded-2xl p-5 border border-black/[0.06]">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between text-left">
+        <span><b className="text-dark">모임 알림 신청</b> <span className="text-sm text-gray-500">홈 「찾는 모임이 없으셨나요?」로 들어온 신청</span></span>
+        <span className="text-sm font-semibold text-brand">{open ? '접기' : '보기'}</span>
+      </button>
+      {open ? (rows === null ? <p className="mt-3 text-sm text-gray-400">불러오는 중…</p> : rows.length === 0 ? <p className="mt-3 text-sm text-gray-500">아직 신청이 없어요.</p> : (
+        <ul className="mt-3 divide-y divide-black/[0.05] text-sm">
+          {rows.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-start justify-between gap-2 py-2.5">
+              <span className="min-w-0">
+                <b>{WHO[r.who] || r.who}</b> · {r.phone}{r.email ? ` · ${r.email}` : ''}
+                <span className="block text-gray-600">{(r.topics || []).join(', ') || '분야 선택 없음'}{r.wish ? ` — ${r.wish}` : ''}</span>
+              </span>
+              <span className="flex shrink-0 items-center gap-2 text-xs">
+                <span className="text-gray-400">{firestoreLikeToMillis(r.createdAt) ? new Date(firestoreLikeToMillis(r.createdAt)).toLocaleDateString('ko-KR') : ''}</span>
+                <button type="button" onClick={() => { if (confirm('이 신청을 지울까요? (알림을 그만 받길 원하는 경우 등)')) groupService.deleteInterestAlert(r.id).catch((e) => alert(e.message)); }} className="rounded-lg bg-soft px-2.5 py-1 font-semibold text-red-600">지우기</button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )) : null}
+    </div>
+  );
+};
+
 /** 운영진만: 그룹에 모집 포스터 붙이기/떼기. 붙인 그룹은 화면 맨 위 포스터·목록 「지금 모집 중」, 광고 자리 모집 광고로 이어진다 */
 const PosterPicker = ({ group }) => {
   const [saving, setSaving] = useState(false);
@@ -149,6 +202,7 @@ export const GroupManagement = () => {
       ) : null}
 
       <QuickRecruitGroups groups={groups} />
+      <InterestAlerts />
 
       {groups === null ? <p className="text-gray-400">불러오는 중…</p> : list.length === 0 ? (
         <div className="bg-white rounded-2xl p-10 text-center text-gray-500">해당하는 그룹이 없습니다.</div>
@@ -168,6 +222,7 @@ export const GroupManagement = () => {
                   <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap line-clamp-4">{g.description}</p>
                   {g.rejectReason ? <p className="text-xs text-red-600 mt-1">반려 사유: {g.rejectReason}</p> : null}
                   <PosterPicker group={g} />
+                  {g.status === 'approved' ? <RecruitPicker group={g} /> : null}
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
                   <a href={`/groups/${g.id}`} target="_blank" rel="noopener noreferrer" className="px-3 py-2 rounded-lg bg-soft text-sm font-semibold inline-flex items-center gap-1"><Icons.ExternalLink size={14} />보기</a>

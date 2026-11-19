@@ -12,72 +12,72 @@ export const toCanonicalPath = (path) => {
 
 const SEO_MAP = {
     home: {
-        title: '부청사 | 부산청년사업가들',
+        title: '먼저가본 | 부산 사업가 커뮤니티',
         description: '부산·경남 청년 사업가, 자영업자, 소상공인이 모이는 실전형 비즈니스 커뮤니티. 마케팅 세미나, 네트워킹 모임, 창업 지원사업 정보를 한곳에서 만나보세요.',
         path: '/',
     },
     about: {
-        title: '소개 | 부청사 - 부산 청년 사업가 커뮤니티',
-        description: '2017년부터 부산·경남 청년 사업가들의 성장과 연결을 돕는 비즈니스 플랫폼 부청사를 소개합니다. 부산사업자모임, 부산창업 커뮤니티의 중심.',
+        title: '소개 | 먼저가본 - 부산 청년 사업가 커뮤니티',
+        description: '2017년부터 부산·경남 청년 사업가들의 성장과 연결을 돕는 비즈니스 플랫폼 먼저가본을 소개합니다. 부산사업자모임, 부산창업 커뮤니티의 중심.',
         path: '/about',
     },
     allSeminars: {
-        title: '프로그램 | 부산 사업자 세미나·네트워킹 모임 - 부청사',
+        title: '프로그램 | 부산 사업자 세미나·네트워킹 모임 - 먼저가본',
         description: '부산·경남 청년 사업가, 자영업자를 위한 마케팅 세미나, 네트워킹 모임, 창업 교육 프로그램 목록입니다. 부산비즈니스모임·부산청년플랫폼 대표 프로그램.',
         path: '/programs',
     },
     allMembers: {
-        title: '부청사 회원 | 부산 청년 사업가 멤버십 - 부청사',
-        description: '부청사에서 활동 중인 부산·경남 청년 사업가, 자영업자, 소상공인 회원 목록입니다.',
+        title: '먼저가본 회원 | 부산 청년 사업가 멤버십 - 먼저가본',
+        description: '먼저가본에서 활동 중인 부산·경남 청년 사업가, 자영업자, 소상공인 회원 목록입니다.',
         path: '/members',
     },
     community: {
-        title: '커뮤니티 | 부산 청년 사업가 게시판 - 부청사',
+        title: '커뮤니티 | 부산 청년 사업가 게시판 - 먼저가본',
         description: '부산 청년 사업가들이 정보와 경험을 나누는 커뮤니티 공간입니다.',
         path: '/community',
     },
     notice: {
-        title: '공지사항 | 부청사',
-        description: '부청사의 새로운 소식과 공지사항을 확인하세요.',
+        title: '공지사항 | 먼저가본',
+        description: '먼저가본의 새로운 소식과 공지사항을 확인하세요.',
         path: '/notice',
     },
     restaurants: {
-        title: '부산맛집 | 부청사 회원 추천 부산 맛집 - 부청사',
-        description: '부청사 회원들이 추천하는 부산 지역 맛집 정보를 확인하세요.',
+        title: '부산맛집 | 먼저가본 회원 추천 부산 맛집 - 먼저가본',
+        description: '먼저가본 회원들이 추천하는 부산 지역 맛집 정보를 확인하세요.',
         path: '/restaurants',
     },
     restaurantDetail: {
-        title: '맛집 상세 | 부청사',
-        description: '부청사 회원이 추천하는 부산 맛집 상세 정보입니다.',
+        title: '맛집 상세 | 먼저가본',
+        description: '먼저가본 회원이 추천하는 부산 맛집 상세 정보입니다.',
         path: '/restaurants',
     },
     donation: {
-        title: '후원 | 부청사를 함께 만들어가세요',
-        description: '부산 청년 사업가들의 성장을 응원하는 부청사 후원 프로그램입니다.',
+        title: '후원 | 먼저가본을 함께 만들어가세요',
+        description: '부산 청년 사업가들의 성장을 응원하는 먼저가본 후원 프로그램입니다.',
         path: '/donation',
     },
     news: {
-        title: '뉴스 | 부산 창업·소상공인 경제 소식 - 부청사',
+        title: '뉴스 | 부산 창업·소상공인 경제 소식 - 먼저가본',
         description: '부산 창업가·소상공인이 놓치기 쉬운 지원·상권·판로 소식을 매일 모아 보여드립니다.',
         path: '/news',
     },
+    topics: {
+        title: '토픽 | 먼저 가본 대표 인터뷰 - 먼저가본',
+        description: '부산에서 먼저 사업을 해 본 대표들을 만나 들은 이야기를 기록합니다.',
+        path: '/topics',
+    },
     supportPage: {
-        title: '지원사업 | 부산 신규·마감임박 정부 지원사업 - 부청사',
+        title: '지원사업 | 부산 신규·마감임박 정부 지원사업 - 먼저가본',
         description: '부산 지역 신규 지원사업과 마감이 다가온 정부·지자체 지원사업을 핵심만 요약해 보여드립니다.',
         path: '/support',
     },
-    tools: {
-        title: '사업도구 | 부가세·마진·3.3%·손익분기점 계산기 - 부청사',
-        description: '부가세, 마진율, 3.3% 원천징수, 손익분기점, 광고 ROAS를 바로 계산하는 사업자 도구함입니다.',
-        path: '/tools',
-    },
     groups: {
-        title: '소모임·스터디 | 부산 사업가 그룹 - 부청사',
-        description: '부청사 회원이 직접 여는 사업가 소모임과 스터디. 일정 확인, QR 출석, 참가비 결제까지 한 곳에서.',
+        title: '소모임·스터디 | 부산 사업가 그룹 - 먼저가본',
+        description: '먼저가본 회원이 직접 여는 사업가 소모임과 스터디. 일정 확인, QR 출석, 참가비 결제까지 한 곳에서.',
         path: '/groups',
     },
     myPage: {
-        title: '마이페이지 | 부청사',
+        title: '마이페이지 | 먼저가본',
         description: '내 신청 프로그램과 게시글을 확인하세요.',
         path: '/my',
     },
@@ -139,7 +139,7 @@ export const useSEO = ({ view, ogImage, overrideTitle, overrideDescription, over
         setMeta('property', 'og:description', description);
         setMeta('property', 'og:url', canonicalUrl);
         setMeta('property', 'og:type', 'website');
-        setMeta('property', 'og:site_name', '부청사 | 부산청년사업가들');
+        setMeta('property', 'og:site_name', '먼저가본 | 부산 사업가 커뮤니티');
         setMeta('property', 'og:locale', 'ko_KR');
         setMeta('property', 'og:image', image);
         setMeta('property', 'og:image:width', '1200');

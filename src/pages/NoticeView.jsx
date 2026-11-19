@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import PageTitle from '../components/PageTitle';
 import { Icons } from '../components/Icons';
 import ModalPortal from '../components/ModalPortal';
+import { MgWrap, MgPageHead, MgTabs } from '../components/mg/Mg';
 
 const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
     const [selectedCategory, setSelectedCategory] = useState('전체');
@@ -25,90 +25,81 @@ const NoticeView = ({ onBack, posts, menuNames, pageTitles }) => {
         ? posts.filter(p => p.category === '공지사항')
         : posts.filter(p => p.category === '공지사항' && p.title.includes(selectedCategory));
     
+    // 관리자가 바꾼 화면 제목(pageTitles.community)이 있으면 그 글을 쓴다(글 크기·굵기는 개편 규칙을 따름)
+    const pageTitleText = pageTitles?.community?.text || menuNames?.['커뮤니티'] || '커뮤니티';
+    const formatDate = (v) => new Date(v?.toDate?.() || v).toLocaleDateString();
+
     return (
-        <div className="pt-32 pb-20 px-4 md:px-6 min-h-screen bg-soft animate-fade-in overflow-y-auto min-h-0">
-            <div className="container mx-auto max-w-7xl">
-                <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-                    <div className="w-full text-center md:text-left">
-                        <PageTitle pageKey="community" pageTitles={pageTitles} defaultText={menuNames?.['커뮤니티'] || '커뮤니티'} />
-                        <p className="text-gray-500 text-sm">단체 소식 안내</p>
-                    </div>
-                    <div className="w-full flex justify-end">
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-brand font-semibold hover:underline px-4 py-2 rounded-full hover:bg-brand/5 transition-colors">
-                            <Icons.ArrowLeft size={20} /> 메인으로
-                        </button>
-                    </div>
-                </div>
-                {/* 공지사항 내용 */}
-                <div className="bg-white rounded-[24px] border border-black/[0.06] p-6">
-                {/* 카테고리 필터 */}
-                    <div className="flex flex-wrap gap-2 mb-6">
-                        {categories.map((cat) => (
-                        <button
-                            key={cat}
-                            type="button"
-                            onClick={() => setSelectedCategory(cat)}
-                                className={`px-3.5 py-2 rounded-full text-xs font-semibold transition-colors ${
-                                selectedCategory === cat
-                                    ? 'bg-brand text-white'
-                                        : 'bg-soft text-gray-500 hover:bg-[#eceef2]'
-                            }`}
-                        >
-                            {cat}
-                        </button>
-                    ))}
-                </div>
+        <div className="min-h-screen min-h-0 overflow-y-auto bg-white">
+            <MgPageHead
+                crumbs={
+                    <>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="hover:text-white">홈</button>
+                        <span className="mx-1.5" aria-hidden="true">/</span> 공지사항
+                    </>
+                }
+                eyebrow="NOTICE"
+                title={<span style={{ whiteSpace: 'pre-line' }}>{pageTitleText}</span>}
+                desc="단체 소식 안내"
+            >
+                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="mt-6 inline-flex h-11 items-center gap-2 rounded-lg border border-white/30 px-4 text-[15px] font-semibold text-white transition-colors hover:border-white">
+                    <Icons.ArrowLeft size={18} /> 메인으로
+                </button>
+            </MgPageHead>
+
+            <section className="py-12 md:py-16" aria-label="공지사항 목록">
+                <MgWrap>
+                    {/* 카테고리 필터 */}
+                    <MgTabs className="mb-2" label="공지 분류" value={selectedCategory} onChange={setSelectedCategory} items={categories.map((c) => [c, c])} />
 
                     {/* 공지사항 목록 */}
                     {filteredPosts.length === 0 ? (
-                        <div className="text-center py-12">
-                            <p className="text-gray-400">등록된 공지사항이 없습니다.</p>
-                </div>
+                        <p className="mt-6 rounded-xl bg-card px-5 py-11 text-center text-[15px] text-sub">등록된 공지사항이 없습니다.</p>
                     ) : (
-                    <div className="space-y-4">
-                        {filteredPosts.map((post) => (
-                            <div
-                                key={post.id}
-                                    className="p-5 bg-white rounded-[24px] border border-black/[0.06] hover:shadow-md transition-all cursor-pointer"
-                                onClick={() => setSelectedPost(post)}
-                            >
-                                    <h3 className="font-semibold text-dark mb-2">{post.title}</h3>
-                                    <p className="text-sm text-gray-500 line-clamp-2">{post.content}</p>
-                                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
-                                            <span>{post.author}</span>
-                                        <span>{new Date(post.createdAt?.toDate?.() || post.createdAt).toLocaleDateString()}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-                </div>
-            </div>
+                        <ul className="border-t border-[#0c0c0e]">
+                            {filteredPosts.map((post) => (
+                                <li key={post.id} className="border-b border-line">
+                                    <button
+                                        type="button"
+                                        className="block w-full py-5 text-left transition-colors hover:bg-card md:px-2 md:py-6"
+                                        onClick={() => setSelectedPost(post)}
+                                    >
+                                        <h3 className="truncate text-[17px] font-semibold leading-snug text-ink md:text-[18px]">{post.title}</h3>
+                                        <p className="mt-1.5 line-clamp-2 min-h-[3.25em] break-keep text-[15px] leading-relaxed text-sub">{post.content || '\u00a0'}</p>
+                                        <span className="mt-2 flex min-w-0 items-center gap-4 text-[13px] text-sub">
+                                            <span className="min-w-0 truncate">{post.author}</span>
+                                            <span className="shrink-0">{formatDate(post.createdAt)}</span>
+                                        </span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </MgWrap>
+            </section>
 
             {/* 공지사항 상세 모달 (ESC로 닫기) */}
-                {selectedPost && (
+            {selectedPost && (
                 <ModalPortal>
-                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPost(null); }}>
-                    <div className="bg-white rounded-[24px] border border-black/[0.06] max-w-3xl w-full flex flex-col max-h-[100dvh] md:max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
-                            <h3 className="text-2xl font-semibold text-dark mb-2">{selectedPost.title}</h3>
-                            <div className="flex items-center gap-4 text-sm text-gray-500 mb-6">
-                                <span>{selectedPost.author}</span>
-                                <span>{new Date(selectedPost.createdAt?.toDate?.() || selectedPost.createdAt).toLocaleDateString()}</span>
+                    <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPost(null); }}>
+                        <div role="dialog" aria-modal="true" aria-labelledby="notice-detail-title" className="flex max-h-[calc(100dvh-32px)] w-full max-w-3xl flex-col rounded-[18px] bg-white md:max-h-[calc(90vh-100px)]" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-scroll min-h-0 flex-1 overflow-y-auto p-6 md:p-8">
+                                <h3 id="notice-detail-title" className="break-keep text-[22px] font-bold leading-snug text-ink md:text-[26px]">{selectedPost.title}</h3>
+                                <div className="mb-6 mt-2 flex items-center gap-4 border-b border-line pb-4 text-[14px] text-sub">
+                                    <span>{selectedPost.author}</span>
+                                    <span>{formatDate(selectedPost.createdAt)}</span>
+                                </div>
+                                <p className="whitespace-pre-wrap break-keep text-[16px] leading-[1.8] text-[#333]">{selectedPost.content}</p>
                             </div>
-                        <div className="prose max-w-none">
-                            <p className="whitespace-pre-wrap text-gray-700">{selectedPost.content}</p>
+                            <div className="flex shrink-0 justify-end border-t border-line p-4">
+                                <button type="button" onClick={() => setSelectedPost(null)} className="h-12 rounded-lg bg-[#1a1a1a] px-6 text-[16px] font-bold text-white transition-colors hover:bg-black">
+                                    닫기
+                                </button>
                             </div>
                         </div>
-                        <div className="shrink-0 border-t border-black/[0.06] p-4 flex justify-end">
-                            <button type="button" onClick={() => setSelectedPost(null)} className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors">
-                                닫기
-                            </button>
-                        </div>
-                    </div>
                     </div>
                 </ModalPortal>
-                )}
+            )}
         </div>
     );
 };

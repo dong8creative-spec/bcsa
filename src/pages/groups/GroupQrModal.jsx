@@ -48,15 +48,15 @@ export default function GroupQrModal({ group, session, onClose }) {
     const fee = Number(session.fee) || 0;
     return (
         <div className="fixed inset-0 z-[1200] bg-white flex flex-col items-center justify-center p-6 text-center">
-            <button type="button" onClick={onClose} className="absolute top-5 right-5 px-4 py-2 rounded-full bg-soft text-sm font-semibold">닫기</button>
-            <p className="text-sm text-gray-500">{group.title}</p>
-            <h2 className="text-2xl md:text-3xl font-semibold text-dark mt-1 break-keep">{session.title}</h2>
-            <p className="mt-2 text-sm text-gray-500">휴대폰 카메라로 찍으면 {fee > 0 ? `출석과 참가비 결제(${fee.toLocaleString()}원)가` : '출석이'} 됩니다</p>
-            <div className="mt-6 w-[min(78vw,420px)] aspect-square rounded-[28px] border border-black/10 grid place-items-center overflow-hidden bg-white">
-                {dataUrl ? <img src={dataUrl} alt="출석 QR 코드" className="w-full h-full" /> : <span className="text-sm text-gray-400">{error || 'QR 준비 중…'}</span>}
+            <button type="button" onClick={onClose} className="absolute right-5 top-5 h-11 rounded-lg border border-line2 bg-white px-5 text-[15px] font-semibold text-ink hover:border-ink">닫기</button>
+            <p className="text-[15px] text-sub">{group.title}</p>
+            <h2 className="mt-1 break-keep text-[24px] font-bold text-ink md:text-[30px]">{session.title}</h2>
+            <p className="mt-2 text-[15px] text-sub">휴대폰 카메라로 찍으면 {fee > 0 ? `출석과 참가비 결제(${fee.toLocaleString()}원)가` : '출석이'} 됩니다</p>
+            <div className="mt-6 grid aspect-square w-[min(78vw,420px)] place-items-center overflow-hidden border border-line bg-white">
+                {dataUrl ? <img src={dataUrl} alt="출석 QR 코드" className="h-full w-full" /> : <span className="text-[15px] text-sub">{error || 'QR 준비 중…'}</span>}
             </div>
-            <p className="mt-4 text-sm text-gray-500">{error ? <span className="text-red-600">{error}</span> : `${secondsLeft}초 후 새 QR로 바뀝니다`}</p>
-            <p className="mt-6 text-lg font-semibold text-dark">지금까지 출석 <span className="text-brand">{attended}</span>명</p>
+            <p className="mt-4 text-[15px] text-sub" aria-live="polite">{error ? <span className="text-red-600">{error}</span> : `${secondsLeft}초 후 새 QR로 바뀝니다`}</p>
+            <p className="mt-6 text-[18px] font-semibold text-ink">지금까지 출석 <span className="font-bold text-royal">{attended}</span>명</p>
         </div>
     );
 }

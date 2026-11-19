@@ -47,43 +47,43 @@ export default function GroupReportModal({ group, currentUser, uid, onClose }) {
     return (
         <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/40" onClick={() => { if (!busy) onClose(); }}>
             <div role="dialog" aria-modal="true" aria-labelledby="group-report-title"
-                className="w-full max-w-md max-h-[calc(100dvh-32px)] overflow-y-auto bg-white rounded-3xl p-6 md:p-7 shadow-xl"
+                className="max-h-[calc(100dvh-32px)] w-full max-w-md overflow-y-auto rounded-[18px] bg-white p-6 md:p-7"
                 onClick={(e) => e.stopPropagation()}>
                 {done ? (
                     <div className="text-center py-4">
-                        <h2 id="group-report-title" className="text-xl font-semibold text-dark">신고가 접수됐어요</h2>
-                        <p className="mt-2 text-sm text-gray-500 break-keep">운영진이 확인한 뒤 조치할게요. 신고한 사람은 그룹장에게 알려지지 않아요.</p>
-                        <button type="button" onClick={onClose} className="mt-6 w-full py-3 rounded-full bg-dark text-white font-semibold">확인</button>
+                        <h2 id="group-report-title" className="text-[21px] font-bold text-ink">신고가 접수됐어요</h2>
+                        <p className="mt-2 break-keep text-[15px] text-sub">운영진이 확인한 뒤 조치할게요. 신고한 사람은 그룹장에게 알려지지 않아요.</p>
+                        <button type="button" onClick={onClose} className="mt-6 h-12 w-full rounded-lg bg-[#1a1a1a] text-[16px] font-bold text-white">확인</button>
                     </div>
                 ) : (
                     <form onSubmit={onSubmit}>
-                        <h2 id="group-report-title" className="text-xl font-semibold text-dark">이 그룹 신고하기</h2>
-                        <p className="mt-1 text-sm text-gray-500 break-keep">「{group.title}」 · 운영진만 확인해요.</p>
+                        <h2 id="group-report-title" className="text-[21px] font-bold text-ink">이 그룹 신고하기</h2>
+                        <p className="mt-1 break-keep text-[15px] text-sub">「{group.title}」 · 운영진만 확인해요.</p>
 
-                        <p className="mt-5 text-sm font-semibold text-dark">어떤 문제인가요?</p>
+                        <p className="mt-5 text-[15px] font-semibold text-ink">어떤 문제인가요?</p>
                         <div className="mt-2 flex flex-wrap gap-2">
                             {REASONS.map((r) => (
                                 <button key={r} type="button" onClick={() => setKind(kind === r ? '' : r)} aria-pressed={kind === r}
-                                    className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition-colors ${kind === r ? 'bg-dark text-white border-dark' : 'bg-white text-gray-600 border-black/10 hover:border-black/30'}`}>
+                                    className={`min-h-[44px] rounded-full border px-4 text-[15px] font-semibold transition-colors ${kind === r ? 'border-ink bg-ink text-white' : 'border-line2 bg-white text-[#333] hover:border-ink'}`}>
                                     {r}
                                 </button>
                             ))}
                         </div>
 
-                        <label htmlFor="group-report-detail" className="block mt-5 text-sm font-semibold text-dark">
-                            자세한 내용 <span className="font-normal text-gray-500">{kind === '기타' ? '(필수)' : '(선택)'}</span>
+                        <label htmlFor="group-report-detail" className="mt-5 block text-[15px] font-semibold text-ink">
+                            자세한 내용 <span className="font-normal text-sub">{kind === '기타' ? '(필수)' : '(선택)'}</span>
                         </label>
                         <textarea id="group-report-detail" ref={textRef} value={detail} maxLength={MAX} rows={5}
                             onChange={(e) => setDetail(e.target.value)}
                             placeholder="언제, 어떤 일이 있었는지 적어 주시면 확인이 빨라요."
-                            className="mt-2 w-full rounded-2xl border border-black/10 p-3 text-sm leading-relaxed resize-none focus:outline-none focus:border-brand" />
-                        <p className="mt-1 text-right text-xs text-gray-400">{detail.length}/{MAX}</p>
+                            className="mt-2 w-full resize-none rounded-lg border border-line2 px-4 py-3 text-[15px] leading-relaxed focus:border-royal focus:outline-none" />
+                        <p className="mt-1 text-right text-[13px] text-sub">{detail.length}/{MAX}</p>
 
-                        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+                        {error ? <p role="alert" className="mt-2 text-[15px] text-red-600">{error}</p> : null}
 
                         <div className="mt-5 grid grid-cols-2 gap-2">
-                            <button type="button" onClick={onClose} disabled={busy} className="py-3 rounded-full bg-soft text-dark font-semibold disabled:opacity-60">취소</button>
-                            <button type="submit" disabled={!canSubmit} className="py-3 rounded-full bg-red-600 text-white font-semibold disabled:opacity-40">{busy ? '보내는 중…' : '신고하기'}</button>
+                            <button type="button" onClick={onClose} disabled={busy} className="h-12 rounded-lg border border-line2 bg-white text-[16px] font-semibold text-ink disabled:opacity-60">취소</button>
+                            <button type="submit" disabled={!canSubmit} className="h-12 rounded-lg bg-[#1a1a1a] text-[16px] font-bold text-white disabled:opacity-40">{busy ? '보내는 중…' : '신고하기'}</button>
                         </div>
                     </form>
                 )}

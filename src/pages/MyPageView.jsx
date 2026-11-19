@@ -1,5 +1,5 @@
 import React, { useState, Fragment, useEffect, useCallback, useRef } from 'react';
-import PageTitle from '../components/PageTitle';
+import { MgPageHead, MgWrap, MgInfoTable } from '../components/mg/Mg';
 import { Icons } from '../components/Icons';
 import { uploadImage, uploadImageWithMeta, getDisplayImageUrl } from '../utils/imageUtils';
 import { firebaseService } from '../services/firebaseService';
@@ -295,79 +295,90 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
         }
     };
 
-    return (
-        <div className="pt-32 pb-20 px-6 md:px-8 min-h-screen bg-white animate-fade-in overflow-y-auto min-h-0">
-            <div className="container mx-auto max-w-5xl">
-                {/* 헤더 */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-6">
-                    <div className="w-full text-center md:text-left">
-                        <PageTitle pageKey="myPage" pageTitles={pageTitles} defaultText="마이페이지" />
-                        <p className="text-sm text-gray-500 mt-2">회원 정보와 활동 내역을 확인하세요</p>
-                    </div>
-                    <div className="w-full flex justify-end md:justify-start">
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="flex items-center gap-2 text-gray-600 text-sm border border-black/[0.06] px-4 py-2 rounded-full hover:bg-soft transition-colors">
-                            <Icons.ArrowLeft size={18} /> 메인으로
-                        </button>
-                    </div>
-                </div>
+    const pageTitleText = pageTitles?.myPage?.text || '마이페이지';
+    const myTabItems = [
+        ['seminars', '신청한 모임'],
+        ['groups', `운영하는 모임${ledGroups?.length ? ` ${ledGroups.length}` : ''}`],
+        ['posts', '내 게시글'],
+        ['verification', '본인인증 정보'],
+    ];
+    const lbl = 'mb-2 flex flex-wrap items-center gap-1.5 text-[15px] font-semibold text-ink';
+    const opt = 'text-[13px] font-normal text-sub';
+    const inp = 'w-full h-[52px] px-4 bg-white border border-line2 rounded-lg text-[16px] text-ink placeholder:text-[#9a9893] focus:border-royal focus:outline-none transition-colors';
+    const fieldErr = 'mt-1.5 text-[14px] text-red-600';
+    const actBtn = 'inline-flex h-11 items-center px-3.5 rounded-lg border text-[15px] font-semibold transition-colors';
+    const openPostcode = () => openDaumPostcode((data) => { if (data?.roadAddress) setEditFormData(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); });
 
+    return (
+        <div className="min-h-screen bg-white animate-fade-in">
+            <MgPageHead
+                eyebrow={user?.name ? `${user.name}님` : undefined}
+                title={<span style={{ whiteSpace: 'pre-line' }}>{pageTitleText}</span>}
+                desc="회원 정보와 활동 내역을 확인하세요"
+            >
+                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="mt-6 inline-flex h-11 items-center gap-2 rounded-lg border border-white/30 px-4 text-[15px] font-semibold text-white hover:border-white transition-colors">
+                    <Icons.ArrowLeft size={18} aria-hidden="true" /> 메인으로
+                </button>
+            </MgPageHead>
+
+            <MgWrap className="pb-20 pt-8 md:pt-12">
                 {/* 알림 (관리자 정정 등) */}
                 {notifications.filter(n => !n.read).length > 0 && (
-                    <div className="mb-6 space-y-3">
-                        <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                            <Icons.AlertCircle size={18} /> 알림
+                    <section className="mb-8 space-y-2.5" aria-label="알림">
+                        <h3 className="text-[15px] font-semibold text-ink flex items-center gap-2">
+                            <Icons.AlertCircle size={18} className="text-royal" aria-hidden="true" /> 알림
                         </h3>
                         {notifications.filter(n => !n.read).map((n) => (
-                            <div key={n.id} className="flex items-start justify-between gap-4 p-4 bg-blue-50 border border-black/[0.06] rounded-2xl">
-                                <p className="text-sm text-gray-800 flex-1">{n.message || '회원정보가 정정되었습니다.'}</p>
-                                <button type="button" onClick={() => handleNotificationConfirm(n.id)} className="shrink-0 px-3 py-1.5 text-sm font-semibold text-brand border border-brand rounded-full hover:bg-brand/5 transition-colors">
+                            <div key={n.id} className="flex items-center justify-between gap-4 rounded-xl bg-sky px-4 py-3">
+                                <p className="text-[15px] text-ink flex-1">{n.message || '회원정보가 정정되었습니다.'}</p>
+                                <button type="button" onClick={() => handleNotificationConfirm(n.id)} className={`${actBtn} shrink-0 border-royal bg-white text-royal hover:bg-royal hover:text-white`}>
                                     확인
                                 </button>
                             </div>
                         ))}
-                    </div>
+                    </section>
                 )}
-                
+
                 {/* 프로필 섹션 */}
-                <div className="bg-gray-50 border border-black/[0.06] p-10 mb-20">
-                    <div className="flex flex-col md:flex-row items-start gap-8">
-                        <div className="relative">
-                            <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center text-5xl overflow-hidden border border-black/10">
+                <section className="mb-12 rounded-xl border border-line p-5 md:p-8" aria-label="회원 정보">
+                    <div className="flex flex-col md:flex-row items-start gap-6 md:gap-8">
+                        <div className="relative shrink-0">
+                            <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-card flex items-center justify-center text-4xl overflow-hidden border border-line">
                                 {profileImageUploading ? (
-                                    <span className="text-xs text-gray-500 px-2 text-center">업로드 중...</span>
+                                    <span className="text-[13px] text-sub px-2 text-center">업로드 중...</span>
                                 ) : editFormData.img ? (
                                     <img src={editFormData.img} className="w-full h-full object-cover" loading="lazy" decoding="async" alt="프로필" />
                                 ) : (
-                                    "👤"
+                                    <Icons.Users className="w-10 h-10 text-[#b5b3ae]" aria-hidden="true" />
                                 )}
                             </div>
                             {isEditingProfile && !profileImageUploading && (
-                                <label className="absolute bottom-0 right-0 w-10 h-10 bg-gray-800 text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-700 transition-colors border-2 border-white">
-                                    <Icons.Camera size={18} />
+                                <label className="absolute -bottom-1 -right-1 w-11 h-11 bg-[#0c0c0e] text-white rounded-lg flex items-center justify-center cursor-pointer hover:bg-black transition-colors border-2 border-white" aria-label="프로필 사진 바꾸기">
+                                    <Icons.Camera size={18} aria-hidden="true" />
                                     <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                                 </label>
                             )}
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0 w-full">
                             {isEditingProfile ? (
-                                <div className="w-full max-w-2xl">
-                                    <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-                                        <p className="text-sm font-semibold text-amber-800 flex items-center gap-2">
-                                            <Icons.AlertCircle className="w-5 h-5 shrink-0" />
+                                <div className="w-full max-w-[720px]">
+                                    <div className="mb-6 rounded-xl bg-sky px-4 py-3.5">
+                                        <p className="text-[15px] font-semibold text-ink flex items-start gap-2">
+                                            <Icons.AlertCircle className="mt-0.5 w-5 h-5 shrink-0 text-royal" aria-hidden="true" />
                                             표시(*)된 항목은 필수입니다. 회원가입 시와 동일한 항목을 수정할 수 있습니다.
                                         </p>
                                     </div>
                                     <div className="space-y-5">
-                                        <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2">회원 유형 <span className="text-red-500">*</span></label>
+                                        <div role="group" aria-labelledby="mypage-usertype-label">
+                                            <p id="mypage-usertype-label" className={lbl}>회원 유형 <span className="text-red-600">*</span></p>
                                             <div className="grid grid-cols-2 gap-3">
-                                                <button type="button" onClick={() => setEditUserType('사업자')} className={`p-4 rounded-2xl border-2 text-left transition-all ${editUserType === '사업자' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'}`}>
-                                                    <span className="font-semibold text-dark">사업자</span>
-                                                    <p className="text-xs text-gray-500 mt-1">현재 사업을 운영 중이신 분</p>
+                                                <button type="button" aria-pressed={editUserType === '사업자'} onClick={() => setEditUserType('사업자')} className={`min-h-[84px] p-4 rounded-lg border text-left transition-colors ${editUserType === '사업자' ? 'border-royal bg-sky ring-1 ring-royal' : 'border-line2 bg-white hover:border-ink'}`}>
+                                                    <span className="text-[17px] font-semibold text-ink">사업자</span>
+                                                    <p className="text-[14px] text-sub mt-1">현재 사업을 운영 중이신 분</p>
                                                 </button>
-                                                <button type="button" onClick={() => setEditUserType('예창')} className={`p-4 rounded-2xl border-2 text-left transition-all ${editUserType === '예창' ? 'border-brand bg-brand/5' : 'border-gray-200 hover:border-brand/50'}`}>
-                                                    <span className="font-semibold text-dark">예비창업자</span>
-                                                    <p className="text-xs text-gray-500 mt-1">창업을 준비 중이신 분</p>
+                                                <button type="button" aria-pressed={editUserType === '예창'} onClick={() => setEditUserType('예창')} className={`min-h-[84px] p-4 rounded-lg border text-left transition-colors ${editUserType === '예창' ? 'border-royal bg-sky ring-1 ring-royal' : 'border-line2 bg-white hover:border-ink'}`}>
+                                                    <span className="text-[17px] font-semibold text-ink">예비창업자</span>
+                                                    <p className="text-[14px] text-sub mt-1">창업을 준비 중이신 분</p>
                                                 </button>
                                             </div>
                                         </div>
@@ -375,20 +386,20 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                             <>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                     <div>
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">이름 <span className="text-red-500">*</span></label>
-                                                        <input type="text" required placeholder="이름 입력" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.name} onChange={e => setEditFormData(f => ({ ...f, name: e.target.value }))} />
+                                                        <label htmlFor="mypage-name" className={lbl}>이름 <span className="text-red-600">*</span></label>
+                                                        <input id="mypage-name" type="text" required autoComplete="name" placeholder="이름 입력" className={inp} value={editFormData.name} onChange={e => setEditFormData(f => ({ ...f, name: e.target.value }))} />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">닉네임 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                                        <input type="text" placeholder="닉네임 입력" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.nickname} onChange={e => setEditFormData(f => ({ ...f, nickname: e.target.value }))} />
+                                                        <label htmlFor="mypage-nickname" className={lbl}>닉네임 <span className={opt}>(선택)</span></label>
+                                                        <input id="mypage-nickname" type="text" placeholder="닉네임 입력" className={inp} value={editFormData.nickname} onChange={e => setEditFormData(f => ({ ...f, nickname: e.target.value }))} />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">생년월일 <span className="text-red-500">*</span></label>
-                                                        <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD (예: 1990-01-15)" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.birthdate} onChange={e => { const v = e.target.value; const parsed = parseBirthdateInput(v); setEditFormData(f => ({ ...f, birthdate: parsed || v })); }} />
+                                                        <label htmlFor="mypage-birthdate" className={lbl}>생년월일 <span className="text-red-600">*</span></label>
+                                                        <input id="mypage-birthdate" type="text" inputMode="numeric" placeholder="YYYY-MM-DD (예: 1990-01-15)" className={inp} value={editFormData.birthdate} onChange={e => { const v = e.target.value; const parsed = parseBirthdateInput(v); setEditFormData(f => ({ ...f, birthdate: parsed || v })); }} />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">성별 <span className="text-red-500">*</span></label>
-                                                        <select required className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none bg-white" value={editFormData.gender} onChange={e => setEditFormData(f => ({ ...f, gender: e.target.value }))}>
+                                                        <label htmlFor="mypage-gender" className={lbl}>성별 <span className="text-red-600">*</span></label>
+                                                        <select id="mypage-gender" required className={`${inp} pr-3`} value={editFormData.gender} onChange={e => setEditFormData(f => ({ ...f, gender: e.target.value }))}>
                                                             <option value="">선택</option>
                                                             <option value="남성">남성</option>
                                                             <option value="여성">여성</option>
@@ -396,96 +407,96 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                         </select>
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">연락처 <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(숫자 11자리)</span></label>
-                                                        <input type="tel" inputMode="numeric" placeholder="01012345678" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.phone} onChange={e => { const raw = e.target.value.replace(/\D/g, ''); setEditFormData(f => ({ ...f, phone: raw.length > 11 ? raw.slice(0, 11) : raw })); }} maxLength={11} />
-                                                        {editFormData.phone && editFormData.phone.length === 11 && !validatePhone(editFormData.phone) && <p className="text-xs text-red-500 mt-1">010, 011 등으로 시작하는 11자리 번호를 입력해주세요.</p>}
-                                                        <div className="mt-3 flex items-center gap-2">
-                                                            <input type="checkbox" id="mypage-phonePublic" checked={editFormData.phonePublic} onChange={e => setEditFormData(f => ({ ...f, phonePublic: e.target.checked }))} className="w-5 h-5 text-brand rounded focus:ring-brand" />
-                                                            <label htmlFor="mypage-phonePublic" className="text-sm text-gray-700 cursor-pointer">회원명단에서 연락처 공개</label>
+                                                        <label htmlFor="mypage-phone" className={lbl}>연락처 <span className="text-red-600">*</span> <span className={opt}>(숫자 11자리)</span></label>
+                                                        <input id="mypage-phone" type="tel" inputMode="numeric" autoComplete="tel" placeholder="01012345678" className={inp} value={editFormData.phone} onChange={e => { const raw = e.target.value.replace(/\D/g, ''); setEditFormData(f => ({ ...f, phone: raw.length > 11 ? raw.slice(0, 11) : raw })); }} maxLength={11} />
+                                                        {editFormData.phone && editFormData.phone.length === 11 && !validatePhone(editFormData.phone) && <p className={fieldErr}>010, 011 등으로 시작하는 11자리 번호를 입력해주세요.</p>}
+                                                        <div className="mt-2 flex min-h-[44px] items-center gap-2.5">
+                                                            <input type="checkbox" id="mypage-phonePublic" checked={editFormData.phonePublic} onChange={e => setEditFormData(f => ({ ...f, phonePublic: e.target.checked }))} className="w-5 h-5 accent-[#2d4fe0]" />
+                                                            <label htmlFor="mypage-phonePublic" className="text-[15px] text-ink cursor-pointer">회원명단에서 연락처 공개</label>
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">이메일 <span className="text-red-500">*</span></label>
+                                                        <label htmlFor="mypage-email-id" className={lbl}>이메일 <span className="text-red-600">*</span></label>
                                                         <div className="flex flex-wrap gap-2 items-center">
-                                                            <input type="text" inputMode="email" placeholder="example" className="flex-1 min-w-[100px] p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.emailId} onChange={e => setEditFormData(f => ({ ...f, emailId: e.target.value, email: composeEmail(e.target.value, f.emailDomain, f.emailDomainCustom) }))} />
-                                                            <span className="text-slate-500">@</span>
-                                                            <select className="p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none bg-white" value={editFormData.emailDomain} onChange={e => setEditFormData(f => ({ ...f, emailDomain: e.target.value, email: composeEmail(f.emailId, e.target.value, f.emailDomainCustom) }))}>
+                                                            <input id="mypage-email-id" type="text" inputMode="email" placeholder="example" className={`${inp} !w-auto flex-1 min-w-[110px]`} value={editFormData.emailId} onChange={e => setEditFormData(f => ({ ...f, emailId: e.target.value, email: composeEmail(e.target.value, f.emailDomain, f.emailDomainCustom) }))} />
+                                                            <span className="text-[16px] text-sub" aria-hidden="true">@</span>
+                                                            <select aria-label="이메일 도메인" className={`${inp} !w-auto flex-1 min-w-[130px] pr-3`} value={editFormData.emailDomain} onChange={e => setEditFormData(f => ({ ...f, emailDomain: e.target.value, email: composeEmail(f.emailId, e.target.value, f.emailDomainCustom) }))}>
                                                                 {EMAIL_DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
                                                             </select>
                                                             {editFormData.emailDomain === '직접입력' && (
-                                                                <input type="text" placeholder="도메인 입력" className="flex-1 min-w-[120px] p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.emailDomainCustom} onChange={e => setEditFormData(f => ({ ...f, emailDomainCustom: e.target.value, email: composeEmail(f.emailId, f.emailDomain, e.target.value) }))} />
+                                                                <input type="text" aria-label="이메일 도메인 직접 입력" placeholder="도메인 입력" className={inp} value={editFormData.emailDomainCustom} onChange={e => setEditFormData(f => ({ ...f, emailDomainCustom: e.target.value, email: composeEmail(f.emailId, f.emailDomain, e.target.value) }))} />
                                                             )}
                                                         </div>
                                                     </div>
                                                     <div className="md:col-span-2">
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">주소 <span className="text-red-500">*</span></label>
+                                                        <label htmlFor="mypage-road-address" className={lbl}>주소 <span className="text-red-600">*</span></label>
                                                         <div className="space-y-2">
                                                             <div className="flex gap-2">
-                                                                <input type="text" readOnly placeholder="도로명 주소 검색" className="flex-1 p-3 border border-black/[0.06] rounded-2xl bg-gray-50 text-sm cursor-pointer" value={editFormData.roadAddress} onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setEditFormData(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} />
-                                                                <button type="button" onClick={() => openDaumPostcode((data) => { if (data?.roadAddress) setEditFormData(f => ({ ...f, roadAddress: data.roadAddress, zipCode: data.zipCode || '' })); })} className="px-4 py-3 bg-brand text-white rounded-full font-semibold hover:bg-[#00327a] transition-colors text-sm whitespace-nowrap flex items-center gap-1">
-                                                                    <Icons.MapPin size={16} /> 주소 검색
+                                                                <input id="mypage-road-address" type="text" readOnly placeholder="도로명 주소 검색" className={`${inp} !w-auto flex-1 min-w-0 bg-card cursor-pointer`} value={editFormData.roadAddress} onClick={openPostcode} />
+                                                                <button type="button" onClick={openPostcode} className="h-[52px] shrink-0 px-4 bg-[#1a1a1a] text-white rounded-lg font-bold hover:bg-black transition-colors text-[15px] whitespace-nowrap flex items-center gap-1.5">
+                                                                    <Icons.MapPin size={16} aria-hidden="true" /> 주소 검색
                                                                 </button>
                                                             </div>
-                                                            {editFormData.zipCode ? <p className="text-xs text-gray-500">우편번호: {editFormData.zipCode}</p> : null}
-                                                            <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none text-sm" value={editFormData.detailAddress} onChange={e => setEditFormData(f => ({ ...f, detailAddress: e.target.value }))} />
+                                                            {editFormData.zipCode ? <p className="text-[13px] text-sub">우편번호: {editFormData.zipCode}</p> : null}
+                                                            <input type="text" aria-label="상세주소" placeholder="상세주소 입력 (동/호수 등)" className={inp} value={editFormData.detailAddress} onChange={e => setEditFormData(f => ({ ...f, detailAddress: e.target.value }))} />
                                                         </div>
                                                     </div>
                                                 </div>
                                                 {editUserType === '사업자' && (
-                                                    <div className="space-y-5 pt-2">
+                                                    <div className="space-y-5 border-t border-line pt-5">
                                                         <div>
-                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">상호명 <span className="text-red-500">*</span></label>
-                                                            <input type="text" required placeholder="회사 또는 사업체 이름" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.company} onChange={e => setEditFormData(f => ({ ...f, company: e.target.value }))} />
+                                                            <label htmlFor="mypage-company" className={lbl}>상호명 <span className="text-red-600">*</span></label>
+                                                            <input id="mypage-company" type="text" required placeholder="회사 또는 사업체 이름" className={inp} value={editFormData.company} onChange={e => setEditFormData(f => ({ ...f, company: e.target.value }))} />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">사업자등록번호 <span className="text-red-500">*</span></label>
-                                                            <input type="text" inputMode="numeric" maxLength={10} placeholder="숫자 10자리 (예: 1234567890)" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.businessRegistrationNumber} onChange={e => setEditFormData(f => ({ ...f, businessRegistrationNumber: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
-                                                            {editFormData.businessRegistrationNumber && !isBusinessNumberValid && <p className="text-xs text-red-500 mt-1">숫자 10자리를 입력해주세요.</p>}
+                                                            <label htmlFor="mypage-bizno" className={lbl}>사업자등록번호 <span className="text-red-600">*</span></label>
+                                                            <input id="mypage-bizno" type="text" inputMode="numeric" maxLength={10} placeholder="숫자 10자리 (예: 1234567890)" className={inp} value={editFormData.businessRegistrationNumber} onChange={e => setEditFormData(f => ({ ...f, businessRegistrationNumber: e.target.value.replace(/\D/g, '').slice(0, 10) }))} />
+                                                            {editFormData.businessRegistrationNumber && !isBusinessNumberValid && <p className={fieldErr}>숫자 10자리를 입력해주세요.</p>}
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">직책/직함 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                                            <input type="text" placeholder="예: 대표, 이사, 팀장" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.position} onChange={e => setEditFormData(f => ({ ...f, position: e.target.value }))} />
+                                                            <label htmlFor="mypage-position" className={lbl}>직책/직함 <span className={opt}>(선택)</span></label>
+                                                            <input id="mypage-position" type="text" placeholder="예: 대표, 이사, 팀장" className={inp} value={editFormData.position} onChange={e => setEditFormData(f => ({ ...f, position: e.target.value }))} />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">회사 전화번호 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에 노출)</span></label>
-                                                            <input type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.companyPhone} onChange={e => setEditFormData(f => ({ ...f, companyPhone: e.target.value }))} />
+                                                            <label htmlFor="mypage-company-phone" className={lbl}>회사 전화번호 <span className={opt}>(선택, 기입 시 회원명단에 노출)</span></label>
+                                                            <input id="mypage-company-phone" type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className={inp} value={editFormData.companyPhone} onChange={e => setEditFormData(f => ({ ...f, companyPhone: e.target.value }))} />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">사이트 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에서 노출)</span></label>
-                                                            <input type="url" placeholder="https://www.example.com" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.companyWebsite || ''} onChange={e => setEditFormData(f => ({ ...f, companyWebsite: e.target.value }))} />
+                                                            <label htmlFor="mypage-company-website" className={lbl}>사이트 <span className={opt}>(선택, 기입 시 회원명단에서 노출)</span></label>
+                                                            <input id="mypage-company-website" type="url" placeholder="https://www.example.com" className={inp} value={editFormData.companyWebsite || ''} onChange={e => setEditFormData(f => ({ ...f, companyWebsite: e.target.value }))} />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">업종 / 업태 <span className="text-red-500">*</span></label>
-                                                            <select required className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none bg-white" value={editFormData.businessCategory} onChange={e => setEditFormData(f => ({ ...f, businessCategory: e.target.value }))}>
+                                                            <label htmlFor="mypage-category" className={lbl}>업종 / 업태 <span className="text-red-600">*</span></label>
+                                                            <select id="mypage-category" required className={`${inp} pr-3`} value={editFormData.businessCategory} onChange={e => setEditFormData(f => ({ ...f, businessCategory: e.target.value }))}>
                                                                 <option value="">선택</option>
                                                                 {BUSINESS_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                                             </select>
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">사업자등록증 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                                            <input type="file" accept="image/*,.pdf,application/pdf" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand file:text-white file:font-medium file:text-sm" onChange={handleBusinessDocChange} />
-                                                            {editFormData.businessRegistrationFileName && <p className="text-xs text-gray-500 mt-1">등록됨: {editFormData.businessRegistrationFileName}</p>}
+                                                            <label htmlFor="mypage-bizdoc" className={lbl}>사업자등록증 <span className={opt}>(선택)</span></label>
+                                                            <input id="mypage-bizdoc" type="file" accept="image/*,.pdf,application/pdf" className="w-full rounded-lg border border-line2 bg-white p-2.5 text-[15px] text-sub focus:border-royal focus:outline-none file:mr-3 file:h-10 file:px-4 file:rounded-lg file:border-0 file:bg-[#1a1a1a] file:text-white file:font-semibold file:text-[14px]" onChange={handleBusinessDocChange} />
+                                                            {editFormData.businessRegistrationFileName && <p className="text-[14px] text-sub mt-1.5">등록됨: {editFormData.businessRegistrationFileName}</p>}
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">협업 업종 <span className="text-red-500">*</span></label>
-                                                            <input type="text" required placeholder="협업 희망 업종" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.collaborationIndustry} onChange={e => setEditFormData(f => ({ ...f, collaborationIndustry: e.target.value }))} />
+                                                            <label htmlFor="mypage-collab" className={lbl}>협업 업종 <span className="text-red-600">*</span></label>
+                                                            <input id="mypage-collab" type="text" required placeholder="협업 희망 업종" className={inp} value={editFormData.collaborationIndustry} onChange={e => setEditFormData(f => ({ ...f, collaborationIndustry: e.target.value }))} />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-sm font-semibold text-gray-700 mb-2">핵심고객 <span className="text-red-500">*</span></label>
-                                                            <input type="text" required placeholder="핵심 고객층" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.keyCustomers} onChange={e => setEditFormData(f => ({ ...f, keyCustomers: e.target.value }))} />
+                                                            <label htmlFor="mypage-customers" className={lbl}>핵심고객 <span className="text-red-600">*</span></label>
+                                                            <input id="mypage-customers" type="text" required placeholder="핵심 고객층" className={inp} value={editFormData.keyCustomers} onChange={e => setEditFormData(f => ({ ...f, keyCustomers: e.target.value }))} />
                                                         </div>
                                                     </div>
                                                 )}
                                                 {editUserType === '예창' && (
                                                     <div>
-                                                        <label className="block text-sm font-semibold text-gray-700 mb-2">희망업종 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                                        <input type="text" placeholder="희망 업종 또는 분야" className="w-full p-3 border border-black/[0.06] rounded-2xl focus:border-brand focus:outline-none" value={editFormData.desiredIndustry} onChange={e => setEditFormData(f => ({ ...f, desiredIndustry: e.target.value }))} />
+                                                        <label htmlFor="mypage-desired" className={lbl}>희망업종 <span className={opt}>(선택)</span></label>
+                                                        <input id="mypage-desired" type="text" placeholder="희망 업종 또는 분야" className={inp} value={editFormData.desiredIndustry} onChange={e => setEditFormData(f => ({ ...f, desiredIndustry: e.target.value }))} />
                                                     </div>
                                                 )}
-                                                {profileEditError && <p className="text-sm text-red-600 font-medium">{profileEditError}</p>}
-                                                <div className="flex gap-3 pt-4">
-                                                    <button type="button" onClick={() => { setIsEditingProfile(false); setEditFormData(getInitialEditForm(user)); setEditUserType(user?.userType || ''); setProfileEditError(''); }} className="px-6 py-3 bg-white border border-black/[0.06] text-gray-600 font-semibold rounded-full hover:bg-soft transition-colors">취소</button>
-                                                    <button type="button" onClick={handleSaveProfile} className="flex-1 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors">저장</button>
+                                                {profileEditError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[15px] text-red-700">{profileEditError}</p>}
+                                                <div className="flex gap-3 pt-2">
+                                                    <button type="button" onClick={() => { setIsEditingProfile(false); setEditFormData(getInitialEditForm(user)); setEditUserType(user?.userType || ''); setProfileEditError(''); }} className="h-[52px] px-6 bg-white border border-line2 text-ink text-[16px] font-semibold rounded-lg hover:border-ink transition-colors">취소</button>
+                                                    <button type="button" onClick={handleSaveProfile} className="flex-1 h-[52px] bg-[#1a1a1a] text-white text-[16px] font-bold rounded-lg hover:bg-black transition-colors">저장</button>
                                                 </div>
                                             </>
                                         )}
@@ -493,99 +504,67 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                 </div>
                             ) : (
                                 <Fragment>
-                                    <h3 className="text-3xl font-light text-gray-900 mb-2">{user.name}</h3>
-                                    <p className="text-sm text-gray-600 mb-3">{user.company || ''} {user.company && (user.position || user.role) ? '·' : ''} {user.position || user.role || ''}</p>
-                                    <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium mt-1">{user.industry || user.businessCategory || ''}</span>
-                                    <button type="button" onClick={() => { setEditFormData(getInitialEditForm(user)); setEditUserType(user?.userType || (user?.company || user?.businessRegistrationNumber ? '사업자' : '예창')); setProfileEditError(''); setIsEditingProfile(true); }} className="mt-6 px-5 py-2 border border-black/10 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors">
-                                        개인정보 수정
-                                    </button>
+                                    <h2 className="text-[24px] font-bold text-ink mb-1.5 md:text-[28px]">{user.name}</h2>
+                                    <p className="text-[16px] text-sub mb-3">{user.company || ''} {user.company && (user.position || user.role) ? '·' : ''} {user.position || user.role || ''}</p>
+                                    {(user.industry || user.businessCategory) ? (
+                                        <span className="inline-block px-2.5 py-1 bg-card text-ink text-[13px] font-semibold">{user.industry || user.businessCategory}</span>
+                                    ) : null}
+                                    <div>
+                                        <button type="button" onClick={() => { setEditFormData(getInitialEditForm(user)); setEditUserType(user?.userType || (user?.company || user?.businessRegistrationNumber ? '사업자' : '예창')); setProfileEditError(''); setIsEditingProfile(true); }} className="mt-5 inline-flex h-11 items-center px-5 bg-white border border-line2 text-ink text-[15px] font-semibold rounded-lg hover:border-ink transition-colors">
+                                            개인정보 수정
+                                        </button>
+                                    </div>
                                     {user.approvalStatus === 'pending' && (
-                                        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200">
-                                            <div className="flex items-start gap-3">
-                                                <Icons.Info className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                                                <div>
-                                                    <span className="text-sm font-medium text-yellow-900 block mb-1">승인 대기 중</span>
-                                                    <p className="text-xs text-yellow-700 leading-relaxed">회원가입 신청이 관리자 승인 대기 중입니다. 승인 후 서비스를 이용하실 수 있습니다.</p>
-                                                </div>
-                                            </div>
+                                        <div className="mt-6 rounded-xl border border-line bg-card p-4">
+                                            <span className="inline-block mb-2 px-2 py-0.5 bg-[#8a8883] text-white text-[13px] font-semibold">승인 대기 중</span>
+                                            <p className="text-[15px] text-ink leading-relaxed">회원가입 신청이 관리자 승인 대기 중입니다. 승인 후 서비스를 이용하실 수 있습니다.</p>
                                         </div>
                                     )}
                                     {user.approvalStatus === 'rejected' && (
-                                        <div className="mt-6 p-4 bg-red-50 border border-red-200">
-                                            <div className="flex items-start gap-3">
-                                                <Icons.X className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                                                <div>
-                                                    <span className="text-sm font-medium text-red-900 block mb-1">승인 거절</span>
-                                                    <p className="text-xs text-red-700 leading-relaxed">회원가입 신청이 거절되었습니다. 관리자에게 문의하세요.</p>
-                                                </div>
-                                            </div>
+                                        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4">
+                                            <span className="inline-block mb-2 px-2 py-0.5 bg-red-600 text-white text-[13px] font-semibold">승인 거절</span>
+                                            <p className="text-[15px] text-red-800 leading-relaxed">회원가입 신청이 거절되었습니다. 관리자에게 문의하세요.</p>
                                         </div>
                                     )}
                                     
                                     {/* PortOne 본인인증 정보 시각화 */}
                                     {user.isIdentityVerified && (
-                                        <div className="mt-6 p-5 bg-green-50 border border-green-200">
-                                            <div className="flex items-center gap-3 mb-4">
-                                                <div className="w-10 h-10 bg-green-600 flex items-center justify-center">
-                                                    <Icons.CheckCircle className="w-6 h-6 text-white" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="text-sm font-medium text-green-900">PortOne 본인인증 완료</h4>
-                                                    <p className="text-xs text-green-700 mt-0.5">인증된 개인정보</p>
-                                                </div>
+                                        <div className="mt-6 rounded-xl bg-sky p-4 md:p-5">
+                                            <div className="flex items-center gap-2.5 mb-4">
+                                                <span className="inline-block px-2 py-0.5 bg-royal text-white text-[13px] font-semibold">인증 완료</span>
+                                                <h4 className="text-[16px] font-semibold text-ink">PortOne 본인인증 완료</h4>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-4 mt-4">
-                                                <div className="bg-white border border-green-100 p-3">
-                                                    <div className="text-xs text-gray-500 mb-1">인증된 이름</div>
-                                                    <div className="font-medium text-sm text-gray-900">{user.verifiedName || user.name}</div>
-                                                </div>
-                                                <div className="bg-white border border-green-100 p-3">
-                                                    <div className="text-xs text-gray-500 mb-1">인증된 전화번호</div>
-                                                    <div className="font-medium text-sm text-gray-900">{user.verifiedPhone || user.phone || '-'}</div>
-                                                </div>
-                                                {user.verifiedBirthday && (
-                                                    <div className="bg-white border border-green-100 p-3">
-                                                        <div className="text-xs text-gray-500 mb-1">생년월일</div>
-                                                        <div className="font-medium text-sm text-gray-900">
-                                                            {user.verifiedBirthday.replace(/(\d{4})(\d{2})(\d{2})/, '$1년 $2월 $3일')}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {user.verifiedGender && (
-                                                    <div className="bg-white border border-green-100 p-3">
-                                                        <div className="text-xs text-gray-500 mb-1">성별</div>
-                                                        <div className="font-medium text-sm text-gray-900">{user.verifiedGender === 'M' ? '남성' : '여성'}</div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {user.impUid && (
-                                                <div className="mt-4 pt-4 border-t border-green-200">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-xs text-gray-600">인증 거래번호</span>
-                                                        <span className="text-xs font-mono text-gray-700 bg-white px-2 py-1 border border-green-100">{user.impUid.substring(0, 12)}...</span>
-                                                    </div>
-                                                </div>
-                                            )}
+                                            {/* 이름-값 정보 표: 이름 칸 너비·줄 높이 고정(MgInfoTable) */}
+                                            <MgInfoTable
+                                                className="bg-white px-4"
+                                                rows={[
+                                                    ['이름', <span className="font-semibold">{user.verifiedName || user.name || '-'}</span>],
+                                                    ['전화번호', <span className="font-semibold">{user.verifiedPhone || user.phone || '-'}</span>],
+                                                    ['생년월일', user.verifiedBirthday ? <span className="font-semibold">{user.verifiedBirthday.replace(/(\d{4})(\d{2})(\d{2})/, '$1년 $2월 $3일')}</span> : null],
+                                                    ['성별', user.verifiedGender ? <span className="font-semibold">{user.verifiedGender === 'M' ? '남성' : '여성'}</span> : null],
+                                                    ['거래번호', user.impUid ? <span className="font-mono text-[13px]">{user.impUid.substring(0, 12)}...</span> : null],
+                                                ]}
+                                            />
                                         </div>
                                     )}
                                 </Fragment>
                             )}
                         </div>
                     </div>
-                </div>
+                </section>
 
-                {/* 탭 메뉴 */}
-                <div className="border-t border-black/[0.06] mb-16">
-                    <div className="flex gap-8 overflow-x-auto">
-                        <button onClick={() => setActiveTab('seminars')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'seminars' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>신청한 모임</button>
-                        <button onClick={() => setActiveTab('groups')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'groups' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>운영하는 모임{ledGroups?.length ? ` ${ledGroups.length}` : ''}</button>
-                        <button onClick={() => setActiveTab('posts')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'posts' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>내 게시글</button>
-                        <button onClick={() => setActiveTab('verification')} className={`px-1 py-4 text-sm font-medium transition-colors border-t-2 whitespace-nowrap -mt-[1px] ${activeTab === 'verification' ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'}`}>본인인증 정보</button>
-                    </div>
+                {/* 탭 메뉴 — 직사각형 탭(가안 MgTabs 규칙). 휴대폰은 2×2 */}
+                <div role="tablist" aria-label="마이페이지 구역" className="mb-8 grid grid-cols-2 gap-px border border-[#0c0c0e] bg-[#0c0c0e] md:mb-10 md:grid-cols-4">
+                    {myTabItems.map(([v, l]) => (
+                        <button key={v} type="button" role="tab" aria-selected={activeTab === v} onClick={() => setActiveTab(v)}
+                            className={`h-12 px-2 text-[15px] font-bold tracking-tight md:text-[17px] ${activeTab === v ? 'bg-[#0c0c0e] text-white' : 'bg-white text-[#666] hover:text-ink'}`}>
+                            {l}
+                        </button>
+                    ))}
                 </div>
 
                 {/* 탭 컨텐츠 */}
-                <div className="min-h-[400px] mb-20">
+                <div role="tabpanel" className="min-h-[320px] mb-16">
                     {activeTab === 'seminars' && (() => {
                         const categories = [
                             { key: '교육/세미나', label: '교육·세미나' },
@@ -602,18 +581,20 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                             const app = appForSeminar(s);
                             const ended = isSeminarEnded(s);
                             return (
-                                <li key={s.id || idx} className="flex justify-between items-center p-5 bg-white rounded-2xl border border-black/[0.06] hover:bg-gray-50 transition-all">
-                                    <div>
-                                        <div className="font-medium text-gray-900 text-base mb-1">{s.title}</div>
-                                        <div className="text-xs text-gray-500">{s.date} · {s.location}</div>
+                                <li key={s.id || idx} className="flex min-h-[104px] flex-col gap-3 rounded-xl border border-line bg-white p-4 md:flex-row md:items-center md:justify-between md:p-5">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                                            <span className="inline-block px-2 py-0.5 text-[13px] font-semibold text-white bg-royal">신청완료</span>
+                                        </div>
+                                        <div className="truncate text-[17px] font-semibold text-ink" title={s.title}>{s.title}</div>
+                                        <div className="mt-0.5 truncate text-[14px] text-sub">{[s.date, s.location].filter(Boolean).join(' · ') || '\u00a0'}</div>
                                     </div>
-                                    <div className="flex gap-3 items-center flex-wrap justify-end">
-                                        <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1 font-medium">신청완료</span>
+                                    <div className="flex flex-wrap gap-2 md:shrink-0 md:justify-end">
                                         {app?.id && onUpdateApplication ? (
                                             <button
                                                 type="button"
                                                 onClick={() => setEditingApplication({ seminar: s, application: app })}
-                                                className="text-xs text-brand hover:text-blue-700 px-3 py-1 border border-brand hover:bg-blue-50 transition-colors font-medium"
+                                                className={`${actBtn} border-royal bg-white text-royal hover:bg-sky`}
                                             >
                                                 신청 내용 정정
                                             </button>
@@ -622,7 +603,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                             <button
                                                 type="button"
                                                 onClick={() => onWriteReview(s)}
-                                                className="text-xs text-emerald-700 hover:text-emerald-800 px-3 py-1 border border-emerald-400 hover:bg-emerald-50 transition-colors font-medium"
+                                                className={`${actBtn} border-[#1a1a1a] bg-[#1a1a1a] text-white hover:bg-black`}
                                             >
                                                 후기 작성
                                             </button>
@@ -635,7 +616,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                         onCancelSeminar(s.id);
                                                     }
                                                 }}
-                                                className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1 border border-black/10 hover:bg-gray-50 transition-colors"
+                                                className={`${actBtn} border-line2 bg-white text-ink hover:border-ink`}
                                             >
                                                 신청 취소
                                             </button>
@@ -645,7 +626,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                 type="button"
                                                 title="포트원·카드사에서 결제 취소를 이미 마친 뒤, 사이트에 남은 신청만 지울 때 사용"
                                                 onClick={() => onWithdrawApplicationRecord(s.id)}
-                                                className="text-xs text-amber-800 hover:text-amber-900 px-3 py-1 border border-amber-300 bg-amber-50/80 hover:bg-amber-100 transition-colors font-medium"
+                                                className={`${actBtn} border-line2 bg-white text-sub hover:border-ink hover:text-ink`}
                                             >
                                                 신청 기록 삭제
                                             </button>
@@ -655,7 +636,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                             );
                         };
                         if (mySeminars.length === 0) {
-                            return <ul className="space-y-3"><li className="text-center text-gray-500 py-16 text-sm">신청한 모임이 없습니다.</li></ul>;
+                            return <ul className="space-y-3"><li className="rounded-xl bg-card text-center text-sub py-14 text-[15px]">신청한 모임이 없습니다.</li></ul>;
                         }
                         return (
                             <div className="space-y-10">
@@ -664,7 +645,7 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                     if (items.length === 0) return null;
                                     return (
                                         <div key={key || 'other'}>
-                                            <h4 className="text-lg font-semibold text-dark mb-4">{label}</h4>
+                                            <h3 className="text-[20px] font-bold text-ink mb-4 md:text-[22px]">{label}</h3>
                                             <ul className="space-y-3">
                                                 {items.map((s, idx) => renderItem(s, idx))}
                                             </ul>
@@ -676,29 +657,30 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                     })()}
                     {activeTab === 'groups' && (
                         <div>
-                            <div className="flex items-center justify-between gap-3 mb-5">
-                                <p className="text-sm text-gray-500 break-keep">내가 그룹장인 소모임·스터디예요. 관리하기를 누르면 회차·출석, 멤버, 결제·정산을 볼 수 있어요.</p>
-                                <button type="button" onClick={() => navigate('/groups/new')} className="shrink-0 px-4 py-2 rounded-full bg-brand text-white text-sm font-semibold">그룹 만들기</button>
+                            <div className="flex flex-col gap-3 mb-5 md:flex-row md:items-center md:justify-between">
+                                <p className="text-[15px] text-sub break-keep">내가 그룹장인 소모임·스터디예요. 관리하기를 누르면 회차·출석, 멤버, 결제·정산을 볼 수 있어요.</p>
+                                <button type="button" onClick={() => navigate('/groups/new')} className="shrink-0 self-start h-11 px-5 rounded-lg bg-[#1a1a1a] text-white text-[15px] font-bold hover:bg-black transition-colors md:self-auto">그룹 만들기</button>
                             </div>
                             {ledGroups === null ? (
-                                <p className="text-sm text-gray-400">불러오는 중…</p>
+                                <p className="text-[15px] text-sub" role="status">불러오는 중…</p>
                             ) : ledGroups.length === 0 ? (
-                                <div className="p-10 rounded-2xl bg-soft text-center text-sm text-gray-500 break-keep">아직 운영하는 모임이 없어요. 그룹을 만들면 운영진 승인 후 여기서 관리할 수 있어요.</div>
+                                <div className="p-8 rounded-xl bg-card text-center text-[15px] text-sub break-keep md:p-10">아직 운영하는 모임이 없어요. 그룹을 만들면 운영진 승인 후 여기서 관리할 수 있어요.</div>
                             ) : (
                                 <ul className="space-y-3">
                                     {ledGroups.map((g) => (
-                                        <li key={g.id} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-black/[0.06]">
-                                            <img src={groupCoverUrl(g)} alt="" className="w-20 h-14 md:w-28 md:h-[72px] rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
+                                        <li key={g.id} className="flex min-h-[104px] items-center gap-3 rounded-xl border border-line bg-white p-4 md:gap-4 md:p-5">
+                                            <img src={groupCoverUrl(g)} alt="" className="aspect-[3/2] w-20 shrink-0 border border-line object-cover md:w-28" loading="lazy" decoding="async" />
                                             <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-2 text-xs mb-1">
-                                                    <span className="font-semibold text-gray-500">{GROUP_TYPE_LABEL[g.type] || ''}</span>
-                                                    <span className={`font-bold ${g.status === 'approved' ? 'text-emerald-700' : g.status === 'pending' ? 'text-amber-700' : 'text-gray-500'}`}>{GROUP_STATUS_LABEL[g.status] || g.status}</span>
+                                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                    <span className={`inline-block px-2 py-0.5 text-[13px] font-semibold text-white ${g.status === 'approved' ? 'bg-royal' : g.status === 'rejected' ? 'bg-red-600' : 'bg-[#8a8883]'}`}>{GROUP_STATUS_LABEL[g.status] || g.status}</span>
+                                                    <span className="text-[13px] text-sub">{GROUP_TYPE_LABEL[g.type] || ''}</span>
                                                 </div>
-                                                <div className="font-medium text-gray-900 truncate">{g.title}</div>
-                                                {g.status === 'rejected' && g.rejectReason ? <div className="text-xs text-red-600 mt-0.5 truncate">반려 사유: {g.rejectReason}</div> : null}
+                                                <div className="truncate text-[17px] font-semibold text-ink" title={g.title}>{g.title}</div>
+                                                {/* 아래 줄은 늘 자리를 둔다(반려 사유가 없어도 같은 높이) */}
+                                                <div className={`mt-0.5 truncate text-[14px] ${g.status === 'rejected' && g.rejectReason ? 'text-red-600' : 'text-sub'}`}>{g.status === 'rejected' && g.rejectReason ? `반려 사유: ${g.rejectReason}` : '\u00a0'}</div>
                                             </div>
                                             <button type="button" onClick={() => navigate(`/groups/${g.id}${g.status === 'approved' ? '?tab=sessions' : ''}`)}
-                                                className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${g.status === 'approved' ? 'bg-dark text-white' : 'bg-soft text-gray-700'}`}>
+                                                className={`shrink-0 h-11 px-4 rounded-lg text-[15px] font-semibold transition-colors ${g.status === 'approved' ? 'bg-[#1a1a1a] text-white hover:bg-black' : 'bg-white border border-line2 text-ink hover:border-ink'}`}>
                                                 {g.status === 'approved' ? '관리하기' : '보기'}
                                             </button>
                                         </li>
@@ -711,16 +693,16 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                     {activeTab === 'posts' && (
                         <ul className="space-y-3">
                             {myPosts.length > 0 ? myPosts.map((p, idx) => (
-                                <li key={idx} className="flex justify-between items-center p-5 bg-white rounded-2xl border border-black/[0.06] hover:bg-gray-50 transition-all">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className="text-[10px] bg-gray-100 px-2 py-1 text-gray-600 font-medium">{p.category}</span>
-                                            <div className="font-medium text-gray-900 text-base">{p.title}</div>
+                                <li key={idx} className="flex min-h-[104px] items-center justify-between gap-3 rounded-xl border border-line bg-white p-4 md:p-5">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                            <span className="inline-block px-2 py-0.5 bg-card text-[13px] font-semibold text-ink">{p.category}</span>
+                                            <span className={`inline-block px-2 py-0.5 text-[13px] font-semibold ${p.reply ? 'bg-royal text-white' : 'bg-[#8a8883] text-white'}`}>{p.reply ? '답변완료' : '답변대기'}</span>
                                         </div>
-                                        <div className="text-xs text-gray-500">{p.date}</div>
+                                        <div className="truncate text-[17px] font-semibold text-ink" title={p.title}>{p.title}</div>
+                                        <div className="mt-0.5 truncate text-[13px] text-sub">{p.date || '\u00a0'}</div>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className={`text-xs px-3 py-1 font-medium ${p.reply ? 'bg-gray-100 text-gray-700' : 'bg-gray-50 text-gray-500'}`}>{p.reply ? '답변완료' : '답변대기'}</span>
+                                    <div className="flex items-center shrink-0">
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -757,114 +739,50 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                 });
                                                 setIsEditModalOpen(true);
                                             }}
-                                            className="p-2 border border-black/10 text-gray-600 hover:bg-gray-50 transition-colors"
+                                            className="inline-flex h-11 items-center gap-1.5 px-3.5 rounded-lg border border-line2 bg-white text-[15px] font-semibold text-ink hover:border-ink transition-colors"
                                             title="수정"
                                         >
-                                            <Icons.Edit size={16} />
+                                            <Icons.Edit size={16} aria-hidden="true" /> 수정
                                         </button>
                                     </div>
                                 </li>
-                            )) : <li className="text-center text-gray-500 py-16 text-sm">작성한 게시글이 없습니다.</li>}
+                            )) : <li className="rounded-xl bg-card text-center text-sub py-14 text-[15px]">작성한 게시글이 없습니다.</li>}
                         </ul>
                     )}
                     {activeTab === 'verification' && (
-                        <div className="space-y-8">
+                        <div className="space-y-6">
                             {user.isIdentityVerified ? (
                                 <Fragment>
                                     {/* 인증 상태 카드 */}
-                                    <div className="bg-green-50 border border-green-200 p-8">
-                                        <div className="flex items-center gap-4 mb-6">
-                                            <div className="w-14 h-14 bg-green-600 flex items-center justify-center">
-                                                <Icons.CheckCircle className="w-8 h-8 text-white" />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-xl font-light text-gray-900 mb-1">본인인증 완료</h3>
-                                                <p className="text-sm text-gray-600">PortOne을 통한 본인인증이 완료되었습니다</p>
-                                            </div>
-                                        </div>
-                                        {user.impUid && (
-                                            <div className="bg-white border border-green-100 p-4 mt-4">
-                                                <div className="text-xs text-gray-600 mb-1">인증 거래 고유번호</div>
-                                                <div className="font-mono text-sm text-gray-900">{user.impUid}</div>
-                                            </div>
-                                        )}
+                                    <div className="rounded-xl bg-sky p-5 md:p-7">
+                                        <span className="inline-block mb-3 px-2 py-0.5 bg-royal text-white text-[13px] font-semibold">인증 완료</span>
+                                        <h3 className="text-[22px] font-bold text-ink mb-1">본인인증 완료</h3>
+                                        <p className="text-[15px] text-sub">PortOne을 통한 본인인증이 완료되었습니다</p>
                                     </div>
 
-                                    {/* 인증 정보 상세 */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="bg-gray-50 border border-black/[0.06] p-6">
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <Icons.Users className="w-5 h-5 text-gray-600" />
-                                                <h4 className="text-sm font-medium text-gray-900">인증된 이름</h4>
-                                            </div>
-                                            <div className="text-2xl font-light text-gray-900">{user.verifiedName || user.name}</div>
-                                            <div className="text-xs text-gray-500 mt-3">PortOne 본인인증으로 확인된 이름</div>
-                                        </div>
-
-                                        <div className="bg-gray-50 border border-black/[0.06] p-6">
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <Icons.Phone className="w-5 h-5 text-gray-600" />
-                                                <h4 className="text-sm font-medium text-gray-900">인증된 전화번호</h4>
-                                            </div>
-                                            <div className="text-xl font-light text-gray-900">{user.verifiedPhone || user.phone || '-'}</div>
-                                            <div className="text-xs text-gray-500 mt-3">본인인증으로 확인된 전화번호</div>
-                                        </div>
-
-                                        {user.verifiedBirthday && (
-                                            <div className="bg-gray-50 border border-black/[0.06] p-6">
-                                                <div className="flex items-center gap-2 mb-4">
-                                                    <Icons.Calendar className="w-5 h-5 text-gray-600" />
-                                                    <h4 className="text-sm font-medium text-gray-900">생년월일</h4>
-                                                </div>
-                                                <div className="text-xl font-light text-gray-900">
-                                                    {user.verifiedBirthday.replace(/(\d{4})(\d{2})(\d{2})/, '$1년 $2월 $3일')}
-                                                </div>
-                                                <div className="text-xs text-gray-500 mt-3">본인인증으로 확인된 생년월일</div>
-                                            </div>
-                                        )}
-
-                                        {user.verifiedGender && (
-                                            <div className="bg-gray-50 border border-black/[0.06] p-6">
-                                                <div className="flex items-center gap-2 mb-4">
-                                                    <Icons.Users className="w-5 h-5 text-gray-600" />
-                                                    <h4 className="text-sm font-medium text-gray-900">성별</h4>
-                                                </div>
-                                                <div className="text-xl font-light text-gray-900">{user.verifiedGender === 'M' ? '남성' : '여성'}</div>
-                                                <div className="text-xs text-gray-500 mt-3">본인인증으로 확인된 성별</div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* 인증 일시 */}
-                                    {user.createdAt && (
-                                        <div className="bg-gray-50 border border-black/[0.06] p-6">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <div className="text-xs text-gray-600 mb-2">인증 완료 일시</div>
-                                                    <div className="text-base font-medium text-gray-900">
-                                                        {new Date(user.createdAt).toLocaleString('ko-KR', {
-                                                            year: 'numeric',
-                                                            month: 'long',
-                                                            day: 'numeric',
-                                                            hour: '2-digit',
-                                                            minute: '2-digit'
-                                                        })}
-                                                    </div>
-                                                </div>
-                                                <Icons.CheckCircle className="w-8 h-8 text-gray-400" />
-                                            </div>
-                                        </div>
-                                    )}
+                                    {/* 인증 정보 — 이름-값 정보 표(MgInfoTable): 이름 칸 너비·줄 높이 고정 */}
+                                    <MgInfoTable rows={[
+                                        ['이름', <span className="font-semibold">{user.verifiedName || user.name || '-'}</span>],
+                                        ['전화번호', <span className="font-semibold">{user.verifiedPhone || user.phone || '-'}</span>],
+                                        ['생년월일', user.verifiedBirthday ? <span className="font-semibold">{user.verifiedBirthday.replace(/(\d{4})(\d{2})(\d{2})/, '$1년 $2월 $3일')}</span> : null],
+                                        ['성별', user.verifiedGender ? <span className="font-semibold">{user.verifiedGender === 'M' ? '남성' : '여성'}</span> : null],
+                                        ['인증 일시', user.createdAt ? <span className="font-semibold">{new Date(user.createdAt).toLocaleString('ko-KR', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}</span> : null],
+                                        ['고유번호', user.impUid ? <span className="break-all font-mono text-[15px]">{user.impUid}</span> : null],
+                                    ]} />
                                 </Fragment>
                             ) : (
-                                <div className="text-center py-20">
-                                    <div className="w-20 h-20 bg-gray-100 flex items-center justify-center mx-auto mb-6">
-                                        <Icons.Info className="w-10 h-10 text-gray-400" />
-                                    </div>
-                                    <h3 className="text-xl font-light text-gray-900 mb-2">본인인증이 필요합니다</h3>
-                                    <p className="text-sm text-gray-600 mb-8">PortOne 본인인증을 통해 개인정보를 확인해주세요</p>
-                                    <div className="bg-yellow-50 border border-yellow-200 p-6 max-w-md mx-auto">
-                                        <p className="text-sm text-gray-700 leading-relaxed">
+                                <div className="rounded-xl border border-line px-5 py-12 text-center md:py-16">
+                                    <span className="inline-block mb-4 px-2 py-0.5 bg-[#8a8883] text-white text-[13px] font-semibold">미인증</span>
+                                    <h3 className="text-[22px] font-bold text-ink mb-2">본인인증이 필요합니다</h3>
+                                    <p className="text-[15px] text-sub mb-6">PortOne 본인인증을 통해 개인정보를 확인해주세요</p>
+                                    <div className="rounded-xl bg-card p-5 max-w-md mx-auto">
+                                        <p className="text-[15px] text-ink leading-relaxed">
                                             본인인증은 회원가입 시 자동으로 진행됩니다.<br/>
                                             인증 정보는 안전하게 보관되며, 서비스 이용을 위해 필수입니다.
                                         </p>
@@ -875,71 +793,73 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                     )}
                 </div>
                 {/* 카카오 계정 연동 */}
-                <div className="border-t border-black/[0.06] pt-8 pb-6">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-3">소셜 계정 연동</h4>
+                <section className="border-t border-line pt-8 pb-6" aria-labelledby="mypage-social-title">
+                    <h3 id="mypage-social-title" className="text-[20px] font-bold text-ink mb-4">소셜 계정 연동</h3>
                     {user?.kakaoId ? (
-                        <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-2xl">
-                            <span className="inline-flex w-8 h-8 rounded-full bg-[#FEE500] items-center justify-center text-[#191919] shrink-0">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <div className="flex min-h-[76px] items-center gap-3 rounded-xl border border-line p-4">
+                            <span className="inline-flex w-10 h-10 rounded-lg bg-[#FEE500] items-center justify-center text-[#191919] shrink-0" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M12 3C6.2 3 1.5 6.66 1.5 11.18c0 2.84 1.8 5.36 4.61 6.94-.12.44-.42 1.58-.48 1.83-.08.38.14.37.33.27.15-.08 2.42-1.58 3.4-2.27.57.08 1.17.12 1.79.12 5.8 0 10.5-3.66 10.5-8.18S17.8 3 12 3z" />
                                 </svg>
                             </span>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-gray-800">카카오 연동 완료</p>
-                                <p className="text-xs text-gray-500">카카오로 간편 로그인이 가능합니다</p>
+                                <p className="truncate text-[16px] font-semibold text-ink">카카오 연동 완료</p>
+                                <p className="truncate text-[14px] text-sub">카카오로 간편 로그인이 가능합니다</p>
                             </div>
-                            <span className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-1 rounded-full">연동됨</span>
+                            <span className="shrink-0 px-2 py-0.5 bg-royal text-white text-[13px] font-semibold">연동됨</span>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-2xl">
-                            <span className="inline-flex w-8 h-8 rounded-full bg-gray-200 items-center justify-center text-gray-500 shrink-0">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <div className="flex min-h-[76px] items-center gap-3 rounded-xl border border-line p-4">
+                            <span className="inline-flex w-10 h-10 rounded-lg bg-card items-center justify-center text-[#9a9893] shrink-0" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M12 3C6.2 3 1.5 6.66 1.5 11.18c0 2.84 1.8 5.36 4.61 6.94-.12.44-.42 1.58-.48 1.83-.08.38.14.37.33.27.15-.08 2.42-1.58 3.4-2.27.57.08 1.17.12 1.79.12 5.8 0 10.5-3.66 10.5-8.18S17.8 3 12 3z" />
                                 </svg>
                             </span>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-gray-700">카카오 미연동</p>
-                                <p className="text-xs text-gray-500">연동하면 카카오로 간편 로그인 가능</p>
+                                <p className="truncate text-[16px] font-semibold text-ink">카카오 미연동</p>
+                                <p className="truncate text-[14px] text-sub">연동하면 카카오로 간편 로그인 가능</p>
                             </div>
                             {onKakaoLink && (
                                 <button
                                     type="button"
                                     onClick={onKakaoLink}
-                                    className="text-xs font-semibold text-[#191919] bg-[#FEE500] hover:bg-[#FDD835] px-3 py-1.5 rounded-full transition-colors shrink-0"
+                                    className="shrink-0 h-11 px-4 rounded-lg bg-[#FEE500] text-[15px] font-semibold text-[#191919] hover:bg-[#FDD835] transition-colors"
                                 >
                                     연동하기
                                 </button>
                             )}
                         </div>
                     )}
+                </section>
+                <div className="border-t border-line pt-6 text-center">
+                    <p className="text-[13px] text-sub mb-1">자진 탈퇴 시 언제든 재가입할 수 있습니다. (강제 탈퇴 시 1년간 재가입 제한·이용약관 제6조의2)</p>
+                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleWithdrawClick(); }} className="min-h-[44px] px-2 text-[14px] text-sub underline underline-offset-2 hover:text-ink transition-colors">회원 탈퇴하기</button>
                 </div>
-                <div className="border-t border-black/[0.06] pt-6 text-center">
-                    <p className="text-xs text-gray-500 mb-2">자진 탈퇴 시 언제든 재가입할 수 있습니다. (강제 탈퇴 시 1년간 재가입 제한·이용약관 제6조의2)</p>
-                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleWithdrawClick(); }} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">회원 탈퇴하기</button>
-                </div>
-            </div>
+            </MgWrap>
 
             {/* 게시글 수정 모달 (ESC 미적용) */}
             {isEditModalOpen && editingPost ? (
                 <ModalPortal>
-                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
-                    <div className="bg-white rounded-2xl border border-black/[0.06] max-w-3xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
-                            <h3 className="text-2xl font-semibold text-dark mb-6">게시글 수정</h3>
+                <div className="fixed inset-0 z-[500] flex items-end justify-center bg-black/50 md:items-center md:p-4" onClick={(e) => { if (e.target === e.currentTarget) { setIsEditModalOpen(false); setEditingPost(null); } }}>
+                    <div role="dialog" aria-modal="true" aria-labelledby="mypage-post-edit-title" className="bg-white rounded-t-[18px] md:rounded-[18px] max-w-[760px] w-full flex flex-col max-h-[calc(100dvh-72px)] md:max-h-[calc(90vh-40px)]" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex-1 min-h-0 overflow-y-auto modal-scroll px-5 pb-6 pt-7 md:px-8 md:pt-8">
+                            <h3 id="mypage-post-edit-title" className="text-[23px] font-bold text-ink mb-6 md:text-[24px]">게시글 수정</h3>
                         <div className="space-y-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">제목 *</label>
+                                <label htmlFor="mypage-post-title" className="block text-[15px] font-semibold text-ink mb-2">제목 <span className="text-red-600">*</span></label>
                                 <input 
+                                    id="mypage-post-title"
                                     type="text" 
-                                    className="w-full px-4 py-3 border border-black/10 focus:border-brand/40 focus:outline-none text-sm" 
+                                    className="w-full h-[52px] px-4 bg-white border border-line2 rounded-lg text-[16px] text-ink focus:border-royal focus:outline-none transition-colors" 
                                     value={editingPost.title || ''} 
                                     onChange={(e) => setEditingPost({...editingPost, title: e.target.value})} 
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">내용 *</label>
+                                <label htmlFor="mypage-post-content" className="block text-[15px] font-semibold text-ink mb-2">내용 <span className="text-red-600">*</span></label>
                                 <textarea 
-                                    className="w-full px-4 py-3 border border-black/10 focus:border-brand/40 focus:outline-none h-48 resize-none text-sm" 
+                                    id="mypage-post-content"
+                                    className="w-full p-4 bg-white border border-line2 rounded-lg text-[16px] leading-relaxed text-ink focus:border-royal focus:outline-none h-48 resize-none transition-colors" 
                                     value={editingPost.content || ''} 
                                     onChange={(e) => setEditingPost({...editingPost, content: e.target.value})} 
                                 />
@@ -948,11 +868,11 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                             {/* 이미지 수정 섹션 */}
                             {editingPost.category === '인력구인' && editingPost.storeImages !== undefined ? (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-3">매장 사진 (최대 10장)</label>
-                                    <div className="flex gap-4 flex-wrap">
+                                    <p className="block text-[15px] font-semibold text-ink mb-2">매장 사진 <span className="text-[13px] font-normal text-sub">(최대 10장)</span></p>
+                                    <div className="flex gap-3 flex-wrap">
                                         {(editingPost.storeImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={getDisplayImageUrl(img)} alt={`매장 사진 ${idx + 1}`} className="w-32 h-32 object-cover border border-black/[0.06]" loading="lazy" decoding="async" />
+                                                <img src={getDisplayImageUrl(img)} alt={`매장 사진 ${idx + 1}`} className="w-28 h-28 md:w-32 md:h-32 object-cover border border-line" loading="lazy" decoding="async" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -960,23 +880,24 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                         newImages.splice(idx, 1);
                                                         setEditingPost({...editingPost, storeImages: newImages});
                                                     }} 
-                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-gray-900 text-white flex items-center justify-center text-xs hover:bg-gray-700"
+                                                    aria-label={`매장 사진 ${idx + 1} 빼기`}
+                                                    className="absolute top-1 right-1 w-9 h-9 rounded-lg bg-[#0c0c0e]/85 text-white flex items-center justify-center text-[18px] hover:bg-[#0c0c0e]"
                                                 >
                                                     ×
                                                 </button>
                                             </div>
                                         ))}
                                         {(editingPost.storeImages || []).length < 10 ? (
-                                            <label className="w-32 h-32 border border-dashed border-black/15 flex items-center justify-center cursor-pointer hover:border-brand/40 transition-colors">
+                                            <label className="w-28 h-28 md:w-32 md:h-32 border border-dashed border-line2 flex items-center justify-center cursor-pointer hover:border-royal transition-colors">
                                                 {uploadingImages ? (
                                                     <div className="text-center">
-                                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
-                                                        <span className="text-xs text-gray-500">업로드 중...</span>
+                                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-royal mx-auto mb-2" aria-hidden="true"></div>
+                                                        <span className="text-[13px] text-sub">업로드 중...</span>
                                                     </div>
                                                 ) : (
                                                     <div className="text-center">
-                                                        <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
-                                                        <span className="text-xs text-gray-500">사진 추가</span>
+                                                        <Icons.Plus size={24} className="text-[#9a9893] mx-auto mb-1" aria-hidden="true" />
+                                                        <span className="text-[14px] text-sub">사진 추가</span>
                                                     </div>
                                                 )}
                                                 <input 
@@ -1020,11 +941,11 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                             
                             {editingPost.category === '중고거래' && editingPost.itemImages !== undefined ? (
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">제품 사진 (최대 10장)</label>
-                                    <div className="flex gap-4 flex-wrap">
+                                    <p className="block text-[15px] font-semibold text-ink mb-2">제품 사진 <span className="text-[13px] font-normal text-sub">(최대 10장)</span></p>
+                                    <div className="flex gap-3 flex-wrap">
                                         {(editingPost.itemImages || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={getDisplayImageUrl(img)} alt={`제품 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-2xl border border-black/[0.06]" loading="lazy" decoding="async" />
+                                                <img src={getDisplayImageUrl(img)} alt={`제품 사진 ${idx + 1}`} className="w-28 h-28 md:w-32 md:h-32 object-cover border border-line" loading="lazy" decoding="async" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -1032,23 +953,24 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                         newImages.splice(idx, 1);
                                                         setEditingPost({...editingPost, itemImages: newImages});
                                                     }} 
-                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                                    aria-label={`사진 ${idx + 1} 빼기`}
+                                                    className="absolute top-1 right-1 w-9 h-9 rounded-lg bg-[#0c0c0e]/85 text-white flex items-center justify-center text-[18px] hover:bg-[#0c0c0e]"
                                                 >
                                                     ×
                                                 </button>
                                             </div>
                                         ))}
                                         {(editingPost.itemImages || []).length < 10 ? (
-                                            <label className="w-32 h-32 border border-dashed border-black/15 rounded-2xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                            <label className="w-28 h-28 md:w-32 md:h-32 border border-dashed border-line2 flex items-center justify-center cursor-pointer hover:border-royal transition-colors">
                                                     {uploadingImages ? (
                                                         <div className="text-center">
-                                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
-                                                            <span className="text-xs text-gray-500">업로드 중...</span>
+                                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-royal mx-auto mb-2" aria-hidden="true"></div>
+                                                            <span className="text-[13px] text-sub">업로드 중...</span>
                                                         </div>
                                                     ) : (
                                                         <div className="text-center">
-                                                            <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
-                                                            <span className="text-xs text-gray-500">사진 추가</span>
+                                                            <Icons.Plus size={24} className="text-[#9a9893] mx-auto mb-1" aria-hidden="true" />
+                                                            <span className="text-[14px] text-sub">사진 추가</span>
                                                         </div>
                                                     )}
                                                     <input 
@@ -1096,11 +1018,11 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                             
                             {editingPost.category === '프로그램 후기' && (editingPost.reviewImages !== undefined || editingPost.images !== undefined) ? (
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">후기 사진 (최대 10장)</label>
-                                    <div className="flex gap-4 flex-wrap">
+                                    <p className="block text-[15px] font-semibold text-ink mb-2">후기 사진 <span className="text-[13px] font-normal text-sub">(최대 10장)</span></p>
+                                    <div className="flex gap-3 flex-wrap">
                                         {(editingPost.reviewImages || editingPost.images || []).map((img, idx) => (
                                             <div key={idx} className="relative">
-                                                <img src={getDisplayImageUrl(img)} alt={`후기 사진 ${idx + 1}`} className="w-32 h-32 object-cover rounded-2xl border border-black/[0.06]" loading="lazy" decoding="async" />
+                                                <img src={getDisplayImageUrl(img)} alt={`후기 사진 ${idx + 1}`} className="w-28 h-28 md:w-32 md:h-32 object-cover border border-line" loading="lazy" decoding="async" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => {
@@ -1109,23 +1031,24 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                                         newImages.splice(idx, 1);
                                                         setEditingPost({...editingPost, reviewImages: newImages, images: newImages});
                                                     }} 
-                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                                                    aria-label={`사진 ${idx + 1} 빼기`}
+                                                    className="absolute top-1 right-1 w-9 h-9 rounded-lg bg-[#0c0c0e]/85 text-white flex items-center justify-center text-[18px] hover:bg-[#0c0c0e]"
                                                 >
                                                     ×
                                                 </button>
                                             </div>
                                         ))}
                                         {((editingPost.reviewImages || editingPost.images || []).length < 10) ? (
-                                            <label className="w-32 h-32 border border-dashed border-black/15 rounded-2xl flex items-center justify-center cursor-pointer hover:border-brand transition-colors">
+                                            <label className="w-28 h-28 md:w-32 md:h-32 border border-dashed border-line2 flex items-center justify-center cursor-pointer hover:border-royal transition-colors">
                                                     {uploadingImages ? (
                                                         <div className="text-center">
-                                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mx-auto mb-2"></div>
-                                                            <span className="text-xs text-gray-500">업로드 중...</span>
+                                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-royal mx-auto mb-2" aria-hidden="true"></div>
+                                                            <span className="text-[13px] text-sub">업로드 중...</span>
                                                         </div>
                                                     ) : (
                                                         <div className="text-center">
-                                                            <Icons.Plus size={24} className="text-gray-400 mx-auto mb-1" />
-                                                            <span className="text-xs text-gray-500">사진 추가</span>
+                                                            <Icons.Plus size={24} className="text-[#9a9893] mx-auto mb-1" aria-hidden="true" />
+                                                            <span className="text-[14px] text-sub">사진 추가</span>
                                                         </div>
                                                     )}
                                                     <input 
@@ -1182,14 +1105,14 @@ const MyPageView = ({ onBack, user, mySeminars, myApplications = [], onUpdateApp
                                         alert('게시글 수정 기능이 준비되지 않았습니다.');
                                     }
                                 }} 
-                                className="w-full py-4 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors mt-6"
+                                className="w-full h-[52px] bg-[#1a1a1a] text-white text-[16px] font-bold rounded-lg hover:bg-black transition-colors mt-6"
                             >
                                 수정
                             </button>
                         </div>
                         </div>
-                        <div className="shrink-0 border-t border-black/[0.06] p-4 flex justify-end">
-                            <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors">
+                        <div className="shrink-0 border-t border-line px-4 py-3 flex justify-end">
+                            <button type="button" onClick={() => { setIsEditModalOpen(false); setEditingPost(null); }} className="h-11 px-5 bg-white border border-line2 text-ink text-[15px] font-semibold rounded-lg hover:border-ink transition-colors">
                                 닫기
                             </button>
                         </div>
@@ -1255,41 +1178,41 @@ function ApplicationEditModal({ seminar, application, onClose, onSave }) {
 
     return (
         <ModalPortal>
-            <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-                <div className="bg-white rounded-2xl shadow-xl border border-black/[0.06] max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                    <div className="shrink-0 px-6 py-4 border-b border-black/[0.06] flex justify-between items-center">
-                        <h3 className="text-lg font-semibold text-dark">신청 내용 정정</h3>
-                        <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-soft text-gray-500" aria-label="닫기">
+            <div className="fixed inset-0 z-[500] flex items-end justify-center bg-black/50 md:items-center md:p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+                <div role="dialog" aria-modal="true" aria-labelledby="app-edit-title" className="bg-white rounded-t-[18px] md:rounded-[18px] max-w-[560px] w-full max-h-[calc(100dvh-72px)] md:max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                    <div className="shrink-0 px-6 pt-6 pb-4 border-b border-line flex justify-between items-start gap-3">
+                        <div className="min-w-0">
+                            <h3 id="app-edit-title" className="text-[22px] font-bold text-ink">신청 내용 정정</h3>
+                            <p className="mt-1 text-[15px] text-sub truncate" title={seminar?.title}>{seminar?.title}</p>
+                        </div>
+                        <button type="button" onClick={onClose} className="-mr-2 w-11 h-11 shrink-0 flex items-center justify-center rounded-lg hover:bg-card text-ink" aria-label="닫기">
                             <Icons.X size={22} />
                         </button>
                     </div>
-                    <div className="px-6 py-4 border-b border-black/[0.06]">
-                        <p className="text-sm text-gray-700 font-medium truncate" title={seminar?.title}>{seminar?.title}</p>
-                    </div>
                     <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">참여 경로</label>
-                            <input type="text" className="w-full px-3 py-2 border border-black/[0.06] rounded-lg text-sm focus:border-brand focus:outline-none" value={participationPath} onChange={(e) => setParticipationPath(e.target.value)} placeholder="예: 부청사 오픈채팅, 지인 추천" />
+                            <label htmlFor="app-edit-path" className="block text-[15px] font-semibold text-ink mb-1.5">참여 경로</label>
+                            <input id="app-edit-path" type="text" className="w-full h-[52px] px-4 bg-white border border-line2 rounded-lg text-[16px] text-ink focus:border-royal focus:outline-none" value={participationPath} onChange={(e) => setParticipationPath(e.target.value)} placeholder="예: 먼저가본 오픈채팅, 지인 추천" />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">강연 신청 계기</label>
-                            <textarea className="w-full px-3 py-2 border border-black/[0.06] rounded-lg text-sm focus:border-brand focus:outline-none resize-none h-20" value={applyReason} onChange={(e) => setApplyReason(e.target.value)} placeholder="신청하신 이유를 적어 주세요." />
+                            <label htmlFor="app-edit-reason" className="block text-[15px] font-semibold text-ink mb-1.5">강연 신청 계기</label>
+                            <textarea id="app-edit-reason" className="w-full p-4 bg-white border border-line2 rounded-lg text-[16px] text-ink focus:border-royal focus:outline-none resize-none h-24" value={applyReason} onChange={(e) => setApplyReason(e.target.value)} placeholder="신청하신 이유를 적어 주세요." />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">강연 사전 질문</label>
-                            <textarea className="w-full px-3 py-2 border border-black/[0.06] rounded-lg text-sm focus:border-brand focus:outline-none resize-none h-20" value={preQuestions} onChange={(e) => setPreQuestions(e.target.value)} placeholder="강연 전에 궁금한 점이 있으면 적어 주세요." />
+                            <label htmlFor="app-edit-questions" className="block text-[15px] font-semibold text-ink mb-1.5">강연 사전 질문</label>
+                            <textarea id="app-edit-questions" className="w-full p-4 bg-white border border-line2 rounded-lg text-[16px] text-ink focus:border-royal focus:outline-none resize-none h-24" value={preQuestions} onChange={(e) => setPreQuestions(e.target.value)} placeholder="강연 전에 궁금한 점이 있으면 적어 주세요." />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">강연 후 식사 여부</label>
-                            <input type="text" className="w-full px-3 py-2 border border-black/[0.06] rounded-lg text-sm focus:border-brand focus:outline-none" value={mealAfter} onChange={(e) => setMealAfter(e.target.value)} placeholder="예: 참여함 / 불참" />
+                            <label htmlFor="app-edit-meal" className="block text-[15px] font-semibold text-ink mb-1.5">강연 후 식사 여부</label>
+                            <input id="app-edit-meal" type="text" className="w-full h-[52px] px-4 bg-white border border-line2 rounded-lg text-[16px] text-ink focus:border-royal focus:outline-none" value={mealAfter} onChange={(e) => setMealAfter(e.target.value)} placeholder="예: 참여함 / 불참" />
                         </div>
-                        <div className="flex items-center gap-2">
-                            <input type="checkbox" id="app-edit-privacy" checked={privacyAgreed} onChange={(e) => setPrivacyAgreed(e.target.checked)} className="rounded border-black/10 text-brand focus:ring-brand" />
-                            <label htmlFor="app-edit-privacy" className="text-sm text-gray-700">개인정보 수집·이용 동의</label>
+                        <div className="flex min-h-[44px] items-center gap-2.5">
+                            <input type="checkbox" id="app-edit-privacy" checked={privacyAgreed} onChange={(e) => setPrivacyAgreed(e.target.checked)} className="w-5 h-5 accent-[#2d4fe0]" />
+                            <label htmlFor="app-edit-privacy" className="text-[15px] text-ink cursor-pointer">개인정보 수집·이용 동의</label>
                         </div>
                         <div className="flex gap-3 pt-4">
-                            <button type="button" onClick={onClose} className="flex-1 py-3 border border-black/10 text-gray-700 font-medium rounded-full hover:bg-soft transition-colors">취소</button>
-                            <button type="submit" disabled={saving} className="flex-1 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors disabled:opacity-60">
+                            <button type="button" onClick={onClose} className="flex-1 h-[52px] bg-white border border-line2 text-ink text-[16px] font-semibold rounded-lg hover:border-ink transition-colors">취소</button>
+                            <button type="submit" disabled={saving} className="flex-1 h-[52px] bg-[#1a1a1a] text-white text-[16px] font-bold rounded-lg hover:bg-black transition-colors disabled:opacity-60">
                                 {saving ? '저장 중…' : '저장'}
                             </button>
                         </div>

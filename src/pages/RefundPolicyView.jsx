@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icons } from '../components/Icons';
+import { MgWrap, MgPageHead } from '../components/mg/Mg';
 import { GROUP_REFUND_SECTION } from '../constants/legal';
 
 const TITLE = '[부산청년사업가 포럼] 취소 및 환불 규정';
@@ -44,22 +45,22 @@ export default function RefundPolicyView({ onBack, content }) {
   const email = content?.footer_email || FOOTER_EMAIL;
 
   return (
-    <div className="min-h-screen bg-soft pt-24 pb-20 px-4 md:px-6">
-      <div className="container mx-auto max-w-3xl">
-        <div className="bg-white rounded-[28px] border border-black/[0.06] overflow-hidden">
-          <div className="p-6 md:p-8 border-b border-black/[0.06] text-center">
-            <h1 className="text-[22px] md:text-[26px] font-semibold tracking-tight text-dark">{TITLE}</h1>
-            <p className="text-sm text-brand mt-2">* 유료 세미나 및 교육 프로그램 취소·환불에 관한 규정입니다.</p>
-          </div>
-          <div className="p-6 md:p-8 space-y-8">
+    <div className="min-h-screen bg-white">
+      <MgPageHead eyebrow="REFUND" title="취소 및 환불 규정" desc={'유료 세미나 및 교육 프로그램 취소·환불에 관한 규정입니다.'} />
+      <MgWrap className="py-12 md:py-16">
+        <article className="mx-auto max-w-[760px]">
+          <header className="border-b border-[#0c0c0e] pb-6">
+            <h2 className="break-keep text-[24px] font-bold leading-[1.4] text-ink md:text-[28px]">{TITLE}</h2>
+          </header>
+          <div className="divide-y divide-line">
             {SECTIONS.map((section, index) => (
-              <section key={index}>
-                <h2 className="text-[15px] md:text-base font-semibold text-dark mb-3">{section.title}</h2>
-                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+              <section key={index} className="py-7 md:py-8">
+                <h3 className="mb-3 break-keep text-[18px] font-semibold leading-snug text-ink">{section.title}</h3>
+                <div className="text-[16px] leading-[1.85] text-[#333] whitespace-pre-line break-keep">
                   {section.bodyBefore != null ? (
                     <>
                       {section.bodyBefore}
-                      <a href={`mailto:${email}`} className="text-brand hover:underline font-medium">{email}</a>
+                      <a href={`mailto:${email}`} className="font-semibold text-royal underline-offset-2 hover:underline">{email}</a>
                       {section.bodyAfter}
                     </>
                   ) : (
@@ -69,18 +70,18 @@ export default function RefundPolicyView({ onBack, content }) {
               </section>
             ))}
           </div>
-          <div className="p-6 md:p-8 border-t border-black/[0.06] flex justify-center">
+          <div className="flex justify-center border-t border-line pt-8">
             <button
               type="button"
               onClick={() => (onBack ? onBack() : window.history.back())}
-              className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors flex items-center gap-2"
+              className="inline-flex h-12 items-center gap-2 rounded-lg border border-line2 bg-white px-6 text-[16px] font-bold text-ink transition-colors hover:border-ink"
             >
               <Icons.ArrowLeft size={20} />
               이전으로
             </button>
           </div>
-        </div>
-      </div>
+        </article>
+      </MgWrap>
     </div>
   );
 }

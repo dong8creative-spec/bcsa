@@ -71,7 +71,7 @@ export const SUPPORT_PROGRAM_URGENT_WITHIN_DAYS = 10;
  */
 export function getSupportProgramDdayInfo(program, now = new Date()) {
   if (program?.isRolling) {
-    return { label: '상시', badgeClass: 'bg-emerald-600', daysLeft: null, isUrgent: false };
+    return { label: '상시', badgeClass: 'bg-royal', daysLeft: null, isUrgent: false };
   }
   const deadlineMs = firestoreLikeToMillis(program?.deadlineAt);
   if (deadlineMs == null) {
@@ -96,7 +96,7 @@ export function getSupportProgramDdayInfo(program, now = new Date()) {
     badgeClass = 'bg-red-500';
   } else if (daysLeft <= SUPPORT_PROGRAM_URGENT_WITHIN_DAYS) {
     label = `D-${daysLeft}`;
-    badgeClass = 'bg-orange-500';
+    badgeClass = 'bg-[#0c0c0e]';
   } else {
     label = `D-${daysLeft}`;
     badgeClass = 'bg-brand';

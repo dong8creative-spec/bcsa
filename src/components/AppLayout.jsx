@@ -3,6 +3,7 @@ import { Icons } from './Icons';
 import SignUpModal from './SignUpModal';
 import InquiryModal from './InquiryModal';
 import ModalPortal from './ModalPortal';
+import Footer from './Footer';
 import { useMediaQuery, MOBILE_QUERY } from '../hooks/useMediaQuery';
 import { defaultContent } from '../constants/content';
 import { isAdminUser } from '../utils/adminAccess';
@@ -157,7 +158,7 @@ const AppLayout = (props) => {
             {/* 프로그램 팝업: 포스터 + X + 프로그램 신청하기 + 24시간 보이지 않기. 모바일 1개, PC 최대 3개 */}
             {popupPrograms && popupPrograms.length > 0 && !showProfileIncompleteBanner ? (
                 <ModalPortal>
-                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) closePopupAndMarkAsShown(); }}>
+                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 animate-fade-in" onClick={(e) => { if (e.target === e.currentTarget) closePopupAndMarkAsShown(); }}>
                     <div className="flex flex-col md:flex-row gap-6 max-w-6xl w-full overflow-x-auto py-4 max-h-[95vh] overflow-y-auto justify-center items-start" onClick={(e) => e.stopPropagation()}>
                         {(() => {
                             const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -165,12 +166,13 @@ const AppLayout = (props) => {
                             return programsToShow.map((program, idx) => (
                                 <div
                                     key={program.id || idx}
-                                    className="bg-white rounded-2xl shadow-2xl overflow-hidden flex-shrink-0 w-[85vw] max-w-sm mx-auto flex flex-col md:max-w-[480px]"
+                                    role="dialog" aria-modal="true" aria-label={program.title ? `${program.title} 안내` : '프로그램 안내'}
+                                    className="bg-white rounded-[18px] overflow-hidden flex-shrink-0 w-[85vw] max-w-sm mx-auto flex flex-col md:max-w-[480px]"
                                 >
                                     {/* 포스터 + 오른쪽 상단 X */}
                                     <div className="w-full relative" style={{ aspectRatio: '3/4' }}>
                                         {program.isDeadlineSoon ? (
-                                            <div className="absolute top-3 left-3 z-20 px-2.5 py-1 bg-red-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+                                            <div className="absolute top-3 left-3 z-20 px-2.5 py-1 bg-red-600 text-white text-[13px] font-semibold">
                                                 마감임박
                                             </div>
                                         ) : null}
@@ -181,7 +183,7 @@ const AppLayout = (props) => {
                                                 if (remaining.length === 0) closePopupAndMarkAsShown();
                                                 else setPopupPrograms(remaining);
                                             }}
-                                            className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-full bg-white/95 hover:bg-white text-gray-700 z-10 shadow-md border border-gray-200"
+                                            className="absolute top-3 right-3 w-11 h-11 flex items-center justify-center rounded-lg bg-white hover:bg-card text-ink z-10 border border-line"
                                             aria-label="닫기"
                                         >
                                             <Icons.X size={20} />
@@ -192,7 +194,7 @@ const AppLayout = (props) => {
                                                     href={program.externalLink}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="absolute inset-0 z-0 block cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset"
+                                                    className="absolute inset-0 z-0 block cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-royal focus-visible:ring-inset"
                                                     aria-label={`${program.title || '외부 행사'} 페이지로 이동`}
                                                 >
                                                     <img
@@ -215,28 +217,28 @@ const AppLayout = (props) => {
                                                 />
                                             )
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                                            <div className="w-full h-full flex items-center justify-center bg-card text-[#9a9893]">
                                                 <Icons.Calendar size={48} />
                                             </div>
                                         )}
                                     </div>
                                     {/* 프로그램 신청하기 / 신청해주셔서 감사합니다 — 외부+링크는 이미지가 링크 */}
-                                    <div className="p-4 pt-3">
+                                    <div className="p-4 md:p-5">
                                         {!program.isExternalPoster && (appliedProgramIds && appliedProgramIds.has(String(program.id))) ? (
-                                            <div className="w-full py-3.5 bg-gray-200 text-gray-700 font-bold rounded-xl text-sm text-center cursor-default">
+                                            <div className="w-full h-[52px] flex items-center justify-center bg-card text-sub font-semibold rounded-lg text-[16px] cursor-default">
                                                 신청해주셔서 감사합니다
                                             </div>
                                         ) : !program.isExternalPoster ? (
                                             <button
                                                 type="button"
                                                 onClick={() => onNavigateToProgramApply && onNavigateToProgramApply(program)}
-                                                className="w-full py-3.5 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm"
+                                                className="w-full h-[52px] bg-[#1a1a1a] text-white font-bold rounded-lg hover:bg-black transition-colors text-[16px]"
                                             >
                                                 프로그램 신청하기
                                             </button>
                                         ) : null}
                                         {/* 24시간 동안 팝업 보이지 않기 */}
-                                        <label className="mt-4 flex items-center gap-2 cursor-pointer group">
+                                        <label className="mt-3 flex min-h-[44px] items-center gap-2.5 cursor-pointer group">
                                             <input
                                                 type="checkbox"
                                                 onChange={(e) => {
@@ -244,9 +246,9 @@ const AppLayout = (props) => {
                                                         closePopupAndHide24h();
                                                     }
                                                 }}
-                                                className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand"
+                                                className="w-5 h-5 rounded border-line2 accent-[#2d4fe0]"
                                             />
-                                            <span className="text-sm text-gray-600 group-hover:text-gray-800">24시간 동안 팝업 보이지 않기</span>
+                                            <span className="text-[15px] text-sub group-hover:text-ink">24시간 동안 팝업 보이지 않기</span>
                                         </label>
                                     </div>
                                 </div>
@@ -259,57 +261,57 @@ const AppLayout = (props) => {
             {/* 팝업 신청 모달 (ESC 미적용) */}
             {isPopupApplyModalOpen && applySeminarFromPopup ? (
                 <ModalPortal>
-                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setIsPopupApplyModalOpen(false); }}>
-                    <div className="bg-white rounded-3xl max-w-2xl w-full flex flex-col max-h-[calc(90vh-100px)] max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
-                            <h3 className="text-2xl font-bold text-dark mb-6">프로그램 신청</h3>
-                        <div className="mb-6">
-                            <h4 className="text-lg font-bold text-dark mb-2">{applySeminarFromPopup.title}</h4>
-                            <div className="text-sm text-gray-600 space-y-1">
-                                <div><span className="font-bold">일시:</span> {applySeminarFromPopup.date}</div>
-                                {applySeminarFromPopup.location && <div><span className="font-bold">장소:</span> {applySeminarFromPopup.location}</div>}
+                <div className="fixed inset-0 z-[500] flex items-end justify-center bg-black/50 md:items-center md:p-4" onClick={(e) => { if (e.target === e.currentTarget) setIsPopupApplyModalOpen(false); }}>
+                    <div role="dialog" aria-modal="true" aria-labelledby="popup-apply-title" className="bg-white rounded-t-[18px] md:rounded-[18px] max-w-[640px] w-full flex flex-col max-h-[calc(100dvh-72px)] md:max-h-[calc(90vh-40px)]" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex-1 min-h-0 overflow-y-auto modal-scroll px-5 pb-6 pt-7 md:px-8 md:pt-8">
+                            <h3 id="popup-apply-title" className="text-[23px] font-bold text-ink mb-5 md:text-[24px]">프로그램 신청</h3>
+                        <div className="mb-6 rounded-xl bg-card px-4 py-4 md:px-5">
+                            <h4 className="text-[18px] font-semibold text-ink mb-2">{applySeminarFromPopup.title}</h4>
+                            <div className="text-[15px] text-sub space-y-1">
+                                <div><span className="font-semibold text-ink">일시</span> {applySeminarFromPopup.date}</div>
+                                {applySeminarFromPopup.location && <div><span className="font-semibold text-ink">장소</span> {applySeminarFromPopup.location}</div>}
                                 {applySeminarFromPopup.applicationFee != null && Number(applySeminarFromPopup.applicationFee) > 0 && (
-                                  <div className="font-bold text-brand mt-2">신청 비용: {new Intl.NumberFormat('ko-KR').format(Number(applySeminarFromPopup.applicationFee))}원</div>
+                                  <div className="font-semibold text-royal mt-2">신청 비용: {new Intl.NumberFormat('ko-KR').format(Number(applySeminarFromPopup.applicationFee))}원</div>
                                 )}
                             </div>
                         </div>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">참여 경로 <span className="text-red-500">*</span></label>
+                        <div className="space-y-5">
+                            <div role="group" aria-labelledby="popup-apply-path-label">
+                                <p id="popup-apply-path-label" className="block text-[15px] font-semibold text-ink mb-2">참여 경로 <span className="text-red-600">*</span></p>
                                 <div className="flex flex-wrap gap-2">
                                     {['부청사 오픈채팅', 'SNS', '지인 추천', '기타'].map((opt) => (
-                                        <button key={opt} type="button" onClick={() => setPopupApplicationData({...popupApplicationData, participationPath: opt})} className={`px-4 py-2 rounded-xl border-2 text-sm font-bold transition-colors ${popupApplicationData.participationPath === opt ? 'border-brand bg-brand/10 text-brand' : 'border-gray-200 text-gray-600 hover:border-brand/50'}`}>{opt}</button>
+                                        <button key={opt} type="button" aria-pressed={popupApplicationData.participationPath === opt} onClick={() => setPopupApplicationData({...popupApplicationData, participationPath: opt})} className={`h-11 px-4 rounded-lg border text-[15px] font-semibold transition-colors ${popupApplicationData.participationPath === opt ? 'border-ink bg-[#0c0c0e] text-white' : 'border-line2 bg-white text-ink hover:border-ink'}`}>{opt === '부청사 오픈채팅' ? '먼저가본 오픈채팅' : opt}</button>
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">강연 신청 계기 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                <textarea className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none h-24 resize-none" value={popupApplicationData.applyReason} onChange={(e) => setPopupApplicationData({...popupApplicationData, applyReason: e.target.value})} placeholder="신청 계기를 입력해주세요" />
+                                <label htmlFor="popup-apply-reason" className="block text-[15px] font-semibold text-ink mb-2">강연 신청 계기 <span className="text-sub text-[13px] font-normal">(선택)</span></label>
+                                <textarea id="popup-apply-reason" className="w-full p-4 bg-white border border-line2 rounded-lg text-[16px] text-ink focus:border-royal focus:outline-none h-28 resize-none" value={popupApplicationData.applyReason} onChange={(e) => setPopupApplicationData({...popupApplicationData, applyReason: e.target.value})} placeholder="신청 계기를 입력해주세요" />
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">강연 사전 질문 <span className="text-gray-400 text-xs">(선택)</span></label>
-                                <textarea className="w-full p-3 border border-blue-200 rounded-lg focus:border-blue-400 focus:outline-none h-24 resize-none" value={popupApplicationData.preQuestions} onChange={(e) => setPopupApplicationData({...popupApplicationData, preQuestions: e.target.value})} placeholder="사전 질문을 입력해주세요" />
+                                <label htmlFor="popup-apply-questions" className="block text-[15px] font-semibold text-ink mb-2">강연 사전 질문 <span className="text-sub text-[13px] font-normal">(선택)</span></label>
+                                <textarea id="popup-apply-questions" className="w-full p-4 bg-white border border-line2 rounded-lg text-[16px] text-ink focus:border-royal focus:outline-none h-28 resize-none" value={popupApplicationData.preQuestions} onChange={(e) => setPopupApplicationData({...popupApplicationData, preQuestions: e.target.value})} placeholder="사전 질문을 입력해주세요" />
                             </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">강연 후 식사 여부 <span className="text-red-500">*</span></label>
-                                <div className="flex gap-3">
-                                    <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="mealAfter" checked={popupApplicationData.mealAfter === '참석'} onChange={() => setPopupApplicationData({...popupApplicationData, mealAfter: '참석'})} className="w-4 h-4 text-brand" /> 참석</label>
-                                    <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="mealAfter" checked={popupApplicationData.mealAfter === '미참석'} onChange={() => setPopupApplicationData({...popupApplicationData, mealAfter: '미참석'})} className="w-4 h-4 text-brand" /> 미참석</label>
+                            <div role="radiogroup" aria-labelledby="popup-apply-meal-label">
+                                <p id="popup-apply-meal-label" className="block text-[15px] font-semibold text-ink mb-2">강연 후 식사 여부 <span className="text-red-600">*</span></p>
+                                <div className="flex gap-5">
+                                    <label className="flex min-h-[44px] items-center gap-2 cursor-pointer text-[16px] text-ink"><input type="radio" name="mealAfter" checked={popupApplicationData.mealAfter === '참석'} onChange={() => setPopupApplicationData({...popupApplicationData, mealAfter: '참석'})} className="w-5 h-5 accent-[#2d4fe0]" /> 참석</label>
+                                    <label className="flex min-h-[44px] items-center gap-2 cursor-pointer text-[16px] text-ink"><input type="radio" name="mealAfter" checked={popupApplicationData.mealAfter === '미참석'} onChange={() => setPopupApplicationData({...popupApplicationData, mealAfter: '미참석'})} className="w-5 h-5 accent-[#2d4fe0]" /> 미참석</label>
                                 </div>
                             </div>
-                            <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" checked={popupApplicationData.privacyAgreed} onChange={(e) => setPopupApplicationData({...popupApplicationData, privacyAgreed: e.target.checked})} className="w-4 h-4 text-brand rounded" />
-                                    <span className="text-sm font-bold text-gray-700">개인정보 수집·이용에 동의합니다 <span className="text-red-500">*</span></span>
+                            <div className="rounded-xl border border-line px-4 py-2">
+                                <label className="flex min-h-[44px] items-center gap-2.5 cursor-pointer">
+                                    <input type="checkbox" checked={popupApplicationData.privacyAgreed} onChange={(e) => setPopupApplicationData({...popupApplicationData, privacyAgreed: e.target.checked})} className="w-5 h-5 accent-[#2d4fe0]" />
+                                    <span className="text-[15px] font-semibold text-ink">개인정보 수집·이용에 동의합니다 <span className="text-red-600">*</span></span>
                                 </label>
                             </div>
-                            <button type="button" onClick={handlePopupApplySubmit} className="w-full py-4 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 mt-6">
+                            <button type="button" onClick={handlePopupApplySubmit} className="w-full h-[52px] bg-[#1a1a1a] text-white text-[16px] font-bold rounded-lg hover:bg-black transition-colors !mt-6">
                                     참여신청
                                 </button>
                         </div>
                         </div>
-                        <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
-                            <button type="button" onClick={() => setIsPopupApplyModalOpen(false)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                        <div className="shrink-0 border-t border-line px-4 py-3 flex justify-end">
+                            <button type="button" onClick={() => setIsPopupApplyModalOpen(false)} className="h-11 px-5 bg-white border border-line2 text-ink text-[15px] font-semibold rounded-lg hover:border-ink transition-colors">
                                 닫기
                             </button>
                         </div>
@@ -317,75 +319,55 @@ const AppLayout = (props) => {
                 </div>
                 </ModalPortal>
             ) : null}
-            
-            <header className={`fixed top-0 w-full z-[1000] bg-white/75 backdrop-blur-xl border-b border-black/[0.06] transition-all duration-300 ease-in-out ${isMobile ? 'px-4 py-3' : 'px-6'}`}>
-                <div className={`mx-auto flex items-center relative w-full ${isMobile ? 'grid grid-cols-[auto_1fr_auto] gap-2' : 'max-w-[1240px] justify-between gap-0 h-[52px]'}`}>
-                    {/* 모바일 전용: 가운데 로고(홈 버튼) */}
-                    {isMobile && (
-                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none w-full max-w-[60%] z-0">
-                            <button type="button" aria-label="홈으로 이동" className="pointer-events-auto h-[60px] flex items-center overflow-hidden cursor-pointer group p-0 border-0 bg-transparent" onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onGoHome || (() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'instant' }); }))(); }}>
-                                <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain opacity-90 group-hover:opacity-100 transition-opacity" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-lg font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
+            <header className="fixed top-0 z-[1000] w-full bg-[#0c0c0e] text-white">
+                {!isMobile ? (
+                    <div className="border-b border-white/10">
+                        <div className="mx-auto flex h-8 max-w-[1140px] items-center justify-between px-5 text-[12px] text-white/60">
+                            <span>먼저 가본 선배의 경험을 사고파는 부산 사업가 커뮤니티</span>
+                            {currentUser ? (
+                                <span className="flex items-center gap-3">
+                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white">마이페이지</button>
+                                    <span aria-hidden="true">/</span>
+                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); }} className="hover:text-white">로그아웃</button>
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-3">
+                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="hover:text-white">로그인</button>
+                                    <span aria-hidden="true">/</span>
+                                    <button type="button" data-testid="header-signup-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSignUpClick?.(); }} className="hover:text-white">회원가입</button>
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                ) : null}
+                <div className={`mx-auto flex max-w-[1140px] items-center gap-6 px-5 ${isMobile ? 'h-[60px]' : 'h-[72px]'}`}>
+                    <button type="button" aria-label="먼저가본 처음 화면" className="shrink-0 font-logo text-[24px] leading-none text-white md:text-[26px]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onGoHome || (() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'instant' }); }))(); }}>
+                        먼저가본
+                    </button>
+                    {!isMobile ? (
+                        <nav className="ml-auto flex items-center gap-[30px] whitespace-nowrap" aria-label="주 메뉴">
+                            {menuOrder.filter((item) => menuEnabled[item]).map((item, idx) => {
+                                const membersOnly = ['부청사 회원', '커뮤니티'];
+                                const isDisabled = membersOnly.includes(item) && !currentUser;
+                                return (
+                                    <button key={idx} type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} ${isDisabled ? 'cursor-not-allowed !text-white/40 nav-item-disabled' : ''}`}>
+                                        {menuNames[item] || item}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    ) : (
+                        <div className="ml-auto flex items-center gap-2">
+                            {currentUser ? (
+                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('myPage'); }} className="px-1 text-[13px] text-white/80">마이페이지</button>
+                            ) : (
+                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="px-1 text-[13px] text-white/80">로그인</button>
+                            )}
+                            <button type="button" aria-label="메뉴 열기" className="flex min-h-[40px] min-w-[44px] items-center justify-center rounded-lg border border-white/25 px-3 text-[14px] text-white touch-manipulation" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new CustomEvent('openMobileMenu')); onOpenMobileMenu?.(); setIsMenuOpen?.(true); }}>
+                                메뉴
                             </button>
                         </div>
                     )}
-                    {/* 왼쪽: 모바일 햄버거 / PC 로고 */}
-                    <div className="flex items-center min-w-0 relative z-20">
-                        {isMobile ? (
-                            <button type="button" aria-label="메뉴 열기" className="min-w-[44px] min-h-[44px] p-2 -ml-2 rounded-lg bg-white/90 text-gray-800 hover:bg-white active:bg-white/95 shadow-sm transition-colors touch-manipulation flex items-center justify-center" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new CustomEvent('openMobileMenu')); onOpenMobileMenu?.(); setIsMenuOpen?.(true); }} onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new CustomEvent('openMobileMenu')); onOpenMobileMenu?.(); setIsMenuOpen?.(true); }}>
-                                <Icons.Menu size={24} />
-                            </button>
-                        ) : (
-                            <div className="flex items-center cursor-pointer group h-[40px] overflow-hidden" onClick={(e) => { e.preventDefault(); e.stopPropagation(); (onGoHome || (() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'instant' }); }))(); }}>
-                                <img src="/assets/images/logo.png" alt="부산청년사업가들" className="h-full w-auto object-contain hover:opacity-90 transition-opacity" loading="eager" decoding="async" onError={(e) => { e.target.onerror = null; if (e.target.src.includes('/assets/')) { e.target.src = '/assets/images/logo.png'; } else { e.target.style.display = 'none'; const fallback = document.createElement('div'); fallback.className = 'text-sm font-black text-brand'; fallback.textContent = '부청사'; e.target.parentNode.appendChild(fallback); } }} />
-                            </div>
-                        )}
-                    </div>
-                    {/* 가운데: PC nav만 */}
-                    <div className={`flex items-center min-w-0 relative z-20 ${isMobile ? 'justify-center w-full' : ''}`}>
-                        {!isMobile && (
-                            <nav className="flex items-center gap-8 relative whitespace-nowrap">
-                                {menuOrder.filter(item => {
-                                        const enabled = menuEnabled[item];
-                                        if (!enabled) return false;
-                                        return true;
-                                    }).map((item, idx) => {
-                                        const membersOnly = ['부청사 회원', '커뮤니티'];
-                                        const isDisabled = membersOnly.includes(item) && !currentUser;
-                                        return (
-                                    <button key={idx} type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleNavigation(item); }} className={`${getNavClass(item)} ${isDisabled ? '!text-gray-400 !font-medium cursor-not-allowed opacity-80 hover:!text-gray-400 hover:opacity-80 nav-item-disabled' : ''}`}>
-                                        {menuNames[item] || item}
-                                    </button>
-                                        );
-                                    })}
-                            </nav>
-                        )}
-                    </div>
-                    {/* 오른쪽: 로그인/가입 또는 마이페이지/로그아웃 */}
-                    <div className="flex items-center justify-end gap-3 whitespace-nowrap min-w-0 relative z-20">
-                        {currentUser ? (
-                            <div className="flex items-center gap-2">
-                                {!isMobile && (
-                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('myPage'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="text-xs font-bold text-gray-600 hover:text-brand transition-colors px-2 flex-shrink-0">마이페이지</button>
-                                )}
-                                <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleLogout(); }} className={`py-2 bg-gray-200 text-gray-600 rounded-full text-xs font-medium hover:bg-gray-300 transition-colors whitespace-nowrap flex-shrink-0 ${isMobile ? 'px-3' : 'px-4'}`}>로그아웃</button>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-3">
-                                {isMobile ? (
-                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="px-3 py-2 bg-brand text-white rounded-full text-xs font-medium hover:bg-blue-700 transition-colors shadow-lg shadow-brand/20 whitespace-nowrap flex-shrink-0">
-                                        로그인
-                                    </button>
-                                ) : (
-                                    <>
-                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginModal(true); }} className="text-[12.5px] font-medium text-sub hover:text-ink transition-colors px-2 flex-shrink-0">
-                                            로그인
-                                        </button>
-                                        <button type="button" data-testid="header-signup-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSignUpClick?.(); }} className="inline-flex px-4 py-[7px] bg-brand text-white rounded-full text-[12.5px] font-semibold hover:bg-[#00327a] transition-colors whitespace-nowrap flex-shrink-0">사업자 등록</button>
-                                    </>
-                                )}
-                            </div>
-                        )}
-                    </div>
                 </div>
             </header>
 
@@ -398,6 +380,7 @@ const AppLayout = (props) => {
                     menuNames={menuNames}
                     menuOrder={menuOrder}
                     currentUser={currentUser}
+                    getNavClass={getNavClass}
                 />
             )}
 
@@ -442,73 +425,17 @@ const AppLayout = (props) => {
             </div>
             </main>
 
-            <footer ref={footerRef} className="py-12 px-6 text-white bg-[#0046a5]">
-                <div className="container mx-auto max-w-6xl">
-                    <div className="md:hidden text-center">
-                        <h3 className="text-lg font-bold text-white mb-4">{content?.footer_title || '부산청년사업가들'}</h3>
-                        <div className="mb-2">
-                            <p className="text-[26px] text-white font-bold mb-0">
-                                <span className="mr-2" aria-hidden="true">☎</span><a href={`tel:${(content?.footer_phone || defaultContent.footer_phone).replace(/\s/g, '')}`} className="hover:text-white/90 transition-colors">{content?.footer_phone || defaultContent.footer_phone}</a>
-                            </p>
-                            <p className="text-[13px] font-normal text-white/90 mt-1 mb-0">{content?.footer_hours ? `(${content.footer_hours})` : '(평일 09:00–18:00 / 주말·공휴일 휴무)'}</p>
-                        </div>
-                        <p className="text-[26px] text-white font-bold mb-8">
-                            <span className="mr-2" aria-hidden="true">✉</span><a href={`mailto:${content?.footer_email || defaultContent.footer_email}`} className="hover:text-white/90 transition-colors">{content?.footer_email || defaultContent.footer_email}</a>
-                        </p>
-                        <BusinessInfoLines className="text-[11px] text-white/90 mb-4 space-y-1" />
-                        <p className="text-[8px] text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가들 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
-                        <p className="text-[8px] text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
-                            <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allMembers'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">사업자 명단</button>
-                            <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
-                            <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/terms'); }} className="hover:text-white/90 transition-colors">서비스 이용약관</button>
-                            <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/privacy'); }} className="hover:text-white/90 transition-colors">개인정보 처리방침</button>
-                            <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/refund'); }} className="hover:text-white/90 transition-colors">취소/환불 규정</button>
-                            {/* 관리자 바로가기는 관리자에게만 노출 */}
-                            {isAdminUser(currentUser) ? (
-                                <>
-                                    <span className="text-white/50">|</span>
-                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = '/admin'; }} className="text-white/60 hover:text-white/90 transition-colors" title="관리자">Admin</button>
-                                </>
-                            ) : null}
-                        </p>
-                    </div>
-                    <div className="hidden md:block text-left">
-                        <h3 className="text-lg font-bold text-white mb-4">{content?.footer_title || '부산청년사업가들'}</h3>
-                        <BusinessInfoLines className="text-sm text-white/90 mb-2 space-y-1" />
-                        <p className="text-[10px] md:text-sm text-white/90 mb-2">
-                            대표번호 <a href={`tel:${(content?.footer_phone || defaultContent.footer_phone).replace(/\s/g, '')}`} className="hover:text-white transition-colors font-bold">{content?.footer_phone || defaultContent.footer_phone}</a>
-                            {content?.footer_hours ? ` (${content.footer_hours})` : ' (평일 09:00–18:00 / 주말·공휴일 휴무)'} | 대표 메일 <a href={`mailto:${content?.footer_email || defaultContent.footer_email}`} className="hover:text-white transition-colors font-bold">{content?.footer_email || defaultContent.footer_email}</a>
-                        </p>
-                        <p className="text-[8px] md:text-xs text-white/70 mb-4">{(content?.footer_copyright || `© ${new Date().getFullYear()} 부산청년사업가들 (BCSA). All rights reserved.`).replace(/\b2025\b/g, String(new Date().getFullYear()))}</p>
-                        <p className="text-[8px] md:text-xs text-white/70 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">소개</button>
-                            <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('allMembers'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">사업자 명단</button>
-                            <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); goTo('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }} className="hover:text-white/90 transition-colors">공지사항</button>
-                            <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/terms'); }} className="hover:text-white/90 transition-colors">서비스 이용약관</button>
-                            <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/privacy'); }} className="hover:text-white/90 transition-colors">개인정보 처리방침</button>
-                            <span className="text-white/50">|</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate && navigate('/refund'); }} className="hover:text-white/90 transition-colors">취소/환불 규정</button>
-                            {/* 관리자 바로가기는 관리자에게만 노출 */}
-                            {isAdminUser(currentUser) ? (
-                                <>
-                                    <span className="text-white/50">|</span>
-                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = '/admin'; }} className="text-white/60 hover:text-white/90 transition-colors" title="관리자">Admin</button>
-                                </>
-                            ) : null}
-                        </p>
-                    </div>
-                </div>
-            </footer>
+            {/* 푸터 — 먼저가본 개편(2026-11): src/components/Footer.jsx (연회색 정보형) */}
+            <Footer
+                footerRef={footerRef}
+                content={content}
+                onNavigateToAbout={() => { goTo('about'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}
+                onNavigateToNotice={() => { goTo('notice'); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }}
+                onTerms={() => { navigate && navigate('/terms'); }}
+                onPrivacy={() => { navigate && navigate('/privacy'); }}
+                onRefundPolicy={() => { navigate && navigate('/refund'); }}
+                onAdmin={() => { window.location.href = '/admin'; }}
+            />
 
             {/* 🌟 모달들 */}
             {showSignUpModal === true ? (
@@ -545,32 +472,27 @@ const AppLayout = (props) => {
             {/* 필수 회원정보 입력 안내 팝업 */}
             {showProfileIncompleteBanner && (
                 <ModalPortal>
-                    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) setProfileIncompleteModalClosed(true); }}>
-                        <div className="bg-white rounded-2xl shadow-xl border border-amber-200 w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-start gap-3 mb-5">
-                                <div className="shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                                    <Icons.AlertCircle className="w-5 h-5 text-amber-600" />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-dark mb-1">필수 회원정보 입력 안내</h3>
-                                    <p className="text-sm text-gray-600 leading-relaxed">
-                                        필수 회원정보가 입력되지 않았습니다. 서비스 이용을 위해 마이페이지에서 입력해주세요.
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex justify-end">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setProfileIncompleteModalClosed(true);
-                                        setCurrentView('myPage');
-                                        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
-                                    }}
-                                    className="px-4 py-2.5 text-sm font-bold text-white bg-amber-600 rounded-xl hover:bg-amber-700 transition-colors"
-                                >
-                                    마이페이지에서 입력하기
-                                </button>
-                            </div>
+                    <div className="fixed inset-0 z-[500] flex items-end justify-center bg-black/50 md:items-center md:p-4" onClick={(e) => { if (e.target === e.currentTarget) setProfileIncompleteModalClosed(true); }}>
+                        <div role="dialog" aria-modal="true" aria-labelledby="profile-incomplete-title" className="bg-white rounded-t-[18px] md:rounded-[18px] w-full md:max-w-[440px] px-6 pb-6 pt-7 md:px-8 md:pb-8 md:pt-8" onClick={(e) => e.stopPropagation()}>
+                            <p className="mb-3 inline-flex items-center gap-1.5 text-[14px] font-semibold text-royal">
+                                <Icons.AlertCircle className="w-4 h-4" aria-hidden="true" />
+                                회원정보 확인
+                            </p>
+                            <h3 id="profile-incomplete-title" className="text-[23px] font-bold text-ink mb-2">필수 회원정보 입력 안내</h3>
+                            <p className="text-[16px] text-sub leading-relaxed mb-6">
+                                필수 회원정보가 입력되지 않았습니다. 서비스 이용을 위해 마이페이지에서 입력해주세요.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setProfileIncompleteModalClosed(true);
+                                    setCurrentView('myPage');
+                                    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                                }}
+                                className="w-full h-[52px] text-[16px] font-bold text-white bg-[#1a1a1a] rounded-lg hover:bg-black transition-colors"
+                            >
+                                마이페이지에서 입력하기
+                            </button>
                         </div>
                     </div>
                 </ModalPortal>
@@ -579,28 +501,24 @@ const AppLayout = (props) => {
             {/* 프로그램 알람 모달 */}
             {showProgramAlertModal && programAlerts.length > 0 && currentUser ? (
                 <ModalPortal>
-                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" onClick={(e) => { if (e.target === e.currentTarget) handleProgramAlertConfirm(currentUser.id); }}>
-                    <div className="bg-white rounded-2xl shadow-sm border border-blue-200 p-8 max-w-[386px] w-full max-h-[90vh] overflow-y-auto modal-scroll max-md:scale-[0.8] origin-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                                    <Icons.AlertCircle className="w-6 h-6 text-orange-600" />
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-dark">프로그램 시작 알림</h3>
-                                    <p className="text-sm text-gray-500">곧 시작되는 프로그램이 있습니다</p>
-                                </div>
+                <div className="fixed inset-0 z-[500] flex items-end justify-center bg-black/50 md:items-center md:p-4" onClick={(e) => { if (e.target === e.currentTarget) handleProgramAlertConfirm(currentUser.id); }}>
+                    <div role="dialog" aria-modal="true" aria-labelledby="program-alert-title" className="bg-white rounded-t-[18px] md:rounded-[18px] px-6 pb-6 pt-7 md:px-8 md:pb-8 md:pt-8 w-full md:max-w-[440px] max-h-[calc(100dvh-72px)] md:max-h-[90vh] overflow-y-auto modal-scroll" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-start justify-between gap-3 mb-6">
+                            <div>
+                                <h3 id="program-alert-title" className="text-[23px] font-bold text-ink">프로그램 시작 알림</h3>
+                                <p className="mt-1 text-[15px] text-sub">곧 시작되는 프로그램이 있습니다</p>
                             </div>
                             <button 
                                 type="button" 
+                                aria-label="닫기"
                                 onClick={() => handleProgramAlertConfirm(currentUser.id)} 
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="-mr-2 -mt-1 w-11 h-11 shrink-0 flex items-center justify-center text-ink hover:bg-card rounded-lg transition-colors"
                             >
                                 <Icons.X size={20} />
                             </button>
                         </div>
                         
-                        <div className="space-y-4 mb-6">
+                        <div className="space-y-3 mb-6">
                             {programAlerts.map((seminar, idx) => {
                                 // 날짜 파싱
                                 const parseDateString = (dateStr) => {
@@ -624,17 +542,16 @@ const AppLayout = (props) => {
                                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                                 
                                 return (
-                                    <div key={seminar.id || idx} className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                                    <div key={seminar.id || idx} className="bg-white border border-line rounded-xl p-4">
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <Icons.Calendar className="w-4 h-4 text-orange-600" />
-                                                    <span className="text-xs font-bold text-orange-700">
+                                                <div className="mb-2">
+                                                    <span className="inline-block px-2 py-0.5 bg-royal text-white text-[13px] font-semibold">
                                                         {diffDays === 0 ? '오늘' : diffDays === 1 ? '내일' : `${diffDays}일 후`}
                                                     </span>
                                                 </div>
-                                                <h4 className="font-bold text-lg text-dark mb-1">{seminar.title}</h4>
-                                                <div className="text-sm text-gray-600 space-y-1">
+                                                <h4 className="font-semibold text-[18px] text-ink mb-1">{seminar.title}</h4>
+                                                <div className="text-[15px] text-sub space-y-1">
                                                     {seminar.date && (
                                                         <div className="flex items-center gap-2">
                                                             <Icons.Calendar size={14} />
@@ -658,7 +575,7 @@ const AppLayout = (props) => {
                         <button
                             type="button"
                             onClick={() => handleProgramAlertConfirm(currentUser.id)}
-                            className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                            className="w-full h-[52px] bg-[#1a1a1a] text-white text-[16px] font-bold rounded-lg hover:bg-black transition-colors"
                         >
                             확인
                         </button>
@@ -674,36 +591,36 @@ const AppLayout = (props) => {
                     href="https://open.kakao.com/o/gMWryRA"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
+                    aria-label="먼저가본 오픈채팅방"
+                    className="relative w-11 h-11 bg-[#FEE500] rounded-lg flex items-center justify-center group"
                 >
-                    <Icons.MessageSquare className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
-                    <span className="absolute right-full mr-3 px-3 py-1.5 bg-yellow-400 text-black text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
-                        부청사 오픈채팅방
-                        <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-yellow-400"></span>
+                    <Icons.MessageSquare className="w-5 h-5 text-[#191919]" aria-hidden="true" />
+                    <span className="absolute right-full top-1/2 -translate-y-1/2 mr-2 px-3 py-1.5 bg-[#0c0c0e] text-white text-[13px] font-semibold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity pointer-events-none" aria-hidden="true">
+                        먼저가본 오픈채팅방
                     </span>
                 </a>
                 <a
                     href="https://www.instagram.com/businessmen_in_busan"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
+                    aria-label="먼저가본 인스타그램"
+                    className="relative w-11 h-11 bg-[#0c0c0e] rounded-lg flex items-center justify-center group"
                 >
-                    <Icons.Instagram className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
-                    <span className="absolute right-full mr-3 px-3 py-1.5 bg-gradient-to-br from-purple-600 to-pink-500 text-white text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
-                        부청사 인스타그램
-                        <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-purple-600"></span>
+                    <Icons.Instagram className="w-5 h-5 text-white" aria-hidden="true" />
+                    <span className="absolute right-full top-1/2 -translate-y-1/2 mr-2 px-3 py-1.5 bg-[#0c0c0e] text-white text-[13px] font-semibold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity pointer-events-none" aria-hidden="true">
+                        먼저가본 인스타그램
                     </span>
                 </a>
                 <a
                     href="https://www.youtube.com/@businessmen_in_busan"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative w-10 h-10 bg-red-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all group"
+                    aria-label="먼저가본 유튜브"
+                    className="relative w-11 h-11 bg-[#0c0c0e] rounded-lg flex items-center justify-center group"
                 >
-                    <Icons.Youtube className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
-                    <span className="absolute right-full mr-3 px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all duration-200 pointer-events-none">
-                        부청사 유튜브
-                        <span className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-red-600"></span>
+                    <Icons.Youtube className="w-5 h-5 text-white" aria-hidden="true" />
+                    <span className="absolute right-full top-1/2 -translate-y-1/2 mr-2 px-3 py-1.5 bg-[#0c0c0e] text-white text-[13px] font-semibold rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity pointer-events-none" aria-hidden="true">
+                        먼저가본 유튜브
                     </span>
                 </a>
             </div>

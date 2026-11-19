@@ -19,48 +19,49 @@ export default function KakaoLinkPromptModal({ onLink, onDismiss }) {
   return (
     <ModalPortal>
       <div
-        className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md"
+        className="fixed inset-0 z-[1200] flex items-end justify-center bg-black/50 md:items-center md:p-4"
         onClick={(e) => { if (e.target === e.currentTarget) onDismiss(); }}
       >
         <div
-          className="bg-white rounded-3xl shadow-2xl w-full max-w-sm z-10 overflow-hidden border-[0.5px] border-yellow-300"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="kakao-link-title"
+          className="bg-white rounded-t-[18px] md:rounded-[18px] w-full md:max-w-[420px] z-10 overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* 헤더 */}
-          <div className="bg-[#FEE500] px-6 pt-6 pb-4 text-center">
-            <div className="flex justify-center mb-2">
-              <div className="w-14 h-14 bg-[#191919] rounded-2xl flex items-center justify-center text-[#FEE500] text-3xl shadow-lg">
-                <KakaoSymbol />
-              </div>
-            </div>
-            <h3 className="text-lg font-bold text-[#191919]">카카오 계정 연동</h3>
-            <p className="text-xs text-[#3C3C3C] mt-1">더 편리하게 로그인하세요</p>
+          {/* 머리 */}
+          <div className="px-6 pt-7 pb-2 md:px-8 md:pt-8">
+            <span className="inline-flex w-11 h-11 items-center justify-center rounded-lg bg-[#FEE500] text-[#191919] mb-4" aria-hidden="true">
+              <KakaoSymbol />
+            </span>
+            <h3 id="kakao-link-title" className="text-[23px] font-bold text-ink">카카오 계정 연동</h3>
+            <p className="text-[15px] text-sub mt-1.5">더 편리하게 로그인하세요</p>
           </div>
 
           {/* 본문 */}
-          <div className="px-6 py-5 text-center">
-            <p className="text-sm text-gray-700 leading-relaxed">
-              카카오 계정을 연동하면<br />
-              <span className="font-bold text-gray-900">다음부터 카카오로 간편 로그인</span>이 가능합니다.
+          <div className="px-6 py-4 md:px-8">
+            <p className="text-[16px] text-ink leading-relaxed">
+              카카오 계정을 연동하면{' '}
+              <span className="font-semibold">다음부터 카카오로 간편 로그인</span>이 가능합니다.
             </p>
-            <div className="mt-4 p-3 bg-yellow-50 rounded-xl text-xs text-gray-600 text-left space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-yellow-500 font-bold">✓</span>
+            <ul className="mt-4 rounded-xl bg-card px-4 py-3.5 text-[15px] text-ink space-y-1.5">
+              <li className="flex items-center gap-2">
+                <span className="text-royal font-bold" aria-hidden="true">✓</span>
                 <span>비밀번호 없이 원터치 로그인</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-yellow-500 font-bold">✓</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-royal font-bold" aria-hidden="true">✓</span>
                 <span>자동 로그인으로 매번 편리하게</span>
-              </div>
-            </div>
+              </li>
+            </ul>
           </div>
 
           {/* 버튼 */}
-          <div className="px-6 pb-6 space-y-2">
+          <div className="px-6 pb-6 pt-2 md:px-8 md:pb-8 space-y-2">
             <button
               type="button"
               onClick={onLink}
-              className="w-full py-3 bg-[#FEE500] text-[#191919] font-bold rounded-xl hover:bg-[#FDD835] transition-colors text-sm flex items-center justify-center gap-2"
+              className="w-full h-[52px] bg-[#FEE500] text-[#191919] font-bold rounded-lg hover:bg-[#FDD835] transition-colors text-[16px] flex items-center justify-center gap-2"
             >
               <KakaoSymbol />
               카카오 계정 연동하기
@@ -68,7 +69,7 @@ export default function KakaoLinkPromptModal({ onLink, onDismiss }) {
             <button
               type="button"
               onClick={onDismiss}
-              className="w-full py-2.5 text-gray-400 hover:text-gray-600 text-xs font-medium transition-colors"
+              className="w-full h-12 bg-white border border-line2 text-ink rounded-lg hover:border-ink text-[15px] font-semibold transition-colors"
             >
               나중에 하기
             </button>

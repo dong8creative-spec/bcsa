@@ -4,6 +4,7 @@ import { firestoreLikeToMillis } from '../appHelpers';
 import Pager from '../components/Pager';
 import NewsDetailModal from '../components/NewsDetailModal';
 import firebaseService from '../services/firebaseService';
+import { MgPageHead, MgWrap } from '../components/mg/Mg';
 
 /**
  * NewsView — 뉴스 페이지
@@ -50,19 +51,23 @@ const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
 // 카테고리별 배지 라벨/색 — scripts/ingest-daily-feed.mjs의 NEWS_KEYWORD_GROUPS 카테고리와 1:1로 맞춘다.
 // notice/econ은 이전 수집 방식으로 저장된 문서를 위한 하위 호환 항목.
+// 먼저가본 개편(2026-11): 색 규칙(검정·흰색·하늘·로얄블루)에 맞춰 카테고리 표시는 작은 네모 하나로 통일 —
+// 「지원사업」만 로얄블루 바탕으로 눈에 띄게, 나머지는 하늘 바탕 + 로얄블루 글자.
+const CAT_STRONG = 'bg-royal text-white';
+const CAT_SOFT = 'bg-sky text-royal';
 const CATEGORY_META = {
-    '지원사업': { label: '지원사업', badgeClass: 'bg-blue-600' },
-    '창업·투자': { label: '창업·투자', badgeClass: 'bg-indigo-500' },
-    '모집·행사': { label: '모집·행사', badgeClass: 'bg-sky-500' },
-    '상권·소비': { label: '상권·소비', badgeClass: 'bg-amber-500' },
-    '판로·마케팅': { label: '판로·마케팅', badgeClass: 'bg-emerald-500' },
-    '세무·노무': { label: '세무·노무', badgeClass: 'bg-slate-500' },
-    '기술·트렌드': { label: '기술·트렌드', badgeClass: 'bg-purple-500' },
-    '위기·대응': { label: '위기·대응', badgeClass: 'bg-red-500' },
-    notice: { label: '공고', badgeClass: 'bg-sky-500' },
-    econ: { label: '경제', badgeClass: 'bg-orange-500' },
+    '지원사업': { label: '지원사업', badgeClass: CAT_STRONG },
+    '창업·투자': { label: '창업·투자', badgeClass: CAT_SOFT },
+    '모집·행사': { label: '모집·행사', badgeClass: CAT_SOFT },
+    '상권·소비': { label: '상권·소비', badgeClass: CAT_SOFT },
+    '판로·마케팅': { label: '판로·마케팅', badgeClass: CAT_SOFT },
+    '세무·노무': { label: '세무·노무', badgeClass: CAT_SOFT },
+    '기술·트렌드': { label: '기술·트렌드', badgeClass: CAT_SOFT },
+    '위기·대응': { label: '위기·대응', badgeClass: CAT_SOFT },
+    notice: { label: '공고', badgeClass: CAT_SOFT },
+    econ: { label: '경제', badgeClass: CAT_SOFT },
 };
-const DEFAULT_CATEGORY_META = { label: '뉴스', badgeClass: 'bg-gray-400' };
+const DEFAULT_CATEGORY_META = { label: '뉴스', badgeClass: 'bg-card text-sub' };
 
 function categoryMetaFor(category) {
     return CATEGORY_META[category] || DEFAULT_CATEGORY_META;
@@ -120,23 +125,25 @@ function relativeTime(ms) {
 
 // 요청에 따라 한 줄 요약 미리보기(item.preview)는 목록에서 뺐다 — 대신 제목을 크게 키워서
 // 목록을 "훑어보기" 쉽게 하고, 실제 내용은 눌렀을 때 NewsDetailModal에서 여유 있게 보여준다.
-function NewsRow({ item, isLast, onOpen }) {
+function NewsRow({ item, onOpen }) {
     return (
-        <button
-            type="button"
-            onClick={() => onOpen(item.detail)}
-            className={`w-full flex items-center justify-between gap-4 py-5 px-2 -mx-2 rounded-xl hover:bg-soft/70 transition-colors text-left ${isLast ? '' : 'border-b border-black/[0.06]'}`}
-        >
-            <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-3 min-w-0">
-                    <span className={`inline-flex items-center justify-center h-5 px-2.5 rounded-full text-[11px] font-bold text-white shrink-0 whitespace-nowrap ${item.badgeClass}`}>{item.badge}</span>
-                    <p className="text-base md:text-lg font-bold text-dark truncate">{item.title}</p>
-                </div>
-            </div>
-            <span className="text-xs text-gray-500 whitespace-nowrap shrink-0 ml-4">{item.meta}</span>
-        </button>
+        <div className="border-b border-line">
+            <button
+                type="button"
+                onClick={() => onOpen(item.detail)}
+                className="flex min-h-[76px] w-full flex-col justify-center gap-1.5 py-4 text-left transition-colors hover:bg-card md:min-h-[62px] md:flex-row md:items-center md:justify-between md:gap-4 md:px-2 md:py-[18px]"
+            >
+                <span className="flex min-w-0 flex-1 items-center gap-2.5">
+                    <span className={`inline-flex h-6 w-[92px] shrink-0 items-center justify-center whitespace-nowrap px-1 text-[12.5px] font-semibold leading-none ${item.badgeClass}`}>{item.badge}</span>
+                    <span className="min-w-0 flex-1 truncate text-[16px] font-semibold text-ink">{item.title}</span>
+                </span>
+                <span className="min-w-0 truncate text-[13px] text-sub md:max-w-[340px] md:shrink-0 md:whitespace-nowrap md:text-[14px]">{item.meta || '\u00a0'}</span>
+            </button>
+        </div>
     );
 }
+
+const selectCls = 'h-12 min-w-0 rounded-lg border border-line2 bg-white px-3 text-[15px] text-ink focus:border-royal focus:outline-none';
 
 export default function NewsView({ content, onBack, newsItems }) {
     const [page, setPage] = useState(1);
@@ -260,67 +267,71 @@ export default function NewsView({ content, onBack, newsItems }) {
         }
     }
 
-    return (
-        <div className="min-h-screen bg-white overflow-y-auto">
-            <section
-                className="pt-32 pb-16 md:pt-40 md:pb-20 px-6 relative overflow-hidden"
-                style={{ background: 'radial-gradient(circle at 82% 0%, rgba(0,70,165,.12), transparent 55%), #ffffff' }}
-            >
-                <div className="container mx-auto max-w-7xl">
-                    <p className="text-[12.5px] text-gray-500 mb-5">
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="hover:text-dark transition-colors">홈</button>
-                        <span className="mx-1">/</span> 뉴스
-                    </p>
-                    <p className="text-[13px] font-bold text-brand tracking-wide mb-4">NEWS</p>
-                    <h1 className="text-[32px] leading-[1.15] md:text-[52px] md:leading-[1.1] font-semibold tracking-tight text-dark break-keep max-w-2xl">뉴스</h1>
-                    <p className="mt-5 text-base md:text-lg text-gray-500 max-w-lg break-keep">바쁜 하루, 놓치기 쉬운 사업 소식을 대신 모아 두었어요.</p>
-                </div>
-            </section>
+    const filterBtn = (active) => `h-11 border px-3.5 text-[15px] font-semibold transition-colors ${active ? 'border-ink bg-ink text-white' : 'border-line bg-white text-[#555] hover:border-ink hover:text-ink'}`;
 
-            <section className="pb-14 md:pb-20 px-6">
-                <div className="container mx-auto max-w-7xl">
-                    <div className="xl:flex xl:gap-10 xl:items-start">
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-                                <h2 className="text-lg md:text-xl font-bold text-dark">창업 · 경제뉴스</h2>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <select
-                                        value={categoryFilter}
-                                        onChange={(e) => setCategoryFilter(e.target.value)}
-                                        className="text-xs md:text-sm border border-black/10 rounded-lg px-2.5 py-1.5 bg-white text-dark focus:outline-none focus:ring-1 focus:ring-brand"
-                                    >
-                                        <option value="all">전체 카테고리</option>
-                                        {categoryOptions.map((key) => (
-                                            <option key={key} value={key}>{categoryMetaFor(key).label}</option>
-                                        ))}
-                                    </select>
+    return (
+        <div className="min-h-screen overflow-y-auto bg-white">
+            <MgPageHead
+                crumbs={(
+                    <>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="underline-offset-2 hover:text-white hover:underline">홈</button>
+                        <span className="mx-1.5" aria-hidden="true">/</span>뉴스
+                    </>
+                )}
+                eyebrow="NEWS"
+                title="뉴스"
+                desc="바쁜 하루, 놓치기 쉬운 사업 소식을 대신 모아 두었어요."
+            />
+
+            <section className="pb-16 pt-10 md:pb-[100px] md:pt-14">
+                <MgWrap>
+                    <div className="xl:flex xl:items-start xl:gap-10">
+                        <div className="min-w-0 flex-1">
+                            <h2 className="text-[23px] font-bold leading-[1.4] text-ink md:text-[28px]">창업 · 경제뉴스</h2>
+
+                            {/* 거르기 — 카테고리는 직사각형 버튼 줄(넘치면 다음 줄로), 신문사·정렬은 고르기 칸 */}
+                            <div role="group" aria-label="카테고리" className="mt-5 flex flex-wrap gap-1.5">
+                                <button type="button" aria-pressed={categoryFilter === 'all'} onClick={() => setCategoryFilter('all')} className={filterBtn(categoryFilter === 'all')}>전체</button>
+                                {categoryOptions.map((key) => (
+                                    <button key={key} type="button" aria-pressed={categoryFilter === key} onClick={() => setCategoryFilter(key)} className={filterBtn(categoryFilter === key)}>
+                                        {categoryMetaFor(key).label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="mb-6 mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+                                <label className="min-w-0">
+                                    <span className="sr-only">신문사</span>
                                     <select
                                         value={sourceFilter}
                                         onChange={(e) => setSourceFilter(e.target.value)}
-                                        className="text-xs md:text-sm border border-black/10 rounded-lg px-2.5 py-1.5 bg-white text-dark focus:outline-none focus:ring-1 focus:ring-brand"
+                                        className={`${selectCls} w-full sm:w-[220px]`}
                                     >
                                         <option value="all">전체 신문사</option>
                                         {sourceOptions.map((s) => <option key={s} value={s}>{pressName(s)}</option>)}
                                     </select>
+                                </label>
+                                <label className="min-w-0">
+                                    <span className="sr-only">정렬</span>
                                     <select
                                         value={sortMode}
                                         onChange={(e) => setSortMode(e.target.value)}
-                                        className="text-xs md:text-sm border border-black/10 rounded-lg px-2.5 py-1.5 bg-white text-dark focus:outline-none focus:ring-1 focus:ring-brand"
+                                        className={`${selectCls} w-full sm:w-[150px]`}
                                     >
                                         <option value="date">최신순</option>
                                         <option value="source">신문사순</option>
                                     </select>
-                                </div>
+                                </label>
                             </div>
+
                             {pageItems.length > 0 ? (
                                 <>
-                                    <div className="border-t border-black/[0.06]">
+                                    <div className="border-t border-ink">
                                         {pageItems.map((item, i) => (
                                             // key는 제목이 아니라 id로 — 같은 날 비슷한 제목의 기사가 여러 신문사에서
                                             // 동시에 실리는 일이 흔해서, 제목 기준 key는 다른 기사인데 같은 key로
                                             // 잡혀 React가 잘못된 항목을 재사용할 수 있었다.
                                             <React.Fragment key={item.id || `${item.title}-${i}`}>
-                                                <NewsRow item={item} isLast={i === pageItems.length - 1} onOpen={openNewsDetail} />
+                                                <NewsRow item={item} onOpen={openNewsDetail} />
                                                 {i === 3 ? <AdSlot slotId="news-list-native" content={content} className="my-1" /> : null}
                                             </React.Fragment>
                                         ))}
@@ -328,7 +339,7 @@ export default function NewsView({ content, onBack, newsItems }) {
                                     <Pager page={pageClamped} totalPages={totalPages} onChange={setPage} />
                                 </>
                             ) : (
-                                <p className="text-sm text-gray-400 border-t border-black/[0.06] pt-6">등록된 뉴스가 아직 없습니다.</p>
+                                <p className="rounded-xl bg-card px-5 py-11 text-center text-[15px] text-sub">등록된 뉴스가 아직 없습니다.</p>
                             )}
                         </div>
 
@@ -347,7 +358,7 @@ export default function NewsView({ content, onBack, newsItems }) {
                             </aside>
                         ) : null}
                     </div>
-                </div>
+                </MgWrap>
             </section>
 
             <NewsDetailModal item={selected} onClose={() => setSelected(null)} />

@@ -29,7 +29,7 @@ const runAfterIdle = (callback) => {
 };
 
 /** 말풍선 테두리색 (tailwind brand와 동일 — SVG·인라인 스타일용) */
-const BUBBLE_BORDER = '#0045a5';
+const BUBBLE_BORDER = '#2d4fe0';
 
 /** 말풍선 DOM 생성 (업체명) — textContent로 XSS 방지, 꼬리는 SVG로 고정(클리핑·Tailwind 누락 방지) */
 const buildNameBubbleContent = (title) => {

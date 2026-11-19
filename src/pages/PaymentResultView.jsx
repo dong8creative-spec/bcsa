@@ -7,6 +7,7 @@ import { getApiBaseUrl } from '../utils/api';
 import { getIdToken } from 'firebase/auth';
 import { auth } from '../firebase';
 import { Icons } from '../components/Icons';
+import { HEADER_OFFSET_CLASS } from '../components/mg/Mg';
 
 /**
  * 리다이렉트 결제 후 복귀 URL (/payment/result)
@@ -146,21 +147,21 @@ export function PaymentResultView({ onComplete, onGoMyPage }) {
             ? '신청 처리 중입니다. 잠시만 기다려 주세요...'
             : '거의 다 됐습니다. 페이지를 닫지 마세요...';
         return (
-            <div className="min-h-screen flex items-center justify-center bg-soft p-4">
-                <div className="bg-white rounded-2xl shadow-lg border border-blue-100 p-8 max-w-md w-full text-center">
-                    <div className="inline-block w-12 h-12 border-2 border-brand border-t-transparent rounded-full animate-spin mb-4" />
-                    <p className="text-gray-700 font-medium mb-1">{loadingMsg}</p>
+            <div className={`flex min-h-screen items-start justify-center bg-white px-5 pb-16 ${HEADER_OFFSET_CLASS}`}>
+                <div className="mt-10 w-full max-w-md rounded-[18px] border border-line bg-white px-6 py-9 text-center md:mt-16 md:px-8" role="status" aria-live="polite">
+                    <div className="mb-5 inline-block h-12 w-12 animate-spin rounded-full border-[3px] border-royal border-t-transparent" aria-hidden="true" />
+                    <p className="mb-1 text-[17px] font-semibold text-ink">{loadingMsg}</p>
                     {seminarTitle ? (
-                        <p className="text-sm text-brand font-medium mb-2">{seminarTitle}</p>
+                        <p className="mb-2 text-[15px] font-semibold text-royal">{seminarTitle}</p>
                     ) : null}
-                    <p className="text-xs text-gray-400 mb-4">페이지를 닫거나 새로고침하지 마세요</p>
-                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                    <p className="mb-5 text-[14px] text-sub">페이지를 닫거나 새로고침하지 마세요</p>
+                    <div className="h-2 w-full overflow-hidden bg-card" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPct} aria-label="결제 확인 진행">
                         <div
-                            className="bg-brand h-2 rounded-full transition-all duration-1000"
+                            className="h-2 bg-royal transition-all duration-1000"
                             style={{ width: `${progressPct}%` }}
                         />
                     </div>
-                    <p className="text-xs text-gray-400 mt-2">{elapsed}초 / 최대 {MAX_WAIT}초</p>
+                    <p className="mt-2 text-[13px] text-sub">{elapsed}초 / 최대 {MAX_WAIT}초</p>
                 </div>
             </div>
         );
@@ -172,55 +173,55 @@ export function PaymentResultView({ onComplete, onGoMyPage }) {
     })();
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-soft p-4">
-            <div className="bg-white rounded-2xl shadow-lg border border-blue-100 p-8 max-w-md w-full text-center">
+        <div className={`flex min-h-screen items-start justify-center bg-white px-5 pb-16 ${HEADER_OFFSET_CLASS}`}>
+            <div className="mt-10 w-full max-w-md rounded-[18px] border border-line bg-white px-6 py-9 text-center md:mt-16 md:px-8" role="status" aria-live="polite">
                 {status === 'success' && (
                     <>
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Icons.CheckCircle className="w-10 h-10 text-green-600" />
+                        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-sky" aria-hidden="true">
+                            <Icons.CheckCircle className="h-9 w-9 text-royal" />
                         </div>
-                        <h2 className="text-xl font-bold text-dark mb-2">신청 완료</h2>
+                        <h2 className="mb-2 text-[24px] font-bold text-ink">신청 완료</h2>
                         {seminarTitle ? (
-                            <p className="text-sm font-medium text-brand mb-2">{seminarTitle}</p>
+                            <p className="mb-3 text-[16px] font-semibold text-royal">{seminarTitle}</p>
                         ) : null}
-                        <p className="text-gray-700 font-medium mb-2 whitespace-pre-line">{message}</p>
-                        <p className="text-sm text-gray-500 mb-6">환불·취소는 마이페이지에서 신청 취소로 진행할 수 있습니다.</p>
+                        <p className="mb-2 whitespace-pre-line text-[16px] text-ink">{message}</p>
+                        <p className="mb-6 text-[15px] text-sub">환불·취소는 마이페이지에서 신청 취소로 진행할 수 있습니다.</p>
                     </>
                 )}
                 {status === 'pending' && (
                     <>
-                        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Icons.AlertCircle className="w-10 h-10 text-amber-600" />
+                        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-card" aria-hidden="true">
+                            <Icons.AlertCircle className="h-9 w-9 text-ink" />
                         </div>
-                        <h2 className="text-xl font-bold text-dark mb-2">신청 확인 중</h2>
+                        <h2 className="mb-2 text-[24px] font-bold text-ink">신청 확인 중</h2>
                         {seminarTitle ? (
-                            <p className="text-sm font-medium text-brand mb-2">{seminarTitle}</p>
+                            <p className="mb-3 text-[16px] font-semibold text-royal">{seminarTitle}</p>
                         ) : null}
-                        <p className="text-gray-600 mb-4 whitespace-pre-line">{message}</p>
+                        <p className="mb-5 whitespace-pre-line text-[16px] text-[#333]">{message}</p>
                     </>
                 )}
                 {(status === 'fail' || status === 'expired') && (
                     <>
-                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Icons.AlertCircle className="w-10 h-10 text-red-600" />
+                        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-50" aria-hidden="true">
+                            <Icons.AlertCircle className="h-9 w-9 text-red-600" />
                         </div>
-                        <h2 className="text-xl font-bold text-dark mb-2">
+                        <h2 className="mb-2 text-[24px] font-bold text-ink">
                             {status === 'expired' ? '확인 시간 초과' : '결제 실패'}
                         </h2>
-                        <p className="text-gray-600 mb-4 whitespace-pre-line">{message}</p>
+                        <p className="mb-5 whitespace-pre-line text-[16px] text-[#333]">{message}</p>
                     </>
                 )}
                 {paymentId ? (
-                    <p className="text-sm text-gray-500 mb-6 break-all">
-                        결제 번호: <code className="bg-gray-100 px-1 rounded">{paymentId}</code>
+                    <p className="mb-6 break-all text-[14px] text-sub">
+                        결제 번호: <code className="bg-card px-1.5 py-0.5 text-ink">{paymentId}</code>
                     </p>
                 ) : null}
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2.5">
                     {status === 'success' || status === 'pending' ? (
                         <button
                             type="button"
                             onClick={goMyPage}
-                            className="w-full py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                            className="h-[52px] w-full rounded-lg bg-royal text-[16px] font-bold text-white transition-colors hover:bg-royalDark"
                         >
                             마이페이지에서 확인
                         </button>
@@ -228,10 +229,10 @@ export function PaymentResultView({ onComplete, onGoMyPage }) {
                     <button
                         type="button"
                         onClick={goHome}
-                        className={`w-full py-3 font-bold rounded-xl transition-colors ${
+                        className={`h-[52px] w-full rounded-lg text-[16px] font-bold transition-colors ${
                             status === 'success' || status === 'pending'
-                                ? 'border border-blue-300 text-gray-700 hover:bg-gray-50'
-                                : 'bg-brand text-white hover:bg-blue-700'
+                                ? 'border border-line2 bg-white text-ink hover:border-ink'
+                                : 'bg-[#1a1a1a] text-white hover:bg-black'
                         }`}
                     >
                         홈으로 이동

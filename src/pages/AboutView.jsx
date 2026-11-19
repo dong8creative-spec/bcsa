@@ -1,7 +1,9 @@
 import React, { Fragment } from 'react';
 import { defaultContent } from '../constants/content';
+import { MgWrap, MgPageHead, MgSectionHead, MgInfoCard } from '../components/mg/Mg';
 
 const AboutView = ({ onBack, content, pageTitles }) => {
+    // 연혁은 역사적 사실이므로 옛 이름(부청사·부산청년사업가들)을 그대로 둔다
     const historyData = [
         { year: "2014", title: content.about_history_2014_title || "지주회사 설립 기획", desc: content.about_history_2014_desc || "부산청년사업가들 필요성 검토 및 기획", latest: false },
         { year: "2017", title: content.about_history_2017_title || "커뮤니티 구축", desc: content.about_history_2017_desc || "회원간 소통 내부망 구축 및 오픈채팅방 개설", latest: false },
@@ -27,10 +29,10 @@ const AboutView = ({ onBack, content, pageTitles }) => {
     ];
 
     const platformCards = [
-        { emoji: '🤝', title: '네트워킹', sub: '지속적인 교류' },
-        { emoji: '⚡', title: '협업 기회', sub: '비즈니스 확장' },
-        { emoji: '🎯', title: '실무 교육', sub: '역량 강화' },
-        { emoji: '🛡️', title: '심리 안정', sub: '고민 해결' },
+        { en: 'NETWORKING', title: '네트워킹', sub: '지속적인 교류' },
+        { en: 'COLLABORATION', title: '협업 기회', sub: '비즈니스 확장' },
+        { en: 'EDUCATION', title: '실무 교육', sub: '역량 강화' },
+        { en: 'SUPPORT', title: '심리 안정', sub: '고민 해결' },
     ];
 
     const audienceCards = [
@@ -50,187 +52,163 @@ const AboutView = ({ onBack, content, pageTitles }) => {
         return <Fragment>함께 성장하는<br />사업가 네트워크</Fragment>;
     })();
 
+    const moments = [
+        { src: content.about_moment_1_image, alt: '비즈니스 세미나 현장' },
+        { src: content.about_moment_2_image, alt: '사업가 네트워킹 현장' },
+    ].filter((m) => m.src && m.src !== content.about_hero_image);
+
+    const phone = content?.about_contact_phone || defaultContent.about_contact_phone;
+    const email = content?.about_contact_email || defaultContent.about_contact_email;
+
     return (
-        <div className="min-h-screen bg-white overflow-y-auto">
-            {/* 1. Hero */}
-            <section className="pt-32 pb-16 md:pt-40 md:pb-20 px-6 bg-white">
-                <div className="container mx-auto max-w-7xl">
-                    <p className="text-[12.5px] text-gray-500 mb-5">
-                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="hover:text-dark transition-colors">홈</button>
-                        <span className="mx-1">/</span> 소개
-                    </p>
-                    <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center">
+        <div className="min-h-screen overflow-y-auto bg-white">
+            {/* 1. 머리부분 */}
+            <MgPageHead
+                crumbs={
+                    <>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBack(); }} className="hover:text-white">홈</button>
+                        <span className="mx-1.5" aria-hidden="true">/</span> 소개
+                    </>
+                }
+                eyebrow="SINCE 2017"
+                title={heroTitle}
+                desc={content.about_hero_desc || "부산 지역 사업가들의 성장과 연결을 돕는 비즈니스 커뮤니티, 먼저가본입니다."}
+            />
+
+            {/* 2. 먼저가본은 이런 곳 */}
+            <section className="py-14 md:py-20" aria-labelledby="about-platform">
+                <MgWrap>
+                    <div data-layout="page" className={`grid gap-8 md:gap-12 ${content.about_hero_image ? 'md:grid-cols-2 md:items-start' : ''}`}>
                         <div>
-                            <p className="text-[13px] font-bold text-brand tracking-wide mb-4">SINCE 2017</p>
-                            <h1 className="text-[32px] leading-[1.2] md:text-[48px] md:leading-[1.12] font-semibold tracking-tight text-dark break-keep">
-                                {heroTitle}
-                            </h1>
-                            <p className="mt-5 text-base md:text-lg text-gray-500 max-w-md break-keep">
-                                {content.about_hero_desc || "부산 지역 청년 사업가들의 성장과 연결을 돕는 비즈니스 커뮤니티, 부청사입니다."}
-                            </p>
+                            <MgSectionHead id="about-platform" title="Platform for Businessmen" />
+                            <div className="mt-5 max-w-[620px] space-y-4 break-keep text-[16px] leading-[1.8] text-[#333] md:text-[17px]">
+                                <p>{content.about_mission_desc_1 || "먼저가본은 정기적인 네트워킹과 실무 중심의 세미나를 통해 실질적인 도움을 제공합니다."}</p>
+                                <p>{content.about_mission_desc_2 || "업종을 넘어선 협업과 정보 공유를 지원하며, 온·오프라인을 연계해 지속적인 비즈니스 확장을 돕습니다."}</p>
+                                <p>{content.about_mission_desc_3 || "먼저가본은 단순한 모임을 넘어, 함께 성장하는 플랫폼입니다."}</p>
+                            </div>
                         </div>
-                        <div className="rounded-[28px] overflow-hidden aspect-[4/3] bg-soft">
-                            {content.about_hero_image ? (
+                        {content.about_hero_image ? (
+                            <div className="aspect-[3/2] overflow-hidden border border-line bg-[#f6f6f6]">
                                 <img
                                     src={content.about_hero_image}
-                                    alt="부청사 소개"
-                                    className="w-full h-full object-cover"
+                                    alt="먼저가본 소개"
+                                    className="h-full w-full object-cover"
                                     loading="lazy"
                                     decoding="async"
                                 />
-                            ) : null}
-                        </div>
+                            </div>
+                        ) : null}
                     </div>
-                </div>
-            </section>
-
-            {/* 2. Platform for Businessmen */}
-            <section className="px-6 py-14 md:py-20 bg-soft">
-                <div className="container mx-auto max-w-7xl grid md:grid-cols-2 gap-10 md:gap-16 items-center">
-                    <div>
-                        <h2 className="text-2xl md:text-[32px] font-semibold tracking-tight text-dark mb-5 break-keep">Platform for <span className="text-brand">Businessmen</span></h2>
-                        <div className="space-y-4 text-gray-500 text-sm md:text-base leading-relaxed break-keep">
-                            <p>{content.about_mission_desc_1 || "부산청년사업가들은 정기적인 네트워킹과 실무 중심의 세미나를 통해 실질적인 도움을 제공합니다."}</p>
-                            <p>{content.about_mission_desc_2 || "업종을 넘어선 협업과 정보 공유를 지원하며, 온·오프라인을 연계해 지속적인 비즈니스 확장을 돕습니다."}</p>
-                            <p>{content.about_mission_desc_3 || "부청사는 단순한 모임을 넘어, 함께 성장하는 플랫폼입니다."}</p>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="mt-8 grid grid-cols-2 gap-2.5 md:mt-10 md:grid-cols-4 md:gap-3">
                         {platformCards.map((item) => (
-                            <div key={item.title} className="bg-white rounded-2xl p-5 text-center border border-black/[0.06]">
-                                <div className="w-10 h-10 bg-soft rounded-full flex items-center justify-center text-lg mx-auto mb-2.5">{item.emoji}</div>
-                                <h3 className="font-semibold text-dark text-sm">{item.title}</h3>
-                                <p className="text-xs text-gray-500 mt-1">{item.sub}</p>
-                            </div>
+                            <MgInfoCard key={item.title} en={item.en} title={item.title} desc={item.sub} />
                         ))}
                     </div>
-                </div>
+                </MgWrap>
             </section>
 
-            {/* 3. Why We Need It */}
-            <section className="px-6 py-14 md:py-20 bg-white">
-                <div className="container mx-auto max-w-7xl text-center">
-                    <h2 className="text-2xl md:text-[32px] font-semibold tracking-tight text-dark mb-2 break-keep">'부청사'가 <span className="text-brand">필요한 이유</span></h2>
-                    <p className="text-gray-500 text-sm md:text-base mb-10">{content.about_why_subtitle || "혼자 고민하지 마세요. 함께하면 답이 보입니다."}</p>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
-                        {whyUs.map((item) => (
-                            <div key={item.title} className="bg-soft rounded-2xl p-6">
-                                <h3 className="font-semibold text-dark mb-2 break-keep">{item.title}</h3>
-                                <p className="text-sm text-gray-500 leading-relaxed break-keep">{item.desc}</p>
-                            </div>
+            {/* 3. 필요한 이유 */}
+            <section className="py-10 md:py-[50px]" aria-labelledby="about-why">
+                <MgWrap>
+                    <MgSectionHead id="about-why" title="먼저가본이 필요한 이유" desc={content.about_why_subtitle || "혼자 고민하지 마세요. 함께하면 답이 보입니다."} />
+                    <ol className="mt-[26px] border-t border-[#0c0c0e]">
+                        {whyUs.map((item, idx) => (
+                            <li key={item.title} className="grid grid-cols-[44px_1fr] gap-x-3 border-b border-line py-5 md:grid-cols-[64px_240px_1fr] md:items-baseline md:gap-x-6 md:py-6">
+                                <span className="text-[15px] font-semibold text-royal md:text-[16px]">{String(idx + 1).padStart(2, '0')}</span>
+                                <h3 className="min-w-0 truncate text-[17px] font-semibold leading-snug text-ink md:text-[18px]" title={item.title}>{item.title}</h3>
+                                <p className="col-start-2 mt-1.5 line-clamp-2 min-h-[3.25em] break-keep text-[15px] leading-relaxed text-sub md:col-start-3 md:mt-0 md:text-[16px]">{item.desc || '\u00a0'}</p>
+                            </li>
                         ))}
-                    </div>
-                </div>
+                    </ol>
+                </MgWrap>
             </section>
 
-            {/* 4. Who We Are For */}
-            <section className="px-6 py-14 md:py-20 bg-soft">
-                <div className="container mx-auto max-w-7xl">
-                    <h2 className="text-2xl md:text-[32px] font-semibold tracking-tight text-dark mb-2 break-keep">부청사와 <span className="text-brand">함께하는 분들</span></h2>
-                    <p className="text-gray-500 text-sm md:text-base mb-10 break-keep">부산·경남 지역에서 사업을 운영하거나 창업을 준비하는 누구나 환영합니다</p>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+            {/* 4. 함께하는 분들 */}
+            <section className="py-10 md:py-[50px]" aria-labelledby="about-audience">
+                <MgWrap>
+                    <MgSectionHead id="about-audience" title="먼저가본과 함께하는 분들" desc="부산·경남 지역에서 사업을 운영하거나 창업을 준비하는 누구나 환영합니다" />
+                    <div className="mt-[26px] grid gap-2.5 sm:grid-cols-2 md:gap-3 lg:grid-cols-4">
                         {audienceCards.map((item, idx) => (
-                            <div key={item.title} className="bg-white rounded-2xl p-6 border border-black/[0.06]">
-                                <p className="text-[13px] font-bold text-brand mb-3">{String(idx + 1).padStart(2, '0')}</p>
-                                <h3 className="font-semibold text-dark mb-2 break-keep">{item.title}</h3>
-                                <p className="text-sm text-gray-500 leading-relaxed break-keep">{item.desc}</p>
-                            </div>
+                            <MgInfoCard key={item.title} en={String(idx + 1).padStart(2, '0')} title={item.title} desc={item.desc} />
                         ))}
                     </div>
-                    <p className="text-xs md:text-sm text-gray-500 leading-relaxed break-keep max-w-3xl">
-                        부청사(부산청년사업가들)는 부산사업자모임·부산비즈니스모임·부산청년플랫폼으로서 마케팅 세미나, 정기 네트워킹, 창업 교육 등 실전 프로그램을 운영합니다. 경남 사업자·경남 자영업자도 함께하는 광역 비즈니스 커뮤니티입니다.
+                    <p className="mt-6 max-w-[760px] break-keep text-[15px] leading-relaxed text-sub">
+                        먼저가본은 부산사업자모임·부산비즈니스모임·부산청년플랫폼으로서 마케팅 세미나, 정기 네트워킹, 창업 교육 등 실전 프로그램을 운영합니다. 경남 사업자·경남 자영업자도 함께하는 광역 비즈니스 커뮤니티입니다.
                     </p>
-                </div>
+                </MgWrap>
             </section>
 
-            {/* 5. History */}
-            <section className="px-6 py-14 md:py-20 bg-white">
-                <div className="container mx-auto max-w-7xl">
-                    <div className="grid md:grid-cols-[280px_1fr] gap-10 md:gap-16">
-                        <div>
-                            <p className="text-[12px] font-semibold text-brand tracking-wide mb-2">HISTORY</p>
-                            <h2 className="text-2xl md:text-[32px] font-semibold tracking-tight text-dark break-keep">부산청년사업가들이<br />걸어온 길</h2>
-                        </div>
-                        <div className="relative space-y-9 pl-7" style={{ borderLeft: '1px solid rgba(0,0,0,.08)' }}>
-                            {historyData.map((item) => (
-                                <div key={item.year} className="relative">
-                                    <span
-                                        className="absolute -left-[31px] top-1.5 w-[11px] h-[11px] rounded-full bg-white"
-                                        style={{ border: `2px solid #0046a5`, background: item.latest ? '#0046a5' : '#fff' }}
+            {/* 5. 연혁 */}
+            <section className="py-10 md:py-[50px]" aria-labelledby="about-history">
+                <MgWrap>
+                    <MgSectionHead id="about-history" title="걸어온 길" desc="2014년 기획부터 지금까지의 발자취입니다." />
+                    <ol className="mt-[26px] border-t border-[#0c0c0e]">
+                        {historyData.map((item) => (
+                            <li key={item.year} className="grid grid-cols-[64px_1fr] gap-x-3 border-b border-line py-5 md:grid-cols-[120px_1fr] md:gap-x-6 md:py-6">
+                                <span className={`text-[17px] font-bold md:text-[20px] ${item.latest ? 'text-royal' : 'text-ink'}`}>{item.year}</span>
+                                <div className="min-w-0">
+                                    <h3 className="truncate text-[17px] font-semibold leading-snug text-ink md:text-[18px]" title={item.title}>{item.title}</h3>
+                                    <p className="mt-1.5 line-clamp-2 min-h-[3.25em] break-keep text-[15px] leading-relaxed text-sub md:text-[16px]">{item.desc || '\u00a0'}</p>
+                                </div>
+                            </li>
+                        ))}
+                    </ol>
+                </MgWrap>
+            </section>
+
+            {/* 6. 현장 사진 — 전용 사진이 등록된 경우에만 표시 (대표 사진을 반복해 채우지 않음) */}
+            {moments.length > 0 ? (
+                <section className="py-10 md:py-[50px]" aria-labelledby="about-moments">
+                    <MgWrap>
+                        <MgSectionHead id="about-moments" title="현장의 순간" />
+                        <div className={`mt-[26px] grid gap-2.5 md:gap-3 ${moments.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+                            {moments.map((m) => (
+                                <div key={m.src} className="aspect-[3/2] overflow-hidden border border-line bg-[#f6f6f6]">
+                                    <img
+                                        src={m.src}
+                                        alt={m.alt}
+                                        className="h-full w-full object-cover"
+                                        loading="lazy"
+                                        decoding="async"
                                     />
-                                    <p className="text-sm font-bold text-brand mb-1">{item.year}</p>
-                                    <h3 className="font-semibold text-dark mb-1 break-keep">{item.title}</h3>
-                                    <p className="text-sm text-gray-500 break-keep">{item.desc}</p>
                                 </div>
                             ))}
                         </div>
-                    </div>
-                </div>
-            </section>
+                    </MgWrap>
+                </section>
+            ) : null}
 
-            {/* 6. Moments — 전용 사진이 등록된 경우에만 표시 (대표 사진을 반복해 채우지 않음) */}
-            {(() => {
-                const moments = [
-                    { src: content.about_moment_1_image, alt: '비즈니스 세미나 현장' },
-                    { src: content.about_moment_2_image, alt: '사업가 네트워킹 현장' },
-                ].filter((m) => m.src && m.src !== content.about_hero_image);
-                if (moments.length === 0) return null;
-                return (
-                    <section className="px-6 py-14 md:py-20 bg-soft">
-                        <div className="container mx-auto max-w-7xl">
-                            <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-2">MOMENTS</p>
-                            <h2 className="text-2xl md:text-[32px] font-semibold tracking-tight text-dark mb-8 break-keep">현장의 순간</h2>
-                            <div className={`grid gap-4 ${moments.length > 1 ? 'sm:grid-cols-2' : ''}`}>
-                                {moments.map((m) => (
-                                    <div key={m.src} className="rounded-[24px] overflow-hidden aspect-[16/10] bg-white">
-                                        <img
-                                            src={m.src}
-                                            alt={m.alt}
-                                            className="w-full h-full object-cover"
-                                            loading="lazy"
-                                            decoding="async"
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </section>
-                );
-            })()}
-
-            {/* 7. Future Plans */}
-            <section className="px-6 py-14 md:py-20 text-white" style={{ backgroundColor: '#0b0b0c' }}>
-                <div className="container mx-auto max-w-7xl">
-                    <h2 className="text-2xl md:text-[32px] font-semibold tracking-tight mb-2 break-keep">{content.about_future_title || "향후 계획 및 목표"}</h2>
-                    <p className="text-white/50 text-sm md:text-base mb-10">{content.about_future_subtitle || "부청사는 멈추지 않고 계속 성장합니다."}</p>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* 7. 향후 계획 */}
+            <section className="py-10 md:py-[50px]" aria-labelledby="about-future">
+                <MgWrap>
+                    <MgSectionHead id="about-future" title={content.about_future_title || "향후 계획 및 목표"} desc={content.about_future_subtitle || "먼저가본은 멈추지 않고 계속 성장합니다."} />
+                    <div className="mt-[26px] grid gap-2.5 sm:grid-cols-2 md:gap-3 lg:grid-cols-3">
                         {futurePlans.map((plan) => (
-                            <div key={plan.id} className="bg-white/[0.06] rounded-2xl p-6">
-                                <p className="text-[13px] font-bold text-white/40 mb-3">{String(plan.id).padStart(2, '0')}</p>
-                                <h3 className="font-semibold mb-2 break-keep">{plan.title}</h3>
-                                <p className="text-sm text-white/60 leading-relaxed break-keep">{plan.desc}</p>
-                            </div>
+                            <MgInfoCard key={plan.id} en={String(plan.id).padStart(2, '0')} title={plan.title} desc={plan.desc} />
                         ))}
                     </div>
-                </div>
+                </MgWrap>
             </section>
 
-            {/* 8. Contact */}
-            <section className="px-6 py-14 md:py-20 bg-white text-center">
-                <div className="container mx-auto max-w-7xl">
-                    <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-2">CONTACT</p>
-                    <h2 className="text-2xl md:text-[32px] font-semibold tracking-tight text-dark mb-9 break-keep">문의사항이 있으시면 언제든지 연락주세요</h2>
-                    <div className="flex items-center justify-center gap-10 md:gap-16 flex-wrap">
-                        <div>
-                            <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-1.5">문의 전화</p>
-                            <a href={`tel:${content?.about_contact_phone || defaultContent.about_contact_phone}`} className="text-lg md:text-xl font-semibold text-dark hover:text-brand transition-colors">{content?.about_contact_phone || defaultContent.about_contact_phone}</a>
+            {/* 8. 문의 */}
+            <section className="bg-sky py-10 md:py-[60px]" aria-labelledby="about-contact">
+                <MgWrap>
+                    <MgSectionHead id="about-contact" title="문의사항이 있으시면 언제든지 연락주세요" />
+                    <dl className="mt-[26px] grid gap-2.5 sm:grid-cols-2 md:gap-3">
+                        <div className="flex h-full min-h-[104px] min-w-0 flex-col justify-center rounded-xl border border-skyLine bg-white px-5 py-5 md:px-6">
+                            <dt className="text-[14px] font-semibold text-royal">문의 전화</dt>
+                            <dd className="mt-1.5 min-w-0">
+                                <a href={`tel:${phone}`} className="block truncate text-[18px] font-semibold text-ink hover:text-royal md:text-[20px]">{phone}</a>
+                            </dd>
                         </div>
-                        <div>
-                            <p className="text-[12px] font-semibold text-gray-500 tracking-wide mb-1.5">이메일</p>
-                            <a href={`mailto:${content?.about_contact_email || defaultContent.about_contact_email}`} className="text-lg md:text-xl font-semibold text-dark hover:text-brand transition-colors">{content?.about_contact_email || defaultContent.about_contact_email}</a>
+                        <div className="flex h-full min-h-[104px] min-w-0 flex-col justify-center rounded-xl border border-skyLine bg-white px-5 py-5 md:px-6">
+                            <dt className="text-[14px] font-semibold text-royal">이메일</dt>
+                            <dd className="mt-1.5 min-w-0">
+                                <a href={`mailto:${email}`} title={email} className="block truncate text-[18px] font-semibold text-ink hover:text-royal md:text-[20px]">{email}</a>
+                            </dd>
                         </div>
-                    </div>
-                </div>
+                    </dl>
+                </MgWrap>
             </section>
         </div>
     );

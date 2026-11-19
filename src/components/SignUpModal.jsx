@@ -22,12 +22,18 @@ async function uploadProfileImageToUrl(dataUrl, defaultAvatarUrl) {
 
 const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 
-/** 필수 항목 번호 뱃지: 미입력 파란색, 입력완료 초록색 */
+/** 필수 항목 번호 표시(작은 네모): 미입력 흰 바탕 회색 테두리, 입력완료 로얄블루 */
 const RequiredFieldBadge = ({ number, isFilled }) => (
-    <span className={`inline-flex w-6 h-6 rounded-full items-center justify-center text-xs font-bold text-white shrink-0 ${isFilled ? 'bg-green-500' : 'bg-blue-500'}`}>
+    <span aria-hidden="true" className={`inline-flex w-6 h-6 items-center justify-center text-[12px] font-semibold shrink-0 ${isFilled ? 'bg-royal text-white' : 'border border-line2 bg-white text-sub'}`}>
         {number}
     </span>
 );
+
+/* 먼저가본 개편: 입력칸·라벨 공통 모양 */
+const INPUT = 'w-full h-[52px] px-4 bg-white border border-line2 rounded-lg text-[16px] text-ink placeholder:text-[#9a9893] focus:border-royal focus:outline-none transition-colors';
+const LABEL = 'mb-2 flex flex-wrap items-center gap-2 text-[15px] font-semibold text-ink';
+const OPT = 'text-[13px] font-normal text-sub';
+const SUB_BTN = 'shrink-0 h-[52px] px-4 bg-white border border-line2 rounded-lg text-[15px] font-semibold text-ink hover:border-ink disabled:opacity-50 transition-colors';
 
 /** 이메일 도메인 선택 (드롭다운 + 직접입력) */
 const EMAIL_DOMAINS = ['naver.com', 'daum.net', 'gmail.com', 'kakao.com', 'nate.com', 'hanmail.net', 'yahoo.co.kr', '직접입력'];
@@ -487,177 +493,173 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
     return (
         <>
         <ModalPortal>
-            <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-                <div className="absolute inset-0 bg-black/20"></div>
-                <div className="bg-white rounded-[28px] shadow-2xl w-full max-w-4xl z-10 relative border border-black/[0.06] max-h-[95vh] overflow-hidden flex flex-col max-md:scale-[0.8] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+            <div className="fixed inset-0 z-[1100] flex items-end justify-center bg-black/50 md:items-center md:p-4" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+                {/* 바깥 눌림 막이(작성 중 실수로 닫히지 않게 — 예전과 같은 동작) */}
+                <div className="absolute inset-0" aria-hidden="true"></div>
+                <div role="dialog" aria-modal="true" aria-labelledby="signup-modal-title" className="bg-white rounded-t-[18px] md:rounded-[18px] w-full max-w-[880px] z-10 relative max-h-[94dvh] md:max-h-[92vh] overflow-hidden flex flex-col" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
                     {/* 글 작성 모달이므로 ESC 키 미적용 */}
-                    <div className="bg-brand text-white p-6 relative">
-                        <div className="text-center">
-                            <h3 className="text-[26px] font-semibold tracking-tight mb-2">회원가입</h3>
-                            <p className="text-blue-100 text-sm">필수 항목(*)을 모두 입력해주세요</p>
-                        </div>
-                        <div className="flex items-center justify-center gap-1 mt-6">
-                            {[1, 2].map(step => (
-                                <div key={step} className="flex items-center">
-                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all ${currentStep >= step ? 'bg-white text-brand' : 'bg-white/20 text-white/60'}`}>
-                                        {currentStep > step ? <Icons.CheckCircle size={18} /> : step}
-                                    </div>
-                                    {step < 2 && <div className={`w-8 h-1 mx-1 transition-all ${currentStep > step ? 'bg-white' : 'bg-white/20'}`} />}
-                                </div>
+                    <div className="shrink-0 border-b border-line px-5 pb-5 pt-6 md:px-8 md:pt-7">
+                        <p className="font-logo text-[20px] leading-none text-ink mb-3" aria-hidden="true">먼저가본</p>
+                        <h3 id="signup-modal-title" className="text-[23px] font-bold tracking-tight text-ink md:text-[24px]">회원가입</h3>
+                        <p className="mt-1 text-[15px] text-sub">필수 항목(*)을 모두 입력해주세요</p>
+                        <ol className="mt-5 grid grid-cols-2 border border-[#0c0c0e]" aria-label="가입 단계">
+                            {[[1, '기본정보'], [2, '상세정보']].map(([step, label]) => (
+                                <li key={step} aria-current={currentStep === step ? 'step' : undefined}
+                                    className={`flex h-11 items-center justify-center gap-1.5 text-[15px] font-bold ${currentStep === step ? 'bg-[#0c0c0e] text-white' : 'bg-white text-[#666]'}`}>
+                                    {currentStep > step ? <Icons.CheckCircle size={16} aria-hidden="true" /> : <span aria-hidden="true">{step}.</span>}
+                                    {label}
+                                </li>
                             ))}
-                        </div>
-                        <div className="flex justify-center gap-4 mt-3 text-xs">
-                            <span className={currentStep === 1 ? 'font-bold' : 'opacity-70'}>기본정보</span>
-                            <span className={currentStep === 2 ? 'font-bold' : 'opacity-70'}>상세정보</span>
-                        </div>
+                        </ol>
                     </div>
 
-                    <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-8">
+                    <div className="flex-1 min-h-0 overflow-y-auto modal-scroll px-5 py-6 md:px-8 md:py-7">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {currentStep === 1 ? (
                                 <div className="space-y-5 animate-fade-in">
-                                    <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                                        <p className="text-sm font-bold text-amber-800 flex items-center gap-2">
-                                            <Icons.AlertCircle className="w-5 h-5 shrink-0" />
+                                    <div className="mb-4 rounded-xl bg-sky px-4 py-3.5">
+                                        <p className="text-[15px] font-semibold text-ink flex items-start gap-2">
+                                            <Icons.AlertCircle className="mt-0.5 w-5 h-5 shrink-0 text-royal" aria-hidden="true" />
                                             표시(*)된 항목은 필수 입력입니다. 모두 입력한 후 다음 단계로 진행할 수 있습니다.
                                         </p>
                                     </div>
-                                    <div className="mb-6 text-center">
-                                        <h4 className="text-2xl font-bold text-dark mb-2 flex items-center justify-center gap-2">
+                                    <div className="mb-4">
+                                        <h4 id="signup-modal-usertype" className="text-[20px] font-bold text-ink mb-1 flex items-center gap-2">
                                             <RequiredFieldBadge number={1} isFilled={!!formData.userType} />
-                                            회원 유형 선택 <span className="text-red-500">*</span>
+                                            회원 유형 선택 <span className="text-red-600">*</span>
                                         </h4>
-                                        <p className="text-sm text-gray-500">본인의 분류를 선택해주세요</p>
+                                        <p className="text-[15px] text-sub">본인의 분류를 선택해주세요</p>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
+                                    <div role="group" aria-labelledby="signup-modal-usertype" className="grid grid-cols-2 gap-3 mb-8">
                                         <button
                                             type="button"
                                             onClick={() => setFormData({...formData, userType: '사업자', businessType: '개인사업자'})}
-                                            className={`p-6 rounded-2xl border-2 transition-all text-left ${
+                                            aria-pressed={formData.userType === '사업자'}
+                                            className={`min-h-[96px] p-4 md:p-5 rounded-lg border transition-colors text-left ${
                                                 formData.userType === '사업자' 
-                                                    ? 'border-brand bg-brand/5' 
-                                                    : 'border-black/[0.06] hover:border-brand/50'
+                                                    ? 'border-royal bg-sky ring-1 ring-royal' 
+                                                    : 'border-line2 bg-white hover:border-ink'
                                             }`}
                                         >
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${formData.userType === '사업자' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-400'}`}>
-                                                    <Icons.Users size={24} />
-                                                </div>
-                                                <h5 className="text-lg font-bold text-dark">사업자</h5>
+                                            <div className="flex items-center gap-2.5 mb-1.5">
+                                                <Icons.Users size={20} className={formData.userType === '사업자' ? 'text-royal' : 'text-[#9a9893]'} aria-hidden="true" />
+                                                <h5 className="text-[17px] font-semibold text-ink">사업자</h5>
                                             </div>
-                                            <p className="text-sm text-gray-600">현재 사업을 운영 중이신 분</p>
+                                            <p className="text-[14px] text-sub">현재 사업을 운영 중이신 분</p>
                                         </button>
 
                                         <button
                                             type="button"
                                             onClick={() => setFormData({...formData, userType: '예비창업자', businessType: ''})}
-                                            className={`p-6 rounded-2xl border-2 transition-all text-left ${
+                                            aria-pressed={formData.userType === '예비창업자'}
+                                            className={`min-h-[96px] p-4 md:p-5 rounded-lg border transition-colors text-left ${
                                                 formData.userType === '예비창업자' 
-                                                    ? 'border-brand bg-brand/5' 
-                                                    : 'border-black/[0.06] hover:border-brand/50'
+                                                    ? 'border-royal bg-sky ring-1 ring-royal' 
+                                                    : 'border-line2 bg-white hover:border-ink'
                                             }`}
                                         >
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${formData.userType === '예비창업자' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-400'}`}>
-                                                    <Icons.Star size={24} />
-                                                </div>
-                                                <h5 className="text-lg font-bold text-dark">예비창업자</h5>
+                                            <div className="flex items-center gap-2.5 mb-1.5">
+                                                <Icons.Star size={20} className={formData.userType === '예비창업자' ? 'text-royal' : 'text-[#9a9893]'} aria-hidden="true" />
+                                                <h5 className="text-[17px] font-semibold text-ink">예비창업자</h5>
                                             </div>
-                                            <p className="text-sm text-gray-600">창업을 준비 중이신 분</p>
+                                            <p className="text-[14px] text-sub">창업을 준비 중이신 분</p>
                                         </button>
                                     </div>
 
                                     {formData.userType ? (
                                         <>
                                             <div className="mb-6">
-                                                <h4 className="text-xl font-bold text-dark mb-1">기본 정보</h4>
-                                                <p className="text-sm text-gray-500">로그인에 필요한 기본 정보를 입력해주세요</p>
+                                                <h4 className="text-[20px] font-bold text-ink mb-1">기본 정보</h4>
+                                                <p className="text-[15px] text-sub">로그인에 필요한 기본 정보를 입력해주세요</p>
                                             </div>
                                             
-                                            <div className="flex flex-col items-center mb-6 p-6 bg-soft rounded-2xl border-2 border-dashed border-black/10">
-                                                <div className="w-24 h-24 rounded-full bg-soft overflow-hidden mb-3 relative group border-4 border-white">
-                                                    {formData.img ? <img src={formData.img} className="w-full h-full object-cover" alt="Profile" loading="lazy" decoding="async" /> : <Icons.Users className="w-12 h-12 text-brand/40 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />}
-                                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                            <div className="flex items-center gap-4 mb-6 rounded-xl bg-card p-4">
+                                                <div className="w-20 h-20 shrink-0 rounded-full bg-white overflow-hidden relative group border border-line">
+                                                    {formData.img ? <img src={formData.img} className="w-full h-full object-cover" alt="선택한 프로필 사진" loading="lazy" decoding="async" /> : <Icons.Users className="w-9 h-9 text-[#b5b3ae] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" aria-hidden="true" />}
+                                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" aria-hidden="true">
                                                         <Icons.Camera className="text-white w-5 h-5" />
                                                     </div>
-                                                    <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} />
+                                                    <input id="signup-modal-photo" type="file" accept="image/*" aria-label="프로필 사진 선택" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} />
                                                 </div>
-                                                <span className="text-xs text-gray-500 font-medium">프로필 사진 (선택사항)</span>
+                                                <label htmlFor="signup-modal-photo" className="cursor-pointer">
+                                                    <span className="block text-[16px] font-semibold text-ink">프로필 사진 <span className={OPT}>(선택사항)</span></span>
+                                                    <span className="mt-1 block text-[14px] text-sub">동그라미를 눌러 사진을 고르세요</span>
+                                                </label>
                                             </div>
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <label htmlFor="signup-modal-email-id" className={LABEL}>
                                                         <RequiredFieldBadge number={2} isFilled={!!formData.email?.trim() && validateEmail(formData.email)} />
-                                                        이메일(아이디) <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(로그인에 사용)</span>
+                                                        이메일(아이디) <span className="text-red-600">*</span> <span className={OPT}>(로그인에 사용)</span>
                                                     </label>
                                                     <div className="flex flex-wrap gap-2 items-center">
-                                                        <input type="text" inputMode="email" placeholder="example" className="flex-1 min-w-[100px] p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors text-sm" value={formData.emailId} onChange={e => { setFormData(f => ({ ...f, emailId: e.target.value, email: (() => { const i = e.target.value.trim(); const d = f.emailDomain === '직접입력' ? (f.emailDomainCustom || '').trim() : (f.emailDomain || ''); return (i && d) ? `${i}@${d}` : ''; })() })); setEmailCheckResult(null); }} />
-                                                        <span className="text-slate-500">@</span>
-                                                        <select className="p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none bg-white text-sm" value={formData.emailDomain} onChange={e => { setFormData(f => ({ ...f, emailDomain: e.target.value, email: (() => { const i = (f.emailId || '').trim(); const d = e.target.value === '직접입력' ? (f.emailDomainCustom || '').trim() : e.target.value; return (i && d) ? `${i}@${d}` : ''; })() })); setEmailCheckResult(null); }}>
+                                                        <input type="text" inputMode="email" placeholder="example" id="signup-modal-email-id" autoComplete="username" aria-label="이메일 아이디" className={`${INPUT} !w-auto flex-1 min-w-[110px]`} value={formData.emailId} onChange={e => { setFormData(f => ({ ...f, emailId: e.target.value, email: (() => { const i = e.target.value.trim(); const d = f.emailDomain === '직접입력' ? (f.emailDomainCustom || '').trim() : (f.emailDomain || ''); return (i && d) ? `${i}@${d}` : ''; })() })); setEmailCheckResult(null); }} />
+                                                        <span className="text-[16px] text-sub" aria-hidden="true">@</span>
+                                                        <select aria-label="이메일 도메인" className={`${INPUT} !w-auto flex-1 min-w-[130px] pr-3`} value={formData.emailDomain} onChange={e => { setFormData(f => ({ ...f, emailDomain: e.target.value, email: (() => { const i = (f.emailId || '').trim(); const d = e.target.value === '직접입력' ? (f.emailDomainCustom || '').trim() : e.target.value; return (i && d) ? `${i}@${d}` : ''; })() })); setEmailCheckResult(null); }}>
                                                             {EMAIL_DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
                                                         </select>
                                                         {formData.emailDomain === '직접입력' && (
-                                                            <input type="text" placeholder="도메인 입력" className="flex-1 min-w-[120px] p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none text-sm" value={formData.emailDomainCustom} onChange={e => { setFormData(f => ({ ...f, emailDomainCustom: e.target.value, email: (() => { const i = (f.emailId || '').trim(); const d = (e.target.value || '').trim(); return (i && d) ? `${i}@${d}` : ''; })() })); setEmailCheckResult(null); }} />
+                                                            <input type="text" aria-label="이메일 도메인 직접 입력" placeholder="도메인 입력" className={`${INPUT} flex-1 min-w-[120px]`} value={formData.emailDomainCustom} onChange={e => { setFormData(f => ({ ...f, emailDomainCustom: e.target.value, email: (() => { const i = (f.emailId || '').trim(); const d = (e.target.value || '').trim(); return (i && d) ? `${i}@${d}` : ''; })() })); setEmailCheckResult(null); }} />
                                                         )}
-                                                        <button type="button" onClick={handleCheckEmailDuplicate} disabled={isCheckingDuplicate} className="shrink-0 px-4 py-3.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-bold text-gray-700 disabled:opacity-50 transition-colors">중복 확인</button>
+                                                        <button type="button" onClick={handleCheckEmailDuplicate} disabled={isCheckingDuplicate} className={SUB_BTN}>중복 확인</button>
                                                     </div>
-                                                    {emailCheckResult === 'available' && <p className="mt-1.5 text-xs text-green-600 font-medium">사용 가능한 이메일입니다.</p>}
-                                                    {emailCheckResult === 'duplicate' && <p className="mt-1.5 text-xs text-red-600 font-medium">이미 사용 중인 이메일입니다.</p>}
+                                                    {emailCheckResult === 'available' && <p className="mt-1.5 text-[14px] text-royal font-semibold" role="status">사용 가능한 이메일입니다.</p>}
+                                                    {emailCheckResult === 'duplicate' && <p className="mt-1.5 text-[14px] text-red-600 font-semibold" role="alert">이미 사용 중인 이메일입니다.</p>}
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <label htmlFor="signup-modal-name" className={LABEL}>
                                                         <RequiredFieldBadge number={5} isFilled={!!formData.name?.trim()} />
-                                                        이름 <span className="text-red-500">*</span>
+                                                        이름 <span className="text-red-600">*</span>
                                                     </label>
-                                                    <input type="text" placeholder="이름을 입력하세요" className="w-full p-3.5 border border-black/[0.06] rounded-2xl focus:border-brand/40 focus:outline-none transition-colors text-sm" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                                                    <input id="signup-modal-name" type="text" autoComplete="name" placeholder="이름을 입력하세요" className={INPUT} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <label htmlFor="signup-modal-password" className={LABEL}>
                                                         <RequiredFieldBadge number={3} isFilled={!!formData.password && validatePassword(formData.password).valid} />
-                                                        비밀번호 <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(최소 8자, 영문+숫자+특수문자)</span>
+                                                        비밀번호 <span className="text-red-600">*</span> <span className={OPT}>(최소 8자, 영문+숫자+특수문자)</span>
                                                     </label>
                                                     <div className="relative">
-                                                        <input type={showPassword ? "text" : "password"} placeholder="비밀번호를 입력하세요" className="w-full p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors pr-12 text-sm" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
-                                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                                                        <input id="signup-modal-password" type={showPassword ? "text" : "password"} autoComplete="new-password" placeholder="비밀번호를 입력하세요" className={`${INPUT} pr-12`} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                                                        <button type="button" aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'} onClick={() => setShowPassword(!showPassword)} className="absolute right-1 top-1/2 -translate-y-1/2 flex w-11 h-11 items-center justify-center text-[#8a8883] hover:text-ink transition-colors">
                                                             {showPassword ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
                                                         </button>
                                                     </div>
                                                     {formData.password && (() => {
                                                         const validation = validatePassword(formData.password);
                                                         return (
-                                                            <div className={`mt-2 text-xs ${validation.valid ? 'text-green-600' : 'text-red-500'}`}>
+                                                            <div className={`mt-1.5 text-[14px] ${validation.valid ? 'text-royal' : 'text-red-600'}`}>
                                                                 {validation.valid ? '✓ 비밀번호가 안전합니다' : validation.message}
                                                             </div>
                                                         );
                                                     })()}
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <label htmlFor="signup-modal-password-confirm" className={LABEL}>
                                                         <RequiredFieldBadge number={4} isFilled={!!formData.passwordConfirm && formData.password === formData.passwordConfirm} />
-                                                        비밀번호 확인 <span className="text-red-500">*</span>
+                                                        비밀번호 확인 <span className="text-red-600">*</span>
                                                     </label>
                                                     <div className="relative">
-                                                        <input type={showPasswordConfirm ? "text" : "password"} placeholder="비밀번호를 다시 입력하세요" className="w-full p-3.5 border-[0.5px] border-brand/30 rounded-xl focus:border-brand focus:outline-none transition-colors pr-12 text-sm" value={formData.passwordConfirm} onChange={e => setFormData({...formData, passwordConfirm: e.target.value})} />
-                                                        <button type="button" onClick={() => setShowPasswordConfirm(!showPasswordConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                                                        <input id="signup-modal-password-confirm" type={showPasswordConfirm ? "text" : "password"} autoComplete="new-password" placeholder="비밀번호를 다시 입력하세요" className={`${INPUT} pr-12`} value={formData.passwordConfirm} onChange={e => setFormData({...formData, passwordConfirm: e.target.value})} />
+                                                        <button type="button" aria-label={showPasswordConfirm ? '비밀번호 확인 숨기기' : '비밀번호 확인 보기'} onClick={() => setShowPasswordConfirm(!showPasswordConfirm)} className="absolute right-1 top-1/2 -translate-y-1/2 flex w-11 h-11 items-center justify-center text-[#8a8883] hover:text-ink transition-colors">
                                                             {showPasswordConfirm ? <Icons.EyeOff size={18} /> : <Icons.Eye size={18} />}
                                                         </button>
                                                     </div>
                                                     {formData.passwordConfirm && formData.password !== formData.passwordConfirm ? (
-                                                        <div className="mt-2 text-xs text-red-500">비밀번호가 일치하지 않습니다.</div>
+                                                        <div className="mt-1.5 text-[14px] text-red-600">비밀번호가 일치하지 않습니다.</div>
                                                     ) : null}
                                                     {formData.passwordConfirm && formData.password === formData.passwordConfirm && formData.passwordConfirm.length > 0 ? (
-                                                        <div className="mt-2 text-xs text-green-600">✓ 비밀번호가 일치합니다.</div>
+                                                        <div className="mt-1.5 text-[14px] text-royal">✓ 비밀번호가 일치합니다.</div>
                                                     ) : null}
                                                 </div>
                                                 <div className="md:col-span-2">
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <label htmlFor="signup-modal-phone" className={LABEL}>
                                                         <RequiredFieldBadge number={6} isFilled={!!formData.phone?.trim() && validatePhone(formData.phone)} />
-                                                        연락처(전화번호) <span className="text-red-500">*</span> <span className="text-xs text-gray-500 font-normal">(숫자 11자리)</span>
+                                                        연락처(전화번호) <span className="text-red-600">*</span> <span className={OPT}>(숫자 11자리)</span>
                                                     </label>
                                                     <div className="flex gap-2">
-                                                        <input type="tel" inputMode="numeric" placeholder="01012345678" maxLength={11} className="flex-1 p-3.5 border border-black/[0.06] rounded-2xl focus:border-brand/40 focus:outline-none transition-colors text-sm" value={formData.phone} onChange={e => {
+                                                        <input id="signup-modal-phone" type="tel" inputMode="numeric" autoComplete="tel" placeholder="01012345678" maxLength={11} className={`${INPUT} !w-auto flex-1 min-w-0`} value={formData.phone} onChange={e => {
                                                             const raw = e.target.value.replace(/\D/g, '');
                                                             if (raw.length > 11) {
                                                                 alert('연락처는 숫자 11자리만 입력 가능합니다.');
@@ -668,36 +670,36 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                                 setPhoneCheckResult(null);
                                                             }
                                                         }} />
-                                                        <button type="button" onClick={handleCheckPhoneDuplicate} disabled={isCheckingDuplicate} className="shrink-0 px-4 py-3.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-bold text-gray-700 disabled:opacity-50 transition-colors">중복 확인</button>
+                                                        <button type="button" onClick={handleCheckPhoneDuplicate} disabled={isCheckingDuplicate} className={SUB_BTN}>중복 확인</button>
                                                     </div>
-                                                    {phoneCheckResult === 'available' && <p className="mt-1.5 text-xs text-green-600 font-medium">사용 가능한 연락처입니다.</p>}
-                                                    {phoneCheckResult === 'duplicate' && <p className="mt-1.5 text-xs text-red-600 font-medium">이미 사용 중인 연락처입니다.</p>}
-                                                    <div className="mt-3 flex items-center gap-2">
-                                                        <input type="checkbox" id="signup-phonePublic" checked={formData.phonePublic} onChange={e => setFormData({ ...formData, phonePublic: e.target.checked })} className="w-5 h-5 text-brand border-blue-300 rounded focus:ring-brand" />
-                                                        <label htmlFor="signup-phonePublic" className="text-sm text-gray-700 cursor-pointer">회원명단에서 연락처 공개 (선택)</label>
+                                                    {phoneCheckResult === 'available' && <p className="mt-1.5 text-[14px] text-royal font-semibold" role="status">사용 가능한 연락처입니다.</p>}
+                                                    {phoneCheckResult === 'duplicate' && <p className="mt-1.5 text-[14px] text-red-600 font-semibold" role="alert">이미 사용 중인 연락처입니다.</p>}
+                                                    <div className="mt-2 flex min-h-[44px] items-center gap-2.5">
+                                                        <input type="checkbox" id="signup-phonePublic" checked={formData.phonePublic} onChange={e => setFormData({ ...formData, phonePublic: e.target.checked })} className="w-5 h-5 accent-[#2d4fe0]" />
+                                                        <label htmlFor="signup-phonePublic" className="text-[15px] text-ink cursor-pointer">회원명단에서 연락처 공개 (선택)</label>
                                                     </div>
                                                 </div>
                                             </div>
                                             
-                                            <div className="mt-6 p-4 bg-brand/5 rounded-2xl border border-brand/10">
+                                            <div className="mt-6 p-4 rounded-xl border border-line">
                                                 <label className="flex items-start gap-3 cursor-pointer">
                                                     <input 
                                                         type="checkbox" 
                                                         checked={formData.privacyAgreed}
                                                         onChange={e => setFormData({...formData, privacyAgreed: e.target.checked})}
-                                                        className="mt-1 w-5 h-5 text-brand border-blue-300 rounded focus:ring-brand"
+                                                        className="mt-0.5 w-5 h-5 shrink-0 accent-[#2d4fe0]"
                                                     />
                                                     <div className="flex-1 flex items-start gap-2">
                                                         <RequiredFieldBadge number={7} isFilled={formData.privacyAgreed} />
                                                         <div>
-                                                            <span className="text-sm font-bold text-gray-700">
-                                                                개인정보처리방침을 읽었으며 동의합니다 <span className="text-red-500">*</span>
+                                                            <span className="text-[15px] font-semibold text-ink">
+                                                                개인정보처리방침을 읽었으며 동의합니다 <span className="text-red-600">*</span>
                                                             </span>
-                                                            <p className="text-xs text-gray-600 mt-1">
+                                                            <p className="text-[14px] text-sub mt-1">
                                                                 회원가입 전 개인정보처리방침을 반드시 읽어 주세요. 
-                                                                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-brand hover:underline ml-1">전문 보기</a>
+                                                                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-royal font-semibold underline-offset-2 hover:underline ml-1">전문 보기</a>
                                                             </p>
-                                                            <div className="text-xs text-gray-500 mt-2 space-y-1">
+                                                            <div className="text-[13px] leading-relaxed text-sub mt-2 space-y-1">
                                                                 <p>• 수집 항목: 이메일(로그인용), 비밀번호(해시), 이름, 전화번호, 주소, 사업자정보(사업자만)</p>
                                                                 <p>• 수집 목적: 회원 관리, 서비스 제공, 본인 확인</p>
                                                                 <p>• 보관 기간: 회원 탈퇴 시까지 (법정 보관 기간이 있는 경우 해당 기간)</p>
@@ -713,16 +715,16 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
 
                             {currentStep === 2 ? (
                                 <div className="space-y-5 animate-fade-in">
-                                    <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                                        <p className="text-sm font-bold text-amber-800 flex items-center gap-2 flex-wrap">
-                                            <Icons.AlertCircle className="w-5 h-5 shrink-0" />
+                                    <div className="mb-4 rounded-xl bg-sky px-4 py-3.5">
+                                        <p className="text-[15px] font-semibold text-ink flex items-center gap-2 flex-wrap">
+                                            <Icons.AlertCircle className="w-5 h-5 shrink-0 text-royal" aria-hidden="true" />
                                             <RequiredFieldBadge number={1} isFilled={formData.isIdentityVerified} />
                                             본인인증, 주소{formData.userType === '사업자' ? ', 사업자 정보' : ''} 등 표시(*)된 항목을 모두 완료한 후 가입하기를 눌러주세요.
                                         </p>
                                     </div>
                                     <div className="mb-6">
-                                        <h4 className="text-xl font-bold text-dark mb-1">상세 정보</h4>
-                                        <p className="text-sm text-gray-500">
+                                        <h4 className="text-[20px] font-bold text-ink mb-1">상세 정보</h4>
+                                        <p className="text-[15px] text-sub">
                                             {formData.userType === '사업자' ? '사업자 정보를 입력해주세요' : '예비창업자 정보를 입력해주세요'}
                                         </p>
                                     </div>
@@ -731,21 +733,21 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                         {formData.userType === '사업자' ? (
                                             <>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <label htmlFor="signup-modal-f1" className={LABEL}>
                                                         <RequiredFieldBadge number={3} isFilled={!!formData.businessType} />
-                                                        사업자 유형 <span className="text-red-500">*</span>
+                                                        사업자 유형 <span className="text-red-600">*</span>
                                                     </label>
-                                                    <select className="w-full p-3.5 border border-black/[0.06] rounded-2xl focus:border-brand/40 focus:outline-none transition-colors bg-white text-sm" value={formData.businessType} onChange={e => setFormData({...formData, businessType: e.target.value})}>
+                                                    <select id="signup-modal-f1" className={`${INPUT} pr-3`} value={formData.businessType} onChange={e => setFormData({...formData, businessType: e.target.value})}>
                                                         <option value="개인사업자">개인사업자</option>
                                                         <option value="법인사업자">법인사업자</option>
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <label htmlFor="signup-modal-f2" className={LABEL}>
                                                         <RequiredFieldBadge number={4} isFilled={!!formData.businessCategory} />
-                                                        사업형태 <span className="text-red-500">*</span>
+                                                        사업형태 <span className="text-red-600">*</span>
                                                     </label>
-                                                    <select className="w-full p-3.5 border border-black/[0.06] rounded-2xl focus:border-brand/40 focus:outline-none transition-colors bg-white text-sm" value={formData.businessCategory} onChange={e => setFormData({...formData, businessCategory: e.target.value})}>
+                                                    <select id="signup-modal-f2" className={`${INPUT} pr-3`} value={formData.businessCategory} onChange={e => setFormData({...formData, businessCategory: e.target.value})}>
                                                         <optgroup label="제조업">
                                                             <option>식품제조업</option>
                                                             <option>의류제조업</option>
@@ -796,28 +798,28 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <label htmlFor="signup-modal-f3" className={LABEL}>
                                                         <RequiredFieldBadge number={5} isFilled={!!formData.company?.trim()} />
-                                                        업체명 <span className="text-red-500">*</span>
+                                                        업체명 <span className="text-red-600">*</span>
                                                     </label>
-                                                    <input type="text" placeholder="회사/사업체 이름" className="w-full p-3.5 border border-black/[0.06] rounded-2xl focus:border-brand/40 focus:outline-none transition-colors text-sm" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
+                                                    <input id="signup-modal-f3" type="text" placeholder="회사/사업체 이름" className={INPUT} value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">직책</label>
-                                                    <input type="text" placeholder="대표, 이사, 팀장 등" className="w-full p-3.5 border border-black/[0.06] rounded-2xl focus:border-brand/40 focus:outline-none transition-colors text-sm" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} />
+                                                    <label htmlFor="signup-modal-f4" className={LABEL}>직책</label>
+                                                    <input id="signup-modal-f4" type="text" placeholder="대표, 이사, 팀장 등" className={INPUT} value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">회사 전화번호 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에 노출)</span></label>
-                                                    <input type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className="w-full p-3.5 border border-black/[0.06] rounded-2xl focus:border-brand/40 focus:outline-none transition-colors text-sm" value={formData.companyPhone || ''} onChange={e => setFormData({...formData, companyPhone: e.target.value})} />
+                                                    <label htmlFor="signup-modal-f5" className={LABEL}>회사 전화번호 <span className={OPT}>(선택, 기입 시 회원명단에 노출)</span></label>
+                                                    <input id="signup-modal-f5" type="tel" inputMode="numeric" placeholder="예: 02-1234-5678, 031-123-4567" className={INPUT} value={formData.companyPhone || ''} onChange={e => setFormData({...formData, companyPhone: e.target.value})} />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2">회사 홈페이지 <span className="text-gray-400 text-xs">(선택, 기입 시 회원명단에서 미리보기)</span></label>
-                                                    <input type="url" placeholder="https://www.example.com" className="w-full p-3.5 border border-black/[0.06] rounded-2xl focus:border-brand/40 focus:outline-none transition-colors text-sm" value={formData.companyWebsite || ''} onChange={e => setFormData({...formData, companyWebsite: e.target.value})} />
+                                                    <label htmlFor="signup-modal-f6" className={LABEL}>회사 홈페이지 <span className={OPT}>(선택, 기입 시 회원명단에서 미리보기)</span></label>
+                                                    <input id="signup-modal-f6" type="url" placeholder="https://www.example.com" className={INPUT} value={formData.companyWebsite || ''} onChange={e => setFormData({...formData, companyWebsite: e.target.value})} />
                                                 </div>
                                                 <div className="md:col-span-2">
-                                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <label className={LABEL}>
                                                         <RequiredFieldBadge number={2} isFilled={!!formData.roadAddress?.trim()} />
-                                                        업체주소 <span className="text-red-500">*</span>
+                                                        업체주소 <span className="text-red-600">*</span>
                                                     </label>
                                                     <div className="space-y-2">
                                                         <div className="flex gap-2">
@@ -825,7 +827,8 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                                 type="text" 
                                                                 readOnly 
                                                                 placeholder="도로명 주소 검색" 
-                                                                className="flex-1 p-3.5 border border-black/[0.06] rounded-2xl bg-soft text-sm cursor-pointer" 
+                                                                aria-label="도로명 주소"
+                                                                className={`${INPUT} !w-auto flex-1 min-w-0 bg-card cursor-pointer`} 
                                                                 value={formData.roadAddress} 
                                                                 onClick={() => {
                                                                     openDaumPostcode((data) => {
@@ -856,27 +859,27 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                                         }
                                                                     });
                                                                 }} 
-                                                                className="px-4 py-3.5 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-sm whitespace-nowrap"
+                                                                className="h-[52px] shrink-0 px-4 bg-[#1a1a1a] text-white rounded-lg font-bold hover:bg-black transition-colors text-[15px] whitespace-nowrap"
                                                             >
-                                                                <span className="flex items-center gap-1">
-                                                                    <MapPin size={16} />
+                                                                <span className="flex items-center gap-1.5">
+                                                                    <Icons.MapPin size={16} aria-hidden="true" />
                                                                     주소 검색
                                                                 </span>
                                                             </button>
                                                         </div>
                                                         {formData.zipCode ? (
-                                                            <p className="text-xs text-gray-500">우편번호: {formData.zipCode}</p>
+                                                            <p className="text-[13px] text-sub">우편번호: {formData.zipCode}</p>
                                                         ) : null}
-                                                        <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3.5 border border-black/[0.06] rounded-2xl focus:border-brand/40 focus:outline-none transition-colors text-sm" value={formData.detailAddress} onChange={e => setFormData({...formData, detailAddress: e.target.value})} />
+                                                        <input type="text" aria-label="상세주소" placeholder="상세주소 입력 (동/호수 등)" className={INPUT} value={formData.detailAddress} onChange={e => setFormData({...formData, detailAddress: e.target.value})} />
                                                     </div>
                                                 </div>
                                             </>
                                         ) : null}
                                         {formData.userType === '예비창업자' ? (
                                             <div className="md:col-span-2">
-                                                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <label className={LABEL}>
                                                     <RequiredFieldBadge number={2} isFilled={!!formData.roadAddress?.trim()} />
-                                                    집주소 <span className="text-red-500">*</span>
+                                                    집주소 <span className="text-red-600">*</span>
                                                 </label>
                                                 <div className="space-y-2">
                                                     <div className="flex gap-2">
@@ -884,7 +887,8 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                             type="text" 
                                                             readOnly 
                                                             placeholder="도로명 주소 검색" 
-                                                            className="flex-1 p-3.5 border border-black/[0.06] rounded-2xl bg-soft text-sm cursor-pointer" 
+                                                            aria-label="도로명 주소"
+                                                                className={`${INPUT} !w-auto flex-1 min-w-0 bg-card cursor-pointer`} 
                                                             value={formData.roadAddress} 
                                                             onClick={() => {
                                                                 openDaumPostcode((data) => {
@@ -915,43 +919,39 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                                     }
                                                                 });
                                                             }} 
-                                                            className="px-4 py-3.5 bg-brand text-white rounded-xl font-bold hover:bg-blue-700 transition-colors text-sm whitespace-nowrap"
+                                                            className="h-[52px] shrink-0 px-4 bg-[#1a1a1a] text-white rounded-lg font-bold hover:bg-black transition-colors text-[15px] whitespace-nowrap"
                                                         >
-                                                            <span className="flex items-center gap-1">
-                                                                <MapPin size={16} />
+                                                            <span className="flex items-center gap-1.5">
+                                                                <Icons.MapPin size={16} aria-hidden="true" />
                                                                 주소 검색
                                                             </span>
                                                         </button>
                                                     </div>
                                                     {formData.zipCode ? (
-                                                        <p className="text-xs text-gray-500">우편번호: {formData.zipCode}</p>
+                                                        <p className="text-[13px] text-sub">우편번호: {formData.zipCode}</p>
                                                     ) : null}
-                                                    <input type="text" placeholder="상세주소 입력 (동/호수 등)" className="w-full p-3.5 border border-black/[0.06] rounded-2xl focus:border-brand/40 focus:outline-none transition-colors text-sm" value={formData.detailAddress} onChange={e => setFormData({...formData, detailAddress: e.target.value})} />
+                                                    <input type="text" aria-label="상세주소" placeholder="상세주소 입력 (동/호수 등)" className={INPUT} value={formData.detailAddress} onChange={e => setFormData({...formData, detailAddress: e.target.value})} />
                                                 </div>
                                             </div>
                                         ) : null}
                                     </div>
 
-                                    <div className={`mt-4 p-6 rounded-2xl border-2 ${
+                                    <div className={`mt-4 p-4 md:p-6 rounded-xl ${
                                         formData.userType === '사업자' 
-                                            ? 'bg-brand/5 border-brand/30' 
-                                            : 'bg-soft border-black/[0.06]'
+                                            ? 'bg-sky' 
+                                            : 'bg-card'
                                     }`}>
-                                        <div className="flex items-start gap-4 mb-4">
-                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                                                formData.userType === '사업자' ? 'bg-blue-500' : 'bg-gray-400'
-                                            }`}>
-                                                {formData.userType === '사업자' ? (
-                                                    <Icons.CheckCircle className="w-6 h-6 text-white" />
-                                                ) : (
-                                                    <Icons.Info className="w-6 h-6 text-white" />
-                                                )}
-                                            </div>
+                                        <div className="flex items-start gap-3 mb-4">
+                                            {formData.userType === '사업자' ? (
+                                                <Icons.CheckCircle className="mt-0.5 w-5 h-5 shrink-0 text-royal" aria-hidden="true" />
+                                            ) : (
+                                                <Icons.Info className="mt-0.5 w-5 h-5 shrink-0 text-sub" aria-hidden="true" />
+                                            )}
                                             <div className="flex-1">
-                                                <h5 className="font-bold text-dark mb-2">
+                                                <h5 className="text-[17px] font-semibold text-ink mb-1">
                                                     {formData.userType === '사업자' ? '사업자등록번호 입력' : '사업자등록번호 입력 (선택)'}
                                                 </h5>
-                                                <p className="text-sm text-gray-600 mb-4">
+                                                <p className="text-[15px] text-sub">
                                                     {formData.userType === '사업자' 
                                                         ? '사업자등록번호를 입력하시면 형식 검증과 API 검증을 진행합니다.' 
                                                         : '보유하신 사업자등록번호가 있다면 입력해주세요. 없으시면 건너뛰셔도 됩니다.'}
@@ -959,26 +959,24 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <label htmlFor="signup-modal-bizno" className={LABEL}>
                                                 {formData.userType === '사업자' && (
                                                     <RequiredFieldBadge number={6} isFilled={formData.businessVerificationStatus === 'api_verified'} />
                                                 )}
                                                 사업자등록번호 
                                                 {formData.userType === '사업자' ? (
-                                                    <span className="text-red-500"> *</span>
+                                                    <span className="text-red-600"> *</span>
                                                 ) : (
-                                                    <span className="text-gray-400 text-xs"> (선택사항)</span>
+                                                    <span className={OPT}> (선택사항)</span>
                                                 )}
                                             </label>
                                             <div className="flex gap-2">
                                                 <input 
                                                     type="text" 
                                                     placeholder="123-45-67890" 
-                                                    className={`flex-1 p-3.5 border-2 rounded-xl focus:outline-none transition-colors text-sm ${
-                                                        formData.userType === '사업자' 
-                                                            ? 'border-black/[0.06] focus:border-brand/40' 
-                                                            : 'border-black/[0.06] focus:border-brand/40'
-                                                    } ${formData.businessVerificationStatus === 'api_verified' ? 'bg-gray-100' : ''}`}
+                                                    id="signup-modal-bizno"
+                                                    inputMode="numeric"
+                                                    className={`${INPUT} !w-auto flex-1 min-w-0 ${formData.businessVerificationStatus === 'api_verified' ? '!bg-card text-sub' : ''}`}
                                                     value={formData.businessRegistrationNumber} 
                                                     onChange={e => {
                                                         let value = e.target.value.replace(/[^0-9]/g, '');
@@ -1045,12 +1043,12 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                                             formData.businessVerificationStatus === 'api_verified' ||
                                                             formData.businessRegistrationNumber.length !== 12
                                                         }
-                                                        className={`px-6 py-3.5 rounded-xl font-bold text-sm transition-colors ${
+                                                        className={`h-[52px] shrink-0 px-5 rounded-lg font-bold text-[15px] transition-colors ${
                                                             formData.businessVerificationStatus === 'api_verified'
-                                                                ? 'bg-green-100 text-green-700 cursor-not-allowed' 
+                                                                ? 'bg-royal text-white cursor-not-allowed' 
                                                             : formData.businessVerificationStatus === 'api_verifying'
-                                                                ? 'bg-blue-100 text-blue-700 cursor-not-allowed'
-                                                                : 'bg-brand text-white hover:bg-blue-700'
+                                                                ? 'bg-card text-sub cursor-not-allowed'
+                                                                : 'bg-[#1a1a1a] text-white hover:bg-black'
                                                         }`}
                                                     >
                                                         {formData.businessVerificationStatus === 'api_verified' ? (
@@ -1072,32 +1070,32 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                             {formData.userType === '사업자' && formData.businessRegistrationNumber ? (
                                                 <div className="mt-3 space-y-2">
                                                     {formData.businessVerificationStatus === 'format_valid' ? (
-                                                        <p className="text-xs text-blue-600 flex items-center gap-1">
-                                                            <Icons.CheckCircle size={12} />
+                                                        <p className="text-[14px] text-royal flex items-center gap-1.5" role="status">
+                                                            <Icons.CheckCircle size={14} aria-hidden="true" />
                                                             형식 검증 완료
                                                         </p>
                                                     ) : null}
                                                     {formData.businessVerificationStatus === 'api_verified' ? (
-                                                        <p className="text-xs text-green-600 flex items-center gap-1">
-                                                            <Icons.CheckCircle size={12} />
+                                                        <p className="text-[14px] text-royal font-semibold flex items-center gap-1.5" role="status">
+                                                            <Icons.CheckCircle size={14} aria-hidden="true" />
                                                             운영 중인 사업자로 확인되었습니다.
                                                         </p>
                                                     ) : null}
                                                     {formData.businessVerificationStatus === 'api_failed' ? (
-                                                        <p className="text-xs text-red-600 flex items-center gap-1">
-                                                            <Icons.X size={12} />
+                                                        <p className="text-[14px] text-red-600 flex items-center gap-1.5" role="alert">
+                                                            <Icons.X size={14} aria-hidden="true" />
                                                             검증 실패. 다시 시도해주세요.
                                                         </p>
                                                     ) : null}
                                                     {formData.businessVerificationStatus === 'not_started' && formData.businessRegistrationNumber.length === 12 ? (
-                                                        <p className="text-xs text-gray-500">
+                                                        <p className="text-[14px] text-sub">
                                                             검증하기 버튼을 클릭하여 사업자등록번호를 검증해주세요.
                                                         </p>
                                                     ) : null}
                                                 </div>
                                             ) : null}
                                             
-                                            <p className="text-xs text-gray-500 mt-2">
+                                            <p className="text-[13px] text-sub mt-2">
                                                 사업자등록번호는 10자리 숫자입니다. (예: 123-45-67890)
                                                 {formData.userType === '사업자' && ' 검증 완료 후 다음 단계로 진행할 수 있습니다.'}
                                             </p>
@@ -1108,10 +1106,10 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                         </form>
                     </div>
 
-                    <div className="shrink-0 border-t border-black/[0.06] p-6 bg-soft flex justify-between gap-3">
+                    <div className="shrink-0 border-t border-line px-5 py-4 md:px-8 bg-white flex justify-between gap-3">
                         <div className="flex gap-3">
                             {currentStep > 1 ? (
-                                <button type="button" onClick={handlePrevStep} className="py-3 px-6 bg-white border border-black/[0.06] text-gray-600 font-semibold rounded-full hover:bg-soft transition-colors">
+                                <button type="button" onClick={handlePrevStep} className="h-[52px] px-5 bg-white border border-line2 text-ink text-[16px] font-semibold rounded-lg hover:border-ink transition-colors">
                                     이전
                                 </button>
                             ) : null}
@@ -1120,7 +1118,7 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                     type="button" 
                                     onClick={handleNextStep} 
                                     disabled={isCreatingAccount}
-                                    className={`py-3 px-8 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors ${
+                                    className={`h-[52px] px-7 bg-[#1a1a1a] text-white text-[16px] font-bold rounded-lg hover:bg-black transition-colors ${
                                         isCreatingAccount ? 'opacity-50 cursor-not-allowed' : ''
                                     }`}
                                 >
@@ -1134,17 +1132,17 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
                                         formData.userType === '사업자' && 
                                         formData.businessVerificationStatus !== 'api_verified'
                                     }
-                                    className={`py-3 px-8 font-semibold rounded-full transition-colors ${
+                                    className={`h-[52px] px-7 text-[16px] font-bold rounded-lg transition-colors ${
                                         formData.userType === '사업자' && formData.businessVerificationStatus !== 'api_verified'
-                                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                            : 'bg-brand text-white hover:bg-[#00327a]'
+                                            ? 'bg-card text-[#9a9893] cursor-not-allowed'
+                                            : 'bg-[#1a1a1a] text-white hover:bg-black'
                                     }`}
                                 >
                                     가입하기
                                 </button>
                             )}
                         </div>
-                        <button type="button" onClick={onClose} className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors">
+                        <button type="button" onClick={onClose} className="h-[52px] px-5 bg-white border border-line2 text-ink text-[16px] font-semibold rounded-lg hover:border-ink transition-colors">
                             닫기
                         </button>
                     </div>
@@ -1155,15 +1153,15 @@ const SignUpModal = ({ onClose, onSignUp, existingUsers = [] }) => {
         {/* 중복 확인 안내 모달 (화면 중앙) */}
         {duplicateCheckModal.open && (
             <ModalPortal>
-                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setDuplicateCheckModal({ open: false, message: '', isError: false })}>
-                    <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center transform animate-fade-in" onClick={(e) => e.stopPropagation()}>
-                        <p className={`text-base font-medium mb-6 ${duplicateCheckModal.isError ? 'text-red-600' : 'text-gray-800'}`}>
+                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50" onClick={() => setDuplicateCheckModal({ open: false, message: '', isError: false })}>
+                    <div role="alertdialog" aria-modal="true" aria-live="assertive" className="bg-white rounded-[18px] max-w-[380px] w-full px-6 pb-6 pt-7 text-center animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                        <p className={`text-[17px] font-semibold mb-6 ${duplicateCheckModal.isError ? 'text-red-600' : 'text-ink'}`}>
                             {duplicateCheckModal.message}
                         </p>
                         <button
                             type="button"
                             onClick={() => setDuplicateCheckModal({ open: false, message: '', isError: false })}
-                            className={`w-full py-3 rounded-xl font-bold transition-colors ${duplicateCheckModal.isError ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-brand text-white hover:bg-blue-700'}`}
+                            className="w-full h-[52px] rounded-lg text-[16px] font-bold bg-[#1a1a1a] text-white hover:bg-black transition-colors"
                         >
                             확인
                         </button>

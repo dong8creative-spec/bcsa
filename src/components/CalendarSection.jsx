@@ -3,6 +3,7 @@ import { Icons } from './Icons';
 import ModalPortal from './ModalPortal';
 import { getParticipantCountDisplay, getSeminarCapacity, getDisplayedParticipantCurrent, is정모 } from '../utils/seminarDisplay';
 import { getEffectiveCapacityLimit } from '../utils/adminHiddenApplications';
+import { MgSectionHead } from './mg/Mg';
 
 const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteReview, applications = [] }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -187,166 +188,170 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
             const isToday = date.toDateString() === today.toDateString();
             const hasEvents = events.length > 0;
             const isPastDate = date < today;
-            let textColor = 'text-gray-700';
-            if (dayOfWeek === 0) textColor = 'text-red-600';
-            if (dayOfWeek === 6) textColor = 'text-blue-600';
+            const dayName = ['일', '월', '화', '수', '목', '금', '토'][dayOfWeek];
+            const dayColor = dayOfWeek === 0 ? 'text-red-600' : dayOfWeek === 6 ? 'text-royal' : 'text-ink';
             
+            // 먼저가본 개편(2026-11-20): 날짜 칸은 일정 수와 상관없이 같은 높이·같은 여백(표라서 둥글림 0)
             return (
                 <div 
                     key={index} 
-                    className={`min-h-[140px] border border-blue-200 rounded-lg p-3 transition-all hover:shadow-md ${isPastDate ? 'bg-gray-50' : 'bg-white'} ${hasEvents ? 'cursor-pointer hover:border-blue-300' : ''}`}
+                    className={`flex h-full min-h-[156px] min-w-0 flex-col border border-line p-3 transition-colors ${isPastDate ? 'bg-card' : 'bg-white'} ${hasEvents ? 'cursor-pointer hover:border-ink' : ''}`}
                     onClick={() => hasEvents && setSelectedDate(date)}
+                    {...(hasEvents ? {
+                        role: 'button',
+                        tabIndex: 0,
+                        'aria-label': `${formatDate(date)} ${dayName}요일 일정 ${events.length}개 보기`,
+                        onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDate(date); } },
+                    } : {})}
                 >
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex h-7 items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <span className={`text-xs font-medium ${dayOfWeek === 0 ? 'text-red-600' : dayOfWeek === 6 ? 'text-blue-600' : 'text-gray-500'}`}>
-                                {['일', '월', '화', '수', '목', '금', '토'][dayOfWeek]}
+                            <span className={`text-[13px] font-semibold ${dayOfWeek === 0 ? 'text-red-600' : dayOfWeek === 6 ? 'text-royal' : 'text-sub'}`}>
+                                {dayName}
                             </span>
-                            <span className={`text-base font-bold ${isToday ? 'bg-brand text-white w-7 h-7 rounded-full flex items-center justify-center text-sm' : textColor} ${isPastDate ? 'opacity-60' : ''}`}>
+                            <span className={`flex h-7 min-w-[28px] items-center justify-center text-[16px] font-bold ${isToday ? 'bg-royal px-1 text-white' : dayColor} ${isPastDate ? 'opacity-60' : ''}`}>
                                 {date.getDate()}
                             </span>
                         </div>
                         {hasEvents && (
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isPastDate ? 'bg-gray-200 text-gray-600' : 'bg-brand/10 text-brand'}`}>
+                            <span className={`inline-flex h-6 items-center px-2 text-[12px] font-semibold ${isPastDate ? 'bg-white text-sub' : 'bg-sky text-royal'}`}>
                                 {events.length}개
                             </span>
                         )}
                     </div>
                     
-                    {hasEvents && (
-                        <div className="mt-2 space-y-1.5 max-h-[100px] overflow-y-auto">
-                            {events.slice(0, 3).map((ev, idx) => {
-                                const time = extractTime(ev);
-                                const timeStr = time.hours > 0 || time.minutes > 0 
-                                    ? `${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}`
-                                    : '';
-                                
-                                return (
-                                    <div 
-                                        key={idx} 
-                                        className={`text-xs px-2 py-1.5 rounded border ${isPastDate 
-                                            ? 'bg-gray-100 border-blue-200 text-gray-600' 
-                                            : 'bg-gray-50 border-blue-200 text-gray-800 hover:bg-gray-100'
-                                        }`}
-                                    >
-                                        {timeStr && (
-                                            <span className="text-[10px] font-semibold text-gray-500 mr-1.5">
-                                                {timeStr}
-                                            </span>
-                                        )}
-                                        <span className="font-medium truncate block">{ev.title}</span>
-                                    </div>
-                                );
-                            })}
-                            {events.length > 3 && (
-                                <div className="text-[10px] text-gray-400 text-center pt-1">
-                                    +{events.length - 3}개 더보기
+                    <div className="mt-2.5 flex flex-col gap-1.5">
+                        {events.slice(0, 3).map((ev, idx) => {
+                            const time = extractTime(ev);
+                            const timeStr = time.hours > 0 || time.minutes > 0 
+                                ? `${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}`
+                                : '';
+                            
+                            return (
+                                <div 
+                                    key={idx} 
+                                    className={`flex h-8 min-w-0 items-center gap-1.5 border-l-2 px-2 text-[13px] ${isPastDate ? 'border-line2 bg-white text-sub' : 'border-royal bg-card text-ink'}`}
+                                >
+                                    {timeStr && (
+                                        <span className="shrink-0 text-[12px] font-semibold text-sub">
+                                            {timeStr}
+                                        </span>
+                                    )}
+                                    <span className="min-w-0 truncate font-semibold">{ev.title}</span>
                                 </div>
-                            )}
-                        </div>
-                    )}
+                            );
+                        })}
+                        {events.length > 3 && (
+                            <div className="pt-0.5 text-center text-[12px] text-sub">
+                                +{events.length - 3}개 더보기
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         });
     };
+
+    const BTN_OFF = 'bg-card text-sub cursor-not-allowed';
+    const statCls = 'flex h-full min-h-[112px] min-w-0 flex-col rounded-xl bg-card px-4 pb-4 pt-4 md:px-6';
+
     return (
-        <div className="bg-white rounded-2xl border border-blue-200 p-6 md:p-8 mt-12 animate-fade-in">
-            {/* 헤더 섹션 */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div>
-                    <h3 className="text-2xl font-light text-gray-900 flex items-center gap-2 mb-1">
-                        <Icons.Calendar className="text-gray-600" size={24} /> 프로그램 일정표
-                    </h3>
-                    <p className="text-sm text-gray-400">날짜를 클릭하면 상세 내용을 확인할 수 있습니다.</p>
+        <section className="mt-12" aria-labelledby="calendar-title">
+            {/* 머리 줄 */}
+            <MgSectionHead
+                id="calendar-title"
+                title={<span className="inline-flex items-center gap-2"><Icons.Calendar className="text-ink" size={24} aria-hidden="true" /> 프로그램 일정표</span>}
+                desc="날짜를 누르면 그날 일정을 자세히 볼 수 있습니다."
+                extra={(
+                    <div className="flex items-center gap-1.5">
+                        <button 
+                            type="button"
+                            onClick={prevWeek} 
+                            aria-label="이전 주"
+                            className="flex h-11 w-11 items-center justify-center rounded-lg border border-line2 bg-white text-ink transition-colors hover:border-ink"
+                        >
+                            <Icons.ArrowLeft size={18} />
+                        </button>
+                        <span className="min-w-[188px] px-1 text-center text-[15px] font-semibold text-ink" aria-live="polite">
+                            {weekRangeText}
+                        </span>
+                        <button 
+                            type="button"
+                            onClick={nextWeek} 
+                            aria-label="다음 주"
+                            className="flex h-11 w-11 items-center justify-center rounded-lg border border-line2 bg-white text-ink transition-colors hover:border-ink"
+                        >
+                            <Icons.ArrowRight size={18} />
+                        </button>
+                    </div>
+                )}
+            />
+            
+            {/* 통계 — 세 칸 같은 높이·같은 여백 */}
+            <div className="mb-6 mt-[26px] grid grid-cols-1 gap-2.5 sm:grid-cols-3 md:gap-3">
+                <div className={statCls}>
+                    <div className="truncate text-[14px] font-semibold text-sub">이번 주 일정</div>
+                    <div className="mt-1 text-[28px] font-bold leading-tight text-ink">{weekStats.totalEvents}</div>
+                    <div className="mt-auto truncate text-[13px] text-sub">전체 프로그램</div>
                 </div>
-                <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-1 border border-blue-200">
-                    <button 
-                        onClick={prevWeek} 
-                        className="p-2 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600 border border-transparent hover:border-blue-200"
-                    >
-                        <Icons.ArrowLeft size={16} />
-                    </button>
-                    <span className="text-sm font-medium text-gray-700 min-w-[200px] text-center px-2">
-                        {weekRangeText}
-                    </span>
-                    <button 
-                        onClick={nextWeek} 
-                        className="p-2 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600 border border-transparent hover:border-blue-200"
-                    >
-                        <Icons.ArrowRight size={16} />
-                    </button>
+                <div className={statCls}>
+                    <div className="truncate text-[14px] font-semibold text-royal">진행 중</div>
+                    <div className="mt-1 text-[28px] font-bold leading-tight text-royal">{weekStats.ongoingEvents}</div>
+                    <div className="mt-auto truncate text-[13px] text-sub">모집 중 / 마감임박</div>
+                </div>
+                <div className={statCls}>
+                    <div className="truncate text-[14px] font-semibold text-sub">종료</div>
+                    <div className="mt-1 text-[28px] font-bold leading-tight text-ink">{weekStats.endedEvents}</div>
+                    <div className="mt-auto truncate text-[13px] text-sub">지난 일정</div>
                 </div>
             </div>
             
-            {/* 통계 섹션 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-gray-50 border border-blue-200 rounded-lg p-4">
-                    <div className="text-xs text-gray-500 font-medium mb-1">이번 주 일정</div>
-                    <div className="text-2xl font-light text-gray-900">{weekStats.totalEvents}</div>
-                    <div className="text-xs text-gray-400 mt-1">전체 프로그램</div>
-                </div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="text-xs text-blue-600 font-medium mb-1">진행 중</div>
-                    <div className="text-2xl font-light text-blue-900">{weekStats.ongoingEvents}</div>
-                    <div className="text-xs text-blue-500 mt-1">모집 중 / 마감임박</div>
-                </div>
-                <div className="bg-gray-50 border border-blue-200 rounded-lg p-4">
-                    <div className="text-xs text-gray-500 font-medium mb-1">종료</div>
-                    <div className="text-2xl font-light text-gray-700">{weekStats.endedEvents}</div>
-                    <div className="text-xs text-gray-400 mt-1">지난 일정</div>
-                </div>
-            </div>
-            
-            {/* 주간 캘린더 그리드 */}
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+            {/* 주간 캘린더 — 7칸 같은 높이 */}
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
                 {renderCalendarDays()}
             </div>
             {selectedDate && getEventsForDate(selectedDate).length > 0 && (
                 <ModalPortal>
-                <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md" style={{ opacity: 1 }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedDate(null); }}>
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"></div>
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[calc(90vh-100px)] overflow-hidden z-10 flex flex-col border border-blue-200 max-md:scale-[0.8] origin-center" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
-                        <div className="flex-1 min-h-0 overflow-y-auto modal-scroll p-6">
-                            <h4 className="text-2xl font-bold text-dark mb-2">{formatDate(selectedDate)} 프로그램</h4>
-                            <p className="text-sm text-gray-500 mb-6">시간대별로 정렬된 일정입니다</p>
-                        <div className="space-y-4">
+                <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setSelectedDate(null); }}>
+                    <div role="dialog" aria-modal="true" aria-labelledby="calendar-day-title" className="z-10 flex max-h-[calc(100dvh-32px)] w-full max-w-2xl flex-col overflow-hidden rounded-[18px] bg-white md:max-h-[calc(90vh-100px)]" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-scroll min-h-0 flex-1 overflow-y-auto p-6 md:p-8">
+                            <h4 id="calendar-day-title" className="text-[22px] font-bold text-ink md:text-[24px]">{formatDate(selectedDate)} 프로그램</h4>
+                            <p className="mb-6 mt-1 text-[15px] text-sub">시간 순서로 정렬된 일정입니다</p>
+                        <ul className="space-y-3">
                             {getEventsForDate(selectedDate).map((ev, idx) => {
                                 const time = extractTime(ev);
                                 const timeStr = time.hours > 0 || time.minutes > 0 
                                     ? `${String(time.hours).padStart(2, '0')}:${String(time.minutes).padStart(2, '0')}`
                                     : '';
                                 
+                                // 일정 칸: 시간 칸 너비·제목 2줄·설명 3줄 고정 — 글 양과 상관없이 같은 모양
                                 return (
-                                    <div key={idx} className="border border-blue-200 rounded-lg p-4 hover:border-blue-300 transition-all bg-white">
+                                    <li key={idx} className="rounded-xl border border-line bg-white p-4 md:p-5">
                                         <div className="flex items-start gap-4">
-                                            {timeStr && (
-                                                <div className="flex-shrink-0 w-16 text-center">
-                                                    <div className="text-xs text-gray-500 font-medium mb-1">시간</div>
-                                                    <div className="text-base font-semibold text-gray-900">{timeStr}</div>
-                                                </div>
-                                            )}
-                                            <div className="flex-1">
-                                                <div className="flex items-start justify-between gap-3 mb-2">
-                                                    <h5 className="font-semibold text-lg text-gray-900 leading-tight">{ev.title}</h5>
-                                                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${
-                                                        ev.status === '모집중' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 
-                                                        ev.status === '마감임박' ? 'bg-red-50 text-red-700 border border-red-200' : 
-                                                        'bg-gray-100 text-gray-600 border border-blue-200'
+                                            <div className="w-14 shrink-0 text-center">
+                                                <div className="text-[12px] font-semibold text-sub">시간</div>
+                                                <div className="mt-0.5 text-[16px] font-semibold text-ink">{timeStr || ' '}</div>
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="mb-2 flex items-start justify-between gap-3">
+                                                    <h5 className="line-clamp-2 min-h-[2.8em] break-keep text-[17px] font-semibold leading-[1.4] text-ink">{ev.title}</h5>
+                                                    <span className={`inline-flex h-7 shrink-0 items-center px-2.5 text-[13px] font-semibold ${
+                                                        ev.status === '모집중' ? 'bg-royal text-white' : 
+                                                        ev.status === '마감임박' ? 'bg-red-600 text-white' : 
+                                                        'bg-ink text-white'
                                                     }`}>
                                                         {ev.status}
                                                     </span>
                                                 </div>
-                                                <div className="flex flex-col gap-2 mb-3">
-                                                    <span className="text-sm text-gray-600 font-medium flex items-center gap-2">
-                                                        <Icons.Clock size={14} className="text-gray-400"/> {ev.date}
+                                                <div className="mb-3 flex flex-col gap-1.5 text-[15px]">
+                                                    <span className="flex min-w-0 items-center gap-2 text-[#333]">
+                                                        <Icons.Clock size={15} className="shrink-0 text-sub" aria-hidden="true"/> <span className="truncate">{ev.date}</span>
                                                     </span>
-                                                    {ev.location && (
-                                                        <span className="text-sm text-gray-600 font-medium flex items-center gap-2">
-                                                            <Icons.MapPin size={14} className="text-gray-400"/> {ev.location}
-                                                        </span>
-                                                    )}
-                                                    <span className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                                                        <Icons.Users size={14} className="text-brand"/> 신청현황: {(() => {
+                                                    <span className="flex min-w-0 items-center gap-2 text-[#333]">
+                                                        <Icons.MapPin size={15} className="shrink-0 text-sub" aria-hidden="true"/> <span className="truncate">{ev.location || ' '}</span>
+                                                    </span>
+                                                    <span className="flex min-w-0 items-center gap-2 font-semibold text-ink">
+                                                        <Icons.Users size={15} className="shrink-0 text-royal" aria-hidden="true"/> 신청현황: {(() => {
                                                         const d = getParticipantCountDisplay(ev);
                                                         if (d.mode === 'noCapacity') {
                                                             return (<>{d.current}명</>);
@@ -355,18 +360,16 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                     })()}
                                                     </span>
                                                 </div>
-                                                {ev.desc && (
-                                                    <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-lg border border-blue-100 mb-3">
-                                                        {ev.desc}
-                                                    </p>
-                                                )}
+                                                <p className="mb-3 line-clamp-3 min-h-[calc(4.875em+24px)] rounded-lg bg-card p-3 text-[15px] leading-relaxed text-[#333]">
+                                                    {ev.desc || ' '}
+                                                </p>
                                                 {!currentUser ? (
                                                     <div className="space-y-1.5">
-                                                        <p className="text-[11px] text-gray-500 text-center leading-tight">프로그램 신청은 회원가입 후 가능합니다.</p>
+                                                        <p className="text-center text-[13px] leading-tight text-sub">프로그램 신청은 회원가입 후 가능합니다.</p>
                                                         <button 
                                                             type="button" 
                                                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); alert("프로그램 신청은 회원가입 후 가능합니다. 먼저 로그인해 주세요."); }} 
-                                                            className="w-full py-2.5 text-sm font-medium rounded-lg transition-colors bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300" 
+                                                            className={`h-11 w-full rounded-lg text-[15px] font-bold transition-colors ${BTN_OFF}`} 
                                                             disabled
                                                         >
                                                             로그인 후 신청 가능
@@ -391,11 +394,11 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                     };
                                                     const getButtonConfig = () => {
                                                         if (ev.status === '종료') {
-                                                            return { text: '종료된 일정', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
+                                                            return { text: '종료된 일정', disabled: true, onClick: null, className: BTN_OFF };
                                                         }
                                                         if (ev.status === '후기작성가능') {
                                                             if (!isEventEnded(ev)) {
-                                                                return { text: '종료 후 후기 작성', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
+                                                                return { text: '종료 후 후기 작성', disabled: true, onClick: null, className: BTN_OFF };
                                                             }
                                                             const hasApplied = applications?.some(app => 
                                                                 String(app.seminarId) === String(ev.id) && String(app.userId) === String(currentUser?.id)
@@ -405,21 +408,21 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                                     text: '후기쓰기', 
                                                                     disabled: false, 
                                                                     onClick: () => { onWriteReview && onWriteReview(ev); setSelectedDate(null); },
-                                                                    className: 'bg-green-600 text-white hover:bg-green-700 border border-green-700 shadow-md ring-2 ring-green-600/30'
+                                                                    className: 'bg-[#1a1a1a] text-white hover:bg-black'
                                                                 };
                                                             }
-                                                            return { text: '참여자만', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
+                                                            return { text: '참여자만', disabled: true, onClick: null, className: BTN_OFF };
                                                         }
                                                         const current = getDisplayedParticipantCurrent(ev);
                                                         const limit = getEffectiveCapacityLimit(ev);
                                                         if (Number.isFinite(limit) && current >= limit) {
-                                                            return { text: '정원 마감', disabled: true, onClick: null, className: 'bg-gray-200 text-gray-500 cursor-not-allowed border border-blue-300' };
+                                                            return { text: '정원 마감', disabled: true, onClick: null, className: BTN_OFF };
                                                         }
                                                         return { 
                                                             text: '참여신청', 
                                                             disabled: false, 
                                                             onClick: () => { onSelectSeminar(ev); setSelectedDate(null); },
-                                                            className: 'bg-brand text-white hover:bg-blue-700 border border-blue-700 shadow-md ring-2 ring-brand/30'
+                                                            className: 'bg-royal text-white hover:bg-royalDark'
                                                         };
                                                     };
                                                     const btnConfig = getButtonConfig();
@@ -427,7 +430,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                         <button 
                                                             type="button" 
                                                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); btnConfig.onClick && btnConfig.onClick(); }} 
-                                                            className={`w-full py-2.5 text-sm font-medium rounded-lg transition-colors ${btnConfig.className}`} 
+                                                            className={`h-11 w-full rounded-lg text-[15px] font-bold transition-colors ${btnConfig.className}`} 
                                                             disabled={btnConfig.disabled}
                                                         >
                                                             {btnConfig.text}
@@ -436,13 +439,13 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                                                 })()}
                                             </div>
                                         </div>
-                                    </div>
+                                    </li>
                                 );
                             })}
+                        </ul>
                         </div>
-                        </div>
-                        <div className="shrink-0 border-t border-blue-200 p-4 flex justify-end">
-                            <button type="button" onClick={() => setSelectedDate(null)} className="px-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-blue-700 hover:scale-[1.02] transition-all duration-200">
+                        <div className="flex shrink-0 justify-end border-t border-line p-4">
+                            <button type="button" onClick={() => setSelectedDate(null)} className="h-12 rounded-lg bg-[#1a1a1a] px-6 text-[16px] font-bold text-white transition-colors hover:bg-black">
                                 닫기
                             </button>
                         </div>
@@ -450,7 +453,7 @@ const CalendarSection = ({ seminars = [], onSelectSeminar, currentUser, onWriteR
                 </div>
                 </ModalPortal>
             )}
-        </div>
+        </section>
     );
 };
 

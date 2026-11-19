@@ -36,7 +36,7 @@ const DonationView = ({ onBack, currentUser, setCurrentUser, setMembersData, mem
                         <p className="text-center text-gray-700">문의: 관리자</p>
                     </div>
                     <div className="flex justify-end mt-6">
-                        <button type="button" onClick={handleDonation} className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#00327a] transition-colors">
+                        <button type="button" onClick={handleDonation} className="px-6 py-3 bg-brand text-white font-semibold rounded-full hover:bg-[#1f3bb8] transition-colors">
                             후원하기
                         </button>
                     </div>

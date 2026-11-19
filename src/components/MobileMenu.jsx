@@ -14,6 +14,8 @@ export const MobileMenu = ({
   menuNames,
   menuOrder,
   currentUser,
+  // (선택) 머리글과 같은 현재 메뉴 판별 함수. 넘겨주면 현재 메뉴를 로얄블루 밝은색으로 표시한다.
+  getNavClass,
 }) => {
   if (!isOpen) return null;
 
@@ -22,10 +24,17 @@ export const MobileMenu = ({
     (item) => menuEnabled[item] || MEMBERS_ONLY_MENUS.includes(item)
   );
 
+  const isActiveItem = (item) => {
+    if (typeof getNavClass !== 'function') return false;
+    return String(getNavClass(item) || '').split(/\s+/).includes('text-royalOnBlack');
+  };
+
   const handleMenuClick = (item) => {
     onNavigate(item);
     onClose();
   };
+
+  const snsClass = 'flex h-11 w-11 items-center justify-center rounded-lg border border-white/25 text-white transition-colors hover:border-white';
 
   return (
     <ModalPortal>
@@ -33,40 +42,43 @@ export const MobileMenu = ({
         role="dialog"
         aria-modal="true"
         aria-label="메뉴"
-        className="fixed inset-0 flex flex-col items-center justify-center"
+        className="fixed inset-0 flex flex-col text-white"
         style={{
           zIndex: 2147483647,
           isolation: 'isolate',
           overflow: 'hidden',
-          backgroundColor: 'rgba(0,0,0,0.55)',
+          backgroundColor: '#0c0c0e',
           opacity: 1,
           pointerEvents: 'auto',
           touchAction: 'none',
         }}
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
-        <div
-          className="w-full max-w-[280px] rounded-2xl overflow-hidden shadow-xl relative flex flex-col items-center justify-center py-10 px-4"
-          style={{ backgroundColor: '#ffffff', opacity: 1, touchAction: 'manipulation' }}
-          onClick={(e) => e.stopPropagation()}
-        >
+        {/* 위 띠: 머리글(60px)과 같은 높이 */}
+        <div className="flex h-[60px] shrink-0 items-center justify-between border-b border-white/10 px-5" style={{ touchAction: 'manipulation' }}>
+          <span className="font-logo text-[24px] leading-none text-white">먼저가본</span>
           <button
             type="button"
             aria-label="메뉴 닫기"
-            className="absolute top-4 right-4 min-w-[44px] min-h-[44px] flex items-center justify-center p-2 text-gray-600 bg-white rounded-full touch-manipulation z-[110] hover:bg-gray-100 hover:text-gray-800 shadow-md transition-colors"
+            className="-mr-2 flex min-h-[44px] min-w-[44px] items-center justify-center text-white touch-manipulation"
             style={{ opacity: 1 }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
             onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
           >
-            <Icons.X size={22} className="text-current" />
+            <Icons.X size={24} className="text-current" />
           </button>
-          <nav className="flex flex-col w-full items-center pt-2 pb-4 relative z-0">
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto" style={{ touchAction: 'pan-y' }} onClick={(e) => e.stopPropagation()}>
+          <nav className="flex w-full flex-col px-5 pt-2" aria-label="주 메뉴">
             {visibleItems.map((item, idx) => {
               const isMemberOnlyDisabled = MEMBERS_ONLY_MENUS.includes(item) && !currentUser;
+              const active = isActiveItem(item);
               return (
                 <button
                   key={idx}
                   type="button"
+                  aria-current={active ? 'page' : undefined}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -77,57 +89,56 @@ export const MobileMenu = ({
                     e.stopPropagation();
                     handleMenuClick(item);
                   }}
-                  className={`w-full max-w-[240px] py-4 px-6 text-base font-bold text-center touch-manipulation transition-colors ${isMemberOnlyDisabled ? 'mobile-menu-item-disabled text-gray-400 cursor-not-allowed hover:bg-transparent active:bg-transparent' : 'text-gray-800 hover:bg-gray-50 active:bg-gray-100'}`}
+                  className={`flex min-h-[56px] w-full items-center border-b border-white/10 text-left text-[18px] touch-manipulation transition-colors ${isMemberOnlyDisabled ? 'mobile-menu-item-disabled cursor-not-allowed text-white/40' : active ? 'font-semibold text-royalOnBlack' : 'text-white active:text-royalOnBlack'}`}
                 >
                   {menuNames[item] || item}
                 </button>
               );
             })}
           </nav>
-          <div className="flex items-center justify-center gap-3 w-full py-4 px-4 bg-gray-50 rounded-b-2xl relative z-0">
-            <div className="relative flex items-center justify-center">
+
+          {/* 오픈채팅 안내 · SNS */}
+          <div className="mt-auto px-5 pb-8 pt-8">
+            {!isLoggedIn && (
               <a
                 href="https://open.kakao.com/o/gMWryRA"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-                aria-label="부청사 오픈채팅방"
+                className="mb-4 flex h-[52px] w-full items-center justify-center rounded-lg bg-royal text-[16px] font-bold text-white transition-colors hover:bg-royalDark"
+                aria-label="먼저가본 단톡방으로 이동"
               >
-                <Icons.MessageSquare className="w-5 h-5" />
+                먼저가본 단톡방으로 이동
               </a>
-              {!isLoggedIn && (
-                <a
-                  href="https://open.kakao.com/o/gMWryRA"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mobile-menu-speech-bubble"
-                  aria-label="부청사 단톡방으로 이동"
-                >
-                  부청사 단톡방으로 이동
-                </a>
-              )}
+            )}
+            <div className="flex items-center gap-2.5">
+              <a
+                href="https://open.kakao.com/o/gMWryRA"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={snsClass}
+                aria-label="먼저가본 오픈채팅방"
+              >
+                <Icons.MessageSquare className="h-5 w-5" />
+              </a>
+              <a
+                href="https://www.instagram.com/businessmen_in_busan"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={snsClass}
+                aria-label="먼저가본 인스타그램"
+              >
+                <Icons.Instagram className="h-5 w-5" />
+              </a>
+              <a
+                href="https://www.youtube.com/@businessmen_in_busan"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={snsClass}
+                aria-label="먼저가본 유튜브"
+              >
+                <Icons.Youtube className="h-5 w-5" />
+              </a>
             </div>
-            <a
-              href="https://www.instagram.com/businessmen_in_busan"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-              aria-label="부청사 인스타그램"
-            >
-              <Icons.Instagram className="w-5 h-5" />
-            </a>
-            <a
-              href="https://www.youtube.com/@businessmen_in_busan"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-11 h-11 rounded-full bg-white flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-              aria-label="부청사 유튜브"
-            >
-              <Icons.Youtube className="w-5 h-5" />
-            </a>
           </div>
         </div>
       </div>

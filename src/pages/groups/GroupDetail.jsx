@@ -10,6 +10,7 @@ import GroupQrModal from './GroupQrModal';
 import GroupReportModal from './GroupReportModal';
 import { PosterHero, PosterText, JoinDialog, StickyJoinBar } from './GroupPoster';
 import { groupPoster } from '../../constants/groupPosters';
+import { MgTabs, MgInfoTable, HEADER_OFFSET_CLASS } from '../../components/mg/Mg';
 
 const won = (n) => `${(Number(n) || 0).toLocaleString()}원`;
 const fmtDate = (s) => {
@@ -41,11 +42,11 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
     const activeMembers = members.filter((m) => m.status === 'active');
     const pendingMembers = members.filter((m) => m.status === 'pending');
 
-    if (group === undefined) return <div className="min-h-[60vh] pt-40 text-center text-gray-400 text-sm">불러오는 중…</div>;
+    if (group === undefined) return <div className={`min-h-[60vh] text-center text-[15px] text-sub ${HEADER_OFFSET_CLASS}`}><p className="py-24">불러오는 중…</p></div>;
     if (group === null) {
         return (
             <PageShell title="그룹을 찾을 수 없어요" desc="삭제되었거나 아직 승인되지 않은 그룹입니다.">
-                <button type="button" onClick={() => navigate('/groups')} className="px-6 py-3 rounded-full bg-brand text-white font-semibold">그룹 목록으로</button>
+                <button type="button" onClick={() => navigate('/groups')} className="h-12 rounded-lg bg-[#1a1a1a] px-7 text-[16px] font-bold text-white">그룹 목록으로</button>
             </PageShell>
         );
     }
@@ -74,8 +75,8 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
 
     return (
         <PageShell
-            crumbs={<p className="text-[12.5px] text-gray-500 mb-5"><button type="button" onClick={() => navigate('/groups')} className="hover:text-dark">소모임·스터디</button><span className="mx-1">/</span>{group.title}</p>}
-            eyebrow={<span className="inline-flex items-center gap-2"><TypeBadge type={group.type} />{group.status !== 'approved' ? <span className="text-amber-600">{GROUP_STATUS_LABEL[group.status]}</span> : null}</span>}
+            crumbs={<nav aria-label="현재 위치" className="text-[14px]"><button type="button" onClick={() => navigate('/groups')} className="py-2 underline-offset-4 hover:text-white hover:underline">소모임·스터디</button><span className="mx-1.5" aria-hidden="true">/</span><span aria-current="page">{group.title}</span></nav>}
+            eyebrow={<span className="inline-flex items-center gap-2"><TypeBadge type={group.type} />{group.status !== 'approved' ? <span className="text-white">{GROUP_STATUS_LABEL[group.status]}</span> : null}</span>}
             title={group.title}
             desc={[group.region, GROUP_MODE_LABEL[group.mode], group.schedule, `그룹장 ${group.leaderName || ''}`].filter(Boolean).join(' · ')}
         >
@@ -83,25 +84,25 @@ export default function GroupDetail({ groupId, currentUser, onRequireLogin }) {
                 <PosterHero group={group} poster={poster}
                     joinAction={<JoinAction group={group} me={me} isLeader={isLeader} busy={busy} onJoin={join} onLeave={leave} message={joinMsg} large />} />
             ) : (
-                <img src={groupCoverUrl(group)} alt="" className="w-full aspect-[16/9] md:aspect-[21/8] object-cover rounded-[24px] mb-8" decoding="async" />
+                <img src={groupCoverUrl(group)} alt="" className="mb-8 aspect-[16/9] w-full border border-line object-cover md:aspect-[21/8]" decoding="async" />
             )}
             {group.status === 'pending' ? (
-                <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 break-keep">
+                <div className="mb-6 break-keep rounded-xl bg-sky px-5 py-4 text-[15px] text-ink">
                     운영진 승인을 기다리고 있어요. 승인되면 목록에 공개되고 가입·출석을 받을 수 있습니다.
                 </div>
             ) : null}
             {group.status === 'rejected' ? (
-                <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 break-keep">
+                <div role="alert" className="mb-6 break-keep rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-[15px] text-red-700">
                     개설이 반려되었습니다.{group.rejectReason ? ` 사유: ${group.rejectReason}` : ''}
                 </div>
             ) : null}
 
-            <div className="flex gap-2 overflow-x-auto pb-2 mb-6 -mx-1 px-1">
-                {tabs.map(([k, label]) => (
-                    <button key={k} type="button" onClick={() => setTab(k)}
-                        className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold ${shownTab === k ? 'bg-dark text-white' : 'bg-soft text-gray-600'}`}>{label}</button>
-                ))}
-            </div>
+            {/* 관리 탭이 있을 때만 직사각형 탭을 보인다(일반 회원은 「소개·일정」 하나뿐이라 탭 줄을 생략). 휴대폰은 가로로 밀어 본다 */}
+            {tabs.length > 1 ? (
+                <div className="-mx-5 mb-8 overflow-x-auto px-5 md:mx-0 md:px-0">
+                    <MgTabs className={tabs.length > 3 ? 'min-w-[560px] md:min-w-0' : ''} label="그룹 메뉴" value={shownTab} onChange={setTab} items={tabs} />
+                </div>
+            ) : null}
 
             {shownTab === 'info' ? (
                 <InfoTab
@@ -131,17 +132,17 @@ function JoinAction({ group, me, isLeader, busy, onJoin, onLeave, message, large
     return (
         <div>
             {status === 'active' ? (
-                large ? <p className="w-full py-3.5 rounded-full bg-emerald-50 text-center text-[16px] font-bold text-emerald-700">이 그룹 멤버예요</p>
-                    : <button type="button" onClick={onLeave} className="w-full py-3 rounded-full border border-black/10 text-sm font-semibold text-gray-600">그룹 나가기</button>
+                large ? <p className="flex h-[53px] w-full items-center justify-center rounded-lg bg-sky text-center text-[17px] font-bold text-royal">이 그룹 멤버예요</p>
+                    : <button type="button" onClick={onLeave} className="h-12 w-full rounded-lg border border-line2 bg-white text-[15px] font-semibold text-[#333] hover:border-ink">그룹 나가기</button>
             ) : status === 'pending' ? (
-                <p className="w-full py-3.5 rounded-full bg-amber-50 text-center text-[15px] font-semibold text-amber-700">가입 승인 대기 중</p>
+                <p className="flex h-12 w-full items-center justify-center rounded-lg bg-card text-center text-[16px] font-semibold text-ink">가입 승인 대기 중</p>
             ) : (
                 <button type="button" disabled={busy} onClick={onJoin}
-                    className={`w-full rounded-full bg-brand text-white font-bold disabled:opacity-60 hover:bg-[#00327a] ${large ? 'py-4 text-[17px]' : 'py-3.5 text-[16px]'}`}>
+                    className={`w-full rounded-lg bg-royal font-bold text-white hover:bg-royalDark disabled:opacity-60 ${large ? 'h-[53px] text-[17px]' : 'h-12 text-[16px]'}`}>
                     {group.joinPolicy === 'open' ? '가입하기' : '가입 신청하기'}
                 </button>
             )}
-            {message ? <p role="status" aria-live="polite" className="mt-2 text-[14px] font-semibold text-dark break-keep">{message}</p> : null}
+            {message ? <p role="status" aria-live="polite" className="mt-2 break-keep text-[15px] font-semibold text-ink">{message}</p> : null}
         </div>
     );
 }
@@ -162,32 +163,32 @@ function InfoTab({ group, sessions, me, isLeader, uid, activeCount, onJoin, onLe
     const pastCount = sessions.filter((s) => s.startsAt && new Date(s.startsAt) <= new Date()).length;
 
     return (
-        <div className="grid gap-6 md:grid-cols-[1fr_300px]">
-            <div className="space-y-6 min-w-0">
+        <div data-layout="page" className="grid gap-8 md:grid-cols-[1fr_300px] md:gap-10">
+            <div className="min-w-0 space-y-10">
                 {poster ? <PosterText poster={poster} /> : null}
                 {group.notice ? (
-                    <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4">
-                        <p className="text-xs font-bold text-brand mb-1">공지</p>
-                        <p className="text-sm text-dark whitespace-pre-wrap break-keep">{group.notice}</p>
+                    <div className="rounded-xl bg-sky px-5 py-4">
+                        <p className="mb-1 text-[14px] font-semibold text-royal">공지</p>
+                        <p className="whitespace-pre-wrap break-keep text-[15px] text-ink">{group.notice}</p>
                     </div>
                 ) : null}
                 <div>
-                    <h2 className="text-lg font-semibold text-dark mb-2">소개</h2>
-                    <p className="text-[15px] text-gray-700 leading-relaxed whitespace-pre-wrap break-keep">{group.description}</p>
+                    <h2 className="mb-3 text-[20px] font-bold text-ink md:text-[23px]">소개</h2>
+                    <p className="whitespace-pre-wrap break-keep text-[16px] leading-relaxed text-[#333]">{group.description}</p>
                 </div>
                 <div>
-                    <h2 className="text-lg font-semibold text-dark mb-3">일정</h2>
-                    {sessions.length === 0 ? <p className="text-sm text-gray-500">아직 등록된 회차가 없어요.</p> : (
-                        <ul className="space-y-2">
+                    <h2 className="mb-3 text-[20px] font-bold text-ink md:text-[23px]">일정</h2>
+                    {sessions.length === 0 ? <p className="text-[15px] text-sub">아직 등록된 회차가 없어요.</p> : (
+                        <ul className="divide-y divide-line border-y border-line">
                             {sessions.map((s, i) => (
-                                <li key={s.id} className="rounded-2xl border border-black/[0.06] p-4 flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <p className="text-xs text-gray-500">{group.type === 'study' ? `${i + 1}회차 · ` : ''}{fmtDate(s.startsAt)}</p>
-                                        <p className="font-semibold text-dark break-keep">{s.title}</p>
-                                        <p className="text-xs text-gray-500 mt-1 break-keep">{[s.location, Number(s.fee) > 0 ? `참가비 ${won(s.fee)}` : '참가비 없음'].filter(Boolean).join(' · ')}</p>
-                                        {s.onlineUrl && me?.status === 'active' ? <a href={s.onlineUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-brand font-semibold break-all">온라인 참여 링크</a> : null}
+                                <li key={s.id} className="flex min-h-[96px] items-start justify-between gap-3 py-4">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-[13px] text-sub">{group.type === 'study' ? `${i + 1}회차 · ` : ''}{fmtDate(s.startsAt) || '\u00a0'}</p>
+                                        <p className="mt-0.5 truncate text-[16px] font-semibold text-ink" title={s.title}>{s.title || '\u00a0'}</p>
+                                        <p className="mt-1 truncate text-[14px] text-sub">{[s.location, Number(s.fee) > 0 ? `참가비 ${won(s.fee)}` : '참가비 없음'].filter(Boolean).join(' · ')}</p>
+                                        {s.onlineUrl && me?.status === 'active' ? <a href={s.onlineUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block break-all text-[15px] font-semibold text-royal underline underline-offset-4">온라인 참여 링크<span className="sr-only"> (새 창)</span></a> : null}
                                     </div>
-                                    {myAttendance[s.id] ? <span className="shrink-0 text-xs font-bold text-emerald-700 bg-emerald-50 rounded-full px-2.5 py-1">출석</span> : null}
+                                    {myAttendance[s.id] ? <span className="inline-flex h-7 shrink-0 items-center bg-royal px-2.5 text-[13px] font-semibold text-white">출석</span> : null}
                                 </li>
                             ))}
                         </ul>
@@ -195,20 +196,18 @@ function InfoTab({ group, sessions, me, isLeader, uid, activeCount, onJoin, onLe
                 </div>
             </div>
             <aside className="space-y-4">
-                <div className="rounded-[24px] bg-soft p-5 space-y-2 text-sm">
-                    <p><span className="text-gray-500">가입 방식</span> · <b>{JOIN_POLICY_LABEL[group.joinPolicy]}</b></p>
-                    <p><span className="text-gray-500">멤버</span> · <b>{currentUser ? `${activeCount}명` : '로그인 후 확인'}</b>{Number(group.capacity) > 0 ? ` / 정원 ${group.capacity}명` : ''}</p>
-                    {group.type === 'study' && me?.status === 'active' ? (
-                        <p><span className="text-gray-500">내 출석</span> · <b>{attendedCount}</b> / {pastCount || sessions.length}회</p>
-                    ) : null}
-                </div>
+                <MgInfoTable rows={[
+                    ['가입 방식', <b className="font-semibold">{JOIN_POLICY_LABEL[group.joinPolicy] || '\u00a0'}</b>],
+                    ['멤버', <><b className="font-semibold">{currentUser ? `${activeCount}명` : '로그인 후 확인'}</b>{Number(group.capacity) > 0 ? ` / 정원 ${group.capacity}명` : ''}</>],
+                    ['내 출석', group.type === 'study' && me?.status === 'active' ? <><b className="font-semibold">{attendedCount}</b> / {pastCount || sessions.length}회</> : null],
+                ]} />
                 {/* 포스터 그룹은 위 포스터 옆에 큰 가입 버튼이 있다. 멤버의 「그룹 나가기」만 여기 둔다 */}
                 {!poster || me?.status === 'active' ? (
                     <JoinAction group={group} me={me} isLeader={isLeader} busy={busy} onJoin={onJoin} onLeave={onLeave} message={poster ? '' : joinMsg} />
                 ) : null}
-                <p className="text-xs text-gray-500 break-keep">모임 현장에서는 그룹장 화면의 QR을 휴대폰 카메라로 찍으면 출석(참가비가 있으면 결제까지)이 됩니다.</p>
+                <p className="break-keep text-[14px] leading-relaxed text-sub">모임 현장에서는 그룹장 화면의 QR을 휴대폰 카메라로 찍으면 출석(참가비가 있으면 결제까지)이 됩니다.</p>
                 {currentUser && !isLeader ? (
-                    <button type="button" onClick={() => setReportOpen(true)} className="text-xs text-gray-400 underline">이 그룹 신고하기</button>
+                    <button type="button" onClick={() => setReportOpen(true)} className="min-h-[44px] text-[14px] text-sub underline underline-offset-4 hover:text-ink">이 그룹 신고하기</button>
                 ) : null}
             </aside>
             {reportOpen ? <GroupReportModal group={group} currentUser={currentUser} uid={uid} onClose={() => setReportOpen(false)} /> : null}
@@ -241,8 +240,8 @@ function SessionsTab({ group, sessions, members }) {
 
     return (
         <div className="space-y-8">
-            <form onSubmit={add} className="rounded-[24px] bg-soft p-5 space-y-4">
-                <p className="font-semibold text-dark">회차 추가</p>
+            <form onSubmit={add} className="space-y-4 rounded-xl bg-card p-5 md:p-6">
+                <p className="text-[17px] font-semibold text-ink">회차 추가</p>
                 <div className="grid sm:grid-cols-2 gap-4">
                     <Field label="제목"><input className={inputClass} value={form.title} onChange={set('title')} placeholder={group.type === 'study' ? '예: 3주차 · 상세페이지 분석' : '예: 10월 정기 모임'} /></Field>
                     <Field label="참가비 (원)" hint="0이면 무료. 유료면 QR 출석 때 결제까지 진행돼요."><input type="number" min={0} className={inputClass} value={form.fee} onChange={set('fee')} /></Field>
@@ -251,27 +250,27 @@ function SessionsTab({ group, sessions, members }) {
                     <Field label="장소"><input className={inputClass} value={form.location} onChange={set('location')} placeholder="예: 서면 ○○카페 2층" /></Field>
                     <Field label="온라인 링크 (선택)" hint="멤버에게만 보여요"><input className={inputClass} value={form.onlineUrl} onChange={set('onlineUrl')} placeholder="https://" /></Field>
                 </div>
-                <button type="submit" className="px-6 py-3 rounded-full bg-brand text-white text-sm font-semibold">회차 추가</button>
+                <button type="submit" className="h-12 rounded-lg bg-[#1a1a1a] px-7 text-[16px] font-bold text-white hover:bg-black">회차 추가</button>
             </form>
 
-            {sessions.length === 0 ? <p className="text-sm text-gray-500">등록된 회차가 없어요.</p> : (
+            {sessions.length === 0 ? <p className="text-[15px] text-sub">등록된 회차가 없어요.</p> : (
                 <ul className="space-y-3">
                     {sessions.map((s) => (
-                        <li key={s.id} className="rounded-2xl border border-black/[0.06] p-4">
+                        <li key={s.id} className="border border-line p-4 md:p-5">
                             <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                    <p className="text-xs text-gray-500">{fmtDate(s.startsAt)}</p>
-                                    <p className="font-semibold text-dark break-keep">{s.title}</p>
-                                    <p className="text-xs text-gray-500 mt-0.5">{[s.location, Number(s.fee) > 0 ? `참가비 ${won(s.fee)}` : '무료'].filter(Boolean).join(' · ')}</p>
+                                <div className="min-w-0 flex-1 basis-[220px]">
+                                    <p className="truncate text-[13px] text-sub">{fmtDate(s.startsAt) || '\u00a0'}</p>
+                                    <p className="mt-0.5 truncate text-[16px] font-semibold text-ink" title={s.title}>{s.title || '\u00a0'}</p>
+                                    <p className="mt-0.5 truncate text-[14px] text-sub">{[s.location, Number(s.fee) > 0 ? `참가비 ${won(s.fee)}` : '무료'].filter(Boolean).join(' · ')}</p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     <button type="button" disabled={!approved || s.attendanceOpen === false} onClick={() => setQrSession(s)}
-                                        className="px-4 py-2 rounded-full bg-dark text-white text-xs font-semibold disabled:opacity-40" title={approved ? '' : '운영진 승인 후 사용할 수 있어요'}>출석 QR 띄우기</button>
-                                    <button type="button" onClick={() => setOpenRoster(openRoster === s.id ? null : s.id)} className="px-4 py-2 rounded-full bg-soft text-xs font-semibold">출석부</button>
+                                        className="h-11 rounded-lg bg-[#1a1a1a] px-4 text-[14px] font-semibold text-white disabled:opacity-40" title={approved ? '' : '운영진 승인 후 사용할 수 있어요'}>출석 QR 띄우기</button>
+                                    <button type="button" onClick={() => setOpenRoster(openRoster === s.id ? null : s.id)} aria-expanded={openRoster === s.id} className="h-11 rounded-lg border border-line2 bg-white px-4 text-[14px] font-semibold text-[#333] hover:border-ink">출석부</button>
                                     <button type="button" onClick={() => groupService.updateSession(group.id, s.id, { attendanceOpen: s.attendanceOpen === false })}
-                                        className="px-4 py-2 rounded-full bg-soft text-xs font-semibold">{s.attendanceOpen === false ? '출석 받기' : '출석 마감'}</button>
+                                        className="h-11 rounded-lg border border-line2 bg-white px-4 text-[14px] font-semibold text-[#333] hover:border-ink">{s.attendanceOpen === false ? '출석 받기' : '출석 마감'}</button>
                                     <button type="button" onClick={() => { if (confirm('이 회차를 삭제할까요?')) groupService.deleteSession(group.id, s.id).catch((e) => alert(e.message)); }}
-                                        className="px-3 py-2 rounded-full text-xs font-semibold text-red-600">삭제</button>
+                                        className="h-11 rounded-lg px-3 text-[14px] font-semibold text-red-600 hover:bg-red-50">삭제</button>
                                 </div>
                             </div>
                             {openRoster === s.id ? <Roster group={group} session={s} members={members} /> : null}
@@ -293,27 +292,27 @@ function Roster({ group, session, members }) {
     const rows = [...members.map((m) => ({ uid: m.uid, name: m.name })), ...extra.map((a) => ({ uid: a.uid, name: a.name }))];
 
     return (
-        <div className="mt-4 border-t border-black/[0.06] pt-3">
-            <p className="text-xs text-gray-500 mb-2">출석 {att.length}명 / 멤버 {members.length}명{fee > 0 ? ` · 결제 완료 ${att.filter((a) => a.paid).length}명` : ''}</p>
-            <ul className="divide-y divide-black/[0.04]">
+        <div className="mt-4 border-t border-line pt-3">
+            <p className="mb-2 text-[14px] text-sub">출석 {att.length}명 / 멤버 {members.length}명{fee > 0 ? ` · 결제 완료 ${att.filter((a) => a.paid).length}명` : ''}</p>
+            <ul className="divide-y divide-line">
                 {rows.map((r) => {
                     const a = byUid[r.uid];
                     return (
-                        <li key={r.uid} className="flex items-center justify-between py-2 text-sm">
-                            <span className="truncate">{r.name || '회원'}</span>
+                        <li key={r.uid} className="flex min-h-[56px] items-center justify-between gap-2 py-1.5 text-[15px]">
+                            <span className="min-w-0 truncate">{r.name || '회원'}</span>
                             <span className="flex items-center gap-2 shrink-0">
                                 {a ? (
                                     <>
-                                        <span className="text-xs font-bold text-emerald-700">{a.method === 'qr' ? 'QR 출석' : '수동 출석'}</span>
-                                        {fee > 0 ? (a.paid ? <span className="text-xs font-bold text-brand">결제 완료</span> : (
-                                            <button type="button" onClick={() => groupService.setCashPaid(group.id, session.id, r.uid, !a.cashPaid)} className={`text-xs font-semibold rounded-full px-2 py-0.5 ${a.cashPaid ? 'bg-blue-50 text-brand' : 'bg-soft text-gray-500'}`}>
+                                        <span className="text-[13px] font-semibold text-royal">{a.method === 'qr' ? 'QR 출석' : '수동 출석'}</span>
+                                        {fee > 0 ? (a.paid ? <span className="text-[13px] font-semibold text-royal">결제 완료</span> : (
+                                            <button type="button" onClick={() => groupService.setCashPaid(group.id, session.id, r.uid, !a.cashPaid)} aria-pressed={!!a.cashPaid} className={`min-h-[44px] rounded-lg border px-3 text-[13px] font-semibold ${a.cashPaid ? 'border-royal bg-sky text-royal' : 'border-line2 bg-white text-sub'}`}>
                                                 {a.cashPaid ? '현장 결제 ✓' : '현장 결제 표시'}
                                             </button>
                                         )) : null}
-                                        {!a.paid ? <button type="button" onClick={() => groupService.removeAttendance(group.id, session.id, r.uid)} className="text-xs text-gray-400">취소</button> : null}
+                                        {!a.paid ? <button type="button" onClick={() => groupService.removeAttendance(group.id, session.id, r.uid)} className="min-h-[44px] px-2 text-[13px] text-sub hover:text-ink">취소</button> : null}
                                     </>
                                 ) : (
-                                    <button type="button" onClick={() => groupService.markManualAttendance(group.id, session.id, r).catch((e) => alert(e.message))} className="text-xs font-semibold rounded-full bg-soft px-3 py-1">출석 처리</button>
+                                    <button type="button" onClick={() => groupService.markManualAttendance(group.id, session.id, r).catch((e) => alert(e.message))} className="min-h-[44px] rounded-lg border border-line2 bg-white px-3 text-[14px] font-semibold text-[#333] hover:border-ink">출석 처리</button>
                                 )}
                             </span>
                         </li>
@@ -330,24 +329,24 @@ function MembersTab({ group, members }) {
     const [notes, setNotes] = useState({});
     useEffect(() => { groupService.getJoinNotes(group.id).then(setNotes).catch(() => setNotes({})); }, [group.id, members.length]);
     const Note = ({ uid }) => (notes[uid] && (notes[uid].field || notes[uid].concern) ? (
-        <dl className="mt-1.5 space-y-0.5 text-[13px] text-gray-600 break-keep">
-            {notes[uid].field ? <div><dt className="inline text-gray-400">사업 분야 </dt><dd className="inline">{notes[uid].field}</dd></div> : null}
-            {notes[uid].concern ? <div><dt className="inline text-gray-400">지금 고민 </dt><dd className="inline whitespace-pre-wrap">{notes[uid].concern}</dd></div> : null}
+        <dl className="mt-1.5 space-y-0.5 break-keep text-[14px] text-[#333]">
+            {notes[uid].field ? <div><dt className="inline text-sub">사업 분야 </dt><dd className="inline">{notes[uid].field}</dd></div> : null}
+            {notes[uid].concern ? <div><dt className="inline text-sub">지금 고민 </dt><dd className="inline whitespace-pre-wrap">{notes[uid].concern}</dd></div> : null}
         </dl>
     ) : null);
     const act = (uid, status) => groupService.setMemberStatus(group.id, uid, status).catch((e) => alert(e.message));
     return (
         <div className="space-y-8">
             <div>
-                <h3 className="font-semibold text-dark mb-2">가입 신청 {pending.length}명</h3>
-                {pending.length === 0 ? <p className="text-sm text-gray-500">대기 중인 신청이 없어요.</p> : (
+                <h3 className="mb-3 text-[18px] font-semibold text-ink">가입 신청 {pending.length}명</h3>
+                {pending.length === 0 ? <p className="text-[15px] text-sub">대기 중인 신청이 없어요.</p> : (
                     <ul className="space-y-2">
                         {pending.map((m) => (
-                            <li key={m.uid} className="flex items-start justify-between gap-3 rounded-2xl bg-soft px-4 py-3 text-sm">
-                                <span className="min-w-0"><span className="font-semibold">{m.name}</span><Note uid={m.uid} /></span>
+                            <li key={m.uid} className="flex min-h-[68px] items-start justify-between gap-3 rounded-xl bg-card px-4 py-3 text-[15px]">
+                                <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{m.name}</span><Note uid={m.uid} /></span>
                                 <span className="flex shrink-0 gap-2">
-                                    <button type="button" onClick={() => act(m.uid, 'active')} className="px-3 py-1.5 rounded-full bg-brand text-white text-xs font-semibold">승인</button>
-                                    <button type="button" onClick={() => act(m.uid, 'rejected')} className="px-3 py-1.5 rounded-full bg-white text-xs font-semibold text-gray-600">거절</button>
+                                    <button type="button" onClick={() => act(m.uid, 'active')} className="h-11 rounded-lg bg-royal px-4 text-[14px] font-semibold text-white hover:bg-royalDark">승인</button>
+                                    <button type="button" onClick={() => act(m.uid, 'rejected')} className="h-11 rounded-lg border border-line2 bg-white px-4 text-[14px] font-semibold text-[#333] hover:border-ink">거절</button>
                                 </span>
                             </li>
                         ))}
@@ -355,12 +354,12 @@ function MembersTab({ group, members }) {
                 )}
             </div>
             <div>
-                <h3 className="font-semibold text-dark mb-2">멤버 {active.length}명</h3>
-                <ul className="divide-y divide-black/[0.05]">
+                <h3 className="mb-3 text-[18px] font-semibold text-ink">멤버 {active.length}명</h3>
+                <ul className="divide-y divide-line border-y border-line">
                     {active.map((m) => (
-                        <li key={m.uid} className="flex items-start justify-between gap-3 py-2.5 text-sm">
-                            <span className="min-w-0">{m.name}{m.role === 'leader' ? <span className="ml-2 text-xs font-bold text-brand">그룹장</span> : null}<Note uid={m.uid} /></span>
-                            {m.role !== 'leader' ? <button type="button" onClick={() => { if (confirm(`${m.name}님을 내보낼까요?`)) act(m.uid, 'left'); }} className="text-xs text-gray-400">내보내기</button> : null}
+                        <li key={m.uid} className="flex min-h-[60px] items-start justify-between gap-3 py-2 text-[15px]">
+                            <span className="min-w-0 flex-1 py-2.5">{m.name}{m.role === 'leader' ? <span className="ml-2 text-[13px] font-semibold text-royal">그룹장</span> : null}<Note uid={m.uid} /></span>
+                            {m.role !== 'leader' ? <button type="button" onClick={() => { if (confirm(`${m.name}님을 내보낼까요?`)) act(m.uid, 'left'); }} className="min-h-[44px] shrink-0 px-2 text-[14px] text-sub hover:text-red-600">내보내기</button> : null}
                         </li>
                     ))}
                 </ul>
@@ -377,20 +376,20 @@ function PaymentsTab({ group, sessions }) {
     const title = (sid) => sessions.find((s) => s.id === sid)?.title || '';
     return (
         <div className="space-y-4">
-            <div className="rounded-[24px] bg-soft p-5">
-                <p className="text-xs text-gray-500">QR로 결제된 참가비 합계</p>
-                <p className="text-3xl font-semibold text-dark mt-1">{won(total)}</p>
-                <p className="text-xs text-gray-500 mt-2 break-keep">결제 금액은 부청사가 받아 두었다가 그룹장에게 정산합니다. 정산 방식은 운영진이 안내드려요.</p>
+            <div className="rounded-xl bg-card p-5 md:p-6">
+                <p className="text-[14px] text-sub">QR로 결제된 참가비 합계</p>
+                <p className="mt-1 text-[30px] font-bold text-ink">{won(total)}</p>
+                <p className="mt-2 break-keep text-[14px] text-sub">결제 금액은 운영사(부산청년사업가 포럼)가 받아 두었다가 그룹장에게 정산합니다. 정산 방식은 운영진이 안내드려요.</p>
             </div>
-            {rows === null ? <p className="text-sm text-gray-400">불러오는 중…</p> : rows.length === 0 ? <p className="text-sm text-gray-500">결제 내역이 없어요.</p> : (
-                <ul className="divide-y divide-black/[0.05] text-sm">
+            {rows === null ? <p className="text-[15px] text-sub">불러오는 중…</p> : rows.length === 0 ? <p className="text-[15px] text-sub">결제 내역이 없어요.</p> : (
+                <ul className="divide-y divide-line border-y border-line text-[15px]">
                     {rows.map((r) => (
-                        <li key={r.id} className="flex items-center justify-between py-2.5 gap-3">
+                        <li key={r.id} className="flex min-h-[56px] items-center justify-between gap-3 py-2.5">
                             <span className="min-w-0 truncate">{r.name} · {title(r.sessionId) || r.sessionTitle}</span>
-                            <span className="shrink-0 text-xs">
+                            <span className="shrink-0 text-[14px]">
                                 <b>{won(r.amount)}</b>{' '}
-                                <span className={r.status === 'paid' ? 'text-brand' : 'text-gray-400'}>{({ paid: '결제', pending: '미결제', refunded: '환불' })[r.status] || r.status}</span>
-                                {r.status === 'paid' ? <span className="text-gray-400"> · {r.settled ? '정산 완료' : '정산 전'}</span> : null}
+                                <span className={r.status === 'paid' ? 'text-royal' : 'text-sub'}>{({ paid: '결제', pending: '미결제', refunded: '환불' })[r.status] || r.status}</span>
+                                {r.status === 'paid' ? <span className="text-sub"> · {r.settled ? '정산 완료' : '정산 전'}</span> : null}
                                 {r.status === 'paid' && !r.settled ? (
                                     <button type="button" onClick={async () => {
                                         const reason = prompt(`${r.name}님의 ${won(r.amount)}을 전액 환불할까요? 환불 사유를 적어 주세요.`, '회차 취소');
@@ -400,7 +399,7 @@ function PaymentsTab({ group, sessions }) {
                                             setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, status: 'refunded' } : x)));
                                             alert('환불했습니다. 카드사에 따라 3~5영업일 걸릴 수 있어요.');
                                         } catch (e) { alert(e.message); }
-                                    }} className="ml-2 rounded-full bg-soft px-2.5 py-0.5 font-semibold text-red-600">환불</button>
+                                    }} className="ml-2 min-h-[44px] rounded-lg border border-line2 bg-white px-3 font-semibold text-red-600 hover:border-red-600">환불</button>
                                 ) : null}
                             </span>
                         </li>
@@ -435,7 +434,7 @@ function SettingsTab({ group }) {
     };
     return (
         <form onSubmit={save} className="max-w-2xl space-y-5">
-            {!approved ? <p className="text-sm text-amber-700 bg-amber-50 rounded-xl p-3">설정 변경은 운영진 승인 후에 할 수 있어요.</p> : null}
+            {!approved ? <p className="rounded-xl bg-sky px-5 py-4 text-[15px] text-ink">설정 변경은 운영진 승인 후에 할 수 있어요.</p> : null}
             <Field label="그룹 이름"><input className={inputClass} value={form.title} onChange={set('title')} /></Field>
             <Field label="소개"><textarea className={`${inputClass} min-h-[120px]`} value={form.description} onChange={set('description')} /></Field>
             <Field label="공지" hint="그룹 화면 맨 위에 보여요"><textarea className={`${inputClass} min-h-[80px]`} value={form.notice} onChange={set('notice')} /></Field>
@@ -447,7 +446,7 @@ function SettingsTab({ group }) {
             </div>
             <Field label="모임 주기"><input className={inputClass} value={form.schedule} onChange={set('schedule')} /></Field>
             <Field label="커버 이미지"><CoverPicker value={form.cover} type={group.type} onChange={(cover) => setForm((f) => ({ ...f, cover }))} /></Field>
-            <button type="submit" disabled={!approved || saving} className="px-8 py-3 rounded-full bg-brand text-white font-semibold disabled:opacity-50">{saving ? '저장 중…' : '저장'}</button>
+            <button type="submit" disabled={!approved || saving} className="h-[52px] rounded-lg bg-[#1a1a1a] px-10 text-[16px] font-bold text-white hover:bg-black disabled:opacity-50">{saving ? '저장 중…' : '저장'}</button>
         </form>
     );
 }

@@ -1,8 +1,8 @@
 import React from 'react';
 
 const BLOCK_SIZE = 5;
-const numBtn = "text-xs font-semibold rounded-full w-8 h-8 transition-colors bg-soft text-gray-600 hover:bg-[#eceef2]";
-const navBtn = "text-xs font-semibold rounded-full px-3 py-2 bg-soft text-gray-600 hover:bg-[#eceef2] transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+const numBtn = "min-w-[44px] h-11 px-2 text-[15px] font-semibold rounded-lg border border-line bg-white text-ink hover:border-ink transition-colors";
+const navBtn = "h-11 px-3.5 text-[15px] font-semibold rounded-lg border border-line bg-white text-ink hover:border-ink transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
 
 /**
  * Pager — 목록(뉴스, 지원사업 등)에서 공통으로 쓰는 페이지 번호 버튼.
@@ -36,7 +36,7 @@ export default function Pager({ page, totalPages, onChange }) {
                     type="button"
                     onClick={() => onChange(p)}
                     aria-current={p === page ? 'page' : undefined}
-                    className={`${numBtn} ${p === page ? '!bg-brand !text-white' : ''}`}
+                    className={`${numBtn} ${p === page ? '!bg-[#0c0c0e] !text-white !border-[#0c0c0e]' : ''}`}
                 >
                     {p}
                 </button>
