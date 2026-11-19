@@ -81,6 +81,14 @@ const NEWS_KEYWORD_GROUPS = [
     ],
   },
   {
+    // 예비창업자 섹션(/startup)용 — 창업을 준비하는 분이 신청할 수 있는 사업·기관 소식(부산 밖 동남권·전국 포함)
+    category: '창업·투자',
+    keywords: [
+      '청년창업사관학교', '예비창업패키지', '초기창업패키지', '예비창업자 모집', '창업중심대학',
+      '부산창조경제혁신센터', '경남 창업 지원', '울산 창업 지원', '창업진흥원 공고', '청년 창업 지원사업',
+    ],
+  },
+  {
     category: '모집·행사',
     keywords: [
       '부산 창업교육 모집', '부산 창업 컨설팅', '부산 창업 공모전', '부산 박람회 참가기업',
@@ -132,7 +140,7 @@ const NEWS_RECENCY_MS = 48 * 60 * 60 * 1000;
 // 검색어가 73개나 되므로(위 그룹 합계) 한 번 실행에 저장하는 뉴스 건수에는 별도 상한을 둔다
 // (bizinfo의 MAX_ITEMS_PER_SOURCE와는 별개 — 뉴스는 검색어 자체가 많아 그 캡을 그대로 쓰면 너무 적다).
 const NEWS_MAX_ITEMS_PER_RUN = 60;
-// 키워드 73개를 연달아 호출하다 네이버 API에 과부하를 주지 않도록 요청 사이에 살짝 텀을 둔다.
+// 키워드 83개를 연달아 호출하다 네이버 API에 과부하를 주지 않도록 요청 사이에 살짝 텀을 둔다.
 const NEWS_REQUEST_INTERVAL_MS = 120;
 
 // 기사 제목/요약에 아래 단어가 하나도 없으면 "사업자에게 필요한 정보"로 보기 어려워 제외한다
@@ -140,6 +148,7 @@ const NEWS_REQUEST_INTERVAL_MS = 120;
 const REQUIRED_TARGET_WORDS = [
   '소상공인', '자영업자', '개인사업자', '중소기업', '스타트업', '창업기업', '예비창업자',
   '초기창업기업', '청년기업', '청년창업가', '로컬기업', '로컬크리에이터', '지역기업',
+  '예비창업', '창업사관학교', '창업자', '창업패키지', '창업중심대학',
   '1인기업', '벤처기업', '사회적기업', '협동조합',
 ];
 
@@ -602,7 +611,9 @@ async function ingestBizinfo(db) {
   // 것으로 보여(실제로 한 번 겪음), 순차로 호출한다.
   const generalItems = await fetchBizinfoList(apiKey, null);
   const busanItems = await fetchBizinfoList(apiKey, '부산');
-  if (generalItems.length === 0 && busanItems.length === 0) {
+  // 예비창업자 섹션(/startup)용: 기업마당 「창업」 분야 공고도 따로 받아 온다(위 두 조회에 밀려 빠지지 않게 별도 몫)
+  const startupItems = await fetchBizinfoList(apiKey, '창업');
+  if (generalItems.length === 0 && busanItems.length === 0 && startupItems.length === 0) {
     console.log('[bizinfo] 수집된 공고가 없습니다. (응답 형식이 예상과 다르면 이 스크립트의 필드 매핑을 점검하세요)');
     return { new: 0, updated: 0, skipped: 0 };
   }
@@ -612,7 +623,12 @@ async function ingestBizinfo(db) {
   for (const item of [...generalItems, ...busanItems]) {
     if (item.pblancUrl) merged.set(item.pblancUrl, item);
   }
+  const startupUrlSet = new Set(startupItems.map((i) => i.pblancUrl).filter(Boolean));
   const allItems = Array.from(merged.values()).slice(0, MAX_ITEMS_TOTAL);
+  const taken = new Set(allItems.map((i) => i.pblancUrl));
+  for (const item of startupItems.slice(0, MAX_ITEMS_PER_SOURCE)) {
+    if (item.pblancUrl && !taken.has(item.pblancUrl)) { allItems.push(item); taken.add(item.pblancUrl); }
+  }
 
   const counts = { new: 0, updated: 0, skipped: 0 };
   let crawledCount = 0;
@@ -649,6 +665,10 @@ async function ingestBizinfo(db) {
     }
     if (isBusan) busanCount += 1;
     const region = isBusan ? ['부산'] : [];
+    // 예비창업 대상 표시: 「창업」 분야 조회로 왔거나, 제목·요약에 예비·초기 창업 낱말이 있으면
+    // (화면의 src/constants/preFounder.js 와 같은 뜻 — 화면은 이 표시가 없어도 낱말로 다시 고른다)
+    const isPreFounder = startupUrlSet.has(sourceUrl) || /예비\s?창업|창업사관학교|초기\s?창업|창업패키지|창업중심대학|청년\s?창업/.test(`${title} ${summaryText}`);
+    const audience = isPreFounder ? ['preFounder'] : [];
 
     const { deadline, usedCrawl } = await resolveDeadline({ item, title, summaryText, applyUrl, sourceUrl });
     if (usedCrawl) crawledCount += 1;
@@ -662,6 +682,7 @@ async function ingestBizinfo(db) {
         amountText: '',
         region,
         industry: item.pldirSportRealmLclasCodeNm ? [item.pldirSportRealmLclasCodeNm] : [],
+        audience,
         applyUrl,
         sourceUrl,
         deadlineAt: deadline ? admin.firestore.Timestamp.fromDate(deadline) : null,
@@ -675,6 +696,7 @@ async function ingestBizinfo(db) {
         summary: summaryText.slice(0, 120),
         description: summaryText,
         region,
+        audience,
         deadlineAt: deadline ? admin.firestore.Timestamp.fromDate(deadline) : null,
         isRolling: !deadline,
       }),
@@ -687,7 +709,7 @@ async function ingestBizinfo(db) {
 }
 
 /**
- * NAVER API HUB 뉴스검색 API로 NEWS_KEYWORD_GROUPS의 검색어(73개)를 각각 조회해 newsItems에 upsert.
+ * NAVER API HUB 뉴스검색 API로 NEWS_KEYWORD_GROUPS의 검색어(83개)를 각각 조회해 newsItems에 upsert.
  * (2026년 이전 구버전 openapi.naver.com/v1/search/news.json + X-Naver-Client-Id 방식은
  * 네이버가 종료하고 NAVER API HUB로 이관함 — 도메인/경로/인증 헤더가 모두 바뀌었다.)
  *

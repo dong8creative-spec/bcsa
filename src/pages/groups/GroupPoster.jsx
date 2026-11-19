@@ -141,10 +141,11 @@ export function JoinDialog({ group, poster, onSubmit, onClose }) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const required = !!poster;
+    const labels = { field: '사업 분야', concern: '지금 고민 1가지', concernPlaceholder: '예: 재구매 고객을 늘리고 싶은데 방법을 모르겠어요.', ...(poster?.joinLabels || {}) };
     const submit = async (e) => {
         e.preventDefault();
         setError('');
-        if (required && (!field.trim() || !concern.trim())) { setError('사업 분야와 지금 고민 1가지를 적어 주세요.'); return; }
+        if (required && (!field.trim() || !concern.trim())) { setError(`${labels.field}와 ${labels.concern}를 적어 주세요.`); return; }
         setBusy(true);
         try { await onSubmit({ field: field.trim(), concern: concern.trim() }); }
         catch (err) { setError(err.message || '신청하지 못했어요. 잠시 뒤 다시 눌러 주세요.'); setBusy(false); }
@@ -158,14 +159,14 @@ export function JoinDialog({ group, poster, onSubmit, onClose }) {
                 <p className="mt-2 text-[15px] text-gray-600 break-keep">그룹장이 보고 승인하면 멤버가 돼요. 적은 내용은 그룹장과 운영진만 봐요.</p>
                 <form onSubmit={submit} className="mt-5 space-y-4" noValidate>
                     <label className="block">
-                        <span className="text-[15px] font-semibold text-dark">사업 분야{required ? '' : ' (선택)'}</span>
+                        <span className="text-[15px] font-semibold text-dark">{labels.field}{required ? '' : ' (선택)'}</span>
                         <input className={`${input} mt-2`} value={field} onChange={(e) => setField(e.target.value)} maxLength={60}
                             placeholder="예: 온라인 쇼핑몰(의류), 카페, 세무사무소" data-autofocus aria-required={required} autoComplete="organization-title" />
                     </label>
                     <label className="block">
-                        <span className="text-[15px] font-semibold text-dark">지금 고민 1가지{required ? '' : ' (선택)'}</span>
+                        <span className="text-[15px] font-semibold text-dark">{labels.concern}{required ? '' : ' (선택)'}</span>
                         <textarea className={`${input} mt-2 min-h-[110px]`} value={concern} onChange={(e) => setConcern(e.target.value)} maxLength={500}
-                            placeholder="예: 재구매 고객을 늘리고 싶은데 방법을 모르겠어요." aria-required={required} />
+                            placeholder={labels.concernPlaceholder} aria-required={required} />
                         <span className="mt-1 block text-right text-[12px] text-gray-400">{concern.length}/500</span>
                     </label>
                     <p role="alert" className="text-[14px] font-semibold text-red-600 min-h-[1px]">{error}</p>

@@ -62,6 +62,11 @@ const PAGES = [
     description: '부산 지역 신규 지원사업과 마감이 다가온 정부·지자체 지원사업을 핵심만 요약해 보여드립니다.',
   },
   {
+    path: '/startup',
+    title: '예비창업 | 청년창업사관학교·예비창업패키지 등 창업지원 찾기 - 부청사',
+    description: '예비창업자를 위한 창업 지원사업과 소식을 매일 모아 둡니다. 부산·경남부터 전국까지 청년창업사관학교, 예비창업패키지 등을 한곳에서 찾아보세요.',
+  },
+  {
     path: '/groups',
     title: '소모임·스터디 | 부산 사업가 그룹 - 부청사',
     description: '부청사 회원이 직접 여는 사업가 소모임과 스터디. 일정 확인, QR 출석, 참가비 결제까지 한 곳에서.',
@@ -159,7 +164,7 @@ async function fetchApprovedGroups() {
 }
 
 // 그룹 공유 그림: 모집 포스터가 있으면 포스터(src/constants/groupPosters.js 와 같은 파일), 없으면 커버
-const GROUP_POSTER_IMAGES = { 'bcsa-study-1': '/assets/images/groups/poster-bcsa-study-1.jpg' };
+const GROUP_POSTER_IMAGES = { 'bcsa-study-1': '/assets/images/groups/poster-bcsa-study-1.jpg', 'claude-workshop-1': '/assets/images/groups/poster-claude-workshop-1.jpg' };
 const GROUP_COVER_KEYS = ['study', 'meetup', 'networking', 'workshop', 'online', 'busan'];
 const groupShareImage = (g) => BASE_URL + (GROUP_POSTER_IMAGES[g.poster]
   || `/assets/images/groups/cover-${GROUP_COVER_KEYS.includes(g.cover) ? g.cover : (g.type === 'study' ? 'study' : 'meetup')}.jpg`);
@@ -208,6 +213,7 @@ function buildSitemap(seminarIds) {
     { loc: '/notice',      priority: '0.7', changefreq: 'weekly' },
     { loc: '/news',        priority: '0.8', changefreq: 'daily' },
     { loc: '/support',     priority: '0.9', changefreq: 'daily' },
+    { loc: '/startup',     priority: '0.8', changefreq: 'daily' },
     { loc: '/tools',       priority: '0.7', changefreq: 'monthly' },
     { loc: '/groups',      priority: '0.7', changefreq: 'weekly' },
     { loc: '/members',     priority: '0.5', changefreq: 'weekly' },

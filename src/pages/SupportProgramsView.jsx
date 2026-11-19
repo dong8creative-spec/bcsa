@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import AdSlot, { useAnyAdVisible } from '../components/AdSlot';
 import { firestoreLikeToMillis, getSupportProgramDdayInfo, bucketSupportPrograms } from '../appHelpers';
 import Pager from '../components/Pager';
@@ -301,6 +301,7 @@ const TABS = [
 ];
 
 export default function SupportProgramsView({ supportPrograms, content, onBack }) {
+    const navigate = useNavigate();
     // 우측 배너 레일에 실제로 등록된 광고가 하나도 없으면 레일을 아예 접고 본문 폭을 넓힌다.
     const hasSidebarAd = useAnyAdVisible(content, ['support-sidebar-1', 'support-sidebar-1b', 'support-sidebar-2']);
     const [selected, setSelected] = useState(null);
@@ -442,6 +443,14 @@ export default function SupportProgramsView({ supportPrograms, content, onBack }
             >
                 <div className="container mx-auto max-w-7xl">
                     <AdSlot slotId="support-top-banner" content={content} className="mb-8" />
+                    <a href="/startup" onClick={(e) => { e.preventDefault(); navigate('/startup'); }}
+                        className="mb-8 flex items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-5 py-4 hover:bg-emerald-50">
+                        <span className="min-w-0">
+                            <span className="block text-[16px] font-bold text-dark break-keep">창업을 준비 중이신가요?</span>
+                            <span className="block text-[14px] text-gray-600 break-keep">청년창업사관학교·예비창업패키지처럼 예비창업자가 신청할 수 있는 지원만 모아 봤어요.</span>
+                        </span>
+                        <span className="shrink-0 text-[15px] font-semibold text-brand">예비창업 지원 찾기 →</span>
+                    </a>
                     {orgPageName ? (
                         <>
                             <p className="text-[12.5px] text-gray-500 mb-5">

@@ -49,6 +49,49 @@ export const GROUP_POSTERS = {
       rect: { image: '/assets/images/ads/bcsa-study-1-rect.jpg', width: 600, height: 500 },
     },
   },
+  /**
+   * 2026-11-19 운영자 요청: "예비창업자들을 위한 클로드코드 업무 자동화 워크숍" 스터디,
+   * 파트너사 블루필드매뉴얼픽쳐스 이동헌 대표 강의. 일정·장소·참가비·정원은 아직 정해지지 않아 적지 않았다
+   * (정해지면 그룹 설정의 「모임 주기」·회차에 넣고, 여기 facts 에도 더한다). 포스터·광고는 Codex(image_gen)로 만들었다.
+   */
+  'claude-workshop-1': {
+    label: '예비창업자 클로드 코드 업무 자동화 워크숍 포스터',
+    image: '/assets/images/groups/poster-claude-workshop-1.jpg',
+    width: 1024,
+    height: 1448,
+    headline: '예비창업자들을 위한 클로드 코드 업무 자동화 워크숍',
+    tagline: '반복 업무, 클로드 코드로 줄여 보기',
+    lead: '창업을 준비하며 늘어나는 반복 업무를 AI 도구 클로드 코드로 자동화해 보는 워크숍입니다.',
+    facts: [
+      ['대상', '예비창업자'],
+      ['강사', '블루필드매뉴얼픽쳐스 이동헌 대표'],
+      ['형태', '스터디 · 워크숍'],
+      ['일정·장소·참가비', '정해지면 이 화면에 안내해요'],
+    ],
+    sections: [
+      { title: '이런 걸 다뤄요', items: ['클로드 코드가 무엇이고 어떻게 시작하는지', '자주 하는 반복 업무를 자동화로 바꾸는 방법'] },
+      { title: '이런 분께 맞아요', items: ['창업을 준비 중인 예비창업자', '혼자 처리할 업무가 많은 1인 대표'] },
+    ],
+    howTo: '가입 신청할 때 사업 분야(준비 중인 분야)와 자동화하고 싶은 업무 1가지를 적어 주세요.',
+    joinLabels: { field: '사업 분야(준비 중인 분야)', concern: '자동화하고 싶은 업무 1가지', concernPlaceholder: '예: 매일 주문 내역을 엑셀로 옮기는 일' },
+    closing: '부청사 파트너사 블루필드매뉴얼픽쳐스와 함께합니다.',
+    createDefaults: {
+      type: 'study',
+      title: '예비창업자들을 위한 클로드 코드 업무 자동화 워크숍',
+      description: '창업을 준비하며 늘어나는 반복 업무를 AI 도구 클로드 코드로 자동화해 보는 워크숍입니다.\n\n· 대상: 예비창업자\n· 강사: 블루필드매뉴얼픽쳐스 이동헌 대표 (부청사 파트너사)\n· 일정·장소·참가비: 정해지면 이 화면에 안내합니다.\n\n가입 신청할 때 사업 분야(준비 중인 분야)와 자동화하고 싶은 업무 1가지를 적어 주세요.',
+      region: '부산',
+      mode: 'offline',
+      schedule: '',
+      capacity: 0,
+      joinPolicy: 'approval',
+      cover: 'workshop',
+    },
+    houseAd: {
+      alt: '부청사 스터디. 예비창업자들을 위한 클로드 코드 업무 자동화 워크숍. 강사 블루필드매뉴얼픽쳐스 이동헌 대표. 자세히 보기',
+      banner: { image: '/assets/images/ads/claude-workshop-1-wide.jpg', mobile: '/assets/images/ads/claude-workshop-1-mobile.jpg', width: 1600, height: 400 },
+      rect: { image: '/assets/images/ads/claude-workshop-1-rect.jpg', width: 600, height: 500 },
+    },
+  },
 };
 
 /** 광고 자리 → 하우스 광고 모양. 여기에 없는 자리(세로 긴 사이드바 등)는 비워 둔다 */
@@ -56,8 +99,18 @@ export const HOUSE_AD_SLOTS = {
   'home-bento-divider': 'banner',
   'support-top-banner': 'banner',
   'news-list-native': 'banner',
+  'startup-mid-banner': 'banner',
+  'news-sidebar-1': 'tall',
+  'news-sidebar-1b': 'narrow',
   'news-sidebar-2': 'rect',
+  'support-sidebar-1': 'tall',
+  'support-sidebar-1b': 'narrow',
   'support-sidebar-2': 'rect',
+};
+
+/** 자리마다 다른 모집을 걸고 싶을 때(그 그룹이 없으면 HOUSE_AD_POSTER 로 돌아간다) */
+export const HOUSE_AD_SLOT_POSTER = {
+  'startup-mid-banner': 'claude-workshop-1',
 };
 
 /** 지금 광고로 거는 포스터(모집이 바뀌면 이 값과 위 목록만 바꾼다) */

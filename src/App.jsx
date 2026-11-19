@@ -31,6 +31,7 @@ import NoticeView from './pages/NoticeView';
 import AboutView from './pages/AboutView';
 import ToolsView from './pages/ToolsView';
 import SupportProgramsView from './pages/SupportProgramsView';
+const PreFounderView = lazy(() => import('./pages/PreFounderView'));
 import AdSlot from './components/AdSlot';
 import NewsView from './pages/NewsView';
 import RequestsView from './pages/RequestsView';
@@ -221,6 +222,7 @@ const App = () => {
         // 벤토 리디자인: 상단 메뉴 신규 항목
         news: '/news',
         supportPage: '/support',
+        startup: '/startup',
         tools: '/tools',
         groups: '/groups',
         requests: '/requests',
@@ -238,6 +240,7 @@ const App = () => {
         '/my': 'myPage',
         '/news': 'news',
         '/support': 'supportPage',
+        '/startup': 'startup',
         '/tools': 'tools',
         '/groups': 'groups',
         '/requests': 'requests',
@@ -3010,6 +3013,9 @@ END:VCALENDAR`;
         } else if (item === '지원사업') {
             goTo('supportPage');
             scroll();
+        } else if (item === '예비창업') {
+            goTo('startup');
+            scroll();
         } else if (item === '그룹') {
             goTo('groups');
             scroll();
@@ -3041,6 +3047,7 @@ END:VCALENDAR`;
         else if (item === '부산맛집' && (currentView === 'restaurants' || currentView === 'restaurantDetail' || currentView === 'restaurantForm')) isActive = true;
         else if (item === '뉴스' && currentView === 'news') isActive = true;
         else if (item === '지원사업' && currentView === 'supportPage') isActive = true;
+        else if (item === '예비창업' && currentView === 'startup') isActive = true;
         else if (item === '사업도구' && currentView === 'tools') isActive = true;
         else if (item === '그룹' && currentView === 'groups') isActive = true;
         else if (item === '의뢰' && currentView === 'requests') isActive = true;
@@ -3454,6 +3461,7 @@ END:VCALENDAR`;
             return null;
         }
         if (currentView === 'tools') return <ToolsView onBack={() => goTo('home')} />;
+        if (currentView === 'startup') return <PreFounderView supportPrograms={supportPrograms} newsItems={newsItems} content={content} />;
         if (currentView === 'supportPage') return <SupportProgramsView supportPrograms={supportPrograms} content={content} onBack={() => goTo('home')} />;
         // 뉴스: newsItems(관리자 수동 등록 + 매일 07:00 KST 언론사 RSS 자동 수집) 실시간 데이터만 사용.
         // 지원사업(supportPrograms)은 전용 "지원사업" 페이지(supportPage)에서만 노출한다 — 두 페이지가 같은

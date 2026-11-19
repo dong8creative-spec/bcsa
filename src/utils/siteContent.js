@@ -6,6 +6,7 @@ const DEFAULT_MENU_ENABLED = {
   '소개': true,
   '뉴스': true,
   '지원사업': true,
+  '예비창업': true,
   '사업도구': true,
   '그룹': true,
   // 의뢰·Q&A는 아직 공사중 화면이라 준비될 때까지 메뉴에서 숨긴다 (관리자 메뉴 설정으로 다시 켤 수 있음)
@@ -40,10 +41,16 @@ export function mergeLiveContent(base, saved) {
 export function getMenuStateFromSiteContent(content = buildSiteContent()) {
   const menuEnabled = { ...DEFAULT_MENU_ENABLED, ...(content.menuEnabled || {}) };
   const menuNames = { ...defaultMenuNames, ...(content.menuNames || {}) };
-  const menuOrder = Array.isArray(content.menuOrder) && content.menuOrder.length
-    ? content.menuOrder.filter((key) => defaultMenuOrder.includes(key))
-        .concat(defaultMenuOrder.filter((key) => !content.menuOrder.includes(key)))
-    : defaultMenuOrder;
+  // 저장된 순서에 없는 새 메뉴(예: 예비창업)는 맨 뒤가 아니라 기본 순서에서 바로 앞 메뉴 뒤에 끼워 넣는다
+  let menuOrder = defaultMenuOrder;
+  if (Array.isArray(content.menuOrder) && content.menuOrder.length) {
+    menuOrder = content.menuOrder.filter((key) => defaultMenuOrder.includes(key));
+    defaultMenuOrder.forEach((key, i) => {
+      if (menuOrder.includes(key)) return;
+      const prev = defaultMenuOrder.slice(0, i).reverse().find((k) => menuOrder.includes(k));
+      menuOrder.splice(prev ? menuOrder.indexOf(prev) + 1 : menuOrder.length, 0, key);
+    });
+  }
   return { menuEnabled, menuNames, menuOrder };
 }
 
