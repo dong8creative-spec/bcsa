@@ -139,7 +139,7 @@ export default function PreFounderView({ supportPrograms, newsItems, content }) 
                 <div className="container mx-auto max-w-5xl space-y-12">
                     {groups.length > 0 ? (
                         <section aria-labelledby="pf-groups">
-                            <h2 id="pf-groups" className="text-xl md:text-2xl font-semibold text-dark mb-4">예비창업자 스터디·워크숍</h2>
+                            <h2 id="pf-groups" className="text-xl md:text-2xl font-semibold text-dark mb-4">예비창업자를 위한 모임</h2>
                             <div className="grid gap-4 sm:grid-cols-2">
                                 {groups.map((g) => {
                                     const poster = groupPoster(g);

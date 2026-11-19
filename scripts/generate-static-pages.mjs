@@ -164,7 +164,7 @@ async function fetchApprovedGroups() {
 }
 
 // 그룹 공유 그림: 모집 포스터가 있으면 포스터(src/constants/groupPosters.js 와 같은 파일), 없으면 커버
-const GROUP_POSTER_IMAGES = { 'bcsa-study-1': '/assets/images/groups/poster-bcsa-study-1.jpg', 'claude-workshop-1': '/assets/images/groups/poster-claude-workshop-1.jpg' };
+const GROUP_POSTER_IMAGES = { 'bcsa-study-1': '/assets/images/groups/poster-bcsa-study-1.jpg', 'claude-workshop-1': '/assets/images/groups/poster-claude-workshop-1.jpg', 'senior-coffeechat-1': '/assets/images/groups/poster-senior-coffeechat-1.jpg', 'senior-host-1': '/assets/images/groups/poster-senior-host-1.jpg' };
 const GROUP_COVER_KEYS = ['study', 'meetup', 'networking', 'workshop', 'online', 'busan'];
 const groupShareImage = (g) => BASE_URL + (GROUP_POSTER_IMAGES[g.poster]
   || `/assets/images/groups/cover-${GROUP_COVER_KEYS.includes(g.cover) ? g.cover : (g.type === 'study' ? 'study' : 'meetup')}.jpg`);

@@ -94,6 +94,75 @@ export const GROUP_POSTERS = {
       rect: { image: '/assets/images/ads/claude-workshop-1-rect.jpg', width: 600, height: 500 },
     },
   },
+  /**
+   * 「먼저 가본」(정은지 대표 1R 사업계획서, 2026-11) 파일럿 — 같은 업종 현직 대표와 1:1 커피챗.
+   * 사업계획서의 「파일럿 커피챗 10건」을 부청사 사이트에서 모으기 위한 모집(웹앱 정식 오픈 전).
+   * 결제는 아직 사이트에서 받지 않는다(연결 뒤 운영진이 안내). 가입 신청 메모 = 업종·업력 + 질문 1가지.
+   */
+  'senior-coffeechat-1': {
+    label: '먼저 가본 선배 커피챗 파일럿 포스터',
+    image: '/assets/images/groups/poster-senior-coffeechat-1.jpg',
+    width: 1024,
+    height: 1448,
+    headline: '먼저 가본 선배에게 1:1로 물어보세요',
+    tagline: '같은 업종 현직 대표와 커피챗',
+    lead: '혼자 내리던 첫 결정을, 같은 업종 선배와 마주 앉아 내립니다. 신청하시면 운영진이 같은 업종 현직 대표를 찾아 연결해 드려요.',
+    facts: [
+      ['대상', '업력 3년 이내 사장님 · 예비창업자'],
+      ['방식', '같은 업종 현직 대표와 1:1 커피챗'],
+      ['비용', '3만 원부터 (선배마다 다름)'],
+      ['진행', '파일럿 모집 중 · 결제는 연결 뒤 안내'],
+    ],
+    sections: [
+      { title: '이렇게 진행돼요', items: ['신청할 때 업종·업력과 묻고 싶은 것 1가지를 적어요', '운영진이 같은 업종 현직 대표를 찾아 연결해요', '일정이 정해지면 1:1로 만나 이야기해요'] },
+      { title: '이런 분께 맞아요', items: ['업력 3년 이내 사장님', '창업을 준비 중인 예비창업자', '혼자 내리던 첫 결정이 막막한 분'] },
+    ],
+    howTo: '가입 신청할 때 업종·업력과 선배에게 묻고 싶은 것 1가지를 적어 주세요.',
+    joinLabels: { field: '업종·업력', concern: '선배에게 묻고 싶은 것 1가지', concernPlaceholder: '예: 첫 직원을 언제 뽑아야 할지 모르겠어요' },
+    closing: '부청사 × 먼저 가본 — 선배의 경험이 후배에게 이어지도록.',
+    createDefaults: {
+      type: 'meetup',
+      title: '먼저 가본 선배 1:1 커피챗 (파일럿)',
+      description: '같은 업종 현직 대표에게 1:1로 물어보는 커피챗입니다.\n혼자 내리던 첫 결정을, 같은 업종 선배와 마주 앉아 내립니다.\n\n· 대상: 업력 3년 이내 사장님, 예비창업자\n· 비용: 3만 원부터 (선배마다 다름, 연결 뒤 안내)\n· 진행: 신청 → 운영진이 같은 업종 선배 연결 → 일정 확정 → 1:1 대화\n\n가입 신청할 때 업종·업력과 선배에게 묻고 싶은 것 1가지를 적어 주세요.',
+      region: '부산', mode: 'offline', schedule: '신청 후 개별 일정', capacity: 0, joinPolicy: 'approval', cover: 'meetup',
+    },
+    houseAd: {
+      alt: '부청사 × 먼저 가본. 먼저 가본 선배에게 1:1로 물어보세요. 같은 업종 현직 대표와 커피챗. 3만 원부터, 파일럿 모집. 커피챗 신청하기',
+      banner: { image: '/assets/images/ads/senior-coffeechat-1-wide.jpg', mobile: '/assets/images/ads/senior-coffeechat-1-mobile.jpg', width: 1600, height: 400 },
+      rect: { image: '/assets/images/ads/senior-coffeechat-1-rect.jpg', width: 600, height: 500 },
+    },
+  },
+  'senior-host-1': {
+    label: '먼저 가본 선배 모집 포스터',
+    image: '/assets/images/groups/poster-senior-host-1.jpg',
+    width: 1024,
+    height: 1448,
+    headline: '당신의 경험이 누군가의 첫 결정을 바꿉니다',
+    tagline: '먼저 가본 선배를 찾습니다',
+    lead: '그동안 호의로 나누던 경험을, 선배가 정한 가격의 1:1 커피챗과 런치로 나눠 주세요.',
+    facts: [
+      ['대상', '업력 3년 이상 대표님'],
+      ['방식', '1:1 커피챗 · 런치 호스트'],
+      ['가격', '선배가 직접 정해요 (커피챗 3만 원부터)'],
+      ['진행', '파일럿 선배 모집 중'],
+    ],
+    sections: [
+      { title: '이렇게 함께해요', items: ['신청할 때 업종·업력과 나눌 수 있는 경험 1가지를 적어요', '운영진이 같은 업종 후배의 신청을 연결해 드려요', '편한 시간에 1:1로 만나 경험을 나눠요'] },
+    ],
+    howTo: '가입 신청할 때 업종·업력과 나눌 수 있는 경험 1가지를 적어 주세요.',
+    joinLabels: { field: '업종·업력', concern: '나눌 수 있는 경험 1가지', concernPlaceholder: '예: 오프라인 매장을 온라인 판매로 넓힌 경험' },
+    closing: '부청사 × 먼저 가본 — 선배의 경험이 후배에게 이어지도록.',
+    createDefaults: {
+      type: 'meetup',
+      title: '먼저 가본 선배 모집 (커피챗·런치 호스트)',
+      description: '업력 3년 이상 대표님의 경험을 같은 업종 후배와 1:1로 나눠 주세요.\n\n· 방식: 1:1 커피챗, 런치 호스트\n· 가격: 선배가 직접 정해요 (커피챗 3만 원부터)\n· 진행: 신청 → 운영진이 같은 업종 후배 연결 → 일정 확정\n\n가입 신청할 때 업종·업력과 나눌 수 있는 경험 1가지를 적어 주세요.',
+      region: '부산', mode: 'offline', schedule: '신청 후 개별 일정', capacity: 0, joinPolicy: 'approval', cover: 'networking',
+    },
+    houseAd: {
+      alt: '부청사 × 먼저 가본. 당신의 경험이 누군가의 첫 결정을 바꿉니다. 먼저 가본 선배를 찾습니다. 1:1 커피챗, 런치 호스트. 선배로 참여하기',
+      rect: { image: '/assets/images/ads/senior-host-1-rect.jpg', width: 600, height: 500 },
+    },
+  },
 };
 
 /** 광고 자리 → 하우스 광고 모양. 여기에 없는 자리(세로 긴 사이드바 등)는 비워 둔다 */
@@ -112,7 +181,8 @@ export const HOUSE_AD_SLOTS = {
 
 /** 자리마다 다른 모집을 걸고 싶을 때(그 그룹이 없으면 HOUSE_AD_POSTER 로 돌아간다) */
 export const HOUSE_AD_SLOT_POSTER = {
-  'startup-mid-banner': 'claude-workshop-1',
+  'startup-mid-banner': 'senior-coffeechat-1',
+  'news-list-native': 'senior-coffeechat-1',
 };
 
 /** 지금 광고로 거는 포스터(모집이 바뀌면 이 값과 위 목록만 바꾼다) */
