@@ -47,6 +47,8 @@ export const GROUP_POSTERS = {
       alt: '부청사 사업스터디 1기 모집. 사업을 키우고 싶은 대표들의 작은 사업모임. 3~5명, 월 1회 90분, 3개월 3만원. 자세히 보기',
       banner: { image: '/assets/images/ads/bcsa-study-1-wide.jpg', mobile: '/assets/images/ads/bcsa-study-1-mobile.jpg', width: 1600, height: 400 },
       rect: { image: '/assets/images/ads/bcsa-study-1-rect.jpg', width: 600, height: 500 },
+      tall: { image: '/assets/images/ads/bcsa-study-1-tall.jpg', width: 320, height: 1200 },
+      narrow: { image: '/assets/images/ads/bcsa-study-1-narrow.jpg', width: 240, height: 1200 },
     },
   },
   /**

@@ -207,7 +207,7 @@ export default function PreFounderView({ supportPrograms, newsItems, content }) 
                                             <li key={x.n.id}>
                                                 <button type="button" onClick={() => openNews(x)} className="w-full text-left py-4 px-1 hover:bg-soft/60">
                                                     <span className="block text-[16px] font-semibold leading-snug text-dark break-keep">{x.n.title}</span>
-                                                    <span className="mt-1 block text-[14px] text-gray-600">{[x.n.source, fmtDate(x.ms)].filter(Boolean).join(' · ')}</span>
+                                                    <span className="mt-1 block text-[14px] text-gray-600">{[fmtDate(x.ms), x.n.source].filter(Boolean).join(' · ')}</span>
                                                 </button>
                                             </li>
                                         ))}
